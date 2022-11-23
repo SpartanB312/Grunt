@@ -2,10 +2,8 @@ package net.spartanb312.grunt.utils
 
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
-import java.io.BufferedReader
-import java.io.InputStream
-import java.io.InputStreamReader
-import java.nio.charset.Charset
+import java.util.zip.CRC32
+import java.util.zip.ZipOutputStream
 import kotlin.random.Random
 
 fun String.getReturnType(): Int = when (Type.getReturnType(this).sort) {
@@ -71,3 +69,14 @@ private val badKeywords = arrayOf(
     "switch",
     "break"
 )
+
+fun ZipOutputStream.corruptCRC32() {
+    val field = ZipOutputStream::class.java.getDeclaredField("crc")
+    field.isAccessible = true
+    field[this] = object : CRC32() {
+        override fun update(bytes: ByteArray, i: Int, length: Int) {}
+        override fun getValue(): Long {
+            return Random.nextInt(0, Int.MAX_VALUE).toLong()
+        }
+    }
+}

@@ -27,6 +27,11 @@ object ScrambleTransformer : Transformer("ScrambleTransformer") {
     private val excludedClasses by value("ExcludedClasses", listOf())
     private val excludedFieldName by value("ExcludedFieldName", listOf())
 
+    private val nativeSupport by value("NativeSupport", false)
+    private val nativeAnnotation by value("NativeAnnotation", "Lnet/spartanb312/example/Native;")
+    private val downCalls by value("DownCalls", true)
+    private val upCalls by value("UpCalls", false)
+
     override fun ResourceCache.transform() {
         Logger.info(" - Redirecting field calls")
         val newClasses = mutableMapOf<ClassNode, ClassNode>() // Owner Companion
@@ -49,28 +54,28 @@ object ScrambleTransformer : Transformer("ScrambleTransformer") {
                                                 it,
                                                 if (randomName) getRandomString(10)
                                                 else "get_${it.name}${getRandomString(5)}"
-                                            )
+                                            ).appendAnnotation(false)
 
                                         it.opcode == Opcodes.PUTSTATIC && redirectSetStatic ->
                                             genMethod(
                                                 it,
                                                 if (randomName) getRandomString(10)
                                                 else "set_${it.name}${getRandomString(5)}"
-                                            )
+                                            ).appendAnnotation(true)
 
                                         it.opcode == Opcodes.GETFIELD && redirectGetField ->
                                             genMethod(
                                                 it,
                                                 if (randomName) getRandomString(10)
                                                 else "get_${it.name}${getRandomString(5)}"
-                                            )
+                                            ).appendAnnotation(false)
 
                                         it.opcode == Opcodes.PUTFIELD && redirectSetField ->
                                             genMethod(
                                                 it,
                                                 if (randomName) getRandomString(10)
                                                 else "set_${it.name}${getRandomString(5)}"
-                                            )
+                                            ).appendAnnotation(true)
 
                                         else -> throw Exception("Unsupported")
                                     }
@@ -120,7 +125,23 @@ object ScrambleTransformer : Transformer("ScrambleTransformer") {
                 classes[c.name] = c
             }
         }.get()
+        if (nativeSupport) Logger.info("    Added ${nativeAnnotationCount.get()} native annotations")
         Logger.info("    Redirected $count field calls")
+    }
+
+    private val nativeAnnotationCount = Counter()
+
+    private fun MethodNode.appendAnnotation(downCall: Boolean): MethodNode {
+        if (nativeSupport) {
+            if (downCall && downCalls) {
+                visitAnnotation(nativeAnnotation, false)
+                nativeAnnotationCount.add(1)
+            } else if (upCalls) {
+                visitAnnotation(nativeAnnotation, false)
+                nativeAnnotationCount.add(1)
+            }
+        }
+        return this
     }
 
     private fun genMethod(field: FieldInsnNode, methodName: String): MethodNode {

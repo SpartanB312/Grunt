@@ -5,7 +5,7 @@ import net.spartanb312.grunt.obfuscate.Transformers
 import net.spartanb312.grunt.obfuscate.resource.ResourceCache
 import net.spartanb312.grunt.utils.logging.Logger
 
-const val VERSION = "1.4.1"
+const val VERSION = "1.5.2"
 
 fun main(args: Array<String>) {
 
@@ -35,10 +35,10 @@ fun main(args: Array<String>) {
         if (readLine()?.lowercase() == "n") return
     }
 
-    ResourceCache(Configs.Settings.input /*Configs.Settings.libraries*/).apply {
+    ResourceCache(Configs.Settings.input, Configs.Settings.libraries).apply {
         readJar()
         Logger.info("Obfuscating...")
-        Transformers.transformers.forEach {
+        Transformers.forEach {
             if (it.enabled) with(it) { transform() }
         }
         Logger.info("Dumping to ${Configs.Settings.output}")

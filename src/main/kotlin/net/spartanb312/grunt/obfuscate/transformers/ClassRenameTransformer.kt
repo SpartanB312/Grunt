@@ -4,7 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import net.spartanb312.grunt.config.value
-import net.spartanb312.grunt.obfuscate.NameGenerator
+import net.spartanb312.grunt.dictionary.NameGenerator
 import net.spartanb312.grunt.obfuscate.Transformer
 import net.spartanb312.grunt.obfuscate.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets
 
 object ClassRenameTransformer : Transformer("ClassRename") {
 
+    private val dictionary by value("Dictionary", "Alphabet")
     private val parent by value("Parent", "net/spartanb312/obf/")
     private val prefix by value("Prefix", "")
 
@@ -22,9 +23,12 @@ object ClassRenameTransformer : Transformer("ClassRename") {
     private val corruptedNameExclusion by value("CorruptedNameExclusions", listOf())
 
     private val manifestReplace by value("ManifestReplace", listOf("Main-Class"))
+    private val pluginMainReplace by value("PluginMainReplace", false)
+    private val bungeeMainReplace by value("BungeeMainReplace", false)
     private val exclusion by value("Exclusion", listOf())
 
     private val mixinSupport by value("MixinSupport", false)
+    private val mixinDictionary by value("MixinDictionary", "Alphabet")
     private val mixinPackage by value("MixinPackage", "net/spartanb312/client/mixins/")
     private val targetMixinPackage by value("TargetMixinPackage", "net/spartanb312/obf/mixins/")
     private val mixinFile by value("MixinFile", "mixins.example.json")
@@ -40,8 +44,8 @@ object ClassRenameTransformer : Transformer("ClassRename") {
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming classes...")
-        val generator = NameGenerator()
-        val mixinDic = NameGenerator()
+        val generator = NameGenerator.getByName(dictionary)
+        val mixinDic = NameGenerator.getByName(mixinDictionary)
         val remap: MutableMap<String, String> = HashMap()
         val count = count {
             nonExcluded.forEach {
@@ -55,7 +59,7 @@ object ClassRenameTransformer : Transformer("ClassRename") {
         }.get()
 
         Logger.info("    Applying remapping for classes...")
-        applyRemap(remap, true)
+        applyRemap("classes", remap, true)
 
         if (mixinSupport) {
             Logger.info("    Remapping mixins...")
@@ -176,6 +180,20 @@ object ClassRenameTransformer : Transformer("ClassRename") {
                 if (replace != null) {
                     manifest[it] = replace.replace("/", ".")
                     Logger.info("    Replaced $it to $replace")
+                }
+            }
+        }
+
+        val map = mutableMapOf<MutableMap<String, String>, String>()
+        if (pluginMainReplace) map[pluginYml] = "main"
+        if (bungeeMainReplace) map[bungeeYml] = "main"
+        map.forEach { (file, entry) ->
+            val main = file[entry]
+            if (main != null) {
+                val replace = remap[main.replace(".", "/")]
+                if (replace != null) {
+                    file[entry] = replace.replace("/", ".")
+                    Logger.info("    Replaced $entry to $replace")
                 }
             }
         }

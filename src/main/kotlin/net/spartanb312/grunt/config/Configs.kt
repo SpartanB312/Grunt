@@ -14,13 +14,18 @@ object Configs {
         val output by value("Output", "output.jar")
         val libraries by value("Libraries", listOf())
         val exclusions by value("Exclusions", listOf())
+        val generateRemap by value("GenerateRemap", true)
+        val RemapOutput by value("RemapOutput", "mappings.json")
+        val customDictionary by value("CustomDictionary", listOf())
+        val dictionaryStartIndex by value("DictionaryStartIndex", 0)
+        val corruptOutput by value("CorruptOutput", false)
         val fileRemovePrefix by value("FileRemovePrefix", listOf())
         val fileRemoveSuffix by value("FileRemoveSuffix", listOf())
     }
 
     init {
         configs.add(Settings)
-        Transformers.transformers.forEach {
+        Transformers.forEach {
             configs.add(it)
         }
     }
@@ -56,7 +61,7 @@ object Configs {
             return map
         }
 
-    private fun JsonObject.saveToFile(file: File) {
+    fun JsonObject.saveToFile(file: File) {
         val saveJSon = PrintWriter(FileWriter(file))
         saveJSon.println(gsonPretty.toJson(this))
         saveJSon.close()

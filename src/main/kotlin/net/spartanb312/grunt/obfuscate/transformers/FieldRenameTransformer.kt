@@ -1,7 +1,7 @@
 package net.spartanb312.grunt.obfuscate.transformers
 
 import net.spartanb312.grunt.config.value
-import net.spartanb312.grunt.obfuscate.NameGenerator
+import net.spartanb312.grunt.dictionary.NameGenerator
 import net.spartanb312.grunt.obfuscate.Transformer
 import net.spartanb312.grunt.obfuscate.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
@@ -17,6 +17,7 @@ import kotlin.collections.HashMap
 
 object FieldRenameTransformer : Transformer("FieldRename") {
 
+    private val dictionary by value("Dictionary", "Alphabet")
     private val randomKeywordPrefix by value("RandomKeywordPrefix", false)
     private val prefix by value("Prefix", "")
     private val exclusion by value("Exclusion", listOf())
@@ -34,7 +35,7 @@ object FieldRenameTransformer : Transformer("FieldRename") {
             for (fieldNode in fields) {
                 if (fieldNode.name.isExcludedIn(excludedName)) continue
                 val c = getOwner(fieldNode, classes)
-                val dic = dictionaries.getOrPut(c) { NameGenerator() }
+                val dic = dictionaries.getOrPut(c) { NameGenerator.getByName(dictionary) }
                 val name = (if (randomKeywordPrefix) "$nextBadKeyword " else "") + prefix + dic.nextName()
                 val stack: Stack<ClassNode> = Stack()
                 stack.add(c)
@@ -54,7 +55,7 @@ object FieldRenameTransformer : Transformer("FieldRename") {
         }.get()
 
         Logger.info("    Applying remapping for fields...")
-        applyRemap(remap)
+        applyRemap("fields", remap)
 
         Logger.info("    Renamed $count fields")
     }

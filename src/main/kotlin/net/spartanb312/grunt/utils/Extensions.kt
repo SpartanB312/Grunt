@@ -17,6 +17,10 @@ inline val MethodNode.isAbstract get() = Modifier.isAbstract(access)
 
 inline val ClassNode.isInterface get() = Modifier.isInterface(access)
 
+inline val ClassNode.isAnnotation get() = access and Opcodes.ACC_ANNOTATION != 0
+
+inline val ClassNode.isEnum get() = access and Opcodes.ACC_ENUM != 0
+
 fun FieldNode.setPublic() {
     if (Modifier.isPublic(access)) return
     if (Modifier.isPrivate(access)) {

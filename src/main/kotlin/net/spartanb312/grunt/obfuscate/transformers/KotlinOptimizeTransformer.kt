@@ -95,5 +95,4 @@ object KotlinOptimizeTransformer : Transformer("KotlinOptimizer") {
         "checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V" to 1
     )
 
-
 }
