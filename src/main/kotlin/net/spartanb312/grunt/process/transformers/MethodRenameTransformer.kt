@@ -1,10 +1,10 @@
-package net.spartanb312.grunt.obfuscate.transformers
+package net.spartanb312.grunt.process.transformers
 
 import net.spartanb312.grunt.config.value
 import net.spartanb312.grunt.dictionary.NameGenerator
-import net.spartanb312.grunt.obfuscate.Transformer
-import net.spartanb312.grunt.obfuscate.resource.Hierarchy
-import net.spartanb312.grunt.obfuscate.resource.ResourceCache
+import net.spartanb312.grunt.process.Transformer
+import net.spartanb312.grunt.process.resource.Hierarchy
+import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.tree.ClassNode

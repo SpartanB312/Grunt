@@ -1,5 +1,5 @@
 group = "net.spartanb312"
-version = "1.4.1"
+version = "1.5.3"
 
 plugins {
     java
@@ -27,8 +27,11 @@ dependencies {
     library("org.ow2.asm:asm-tree:$asmVersion")
     library("org.ow2.asm:asm-commons:$asmVersion")
 
-    //Other dependencies
+    //GSON
     library("com.google.code.gson:gson:2.10")
+
+    //TornadoFX
+    library("no.tornado:tornadofx:1.7.20")
 
     implementation(library)
 }

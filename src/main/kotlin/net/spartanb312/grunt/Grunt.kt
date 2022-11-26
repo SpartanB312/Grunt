@@ -1,11 +1,11 @@
 package net.spartanb312.grunt
 
 import net.spartanb312.grunt.config.Configs
-import net.spartanb312.grunt.obfuscate.Transformers
-import net.spartanb312.grunt.obfuscate.resource.ResourceCache
+import net.spartanb312.grunt.process.Transformers
+import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.logging.Logger
 
-const val VERSION = "1.5.2"
+const val VERSION = "1.5.3"
 
 fun main(args: Array<String>) {
 

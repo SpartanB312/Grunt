@@ -1,4 +1,4 @@
-package net.spartanb312.grunt.obfuscate.resource
+package net.spartanb312.grunt.process.resource
 
 import com.google.gson.JsonObject
 import net.spartanb312.grunt.config.Configs
@@ -175,7 +175,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         return classes[name] ?: libraries[name] ?: readInRuntime(name)
     }
 
-    private fun readInRuntime(name: String): ClassNode? {
+    fun readInRuntime(name: String): ClassNode? {
         return try {
             val classNode = ClassNode()
             ClassReader(name).apply {

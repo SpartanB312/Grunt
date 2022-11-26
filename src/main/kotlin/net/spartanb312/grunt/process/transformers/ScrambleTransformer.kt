@@ -1,8 +1,8 @@
-package net.spartanb312.grunt.obfuscate.transformers
+package net.spartanb312.grunt.process.transformers
 
 import net.spartanb312.grunt.config.value
-import net.spartanb312.grunt.obfuscate.Transformer
-import net.spartanb312.grunt.obfuscate.resource.ResourceCache
+import net.spartanb312.grunt.process.Transformer
+import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
@@ -27,10 +27,8 @@ object ScrambleTransformer : Transformer("ScrambleTransformer") {
     private val excludedClasses by value("ExcludedClasses", listOf())
     private val excludedFieldName by value("ExcludedFieldName", listOf())
 
-    private val nativeSupport by value("NativeSupport", false)
-    private val nativeAnnotation by value("NativeAnnotation", "Lnet/spartanb312/example/Native;")
-    private val downCalls by value("DownCalls", true)
-    private val upCalls by value("UpCalls", false)
+    private val downCalls by value("NativeDownCalls", true)
+    private val upCalls by value("NativeUpCalls", false)
 
     override fun ResourceCache.transform() {
         Logger.info(" - Redirecting field calls")
@@ -125,19 +123,22 @@ object ScrambleTransformer : Transformer("ScrambleTransformer") {
                 classes[c.name] = c
             }
         }.get()
-        if (nativeSupport) Logger.info("    Added ${nativeAnnotationCount.get()} native annotations")
+        if (NativeCandidateTransformer.enabled) Logger.info("    Added ${nativeAnnotationCount.get()} native annotations")
         Logger.info("    Redirected $count field calls")
     }
 
     private val nativeAnnotationCount = Counter()
+    val appendedMethods = mutableListOf<MethodNode>()
 
     private fun MethodNode.appendAnnotation(downCall: Boolean): MethodNode {
-        if (nativeSupport) {
+        if (NativeCandidateTransformer.enabled) {
             if (downCall && downCalls) {
-                visitAnnotation(nativeAnnotation, false)
+                appendedMethods.add(this)
+                visitAnnotation(NativeCandidateTransformer.nativeAnnotation, false)
                 nativeAnnotationCount.add(1)
             } else if (upCalls) {
-                visitAnnotation(nativeAnnotation, false)
+                appendedMethods.add(this)
+                visitAnnotation(NativeCandidateTransformer.nativeAnnotation, false)
                 nativeAnnotationCount.add(1)
             }
         }

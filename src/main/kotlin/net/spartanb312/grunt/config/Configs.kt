@@ -1,7 +1,7 @@
 package net.spartanb312.grunt.config
 
 import com.google.gson.*
-import net.spartanb312.grunt.obfuscate.Transformers
+import net.spartanb312.grunt.process.Transformers
 import java.io.*
 
 object Configs {

@@ -1,4 +1,4 @@
-package net.spartanb312.grunt.obfuscate.resource
+package net.spartanb312.grunt.process.resource
 
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.tree.ClassNode

@@ -1,6 +1,6 @@
-package net.spartanb312.grunt.obfuscate
+package net.spartanb312.grunt.process
 
-import net.spartanb312.grunt.obfuscate.transformers.*
+import net.spartanb312.grunt.process.transformers.*
 
 object Transformers : Collection<Transformer> by mutableListOf(
     AntiDebugTransformer,
@@ -8,6 +8,7 @@ object Transformers : Collection<Transformer> by mutableListOf(
     StringEncryptTransformer,
     NumberEncryptTransformer,
     ScrambleTransformer,
+    NativeCandidateTransformer,
     LocalVariableRenameTransformer,
     MethodRenameTransformer,
     FieldRenameTransformer,
