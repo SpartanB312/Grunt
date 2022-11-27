@@ -3,10 +3,11 @@ Lite-weight java obfuscator using ASM
 
 Some ideas are from ESKID（Sry KillRED lol）
 
-### Features
-Renamer:
+## Features
 
-ClassRename 
+#### Renamer:
+
+ClassRename(Support Mixin remap)
 
 FieldRename 
 
@@ -14,15 +15,15 @@ MethodRename(Need dependencies)
 
 LocalVarRename
 
-Encrypt:
+#### Encrypt:
 
 NumberEncrypt 
 
 StringEncrypt(Just simply xor)
 
-Other:
+#### Other:
 
-RedirectFieldCall(Scramble,Name from ESKID)
+RedirectFieldCall(Also called Scramble. Name from ESKID)
 
 SourceDebugRemove
 
@@ -30,13 +31,17 @@ KotlinOptimize
 
 Watermark
 
-Before you ask: 
+NativeCandidate
 
-Q:Where is ControlFlow?
+Shrinking
 
-A:WIP. You can skid Radon's flow instead.
+Shuffle utils
 
-### License: MIT
+#### ControlFlow:
+
+Working in progress (You can currently skid Radon's)
+
+## License: MIT
 
 You are free to use it for any purpose. Including commercial use, or build your own obfuscator based on it.
 
