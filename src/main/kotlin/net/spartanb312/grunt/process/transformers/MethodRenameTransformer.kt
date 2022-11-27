@@ -47,7 +47,8 @@ object MethodRenameTransformer : Transformer("MethodRename") {
                                 mapping[combine(classNode.name, methodNode.name, methodNode.desc)] = newName
                                 // Apply to children
                                 info.children.forEach { c ->
-                                    mapping[combine(c.classNode.name, methodNode.name, methodNode.desc)] = newName
+                                    if (c is Hierarchy.HierarchyInfo)
+                                        mapping[combine(c.classNode.name, methodNode.name, methodNode.desc)] = newName
                                 }
                                 add(1)
                             } else continue
@@ -64,9 +65,14 @@ object MethodRenameTransformer : Transformer("MethodRename") {
 
     private fun combine(owner: String, name: String, desc: String) = "$owner.$name$desc"
 
-    private fun Hierarchy.isPrimeMethod(owner: ClassNode, method: MethodNode): Boolean =
-        getHierarchyInfo(owner).parents.none { p ->
-            p.classNode.methods.any { it.name == method.name && it.desc == method.desc }
+    private fun Hierarchy.isPrimeMethod(owner: ClassNode, method: MethodNode): Boolean {
+        val ownerInfo = getHierarchyInfo(owner)
+        if (ownerInfo.missingDependencies) return false
+        return ownerInfo.parents.none { p ->
+            if (p is Hierarchy.HierarchyInfo)
+                p.classNode.methods.any { it.name == method.name && it.desc == method.desc }
+            else false//Missing dependencies
         }
+    }
 
 }

@@ -6,17 +6,21 @@ import org.objectweb.asm.tree.ClassNode
 class Hierarchy(private val resourceCache: ResourceCache) {
 
     private val hierarchies = mutableMapOf<String, HierarchyInfo>()
-    val size get() = hierarchies.size
+    private val hierarchyNodes = mutableMapOf<String, HierarchyNode>()
+    val size get() = hierarchyNodes.size
 
-    inner class HierarchyInfo(val classNode: ClassNode) {
+    open inner class HierarchyNode {
+        val parents = mutableSetOf<HierarchyNode>()
+        val children = mutableSetOf<HierarchyNode>()
+    }
+
+    inner class HierarchyInfo(val classNode: ClassNode) : HierarchyNode() {
         var superName: String? = classNode.superName
         val interfaces = classNode.interfaces.toMutableList()
-
-        val parents = mutableSetOf<HierarchyInfo>()
-        val children = mutableSetOf<HierarchyInfo>()
-
         var missingDependencies = false
     }
+
+    inner class BrokenHierarchyInfo(val name: String) : HierarchyNode()
 
     fun build() {
         resourceCache.classes.values.forEach { getHierarchyInfo(it) }
@@ -40,6 +44,9 @@ class Hierarchy(private val resourceCache: ResourceCache) {
                 if (clazz == null) {
                     Logger.error("Missing dependency $superName")
                     newInfo.missingDependencies = true
+                    val brokenInfo = BrokenHierarchyInfo(superName)
+                    newInfo.parents.add(brokenInfo)
+                    hierarchyNodes[superName] = brokenInfo
                 } else {
                     val parentInfo = buildHierarchy(clazz, newInfo)
                     newInfo.parents.add(parentInfo)
@@ -52,6 +59,9 @@ class Hierarchy(private val resourceCache: ResourceCache) {
                 if (clazz == null) {
                     Logger.error("Missing dependency $itf")
                     newInfo.missingDependencies = true
+                    val brokenInfo = BrokenHierarchyInfo(itf)
+                    newInfo.parents.add(brokenInfo)
+                    hierarchyNodes[itf] = brokenInfo
                 } else {
                     val parentInfo = buildHierarchy(clazz, newInfo)
                     newInfo.parents.add(parentInfo)
@@ -59,6 +69,7 @@ class Hierarchy(private val resourceCache: ResourceCache) {
             }
 
             hierarchies[classNode.name] = newInfo
+            hierarchyNodes[classNode.name] = newInfo
             return newInfo
         } else {
             if (subClassInfo != null) info.children.add(subClassInfo)
@@ -68,7 +79,7 @@ class Hierarchy(private val resourceCache: ResourceCache) {
 
     private fun fillChildrenInfo() {
         hierarchies.values.forEach {
-            fun iterateParents(info: HierarchyInfo) {
+            fun iterateParents(info: HierarchyNode) {
                 for (parent in info.parents) {
                     parent.children.add(it)
                     iterateParents(parent)
@@ -80,9 +91,11 @@ class Hierarchy(private val resourceCache: ResourceCache) {
 
     private fun fillParentsInfo() {
         hierarchies.values.forEach {
-            fun iterateParents(info: HierarchyInfo) {
+            fun iterateParents(info: HierarchyNode) {
                 for (parent in info.parents.toList()) {
                     it.parents.add(parent)
+                    if (parent is HierarchyInfo && parent.missingDependencies)
+                        it.missingDependencies = true
                     iterateParents(parent)
                 }
             }
@@ -91,10 +104,8 @@ class Hierarchy(private val resourceCache: ResourceCache) {
     }
 
     fun isSubType(child: String, father: String): Boolean {
-        val childClass = resourceCache.getClassNode(child) ?: return false
-        val fatherClass = resourceCache.getClassNode(father) ?: return false
-        val childInfo = getHierarchyInfo(childClass)
-        val fatherInfo = getHierarchyInfo(fatherClass)
+        val childInfo = hierarchyNodes[child] ?: return false
+        val fatherInfo = hierarchyNodes[father] ?: return false
         return if (childInfo.parents.contains(fatherInfo)) true
         else fatherInfo.children.contains(childInfo)
     }

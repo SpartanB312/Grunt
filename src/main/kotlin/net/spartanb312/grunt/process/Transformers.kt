@@ -4,6 +4,7 @@ import net.spartanb312.grunt.process.transformers.*
 
 object Transformers : Collection<Transformer> by mutableListOf(
     AntiDebugTransformer,
+    ShrinkingTransformer,
     KotlinOptimizeTransformer,
     StringEncryptTransformer,
     NumberEncryptTransformer,

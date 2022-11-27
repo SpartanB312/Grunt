@@ -5,7 +5,7 @@ import net.spartanb312.grunt.process.Transformers
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.logging.Logger
 
-const val VERSION = "1.5.4"
+const val VERSION = "1.5.5"
 
 fun main(args: Array<String>) {
 
