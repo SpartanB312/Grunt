@@ -123,7 +123,6 @@ object ScrambleTransformer : Transformer("ScrambleTransformer") {
                 classes[c.name] = c
             }
         }.get()
-        if (NativeCandidateTransformer.enabled) Logger.info("    Added ${nativeAnnotationCount.get()} native annotations")
         Logger.info("    Redirected $count field calls")
     }
 

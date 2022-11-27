@@ -15,6 +15,8 @@ inline val MethodNode.isNative get() = Modifier.isNative(access)
 
 inline val MethodNode.isAbstract get() = Modifier.isAbstract(access)
 
+inline val ClassNode.isAbstract get() = Modifier.isAbstract(access)
+
 inline val ClassNode.isInterface get() = Modifier.isInterface(access)
 
 inline val ClassNode.isAnnotation get() = access and Opcodes.ACC_ANNOTATION != 0

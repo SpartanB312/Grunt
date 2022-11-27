@@ -1,5 +1,5 @@
 group = "net.spartanb312"
-version = "1.5.3"
+version = "1.5.4"
 
 plugins {
     java
@@ -31,7 +31,7 @@ dependencies {
     library("com.google.code.gson:gson:2.10")
 
     //TornadoFX
-    library("no.tornado:tornadofx:1.7.20")
+    //library("no.tornado:tornadofx:1.7.20")
 
     implementation(library)
 }
