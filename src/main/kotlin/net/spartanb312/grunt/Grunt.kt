@@ -4,9 +4,10 @@ import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.process.Transformers
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.logging.Logger
+import kotlin.system.measureTimeMillis
 
-const val VERSION = "1.5.5"
-const val TYPE = "Beta"
+const val VERSION = "1.5.6"
+const val TYPE = "Stable"
 const val AUTHOR = "B_312"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
@@ -38,13 +39,17 @@ fun main(args: Array<String>) {
         if (readLine()?.lowercase() == "n") return
     }
 
-    ResourceCache(Configs.Settings.input, Configs.Settings.libraries).apply {
-        readJar()
-        Logger.info("Processing...")
-        Transformers.forEach {
-            if (it.enabled) with(it) { transform() }
-        }
-        Logger.info("Dumping to ${Configs.Settings.output}")
-    }.dumpJar(Configs.Settings.output)
+    val time = measureTimeMillis {
+        ResourceCache(Configs.Settings.input, Configs.Settings.libraries).apply {
+            readJar()
+            val obfTime = measureTimeMillis {
+                Logger.info("Processing${if (Configs.Settings.parallel) "[MultiThread]" else ""}...")
+                Transformers.forEach { if (it.enabled) with(it) { transform() } }
+            }
+            Logger.info("Took $obfTime ms to process!")
+            Logger.info("Dumping to ${Configs.Settings.output}")
+        }.dumpJar(Configs.Settings.output)
+    }
+    Logger.info("Finished in $time ms!")
 
 }

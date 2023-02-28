@@ -114,7 +114,7 @@ object ScrambleTransformer : Transformer("ScrambleTransformer") {
                                         )
                                         classNode.methods.add(genMethod)
                                     }
-                                    add(1)
+                                    add()
                                 }
                             }
                         }
@@ -134,11 +134,11 @@ object ScrambleTransformer : Transformer("ScrambleTransformer") {
             if (downCall && downCalls) {
                 appendedMethods.add(this)
                 visitAnnotation(NativeCandidateTransformer.nativeAnnotation, false)
-                nativeAnnotationCount.add(1)
+                nativeAnnotationCount.add()
             } else if (upCalls) {
                 appendedMethods.add(this)
                 visitAnnotation(NativeCandidateTransformer.nativeAnnotation, false)
-                nativeAnnotationCount.add(1)
+                nativeAnnotationCount.add()
             }
         }
         return this

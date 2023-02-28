@@ -1,13 +1,17 @@
-package net.spartanb312.grunt.dictionary
+package net.spartanb312.grunt.process.resource
 
 import net.spartanb312.grunt.config.Configs
 import java.util.concurrent.atomic.AtomicInteger
 
-sealed class NameGenerator {
+sealed class NameGenerator(val name: String) {
 
     abstract val chars: List<Char>
     private val size get() = chars.size
     private val index = AtomicInteger(Configs.Settings.dictionaryStartIndex)
+    private val methodOverloads = hashMapOf<String, MutableList<String>>() // Name Descs
+
+    var overloadsCount = 0; private set
+    var actualNameCount = 0; private set
 
     fun nextName(): String {
         var index = index.getAndIncrement()
@@ -23,19 +27,39 @@ sealed class NameGenerator {
         }
     }
 
-    class Alphabet : NameGenerator() {
+    @Synchronized
+    fun nextName(overload: Boolean, desc: String): String {
+        if (!overload) return nextName()
+        else {
+            //nameCache[desc]?.let { return it }
+            for (pair in methodOverloads) {
+                if (!pair.value.contains(desc)) {
+                    pair.value.add(desc)
+                    overloadsCount++
+                    return pair.key
+                }
+            }
+            // Generate a new one
+            val newName = nextName()
+            methodOverloads[newName] = mutableListOf(desc)
+            actualNameCount++
+            return newName
+        }
+    }
+
+    class Alphabet : NameGenerator("alphabet") {
         override val chars = ('a'..'z') + ('A'..'Z')
     }
 
-    class Chinese : NameGenerator() {
+    class Chinese : NameGenerator("chinese") {
         override val chars = listOf('操', '你', '妈', '傻', '逼', '滚', '笨', '猪')
     }
 
-    class Confuse : NameGenerator() {
+    class Confuse : NameGenerator("confuse") {
         override val chars = listOf('i', 'I', 'l', '1')
     }
 
-    class Custom : NameGenerator() {
+    class Custom : NameGenerator("custom") {
         override val chars = kotlin.run {
             val charList = mutableListOf<Char>()
             Configs.Settings.customDictionary.forEach {

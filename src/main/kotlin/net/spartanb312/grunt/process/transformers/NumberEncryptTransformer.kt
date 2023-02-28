@@ -48,17 +48,17 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt") {
                                         if (it.opcode in 0x2..0x8) {
                                             methodNode.instructions.insertBefore(it, xor(it.opcode - 0x3))
                                             methodNode.instructions.remove(it)
-                                            if (t == 0) add(1)
+                                            if (t == 0) add()
                                         } else if (it is IntInsnNode) {
                                             methodNode.instructions.insertBefore(it, xor(it.operand))
                                             methodNode.instructions.remove(it)
-                                            if (t == 0) add(1)
+                                            if (t == 0) add()
                                         } else if (it is LdcInsnNode && it.cst is Int) {
                                             val value = it.cst as Int
                                             if (value < -(Short.MAX_VALUE * 8) + Int.MAX_VALUE) {
                                                 methodNode.instructions.insertBefore(it, xor(value))
                                                 methodNode.instructions.remove(it)
-                                                if (t == 0) add(1)
+                                                if (t == 0) add()
                                             }
                                         }
                                     }
@@ -83,7 +83,7 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt") {
                 }
                 methodNode.instructions.insertBefore(it, insnList)
                 methodNode.instructions.remove(it)
-                add(1)
+                add()
             }
 
             fun encryptDouble(cst: Double) {
@@ -98,7 +98,7 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt") {
                 }
                 methodNode.instructions.insertBefore(it, insnList)
                 methodNode.instructions.remove(it)
-                add(1)
+                add()
             }
             when {
                 it is LdcInsnNode -> when (val cst = it.cst) {

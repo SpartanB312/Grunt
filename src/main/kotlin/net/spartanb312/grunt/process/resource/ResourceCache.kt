@@ -108,9 +108,8 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
 
         if (Configs.Settings.generateRemap) {
             Logger.info("Writing mappings...")
-            mappings.saveToFile(File(Configs.Settings.RemapOutput))
+            mappings.saveToFile(File(Configs.Settings.remapOutput))
         }
-        Logger.info("Done!")
     }
 
     private fun readInput() {

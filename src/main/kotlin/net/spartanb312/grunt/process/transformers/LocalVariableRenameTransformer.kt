@@ -1,7 +1,7 @@
 package net.spartanb312.grunt.process.transformers
 
 import net.spartanb312.grunt.config.value
-import net.spartanb312.grunt.dictionary.NameGenerator
+import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
@@ -22,7 +22,7 @@ object LocalVariableRenameTransformer : Transformer("LocalVariableRename") {
                         if (thisRef || it.name != "this") {
                             val newName = dic.nextName()
                             it.name = newName
-                            add(1)
+                            add()
                         }
                     }
                 }

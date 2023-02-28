@@ -42,7 +42,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt") {
                                             )
                                         )
                                         (insnNode as LdcInsnNode).cst = xor(insnNode.cst as String, random)
-                                        if (t == 0) add(1)
+                                        if (t == 0) add()
                                         shouldAdd = true
                                     }
                             }

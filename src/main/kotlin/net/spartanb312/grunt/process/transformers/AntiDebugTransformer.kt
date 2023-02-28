@@ -33,13 +33,13 @@ object AntiDebugTransformer : Transformer("AntiDebug") {
                         classNode.sourceDebug = null
                         classNode.sourceFile = null
                     }
-                    add(1)
+                    add()
                 }
                 if (lineDebug) classNode.methods.forEach { methodNode ->
                     methodNode.instructions.toList().forEach { insn ->
                         if (insn is LineNumberNode) {
                             methodNode.instructions.remove(insn)
-                            add(1)
+                            add()
                         }
                     }
                 }

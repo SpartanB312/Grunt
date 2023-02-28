@@ -13,6 +13,7 @@ object ShrinkingTransformer : Transformer("Shrinking") {
 
     private val removeInnerClass by value("RemoveInnerClass", true)
     private val removeUnusedLabel by value("RemoveUnusedLabel", true)
+    private val removeNOP by value("RemoveNOP", false) // May cause some bugs
 
     private val exclusions by value("Exclusions", listOf())
 
@@ -31,21 +32,21 @@ object ShrinkingTransformer : Transformer("Shrinking") {
             }.get()
             Logger.info("    Removed $innerClassCount inner classes")
         }
-        //if (removeNOP) {
-        //    val nopCount = count {
-        //        nonExcluded.forEach { classNode ->
-        //            classNode.methods.forEach { methodNode ->
-        //                methodNode.instructions.toList().asSequence()
-        //                    .filter { insnNode -> insnNode.opcode == Opcodes.NOP && insnNode is InsnNode }
-        //                    .forEach { insnNode ->
-        //                        methodNode.instructions.remove(insnNode)
-        //                        add(1)
-        //                    }
-        //            }
-        //        }
-        //    }.get()
-        //    Logger.info("    Removed $nopCount NOPs")
-        //}
+        if (removeNOP) {
+            val nopCount = count {
+                nonExcluded.forEach { classNode ->
+                    classNode.methods.forEach { methodNode ->
+                        methodNode.instructions.toList().asSequence()
+                            .filter { insnNode -> insnNode.opcode == Opcodes.NOP && insnNode is InsnNode }
+                            .forEach { insnNode ->
+                                methodNode.instructions.remove(insnNode)
+                                add(1)
+                            }
+                    }
+                }
+            }.get()
+            Logger.info("    Removed $nopCount NOPs")
+        }
         if (removeUnusedLabel) {
             val labelCount = count {
                 nonExcluded.forEach { classNode ->

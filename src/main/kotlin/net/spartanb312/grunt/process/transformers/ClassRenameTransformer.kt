@@ -4,7 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import net.spartanb312.grunt.config.value
-import net.spartanb312.grunt.dictionary.NameGenerator
+import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
@@ -53,7 +53,7 @@ object ClassRenameTransformer : Transformer("ClassRename") {
                     if (mixinSupport && it.name.startsWith(mixinPackage)) {
                         remap[it.name] = targetMixinPackage + mixinDic.nextName()
                     } else remap[it.name] = parent + prefix + it.malNamePrefix + generator.nextName()
-                    add(1)
+                    add()
                 }
             }
         }.get()

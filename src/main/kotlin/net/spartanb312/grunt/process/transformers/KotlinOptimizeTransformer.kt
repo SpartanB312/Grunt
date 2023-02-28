@@ -49,7 +49,7 @@ object KotlinOptimizeTransformer : Transformer("KotlinOptimizer") {
                                         repeat(removeSize) {
                                             replace.add(InsnNode(Opcodes.POP))
                                         }
-                                        add(1)
+                                        add()
                                     } else replace.add(insnNode)
                                 } else {
                                     replace.add(insnNode)
@@ -75,7 +75,7 @@ object KotlinOptimizeTransformer : Transformer("KotlinOptimizer") {
                                 annotationNode.desc.startsWith("Lkotlin/coroutines/jvm/internal/DebugMetadata")
                             ) {
                                 classNode.visibleAnnotations.remove(annotationNode)
-                                add(1)
+                                add()
                             }
                         }
                     }

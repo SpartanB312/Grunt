@@ -12,15 +12,17 @@ class Hierarchy(private val resourceCache: ResourceCache) {
     open inner class HierarchyNode {
         val parents = mutableSetOf<HierarchyNode>()
         val children = mutableSetOf<HierarchyNode>()
+        open var missingDependencies = false
     }
 
     inner class HierarchyInfo(val classNode: ClassNode) : HierarchyNode() {
         var superName: String? = classNode.superName
         val interfaces = classNode.interfaces.toMutableList()
-        var missingDependencies = false
     }
 
-    inner class BrokenHierarchyInfo(val name: String) : HierarchyNode()
+    inner class BrokenHierarchyInfo(val name: String) : HierarchyNode() {
+        override var missingDependencies = true
+    }
 
     fun build() {
         resourceCache.classes.values.forEach { getHierarchyInfo(it) }

@@ -15,6 +15,8 @@ inline val MethodNode.isNative get() = Modifier.isNative(access)
 
 inline val MethodNode.isAbstract get() = Modifier.isAbstract(access)
 
+inline val MethodNode.isStatic get() = Modifier.isStatic(access)
+
 inline val ClassNode.isAbstract get() = Modifier.isAbstract(access)
 
 inline val ClassNode.isInterface get() = Modifier.isInterface(access)
@@ -49,3 +51,7 @@ fun Int.toInsnNode(): AbstractInsnNode =
         in Short.MIN_VALUE..Short.MAX_VALUE -> IntInsnNode(Opcodes.SIPUSH, this)
         else -> LdcInsnNode(this)
     }
+
+fun MethodInsnNode.match(owner: String, name: String, desc: String): Boolean {
+    return this.owner == owner && this.name == name && this.desc == desc
+}
