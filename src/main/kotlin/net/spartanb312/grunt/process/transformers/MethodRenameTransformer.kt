@@ -4,7 +4,7 @@ import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.value
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.Transformer
-import net.spartanb312.grunt.process.resource.Hierarchy
+import net.spartanb312.grunt.process.hierarchy.FastHierarchy
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.logging.Logger
@@ -25,7 +25,7 @@ object MethodRenameTransformer : Transformer("MethodRename") {
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming methods...")
-        val hierarchy = Hierarchy(this)
+        val hierarchy = FastHierarchy(this)
         Logger.info("    Building hierarchy graph...")
         val buildTime = measureTimeMillis {
             hierarchy.build()
@@ -53,7 +53,7 @@ object MethodRenameTransformer : Transformer("MethodRename") {
                                     mapping[combine(classNode.name, methodNode.name, methodNode.desc)] = newName
                                     // Apply to children
                                     info.children.forEach { c ->
-                                        if (c is Hierarchy.HierarchyInfo)
+                                        if (c is FastHierarchy.HierarchyInfo)
                                             mapping[combine(c.classNode.name, methodNode.name, methodNode.desc)] =
                                                 newName
                                     }
@@ -87,11 +87,11 @@ object MethodRenameTransformer : Transformer("MethodRename") {
 
     private fun combine(owner: String, name: String, desc: String) = "$owner.$name$desc"
 
-    private fun Hierarchy.isPrimeMethod(owner: ClassNode, method: MethodNode): Boolean {
+    private fun FastHierarchy.isPrimeMethod(owner: ClassNode, method: MethodNode): Boolean {
         val ownerInfo = getHierarchyInfo(owner)
         if (ownerInfo.missingDependencies) return false
         return ownerInfo.parents.none { p ->
-            if (p is Hierarchy.HierarchyInfo)
+            if (p is FastHierarchy.HierarchyInfo)
                 p.classNode.methods.any { it.name == method.name && it.desc == method.desc }
             else false//Missing dependencies
         }

@@ -3,6 +3,7 @@ package net.spartanb312.grunt.process.resource
 import com.google.gson.JsonObject
 import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.Configs.saveToFile
+import net.spartanb312.grunt.process.hierarchy.FastHierarchy
 import net.spartanb312.grunt.utils.corruptCRC32
 import net.spartanb312.grunt.utils.isExcluded
 import net.spartanb312.grunt.utils.logging.Logger
@@ -60,7 +61,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
 
     fun dumpJar(targetFile: String) = ZipOutputStream(File(targetFile).outputStream()).apply {
         Logger.info("Building hierarchies...")
-        val hierarchy = Hierarchy(this@ResourceCache)
+        val hierarchy = FastHierarchy(this@ResourceCache)
         hierarchy.build()
         if (Configs.Settings.corruptOutput) {
             Logger.info("Corrupting output...")

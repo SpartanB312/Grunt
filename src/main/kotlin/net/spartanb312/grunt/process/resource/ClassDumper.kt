@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.process.resource
 
+import net.spartanb312.grunt.process.hierarchy.Hierarchy
 import net.spartanb312.grunt.utils.isInterface
 import org.objectweb.asm.ClassWriter
 

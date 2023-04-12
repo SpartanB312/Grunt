@@ -17,6 +17,7 @@ import org.objectweb.asm.tree.VarInsnNode
 
 object ScrambleTransformer : Transformer("ScrambleTransformer") {
 
+    private val intensity by value("Intensity", 1)
     private val randomName by value("RandomName", false)
     private val redirectGetStatic by value("RedirectGetStatic", true)
     private val redirectSetStatic by value("RedirectSetStatic", true)
@@ -33,6 +34,14 @@ object ScrambleTransformer : Transformer("ScrambleTransformer") {
     override fun ResourceCache.transform() {
         Logger.info(" - Redirecting field calls")
         val newClasses = mutableMapOf<ClassNode, ClassNode>() // Owner Companion
+        var count = 0
+        repeat(intensity) {
+            count += process(newClasses)
+        }
+        Logger.info("    Redirected $count field calls")
+    }
+
+    private fun ResourceCache.process(newClasses: MutableMap<ClassNode, ClassNode>): Int {
         val count = count {
             nonExcluded.asSequence()
                 .filter { it.name.isNotExcludedIn(excludedClasses) }
@@ -123,7 +132,7 @@ object ScrambleTransformer : Transformer("ScrambleTransformer") {
                 classes[c.name] = c
             }
         }.get()
-        Logger.info("    Redirected $count field calls")
+        return count
     }
 
     private val nativeAnnotationCount = Counter()
