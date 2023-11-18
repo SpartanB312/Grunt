@@ -41,6 +41,12 @@ Shuffle utils
 
 Working in progress (You can currently skid Radon's)
 
+### Where is UI?
+
+Sorry, I am very lazy, but you can use this.
+
+https://github.com/emanueleriboldi/grunt-obfuscator-ui
+
 ## License: MIT
 
 You are free to use it for any purpose. Including commercial use, or build your own obfuscator based on it.
