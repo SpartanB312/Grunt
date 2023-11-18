@@ -6,8 +6,8 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.logging.Logger
 import kotlin.system.measureTimeMillis
 
-const val VERSION = "1.5.7"
-const val TYPE = "Stable"
+const val VERSION = "1.5.8"
+const val TYPE = "Beta"
 const val AUTHOR = "B_312"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
@@ -37,7 +37,7 @@ fun main(args: Array<String>) {
         Logger.info("Failed to read config $configName!But we generated a new one.")
         Configs.saveConfig(configName)
         Logger.info("Type (Y/N) if you want to continue")
-        if (readLine()?.lowercase() == "n") return
+        if (readlnOrNull()?.lowercase() == "n") return
     }
 
     val time = measureTimeMillis {

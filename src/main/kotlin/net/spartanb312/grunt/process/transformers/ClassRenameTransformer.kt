@@ -23,8 +23,6 @@ object ClassRenameTransformer : Transformer("ClassRename") {
     private val corruptedNameExclusion by value("CorruptedNameExclusions", listOf())
 
     private val manifestReplace by value("ManifestReplace", listOf("Main-Class"))
-    private val pluginMainReplace by value("PluginMainReplace", false)
-    private val bungeeMainReplace by value("BungeeMainReplace", false)
     private val exclusion by value("Exclusion", listOf())
 
     private val mixinSupport by value("MixinSupport", false)
@@ -184,6 +182,8 @@ object ClassRenameTransformer : Transformer("ClassRename") {
             }
         }
 
+        // Will be fixed in next version
+        /*
         val map = mutableMapOf<MutableMap<String, String>, String>()
         if (pluginMainReplace) map[pluginYml] = "main"
         if (bungeeMainReplace) map[bungeeYml] = "main"
@@ -197,6 +197,7 @@ object ClassRenameTransformer : Transformer("ClassRename") {
                 }
             }
         }
+         */
 
         Logger.info("    Renamed $count classes")
     }

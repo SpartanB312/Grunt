@@ -114,7 +114,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt") {
     private fun xor(string: String, xor: Int): String {
         val stringBuilder = StringBuilder()
         for (element in string) {
-            stringBuilder.append((element.toInt() xor xor).toChar())
+            stringBuilder.append((element.code xor xor).toChar())
         }
         return stringBuilder.toString()
     }

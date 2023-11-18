@@ -15,5 +15,6 @@ object Transformers : Collection<Transformer> by mutableListOf(
     FieldRenameTransformer,
     ClassRenameTransformer,
     ShuffleMembersTransformer,
-    WatermarkTransformer
+    WatermarkTransformer,
+    HideCodeTransformer
 )

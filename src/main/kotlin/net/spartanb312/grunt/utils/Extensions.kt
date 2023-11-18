@@ -11,6 +11,8 @@ inline val String.shouldRemove
 
 inline val String.isExcluded get() = Configs.Settings.exclusions.any { this.startsWith(it) }
 
+inline val MethodNode.isInitializer get() = (name == "<init>") || (name == "<clinit>")
+
 inline val MethodNode.isNative get() = Modifier.isNative(access)
 
 inline val MethodNode.isAbstract get() = Modifier.isAbstract(access)
@@ -24,6 +26,19 @@ inline val ClassNode.isInterface get() = Modifier.isInterface(access)
 inline val ClassNode.isAnnotation get() = access and Opcodes.ACC_ANNOTATION != 0
 
 inline val ClassNode.isEnum get() = access and Opcodes.ACC_ENUM != 0
+
+val ClassNode.hasAnnotations: Boolean
+    get() {
+        return visibleAnnotations != null && visibleAnnotations.isNotEmpty()
+                || invisibleAnnotations != null && invisibleAnnotations.isNotEmpty()
+    }
+
+val FieldNode.hasAnnotations: Boolean
+    get() {
+        return visibleAnnotations != null && visibleAnnotations.isNotEmpty()
+                || invisibleAnnotations != null && invisibleAnnotations.isNotEmpty()
+    }
+
 
 fun FieldNode.setPublic() {
     if (Modifier.isPublic(access)) return

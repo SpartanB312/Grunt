@@ -8,6 +8,7 @@ import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.InsnNode
+import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 
 object KotlinOptimizeTransformer : Transformer("KotlinOptimizer") {
@@ -24,6 +25,7 @@ object KotlinOptimizeTransformer : Transformer("KotlinOptimizer") {
             "checkNotNullParameter"
         )
     )
+    private val replaceLdc by value("ReplaceLdc", true)
     private val intrinsicsExclusion by value("IntrinsicsExclusions", listOf())
     private val metadataExclusion by value("MetadataExclusions", listOf())
 
@@ -50,7 +52,16 @@ object KotlinOptimizeTransformer : Transformer("KotlinOptimizer") {
                                             replace.add(InsnNode(Opcodes.POP))
                                         }
                                         add()
-                                    } else replace.add(insnNode)
+                                    } else {
+                                        if (replaceLdc && intrinsicsReplaceMethods.contains(insnNode.name + insnNode.desc)) {
+                                            val ldc = replace.last()
+                                            if (ldc is LdcInsnNode) {
+                                                ldc.cst = "REMOVED BY GRUNT"
+                                                add(1)
+                                            }
+                                        }
+                                        replace.add(insnNode)
+                                    }
                                 } else {
                                     replace.add(insnNode)
                                 }
@@ -93,6 +104,18 @@ object KotlinOptimizeTransformer : Transformer("KotlinOptimizer") {
         "checkFieldIsNotNull(Ljava/lang/Object;Ljava/lang/String;)V" to 1,
         "checkParameterIsNotNull(Ljava/lang/Object;Ljava/lang/String;)V" to 1,
         "checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V" to 1
+    )
+
+    private val intrinsicsReplaceMethods = mutableListOf(
+        "checkNotNull(Ljava/lang/Object;Ljava/lang/String;)V",
+        "throwNpe(Ljava/lang/String;)V",
+        "throwJavaNpe(Ljava/lang/String;)V",
+        "throwUninitializedProperty(Ljava/lang/String;)V",
+        "throwUninitializedPropertyAccessException(Ljava/lang/String;)V",
+        "throwAssert(Ljava/lang/String;)V",
+        "throwIllegalArgument(Ljava/lang/String;)V",
+        "throwIllegalState(Ljava/lang/String;)V",
+        "throwUndefinedForReified(Ljava/lang/String;)V",
     )
 
 }
