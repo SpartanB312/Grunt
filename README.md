@@ -8,7 +8,7 @@ Some ideas are from ESkid and other obfuscator, and be presented with refined ve
 
 Notice: Many features from my private obfuscator Guardian (Made in 2022) are experimental which are unstable.
 
-14 features from Grunt, 11 features from Guardian, 7 new features in coming.
+15 features from Grunt, 10 features from Guardian, 7 new features in coming.
 
 If you encounter any compatibility issues, please raise an issue on GitHub.
 
@@ -23,7 +23,7 @@ The reborn project is under development. Here is the feature TODO list.
 
 ### Minecraft:
 
-* [ ] MixinClassRename [Guardian]
+* [ ] MixinClassRename
 * [ ] MixinFieldRename [Guardian]
 * [ ] MixinMethodRename [Guardian]
 
