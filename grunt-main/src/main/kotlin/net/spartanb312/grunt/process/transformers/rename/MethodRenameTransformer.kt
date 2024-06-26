@@ -9,6 +9,7 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.extensions.isAnnotation
 import net.spartanb312.grunt.utils.extensions.isEnum
+import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
@@ -57,6 +58,7 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
                                 if (methodNode.name.startsWith("<")) continue
                                 if (methodNode.name == "main") continue
                                 if (methodNode.name.isExcludedIn(excludedName)) continue
+                                if (methodNode.isNative) continue
                                 if (hierarchy.isPrimeMethod(classNode, methodNode)) {
                                     val newName = (if (randomKeywordPrefix) "$nextBadKeyword " else "") +
                                             prefix + dic.nextName(heavyOverloads, methodNode.desc)

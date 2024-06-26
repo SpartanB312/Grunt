@@ -38,6 +38,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
     private val methodMark by value("Method Mark", true)
 
     override fun ResourceCache.transform() {
+        Logger.info(" - Adding watermarks")
         val count = count {
             nonExcluded.asSequence()
                 .filter { !it.isInterface }
@@ -48,7 +49,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                         when ((0..2).random()) {
                             0 -> classNode.fields.add(
                                 FieldNode(
-                                    Opcodes.ACC_PRIVATE,
+                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
                                     "343 industrials sucks",
                                     "Ljava/lang/String;",
                                     null,
@@ -58,7 +59,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
 
                             1 -> classNode.fields.add(
                                 FieldNode(
-                                    Opcodes.ACC_PRIVATE,
+                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
                                     "_$marker _",
                                     "I",
                                     null,
@@ -68,7 +69,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
 
                             2 -> classNode.fields.add(
                                 FieldNode(
-                                    Opcodes.ACC_PRIVATE,
+                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
                                     "NobleSix is invincible",
                                     "Ljava/lang/String;",
                                     null,
@@ -84,7 +85,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                         when ((0..2).random()) {
                             0 -> classNode.methods.add(
                                 method(
-                                    Opcodes.ACC_PRIVATE,
+                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
                                     "逸一时,误一世",
                                     "()Ljava/lang/String;",
                                     null,
@@ -99,7 +100,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
 
                             1 -> classNode.methods.add(
                                 method(
-                                    Opcodes.ACC_PRIVATE,
+                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
                                     "你是一个一个方法名啊",
                                     "()Ljava/lang/String;",
                                     null,
@@ -114,7 +115,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
 
                             2 -> classNode.methods.add(
                                 method(
-                                    Opcodes.ACC_PRIVATE,
+                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
                                     "Spartan 1186 is invincible",
                                     "()Ljava/lang/String;",
                                     null,
@@ -131,7 +132,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                     }
                 }
         }.get()
-        Logger.info(" - Added $count watermarks")
+        Logger.info("    Added $count watermarks")
     }
 
 }

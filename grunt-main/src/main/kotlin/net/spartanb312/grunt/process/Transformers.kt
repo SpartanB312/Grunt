@@ -1,8 +1,10 @@
 package net.spartanb312.grunt.process
 
 import net.spartanb312.grunt.process.transformers.PostProcessTransformer
+import net.spartanb312.grunt.process.transformers.encrypt.*
 import net.spartanb312.grunt.process.transformers.misc.*
 import net.spartanb312.grunt.process.transformers.optimize.*
+import net.spartanb312.grunt.process.transformers.redirect.*
 import net.spartanb312.grunt.process.transformers.rename.*
 
 object Transformers : Collection<Transformer> by mutableListOf(
@@ -10,6 +12,12 @@ object Transformers : Collection<Transformer> by mutableListOf(
     ShrinkingTransformer,
     KotlinOptimizeTransformer,
     ClonedClassTransformer,
+    StringEncryptTransformer,
+    NumberEncryptTransformer,
+    InitializerRedirectTransformer,
+    StringEqualsRedirectTransformer,
+    FieldRedirectTransformer,
+    NativeCandidateTransformer,
     LocalVariableRenameTransformer,
     MethodRenameTransformer,
     FieldRenameTransformer,

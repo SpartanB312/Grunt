@@ -79,6 +79,12 @@ class InsnListBuilder(val insnList: InsnList) {
 }
 
 @InsnBuilder
+infix fun InsnListBuilder.INT(value: Int) = +value.toInsnNode()
+
+@InsnBuilder
+infix fun InsnListBuilder.FLOAT(value: Float) = +value.toInsnNode()
+
+@InsnBuilder
 infix fun InsnListBuilder.LABEL(labelNode: LabelNode) = +labelNode
 
 @InsnBuilder
