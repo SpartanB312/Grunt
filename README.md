@@ -1,54 +1,75 @@
-# Grunt
-Lite-weight java obfuscator using ASM
+# Grunt Reborn
 
-Some ideas are from ESKID（Sry KillRED lol）
+Grunt Reborn is a continuation of Grunt project witch is a free and open source lightweight obfuscator.
+
+Some ideas are from ESkid and other obfuscator, and be presented with refined version.
 
 ## Features
 
-#### Renamer:
+Notice: Many features from my private obfuscator Guardian (Made in 2022) are experimental which are unstable.
 
-ClassRename(Support Mixin remap)
+15 features from Grunt, 10 features from Guardian, 7 new features in coming.
 
-FieldRename 
+If you encounter any compatibility issues, please raise an issue on GitHub.
 
-MethodRename(Need dependencies) 
+The reborn project is under development. Here is the feature TODO list.
 
-LocalVarRename
+### Renamer:
 
-#### Encrypt:
+* [X] ClassRename
+* [X] FieldRename
+* [X] MethodRename
+* [X] LocalVarRename
 
-NumberEncrypt 
+### Minecraft:
 
-StringEncrypt(Just simply xor)
+* [X] MixinClassRename
+* [ ] MixinFieldRename [Guardian]
+* [ ] MixinMethodRename [Guardian]
 
-#### Other:
+### Encrypt:
 
-RedirectFieldCall(Also called Scramble. Name from ESKID)
+* [ ] ArithmeticEncrypt [Guardian]
+* [X] NumberEncrypt
+* [X] StringEncrypt
 
-SourceDebugRemove
+### Redirect:
 
-KotlinOptimize
+* [ ] MethodCallRedirect [Guardian]
+* [X] InitializerRedirect [Guardian]
+* [X] FieldCallRedirect (Known as Scramble)
+* [X] StringEqualsRedirect [Guardian]
+* [ ] InvokeDynamic [New]
+* [ ] MergeUtils [Guardian] (Will generate many methods)
 
-Watermark
+### Optimization:
 
-NativeCandidate
+* [X] SourceDebugRemove
+* [X] EnumOptimization [Guardian]
+* [X] DeadCodeRemove [Guardian]
+* [X] KotlinOptimize
+* [X] Shrinking
 
-Shrinking
+### Miscellaneous:
 
-Shuffle utils
+* [ ] ClassLoader [New]
+* [X] Watermark
+* [X] NativeCandidate
+* [X] ShuffleMembers
+* [X] TrashClass [Guardian]
+* [X] ClonedClass [New]
+* [X] SyntheticBridge
+* [X] PostProcess
 
-#### ControlFlow:
+### ControlFlow:
 
-Working in progress (You can currently skid Radon's)
+* [ ] BlockSplit [New]
+* [ ] LookupSwitch [New]
+* [ ] ReplaceGoto [New]
+* [ ] TableSwitch [New]
 
-### Where is UI?
+## License: GNU General Public License 3.0
 
-Sorry, I am very lazy, but you can use this.
+This is a free and open source software under GPLv3
 
-https://github.com/emanueleriboldi/grunt-obfuscator-ui
-
-## License: MIT
-
-You are free to use it for any purpose. Including commercial use, or build your own obfuscator based on it.
-
-But please let me know any cool things you are doing OWO
+The previous Grunt versions under MIT license (1.5.8 and before)
