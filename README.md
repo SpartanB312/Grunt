@@ -23,7 +23,7 @@ The reborn project is under development. Here is the feature TODO list.
 
 ### Minecraft:
 
-* [ ] MixinClassRename
+* [X] MixinClassRename
 * [ ] MixinFieldRename [Guardian]
 * [ ] MixinMethodRename [Guardian]
 
@@ -52,7 +52,7 @@ The reborn project is under development. Here is the feature TODO list.
 
 ### Miscellaneous:
 
-* [ ] CustomClassLoader [New]
+* [ ] ClassLoader [New]
 * [X] Watermark
 * [X] NativeCandidate
 * [X] ShuffleMembers

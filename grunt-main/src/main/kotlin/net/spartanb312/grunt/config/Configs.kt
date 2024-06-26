@@ -17,7 +17,7 @@ object Configs {
         val output by value("Output", "output.jar")
         val libraries by value("Libraries", listOf())
         val exclusions by value("Exclusions", listOf())
-        val mixinPackages by value("MixinPackage", listOf())
+        val mixinPackages by value("MixinPackage", listOf("net/spartanb312/client/mixins/"))
         val generateRemap by value("DumpMappings", true)
         val remapOutput by value("MappingsOutput", "mappings.json")
         val parallel by value("ParallelProcessing", false)

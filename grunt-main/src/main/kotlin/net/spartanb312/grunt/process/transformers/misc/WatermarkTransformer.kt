@@ -38,7 +38,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
     private val methodMark by value("Method Mark", true)
 
     override fun ResourceCache.transform() {
-        Logger.info(" - Adding watermarks")
+        Logger.info(" - Adding watermarks...")
         val count = count {
             nonExcluded.asSequence()
                 .filter { !it.isInterface }

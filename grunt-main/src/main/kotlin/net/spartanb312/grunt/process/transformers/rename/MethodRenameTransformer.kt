@@ -49,7 +49,7 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
             // Generate names and apply to children
             val tasks = mutableListOf<Runnable>()
             nonExcluded.asSequence()
-                .filter { !it.isEnum && !it.isAnnotation && it.name.isNotExcludedIn(exclusion) }
+                .filter { !it.isAnnotation && it.name.isNotExcludedIn(exclusion) }
                 .forEach { classNode ->
                     val task = Runnable {
                         val info = hierarchy.getHierarchyInfo(classNode)

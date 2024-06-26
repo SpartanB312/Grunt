@@ -19,7 +19,7 @@ import org.objectweb.asm.tree.FieldNode
 object SyntheticBridgeTransformer : Transformer("SyntheticBridge", Category.Miscellaneous) {
 
     override fun ResourceCache.transform() {
-        Logger.info(" - Inserting synthetic/bridge")
+        Logger.info(" - Inserting synthetic/bridge...")
         val count = count {
             nonExcluded.forEach { classNode ->
                 pushSynthetic(classNode)
