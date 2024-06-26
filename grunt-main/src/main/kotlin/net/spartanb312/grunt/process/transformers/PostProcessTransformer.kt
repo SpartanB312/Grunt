@@ -24,6 +24,7 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
     private val manifestReplace by value("ManifestPrefix", listOf("Main-Class:"))
 
     override fun ResourceCache.transform() {
+        Logger.info(" - Post processing resources...")
         if (manifest) processManifest()
         if (pluginMain) processPluginMain()
         if (bungeeMain) processBungeeMain()
@@ -32,7 +33,7 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
 
     private fun ResourceCache.processManifest() {
         val manifestFile = resources["META-INF/MANIFEST.MF"] ?: return
-        Logger.info(" - Processing MANIFEST.MF...")
+        Logger.info("    Processing MANIFEST.MF...")
         val manifest = mutableListOf<String>()
         manifestFile.decodeToString().split("\n").forEach { line ->
             var final = line

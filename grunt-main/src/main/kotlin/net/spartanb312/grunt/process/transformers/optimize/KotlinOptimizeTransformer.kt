@@ -33,7 +33,7 @@ object KotlinOptimizeTransformer : Transformer("KotlinOptimizer", Category.Optim
     private val metadataExclusion by value("MetadataExclusions", listOf())
 
     override fun ResourceCache.transform() {
-        if (removeIntrinsics || removeIntrinsics) Logger.info(" - Optimizing kotlin classes")
+        if (removeIntrinsics || removeIntrinsics) Logger.info(" - Optimizing kotlin classes...")
         // Remove Intrinsics check
         if (removeIntrinsics) {
             val intrinsicsCount = count {

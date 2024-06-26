@@ -38,7 +38,8 @@ class FastHierarchy(private val resourceCache: ResourceCache) : Hierarchy {
     }
 
     override fun build() {
-        resourceCache.classes.values.forEach { getHierarchyInfo(it) }
+        resourceCache.nonExcluded.forEach { getHierarchyInfo(it) }
+        resourceCache.mixinClasses.forEach { getHierarchyInfo(it) }
         fillParentsInfo()
         fillChildrenInfo()
         missingDependencies.forEach { (dependency, requiredBy) ->
