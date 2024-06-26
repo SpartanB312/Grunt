@@ -1,54 +1,67 @@
-# Grunt
-Lite-weight java obfuscator using ASM
+# Grunt Reborn
 
-Some ideas are from ESKID（Sry KillRED lol）
+Grunt Reborn is a continuation of Grunt project witch is a free and open source lightweight obfuscator.
 
 ## Features
 
-#### Renamer:
+Notice: Many features are not stable. If you encounter any compatibility issues, please raise an Issue.
 
-ClassRename(Support Mixin remap)
+The reborn project is under development. Here is the feature TODO list.
 
-FieldRename 
+### Renamer:
 
-MethodRename(Need dependencies) 
+* [X] ClassRename
+* [X] FieldRename
+* [X] MethodRename
+* [X] LocalVarRename
 
-LocalVarRename
+### Minecraft:
 
-#### Encrypt:
+* [ ] MixinClassRename
+* [ ] MixinFieldRename
+* [ ] MixinMethodRename
+* [ ] CustomClassLoader
 
-NumberEncrypt 
+### Encrypt:
 
-StringEncrypt(Just simply xor)
+* [ ] ArithmeticEncrypt
+* [ ] FloatingPointEncrypt
+* [ ] NumberEncrypt
+* [ ] StringEncrypt
 
-#### Other:
+### Redirect:
 
-RedirectFieldCall(Also called Scramble. Name from ESKID)
+* [ ] MethodCallRedirect
+* [ ] InitializerRedirect
+* [ ] FieldCallRedirect (Known as Scramble)
+* [ ] StringEqualsRedirect
+* [ ] InvokeDynamic
 
-SourceDebugRemove
+### Optimization:
 
-KotlinOptimize
+* [X] SourceDebugRemove
+* [X] KotlinOptimize
+* [X] Shrinking
 
-Watermark
+### Miscellaneous:
 
-NativeCandidate
+* [X] Watermark
+* [ ] NativeCandidate
+* [X] ShuffleMembers
+* [ ] TrashClass
+* [X] ClonedClass
+* [X] SyntheticBridge
+* [ ] PostProcess
 
-Shrinking
+### ControlFlow:
 
-Shuffle utils
+* [ ] BlockSplit
+* [ ] LookupSwitch
+* [ ] ReplaceGoto
+* [ ] TableSwitch
 
-#### ControlFlow:
+## License: Apache License 2.0
 
-Working in progress (You can currently skid Radon's)
+This is a free and open source software under Apache License 2.0
 
-### Where is UI?
-
-Sorry, I am very lazy, but you can use this.
-
-https://github.com/emanueleriboldi/grunt-obfuscator-ui
-
-## License: MIT
-
-You are free to use it for any purpose. Including commercial use, or build your own obfuscator based on it.
-
-But please let me know any cool things you are doing OWO
+The previous Grunt versions under MIT license (1.5.8 and before)
