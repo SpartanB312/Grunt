@@ -1,19 +1,21 @@
 package net.spartanb312.grunt.process.transformers.rename
 
-import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.value
-import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.hierarchy.FastHierarchy
+import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.utils.*
+import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isAnnotation
+import net.spartanb312.grunt.utils.extensions.isEnum
 import net.spartanb312.grunt.utils.extensions.isNative
+import net.spartanb312.grunt.utils.isExcludedIn
+import net.spartanb312.grunt.utils.isNotExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.nextBadKeyword
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CountDownLatch
 import kotlin.system.measureTimeMillis
 
 /**
@@ -37,7 +39,7 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
         Logger.info(" - Renaming methods...")
 
         Logger.info("    Building hierarchy graph...")
-        val hierarchy = FastHierarchy(this)
+        val hierarchy = FastHierarchy(this, true)
         val buildTime = measureTimeMillis {
             hierarchy.build()
         }
@@ -47,46 +49,55 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
         val mappings = ConcurrentHashMap<String, String>()
         val count = count {
             // Generate names and apply to children
-            val tasks = mutableListOf<Runnable>()
             nonExcluded.asSequence()
-                .filter { !it.isAnnotation && it.name.isNotExcludedIn(exclusion) }
+                .filter { !it.isEnum && !it.isAnnotation && it.name.isNotExcludedIn(exclusion) }
                 .forEach { classNode ->
-                    val task = Runnable {
-                        val info = hierarchy.getHierarchyInfo(classNode)
-                        if (!info.missingDependencies) {
-                            for (methodNode in classNode.methods) {
-                                if (methodNode.name.startsWith("<")) continue
-                                if (methodNode.name == "main") continue
-                                if (methodNode.name.isExcludedIn(excludedName)) continue
-                                if (methodNode.isNative) continue
-                                if (hierarchy.isPrimeMethod(classNode, methodNode)) {
-                                    val newName = (if (randomKeywordPrefix) "$nextBadKeyword " else "") +
-                                            prefix + dic.nextName(heavyOverloads, methodNode.desc)
-                                    mappings[combine(classNode.name, methodNode.name, methodNode.desc)] = newName
-                                    // Apply to children
-                                    info.children.forEach { c ->
-                                        if (c is FastHierarchy.HierarchyInfo) {
-                                            val childKey = combine(c.classNode.name, methodNode.name, methodNode.desc)
-                                            mappings[childKey] = newName
+                    val info = hierarchy.getHierarchyInfo(classNode)
+                    if (!info.missingDependencies) {
+                        for (methodNode in classNode.methods) {
+                            if (methodNode.name.startsWith("<")) continue
+                            if (methodNode.name == "main") continue
+                            if (methodNode.name.isExcludedIn(excludedName)) continue
+                            if (methodNode.isNative) continue
+                            if (hierarchy.isPrimeMethod(classNode, methodNode)) {
+                                val readyToApply = mutableMapOf<String, String>()
+                                var shouldApply = true
+                                val newName = (if (randomKeywordPrefix) "$nextBadKeyword " else "") +
+                                        prefix + dic.nextName(heavyOverloads, methodNode.desc)
+                                readyToApply[combine(classNode.name, methodNode.name, methodNode.desc)] = newName
+                                // Check children
+                                info.children.forEach { c ->
+                                    if (c is FastHierarchy.HierarchyInfo) {
+                                        // Check its origin
+                                        for (parent in c.parents) {
+                                            if (parent.missingDependencies) shouldApply = false
+                                            if (parent is FastHierarchy.HierarchyInfo) {
+                                                val flag1 = !hierarchy.isSubType(parent.classNode.name, classNode.name)
+                                                val flag2 = !hierarchy.isSubType(classNode.name, parent.classNode.name)
+                                                if (parent.classNode.name != classNode.name && (flag1 && flag2)) {
+                                                    parent.classNode.methods.forEach { check ->
+                                                        if (check.name == methodNode.name && check.desc == methodNode.desc) {
+                                                            // Skip multi origin methods
+                                                            shouldApply = false
+                                                            //Logger.debug("Multi Origin ${methodNode.name}${methodNode.desc} in ${classNode.name} and ${parent.classNode.name}")
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
+
+                                        val childKey = combine(c.classNode.name, methodNode.name, methodNode.desc)
+                                        readyToApply[childKey] = newName
                                     }
-                                    add()
-                                } else continue
-                            }
+                                }
+                                // Apply mappings
+                                if (shouldApply) readyToApply.forEach { (key, value) -> mappings[key] = value }
+                                add()
+                            } else continue
                         }
                     }
-                    if (Configs.Settings.parallel) tasks.add(task) else task.run()
+
                 }
-            if (Configs.Settings.parallel) {
-                val cdl = CountDownLatch(tasks.size)
-                tasks.forEach {
-                    Thread {
-                        it.run()
-                        cdl.countDown()
-                    }.start()
-                }
-                cdl.await()
-            }
         }.get()
 
         Logger.info("    Applying remapping for methods...")

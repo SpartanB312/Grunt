@@ -16,7 +16,7 @@ object Transformers : Collection<Transformer> by mutableListOf(
     TrashClassTransformer,
     StringEncryptTransformer,
     NumberEncryptTransformer,
-    InitializerRedirectTransformer,
+    //InitializerRedirectTransformer, DISABLED
     StringEqualsRedirectTransformer,
     FieldRedirectTransformer,
     NativeCandidateTransformer,

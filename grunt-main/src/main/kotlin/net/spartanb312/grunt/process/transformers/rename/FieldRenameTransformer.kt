@@ -36,53 +36,44 @@ object FieldRenameTransformer : Transformer("FiledRename", Category.Renaming) {
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming fields...")
 
-        Logger.info("    Building hierarchy graph...")
-        val hierarchy = FastHierarchy(this)
-        val buildTime = measureTimeMillis {
-            hierarchy.build()
-        }
-        Logger.info("    Took ${buildTime}ms to build ${hierarchy.size} hierarchies")
-
         val mappings = HashMap<String, String>()
-        nonExcluded.asSequence()
-            .filter { !it.isAnnotation && it.name.isNotExcludedIn(exclusion) }
-            .forEach { classNode ->
-                val dictionary = NameGenerator.getByName(dictionary)
-                val info = hierarchy.getHierarchyInfo(classNode)
-                if (!info.missingDependencies) {
-                    for (fieldNode in classNode.fields) {
-                        if (fieldNode.name.isExcludedIn(excludedName)) continue
-                        if (hierarchy.isPrimeField(classNode, fieldNode)) {
-                            val key = classNode.name + "." + fieldNode.name
-                            val newName = malPrefix + dictionary.nextName()
-                            mappings[key] = newName
-                            // Apply for children
-                            info.children.forEach { c ->
-                                if (c is FastHierarchy.HierarchyInfo) {
-                                    val childKey = c.classNode.name + "." + fieldNode.name
-                                    mappings[childKey] = newName
-                                }
-                            }
-                        } else continue
+        val fields: MutableList<FieldNode> = ArrayList()
+        nonExcluded.forEach { fields.addAll(it.fields) }
+        fields.shuffle()
+
+        val dictionaries = ConcurrentHashMap<ClassNode?, NameGenerator>()
+        val count = count {
+            for (fieldNode in fields) {
+                if (fieldNode.name.isExcludedIn(excludedName)) continue
+                val c = getOwner(fieldNode, classes)
+                val dic = dictionaries.getOrPut(c) { NameGenerator.getByName(dictionary) }
+                val name = malPrefix + dic.nextName()
+                val stack: Stack<ClassNode> = Stack()
+                stack.add(c)
+                while (stack.size > 0) {
+                    val classNode = stack.pop()
+                    val key = classNode.name + "." + fieldNode.name
+                    if (key.isNotExcludedIn(exclusion)) {
+                        mappings[key] = name
+                    }
+                    classes.values.forEach {
+                        if (it.superName == classNode.name || it.interfaces.contains(classNode.name))
+                            stack.add(it)
                     }
                 }
+                add()
             }
-
+        }.get()
 
         Logger.info("    Applying remapping for fields...")
         applyRemap("fields", mappings)
 
-        Logger.info("    Renamed ${mappings.size} fields")
+        Logger.info("    Renamed $count fields")
     }
 
-    fun FastHierarchy.isPrimeField(owner: ClassNode, field: FieldNode): Boolean {
-        val ownerInfo = getHierarchyInfo(owner)
-        if (ownerInfo.missingDependencies) return false
-        return ownerInfo.parents.none { p ->
-            if (p is FastHierarchy.HierarchyInfo) {
-                p.classNode.fields.any { it.name == field.name && it.desc == field.desc }
-            } else true//Missing dependencies
-        }
+    private fun getOwner(f: FieldNode, classNodes: MutableMap<String, ClassNode>): ClassNode? {
+        for (c in classNodes.values) if (c.fields.contains(f)) return c
+        return null
     }
 
 }

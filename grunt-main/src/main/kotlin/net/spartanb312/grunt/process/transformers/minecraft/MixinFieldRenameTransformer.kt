@@ -5,11 +5,12 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.hierarchy.FastHierarchy
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.process.transformers.rename.FieldRenameTransformer.isPrimeField
 import net.spartanb312.grunt.utils.extensions.isAnnotation
 import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.isNotExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.FieldNode
 import kotlin.system.measureTimeMillis
 
 /**
@@ -63,6 +64,16 @@ object MixinFieldRenameTransformer : Transformer("MixinFieldRename", Category.Mi
         applyRemap("mixin fields", mappings)
 
         Logger.info("    Renamed ${mappings.size} mixin fields")
+    }
+
+    fun FastHierarchy.isPrimeField(owner: ClassNode, field: FieldNode): Boolean {
+        val ownerInfo = getHierarchyInfo(owner)
+        if (ownerInfo.missingDependencies) return false
+        return ownerInfo.parents.none { p ->
+            if (p is FastHierarchy.HierarchyInfo) {
+                p.classNode.fields.any { it.name == field.name && it.desc == field.desc }
+            } else true//Missing dependencies
+        }
     }
 
     private val annotations = mutableListOf(

@@ -89,9 +89,14 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                 }.toByteArray()
             } catch (ignore: Exception) {
                 Logger.error("Failed to dump class ${classNode.name}. Force use COMPUTE_MAXS")
-                ClassDumper(this@ResourceCache, hierarchy, false).apply {
-                    classNode.accept(this)
-                }.toByteArray()
+                try {
+                    ClassDumper(this@ResourceCache, hierarchy, false).apply {
+                        classNode.accept(this)
+                    }.toByteArray()
+                } catch (exception: Exception) {
+                    exception.printStackTrace()
+                    ByteArray(0)
+                }
             }
             putNextEntry(ZipEntry(classNode.name + ".class"))
             write(byteArray)
