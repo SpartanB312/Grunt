@@ -46,11 +46,18 @@ class FastHierarchy(
     }
 
     override fun build() {
-        buildRange.forEach { getHierarchyInfo(it) }
+        buildRange.forEach {
+            getHierarchyInfo(it)
+        }
         fillParentsInfo()
         fillChildrenInfo()
         missingDependencies.forEach { (dependency, requiredBy) ->
-            Logger.error("Missing ${dependency.dot} required by ${requiredBy.dot}")
+            if (dependency != "java/lang/Object" && hierarchies[dependency] == null) {
+                val nonObfName = resourceCache.classMappings.entries.find { (_, obf) ->
+                    obf == requiredBy
+                }?.key ?: requiredBy
+                Logger.error("Missing ${dependency.dot} required by ${nonObfName.dot}")
+            }
         }
     }
 

@@ -8,9 +8,7 @@ import net.spartanb312.grunt.config.Configs.saveToFile
 import net.spartanb312.grunt.config.Configs.shouldRemove
 import net.spartanb312.grunt.process.hierarchy.FastHierarchy
 import net.spartanb312.grunt.utils.corruptCRC32
-import net.spartanb312.grunt.utils.dot
 import net.spartanb312.grunt.utils.logging.Logger
-import net.spartanb312.grunt.utils.splash
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.commons.ClassRemapper
 import org.objectweb.asm.commons.SimpleRemapper
