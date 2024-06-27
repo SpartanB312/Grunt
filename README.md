@@ -10,63 +10,65 @@ Notice: Many features from my private obfuscator Guardian (Made in 2022) are exp
 
 15 features from Grunt, 10 features from Guardian, 7 new features in coming.
 
-If you encounter any compatibility issues, please raise an issue on GitHub.
+If you encounter any compatibility issues, please raise an issue on GitHub. By the way, I appended the stability level on each feature. If you encountered unstable situation. You can turn off the low stability-level features.
 
 The reborn project is under development. Here is the feature TODO list.
 
+Stability level: [1]=Unstable [5]=Stable
+
 ### Renamer:
 
-* [X] ClassRename
-* [X] FieldRename
-* [X] MethodRename
-* [X] LocalVarRename
+* [X] [5]ClassRename
+* [X] [5]FieldRename
+* [X] [4]MethodRename
+* [X] [5]LocalVarRename
 
 ### Minecraft:
 
-* [X] MixinClassRename
-* [X] MixinFieldRename [Guardian]
-* [ ] MixinMethodRename [Guardian]
+* [X] [4]MixinClassRename
+* [X] [4]MixinFieldRename
+* [ ] [4]MixinMethodRename
 
 ### Encrypt:
 
-* [ ] ArithmeticEncrypt [Guardian]
-* [X] NumberEncrypt
-* [X] StringEncrypt
+* [ ] [4]ArithmeticEncrypt
+* [X] [5]NumberEncrypt
+* [X] [5]StringEncrypt
 
 ### Redirect:
 
-* [ ] MethodCallRedirect [Guardian]
-* [X] InitializerRedirect [Guardian]
-* [X] FieldCallRedirect (Known as Scramble)
-* [X] StringEqualsRedirect [Guardian]
-* [ ] InvokeDynamic [New]
-* [ ] ShuffleUtils [Guardian]
+* [ ] [2]MethodCallRedirect
+* [X] [1]InitializerRedirect
+* [X] [4]FieldCallRedirect (Known as Scramble)
+* [X] [5]StringEqualsRedirect
+* [ ] [0]InvokeDynamic
+* [ ] [2]ShuffleUtils
 
 ### Optimization:
 
-* [X] SourceDebugRemove
-* [X] EnumOptimization [Guardian]
-* [X] DeadCodeRemove [Guardian]
-* [X] KotlinOptimize
-* [X] Shrinking
+* [X] [5]SourceDebugRemove
+* [X] [5]EnumOptimization
+* [X] [5]DeadCodeRemove
+* [X] [5]KotlinOptimize
+* [X] [4]Shrinking
 
 ### Miscellaneous:
 
-* [ ] ClassLoader [New]
-* [X] Watermark
-* [X] NativeCandidate
-* [X] ShuffleMembers
-* [X] TrashClass [Guardian]
-* [X] ClonedClass [New]
-* [X] SyntheticBridge
-* [X] PostProcess
+* [ ] [0]ClassLoader
+* [X] [5]Watermark
+* [X] [5]NativeCandidate
+* [X] [5]ShuffleMembers
+* [X] [5]TrashClass
+* [X] [5]ClonedClass
+* [X] [5]SyntheticBridge
+* [X] [5]PostProcess
 
 ### ControlFlow:
 
-* [ ] BlockSplit [New]
-* [ ] LookupSwitch [New]
-* [ ] ReplaceGoto [New]
-* [ ] TableSwitch [New]
+* [ ] [0]BlockSplit
+* [ ] [0]LookupSwitch
+* [ ] [0]ReplaceGoto
+* [ ] [0]TableSwitch
 
 ## License: GNU General Public License 3.0
 
