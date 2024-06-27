@@ -2,7 +2,7 @@ package net.spartanb312.grunt.process
 
 import net.spartanb312.grunt.process.transformers.PostProcessTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.*
-import net.spartanb312.grunt.process.transformers.minecraft.MixinClassRenameTransformer
+import net.spartanb312.grunt.process.transformers.minecraft.*
 import net.spartanb312.grunt.process.transformers.misc.*
 import net.spartanb312.grunt.process.transformers.optimize.*
 import net.spartanb312.grunt.process.transformers.redirect.*
@@ -20,13 +20,14 @@ object Transformers : Collection<Transformer> by mutableListOf(
     StringEqualsRedirectTransformer,
     FieldRedirectTransformer,
     NativeCandidateTransformer,
-    MixinClassRenameTransformer,
+    SyntheticBridgeTransformer,
     LocalVariableRenameTransformer,
     MethodRenameTransformer,
     FieldRenameTransformer,
     ClassRenameTransformer,
+    MixinFieldRenameTransformer,
+    MixinClassRenameTransformer,
     ShuffleMembersTransformer,
     WatermarkTransformer,
-    SyntheticBridgeTransformer,
     PostProcessTransformer
 )

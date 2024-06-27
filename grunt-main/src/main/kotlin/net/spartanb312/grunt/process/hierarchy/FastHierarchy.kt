@@ -10,7 +10,15 @@ import org.objectweb.asm.tree.ClassNode
  * Prebuild all class infos
  * Faster in most situations
  */
-class FastHierarchy(private val resourceCache: ResourceCache) : Hierarchy {
+class FastHierarchy(
+    private val resourceCache: ResourceCache,
+    private val buildRange: Collection<ClassNode> = resourceCache.nonExcluded
+) : Hierarchy {
+
+    constructor(resourceCache: ResourceCache, buildAll: Boolean) : this(
+        resourceCache,
+        resourceCache.nonExcluded.toMutableList().apply { if (buildAll) addAll(resourceCache.mixinClasses) }
+    )
 
     // All hierarchy nodes
     private val hierarchyNodes = mutableMapOf<String, HierarchyNode>()
@@ -38,8 +46,7 @@ class FastHierarchy(private val resourceCache: ResourceCache) : Hierarchy {
     }
 
     override fun build() {
-        resourceCache.nonExcluded.forEach { getHierarchyInfo(it) }
-        resourceCache.mixinClasses.forEach { getHierarchyInfo(it) }
+        buildRange.forEach { getHierarchyInfo(it) }
         fillParentsInfo()
         fillChildrenInfo()
         missingDependencies.forEach { (dependency, requiredBy) ->

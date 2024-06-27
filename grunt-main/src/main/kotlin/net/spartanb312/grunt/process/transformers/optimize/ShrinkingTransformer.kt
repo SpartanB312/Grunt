@@ -16,7 +16,7 @@ object ShrinkingTransformer : Transformer("Shrinking", Category.Optimization) {
 
     private val removeInnerClass by value("RemoveInnerClass", true)
     private val removeUnusedLabel by value("RemoveUnusedLabel", true)
-    private val removeNOP by value("RemoveNOP", false) // May cause some bugs
+    private val removeNOP by value("RemoveNOP", false) // May cause some bugs in Minecraft Forge Mod
 
     private val exclusions by value("Exclusions", listOf())
 

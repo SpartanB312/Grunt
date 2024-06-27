@@ -8,7 +8,6 @@ import net.spartanb312.grunt.process.hierarchy.FastHierarchy
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.extensions.isAnnotation
-import net.spartanb312.grunt.utils.extensions.isEnum
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.tree.ClassNode
@@ -36,15 +35,16 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming methods...")
-        val hierarchy = FastHierarchy(this)
+
         Logger.info("    Building hierarchy graph...")
+        val hierarchy = FastHierarchy(this)
         val buildTime = measureTimeMillis {
             hierarchy.build()
         }
         Logger.info("    Took ${buildTime}ms to build ${hierarchy.size} hierarchies")
-        val dic = NameGenerator.getByName(dictionary)
-        val mapping = ConcurrentHashMap<String, String>()
 
+        val dic = NameGenerator.getByName(dictionary)
+        val mappings = ConcurrentHashMap<String, String>()
         val count = count {
             // Generate names and apply to children
             val tasks = mutableListOf<Runnable>()
@@ -62,12 +62,13 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
                                 if (hierarchy.isPrimeMethod(classNode, methodNode)) {
                                     val newName = (if (randomKeywordPrefix) "$nextBadKeyword " else "") +
                                             prefix + dic.nextName(heavyOverloads, methodNode.desc)
-                                    mapping[combine(classNode.name, methodNode.name, methodNode.desc)] = newName
+                                    mappings[combine(classNode.name, methodNode.name, methodNode.desc)] = newName
                                     // Apply to children
                                     info.children.forEach { c ->
-                                        if (c is FastHierarchy.HierarchyInfo)
-                                            mapping[combine(c.classNode.name, methodNode.name, methodNode.desc)] =
-                                                newName
+                                        if (c is FastHierarchy.HierarchyInfo) {
+                                            val childKey = combine(c.classNode.name, methodNode.name, methodNode.desc)
+                                            mappings[childKey] = newName
+                                        }
                                     }
                                     add()
                                 } else continue
@@ -90,7 +91,7 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
 
         Logger.info("    Applying remapping for methods...")
         // Remap
-        applyRemap("methods", mapping)
+        applyRemap("methods", mappings)
         Logger.info(
             "    Renamed $count methods" +
                     if (heavyOverloads) " with ${dic.overloadsCount} overloads in ${dic.actualNameCount} names" else ""
@@ -103,9 +104,9 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
         val ownerInfo = getHierarchyInfo(owner)
         if (ownerInfo.missingDependencies) return false
         return ownerInfo.parents.none { p ->
-            if (p is FastHierarchy.HierarchyInfo)
+            if (p is FastHierarchy.HierarchyInfo) {
                 p.classNode.methods.any { it.name == method.name && it.desc == method.desc }
-            else false//Missing dependencies
+            } else true//Missing dependencies
         }
     }
 

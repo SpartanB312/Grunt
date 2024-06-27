@@ -75,7 +75,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
 
     fun dumpJar(targetFile: String) = ZipOutputStream(File(targetFile).outputStream()).apply {
         Logger.info("Building hierarchies...")
-        val hierarchy = FastHierarchy(this@ResourceCache)
+        val hierarchy = FastHierarchy(this@ResourceCache, true)
         hierarchy.build()
         if (Configs.Settings.corruptOutput) {
             Logger.info("Corrupting output...")

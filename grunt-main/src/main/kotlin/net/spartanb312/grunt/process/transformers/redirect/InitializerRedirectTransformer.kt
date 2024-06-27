@@ -4,11 +4,9 @@ import net.spartanb312.grunt.config.value
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
+import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
-import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.getLoadType
-import net.spartanb312.grunt.utils.getRandomString
-import net.spartanb312.grunt.utils.isNotExcludedIn
+import net.spartanb312.grunt.utils.extensions.getParameterSizeFromDesc
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -16,6 +14,7 @@ import org.objectweb.asm.tree.*
 
 /**
  * Redirect initializer
+ * WARNING: UNSTABLE!!!
  */
 object InitializerRedirectTransformer : Transformer("InitializerRedirect", Category.Redirect) {
 
@@ -55,6 +54,7 @@ object InitializerRedirectTransformer : Transformer("InitializerRedirect", Categ
 
                                     val methodInsn = nextNext as MethodInsnNode
                                     if (methodInsn.name != "<init>") continue@loop
+                                    if (getParameterSizeFromDesc(methodInsn.desc) > 2) continue@loop
 
                                     methodNode.instructions.remove(it) // Remove NEW
                                     methodNode.instructions.remove(next) // Remove DUP
@@ -77,6 +77,8 @@ object InitializerRedirectTransformer : Transformer("InitializerRedirect", Categ
 
                                     classNode.methods.add(genMethod)
                                     methodNode.instructions.set(nextNext, call) // Remove InvokeSpecial
+                                    methodNode.maxStack += 1
+                                    methodNode.maxLocals += 1
                                     add(1)
                                 }
                             }

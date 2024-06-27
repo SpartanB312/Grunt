@@ -4,6 +4,7 @@ import net.spartanb312.grunt.config.value
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
+import net.spartanb312.grunt.process.transformers.rename.ClassRenameTransformer.malNamePrefix
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.isNotExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
@@ -14,7 +15,6 @@ import org.objectweb.asm.tree.ClassNode
  * Last update on 2024/06/26
  * Improvements:
  * 1.Reflect support
- * 2.Mixin support
  */
 object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
 
@@ -39,7 +39,6 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
         Logger.info("    Generating mappings for classes...")
         val nameGenerator = NameGenerator.getByName(dictionary)
         val mappings = mutableMapOf<String, String>()
-
         val count = count {
             val classes = if (shuffled) nonExcluded.shuffled() else nonExcluded
             classes.forEach {

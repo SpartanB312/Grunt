@@ -24,7 +24,7 @@ The reborn project is under development. Here is the feature TODO list.
 ### Minecraft:
 
 * [X] MixinClassRename
-* [ ] MixinFieldRename [Guardian]
+* [X] MixinFieldRename [Guardian]
 * [ ] MixinMethodRename [Guardian]
 
 ### Encrypt:
@@ -40,7 +40,7 @@ The reborn project is under development. Here is the feature TODO list.
 * [X] FieldCallRedirect (Known as Scramble)
 * [X] StringEqualsRedirect [Guardian]
 * [ ] InvokeDynamic [New]
-* [ ] MergeUtils [Guardian] (Will generate many methods)
+* [ ] ShuffleUtils [Guardian]
 
 ### Optimization:
 

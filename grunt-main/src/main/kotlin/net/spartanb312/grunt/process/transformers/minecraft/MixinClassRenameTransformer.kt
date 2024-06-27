@@ -37,7 +37,7 @@ object MixinClassRenameTransformer : Transformer("MixinClassRename", Category.Mi
         }.get()
 
         Logger.info("    Applying remapping for mixin classes...")
-        applyRemap("classes", mappings, true)
+        applyRemap("mixin classes", mappings, true)
 
         Logger.info("    Remapping mixin files...")
         val refmapReplaces = mutableMapOf<String, String>()
@@ -103,6 +103,8 @@ object MixinClassRenameTransformer : Transformer("MixinClassRename", Category.Mi
                             }
                             mainObject.add("server", server)
                         }
+
+                        else -> mainObject.add(name, value)
                     }
                 }
             }
