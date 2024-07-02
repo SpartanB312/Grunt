@@ -8,8 +8,6 @@ Some ideas are from ESkid and other obfuscator, and be presented with refined ve
 
 Notice: Many features from my private obfuscator Guardian (Made in 2022) are experimental which are unstable.
 
-15 features from Grunt, 10 features from Guardian, 7 new features in coming.
-
 If you encounter any compatibility issues, please raise an issue on GitHub. By the way, I appended the stability level on each feature. If you encountered unstable situation. You can turn off the low stability-level features.
 
 The reborn project is under development. Here is the feature TODO list.
@@ -27,18 +25,17 @@ Stability level: [1]=Unstable [5]=Stable
 
 * [X] [4]MixinClassRename
 * [X] [4]MixinFieldRename
-* [ ] [4]MixinMethodRename
 
 ### Encrypt:
 
 * [ ] [4]ArithmeticEncrypt
 * [X] [5]NumberEncrypt
+* [X] [5]FloatingPointEncrypt
 * [X] [5]StringEncrypt
 
 ### Redirect:
 
-* [ ] [2]MethodCallRedirect
-* [X] [1]InitializerRedirect
+* [X] [4]MethodCallRedirect
 * [X] [4]FieldCallRedirect (Known as Scramble)
 * [X] [5]StringEqualsRedirect
 * [ ] [0]InvokeDynamic
