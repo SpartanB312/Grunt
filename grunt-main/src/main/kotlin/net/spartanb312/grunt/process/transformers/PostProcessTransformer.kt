@@ -13,15 +13,15 @@ import java.nio.charset.StandardCharsets
 
 /**
  * Post process for resource files
- * Last update on 2024/06/27
+ * Last update on 2024/07/02
  */
 object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneous) {
 
     override val enabled by setting("Enabled", true)
     private val manifest by setting("Manifest", true)
-    private val pluginMain by setting("PluginYML", true)
-    private val bungeeMain by setting("BungeeYML", true)
-    private val fabricMain by setting("FabricJSON", true)
+    private val pluginMain by setting("Plugin YML", true)
+    private val bungeeMain by setting("Bungee YML", true)
+    private val fabricMain by setting("Fabric JSON", true)
     private val manifestReplace by setting("ManifestPrefix", listOf("Main-Class:"))
 
     override fun ResourceCache.transform() {
@@ -100,15 +100,43 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
                 when (name) {
                     "entrypoints" -> {
                         val entryPointObject = JsonObject()
+                        //  "entrypoints": {
+                        //    "main": [
+                        //      "org.example.Example1",
+                        //      {
+                        //        "adapter": "kotlin",
+                        //        "value": "org.example.Example2"
+                        //      }
+                        //    ]
+                        //  }
                         value.asJsonObject.asMap().forEach { (pointName, classesObj) ->
                             val classes = JsonArray()
                             classesObj.asJsonArray.forEach {
-                                val pre = it.asString
-                                val new = classMappings.getOrDefault(pre.splash, null)
-                                if (new != null) {
-                                    Logger.info("    Replaced fabric entry point $pointName $new")
-                                    classes.add(new)
-                                } else classes.add(pre)
+                                if (it.isJsonObject) {
+                                    // Example:
+                                    // {
+                                    //     "adapter": "kotlin",
+                                    //     "value": "org.example.ExampleMod"
+                                    // }
+                                    val entryPointElem = it.asJsonObject
+                                    val pre = entryPointElem["value"].asString
+                                    val new = classMappings.getOrDefault(pre.splash, null)
+                                    if (new != null) {
+                                        Logger.info("    Replaced fabric entry point $pointName $new")
+                                        val newElem = JsonObject()
+                                        newElem.addProperty("adapter",  entryPointElem["adapter"].asString)
+                                        newElem.addProperty("value", new)
+                                        classes.add(newElem)
+                                    } else classes.add(it.asJsonObject)
+                                } else {
+                                    // "org.example.ExampleMod"
+                                    val pre = it.asString
+                                    val new = classMappings.getOrDefault(pre.splash, null)
+                                    if (new != null) {
+                                        Logger.info("    Replaced fabric entry point $pointName $new")
+                                        classes.add(new)
+                                    } else classes.add(pre)
+                                }
                             }
                             entryPointObject.add(pointName, classes)
                         }
