@@ -17,7 +17,7 @@ import java.util.*
  * Renaming fields
  * Last update on 2024/07/02
  */
-object FieldRenameTransformer : Transformer("FiledRename", Category.Renaming) {
+object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
 
     private val dictionary by setting("Dictionary", "Alphabet")
     private val randomKeywordPrefix by setting("RandomKeywordPrefix", false)
