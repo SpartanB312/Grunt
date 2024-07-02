@@ -30,6 +30,7 @@ object Transformers : Collection<Transformer> by mutableListOf(
     ClassRenameTransformer,
     MixinFieldRenameTransformer,
     MixinClassRenameTransformer,
+    InvokeDynamicTransformer,
     ShuffleMembersTransformer,
     WatermarkTransformer,
     PostProcessTransformer

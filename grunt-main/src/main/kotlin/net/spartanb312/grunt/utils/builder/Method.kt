@@ -5,6 +5,7 @@ import org.objectweb.asm.Handle
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
 fun method(
@@ -43,6 +44,20 @@ class MethodBuilder(val methodNode: MethodNode) {
 
     @MethodBuilderDSL
     fun InsnList(builder: InsnListBuilder.() -> Unit) = +insnList(builder)
+
+    @MethodBuilderDSL
+    fun TRYCATCH(start: Label, end: Label, handler: Label, type: String) {
+        val tryCatchBlock = TryCatchBlockNode(getLabelNode(start), getLabelNode(end), getLabelNode(handler), type)
+        methodNode.tryCatchBlocks = methodNode.tryCatchBlocks ?: mutableListOf()
+        methodNode.tryCatchBlocks.add(tryCatchBlock)
+    }
+}
+
+fun getLabelNode(label: Label): LabelNode {
+    if (label.info !is LabelNode) {
+        label.info = LabelNode()
+    }
+    return label.info as LabelNode
 }
 
 @Suppress("EXTENSION_SHADOWED_BY_MEMBER")
@@ -53,13 +68,6 @@ class InsnListBuilder(val insnList: InsnList) {
 
     @InsnBuilder
     operator fun Int.unaryPlus() = +InsnNode(this)
-
-    fun getLabelNode(label: Label): LabelNode {
-        if (label.info !is LabelNode) {
-            label.info = LabelNode()
-        }
-        return label.info as LabelNode
-    }
 
     fun getLabelNodes(objects: Array<Any?>): Array<Any?> {
         val labelNodes = arrayOfNulls<Any>(objects.size)
@@ -445,6 +453,12 @@ infix fun InsnListBuilder.LDC(string: String) = +LdcInsnNode(string)
 
 @InsnBuilder
 infix fun InsnListBuilder.LDC(handle: Handle) = +LdcInsnNode(handle)
+
+@InsnBuilder
+infix fun InsnListBuilder.LDC(type: Type) = +LdcInsnNode(type)
+
+@InsnBuilder
+infix fun InsnListBuilder.LDC_TYPE(type: String) = LDC(Type.getType("L$type;"))
 
 @InsnBuilder
 fun InsnListBuilder.FRAME(

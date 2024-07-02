@@ -100,43 +100,15 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
                 when (name) {
                     "entrypoints" -> {
                         val entryPointObject = JsonObject()
-                        //  "entrypoints": {
-                        //    "main": [
-                        //      "org.example.Example1",
-                        //      {
-                        //        "adapter": "kotlin",
-                        //        "value": "org.example.Example2"
-                        //      }
-                        //    ]
-                        //  }
                         value.asJsonObject.asMap().forEach { (pointName, classesObj) ->
                             val classes = JsonArray()
                             classesObj.asJsonArray.forEach {
-                                if (it.isJsonObject) {
-                                    // Example:
-                                    // {
-                                    //     "adapter": "kotlin",
-                                    //     "value": "org.example.ExampleMod"
-                                    // }
-                                    val entryPointElem = it.asJsonObject
-                                    val pre = entryPointElem["value"].asString
-                                    val new = classMappings.getOrDefault(pre.splash, null)
-                                    if (new != null) {
-                                        Logger.info("    Replaced fabric entry point $pointName $new")
-                                        val newElem = JsonObject()
-                                        newElem.addProperty("adapter",  entryPointElem["adapter"].asString)
-                                        newElem.addProperty("value", new)
-                                        classes.add(newElem)
-                                    } else classes.add(it.asJsonObject)
-                                } else {
-                                    // "org.example.ExampleMod"
-                                    val pre = it.asString
-                                    val new = classMappings.getOrDefault(pre.splash, null)
-                                    if (new != null) {
-                                        Logger.info("    Replaced fabric entry point $pointName $new")
-                                        classes.add(new)
-                                    } else classes.add(pre)
-                                }
+                                val pre = it.asString
+                                val new = classMappings.getOrDefault(pre.splash, null)
+                                if (new != null) {
+                                    Logger.info("    Replaced fabric entry point $pointName $new")
+                                    classes.add(new)
+                                } else classes.add(pre)
                             }
                             entryPointObject.add(pointName, classes)
                         }

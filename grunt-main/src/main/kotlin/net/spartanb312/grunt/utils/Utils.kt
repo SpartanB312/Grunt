@@ -6,6 +6,23 @@ import java.util.zip.CRC32
 import java.util.zip.ZipOutputStream
 import kotlin.random.Random
 
+private val blanks = listOf(
+    '\u0020', '\u00a0', '\u1680', '\u180e', '\u2000', '\u2001', '\u2002', '\u2003', '\u2004',
+    '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200a', '\u200b', '\u200c', '\u200d',
+    '\u200e', '\u200f', '\u202f', '\u205f', '\u3000', '\ufeff'
+)
+
+private val BLANK_STRINGS = arrayOf(
+    buildString { repeat(Short.MAX_VALUE.toInt() / 2) { append(blanks.random()) } },
+    buildString { repeat(Short.MAX_VALUE.toInt() / 2) { append(blanks.random()) } },
+    buildString { repeat(Short.MAX_VALUE.toInt() / 2) { append(blanks.random()) } },
+    buildString { repeat(Short.MAX_VALUE.toInt() / 2) { append(blanks.random()) } },
+    buildString { repeat(Short.MAX_VALUE.toInt() / 2) { append(blanks.random()) } },
+)
+
+val massiveString = buildString { repeat(Short.MAX_VALUE.toInt() - 1) { append(" ") } }
+val massiveBlankString: String get() = BLANK_STRINGS.random()
+
 fun ZipOutputStream.corruptCRC32() {
     val field = ZipOutputStream::class.java.getDeclaredField("crc")
     field.isAccessible = true

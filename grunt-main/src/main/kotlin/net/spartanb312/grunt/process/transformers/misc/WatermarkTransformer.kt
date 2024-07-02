@@ -20,12 +20,13 @@ import org.objectweb.asm.tree.FieldNode
 object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
 
     private val markers by setting(
-        "Watermark Message",
+        "Messages",
         listOf(
             "PROTECTED BY GRUNT KLASS MASTER",
             "PROTECTED BY SPARTAN EVERETT",
             "YOU MUST CHEATED, YOU ARE CHEATER",
             "WHAT CAN I SAY, MAN? MAMBA OUT!",
+            "麻的，纪苟，气死我啦",
             "逸一时,误一世,逸久逸久罢已龄",
             "敢这么和我对枪,你护盾是批发的?",
             "有框你不打?你先开的!",

@@ -10,9 +10,13 @@ import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.Type
 import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
+import java.lang.invoke.CallSite
+import java.lang.invoke.MethodHandles
+import java.lang.invoke.MethodType
 import kotlin.random.Random
 
 /**
@@ -48,7 +52,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                                             false
                                         )
                                     )
-                                    (insnNode as LdcInsnNode).cst = xor(insnNode.cst as String, random)
+                                    (insnNode as LdcInsnNode).cst = encrypt(insnNode.cst as String, random)
                                     if (t == 0) add()
                                     shouldAdd = true
                                 }
@@ -61,7 +65,8 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         Logger.info("    Encrypted $count strings")
     }
 
-    private fun createDecryptMethod(methodName: String, decryptValue: Int): MethodNode = method(
+
+    fun createDecryptMethod(methodName: String, decryptValue: Int): MethodNode = method(
         Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC + Opcodes.ACC_SYNTHETIC + Opcodes.ACC_BRIDGE,
         methodName,
         "(Ljava/lang/String;)Ljava/lang/String;",
@@ -109,7 +114,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         Maxs(3, 3)
     }
 
-    private fun xor(string: String, xor: Int): String {
+    fun encrypt(string: String, xor: Int): String {
         val stringBuilder = StringBuilder()
         for (element in string) {
             stringBuilder.append((element.code xor xor).toChar())
