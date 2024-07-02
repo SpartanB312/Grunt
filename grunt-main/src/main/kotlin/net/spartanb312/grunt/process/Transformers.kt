@@ -21,6 +21,7 @@ object Transformers : Collection<Transformer> by mutableListOf(
     FloatingPointEncryptTransformer,
     StringEqualsRedirectTransformer,
     FieldRedirectTransformer,
+    MethodRedirectTransformer,
     NativeCandidateTransformer,
     SyntheticBridgeTransformer,
     LocalVariableRenameTransformer,

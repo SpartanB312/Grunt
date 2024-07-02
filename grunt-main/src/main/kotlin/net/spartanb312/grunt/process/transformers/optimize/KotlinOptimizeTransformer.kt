@@ -7,17 +7,19 @@ import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
+import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 
 /**
  * Optimize kotlin redundant calls
+ * Last update on 24/07/02
  */
 object KotlinOptimizeTransformer : Transformer("KotlinOptimizer", Category.Optimization) {
 
-    private val removeMetadata by setting("RemoveMetadata", true)
-    private val removeIntrinsics by setting("RemoveIntrinsics", true)
+    private val removeAnnotation by setting("Annotations", true)
+    private val removeIntrinsics by setting("Intrinsics", true)
     private val intrinsicsRemoval by setting(
         "IntrinsicsRemoval", listOf(
             "checkExpressionValueIsNotNull",
@@ -77,24 +79,29 @@ object KotlinOptimizeTransformer : Transformer("KotlinOptimizer", Category.Optim
             Logger.info("    Removed $intrinsicsCount Intrinsics checks")
         }
 
-        // Remove Metadata
-        if (removeMetadata) {
-            val metadataRemovalCount = count {
+        // Remove annotations
+        if (removeAnnotation) {
+            val annotationCount = count {
                 nonExcluded.asSequence()
                     .filter { it.visibleAnnotations != null && metadataExclusion.none { n -> it.name.startsWith(n) } }
                     .forEach { classNode ->
-                        classNode.visibleAnnotations.toList().forEach { annotationNode ->
-                            if (
-                                annotationNode.desc.startsWith("Lkotlin/Metadata") ||
-                                annotationNode.desc.startsWith("Lkotlin/coroutines/jvm/internal/DebugMetadata")
-                            ) {
-                                classNode.visibleAnnotations.remove(annotationNode)
-                                add()
+                        fun MutableList<AnnotationNode>.removeCheck() {
+                            toList().forEach {
+                                if (
+                                    it.desc.startsWith("Lkotlin/jvm/internal/SourceDebugExtension") ||
+                                    it.desc.startsWith("Lkotlin/Metadata") ||
+                                    it.desc.startsWith("Lkotlin/coroutines/jvm/internal/DebugMetadata")
+                                ) {
+                                    remove(it)
+                                    add()
+                                }
                             }
                         }
+                        classNode.visibleAnnotations?.removeCheck()
+                        classNode.invisibleAnnotations?.removeCheck()
                     }
             }.get()
-            Logger.info("    Removed $metadataRemovalCount kotlin metadata annotations")
+            Logger.info("    Removed $annotationCount kotlin annotations")
         }
     }
 

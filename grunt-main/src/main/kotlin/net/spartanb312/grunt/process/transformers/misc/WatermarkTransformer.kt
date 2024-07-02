@@ -10,6 +10,7 @@ import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.FieldNode
 
 /**
@@ -32,8 +33,11 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
         )
     )
 
-    private val fieldMark by setting("Field Mark", true)
-    private val methodMark by setting("Method Mark", true)
+    private val fieldMark by setting("FieldMark", true)
+    private val methodMark by setting("MethodMark", true)
+    private val annotationMark by setting("AnnotationMark", true)
+    private val annotations by setting("Annotations", listOf("ProtectedByGrunt", "JvavMetadata"))
+    private val versions by setting("Versions", listOf("114514", "1919810", "69420"))
 
     override fun ResourceCache.transform() {
         Logger.info(" - Adding watermarks...")
@@ -127,6 +131,16 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                             )
                         }
                         add(1)
+                    }
+                    if (annotationMark) {
+                        val annotation =
+                            AnnotationNode("Lnet/spartanb312/grunt/${annotations.randomOrNull() ?: "ProtectedByGrunt"};")
+                        annotation.visit("version", versions.random())
+                        annotation.visit("mapping", "jvav/lang/ZhangHaoYangException")
+                        annotation.visit("d1", markers.random())
+                        annotation.visit("d2", markers.random())
+                        classNode.visibleAnnotations = classNode.visibleAnnotations ?: mutableListOf()
+                        classNode.visibleAnnotations.add(annotation)
                     }
                 }
         }.get()

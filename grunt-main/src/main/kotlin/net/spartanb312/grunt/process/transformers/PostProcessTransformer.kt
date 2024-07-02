@@ -19,9 +19,9 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
 
     override val enabled by setting("Enabled", true)
     private val manifest by setting("Manifest", true)
-    private val pluginMain by setting("Plugin YML", true)
-    private val bungeeMain by setting("Bungee YML", true)
-    private val fabricMain by setting("Fabric JSON", true)
+    private val pluginMain by setting("PluginYML", true)
+    private val bungeeMain by setting("BungeeYML", true)
+    private val fabricMain by setting("FabricJSON", true)
     private val manifestReplace by setting("ManifestPrefix", listOf("Main-Class:"))
 
     override fun ResourceCache.transform() {

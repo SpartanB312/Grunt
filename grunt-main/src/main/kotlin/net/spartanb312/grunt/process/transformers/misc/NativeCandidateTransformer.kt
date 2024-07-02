@@ -24,7 +24,7 @@ object NativeCandidateTransformer : Transformer("NativeCandidate", Category.Misc
     private val upCallLimit by setting("UpCallLimit", 0)
     private val exclusions by setting("Exclusions", listOf())
 
-    val appendedMethods = mutableListOf<MethodNode>() // from other place
+    val appendedMethods = mutableSetOf<MethodNode>() // from other place
 
     override fun ResourceCache.transform() {
         Logger.info(" - Adding annotations on native transformable methods...")
