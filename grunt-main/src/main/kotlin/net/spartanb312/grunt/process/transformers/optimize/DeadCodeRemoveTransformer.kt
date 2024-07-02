@@ -11,11 +11,12 @@ import org.objectweb.asm.tree.InsnNode
 
 /**
  * Remove useless dead codes
+ * Last update on 2024/07/02
  */
 object DeadCodeRemoveTransformer : Transformer("DeadCodeRemove", Category.Optimization) {
 
     override fun ResourceCache.transform() {
-        Logger.info("    Removing dead codes...")
+        Logger.info(" - Removing dead codes...")
         val count = count {
             nonExcluded.forEach { classNode ->
                 classNode.methods.toList().asSequence()

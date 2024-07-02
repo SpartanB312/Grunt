@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.*
@@ -17,11 +17,12 @@ import kotlin.random.Random
 
 /**
  * Encrypt strings
+ * Last update on 2024/06/26
  */
 object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encryption) {
 
-    private val times by value("Intensity", 1)
-    private val exclusion by value("Exclusions", listOf())
+    private val times by setting("Intensity", 1)
+    private val exclusion by setting("Exclusions", listOf())
 
     override fun ResourceCache.transform() {
         Logger.info(" - Encrypting strings...")

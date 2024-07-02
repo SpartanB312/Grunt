@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.optimize
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
@@ -11,14 +11,15 @@ import org.objectweb.asm.tree.*
 
 /**
  * Remove unused stuff in class
+ * Last update on 2024/06/26
  */
 object ShrinkingTransformer : Transformer("Shrinking", Category.Optimization) {
 
-    private val removeInnerClass by value("RemoveInnerClass", true)
-    private val removeUnusedLabel by value("RemoveUnusedLabel", true)
-    private val removeNOP by value("RemoveNOP", false) // May cause some bugs in Minecraft Forge Mod
+    private val removeInnerClass by setting("RemoveInnerClass", true)
+    private val removeUnusedLabel by setting("RemoveUnusedLabel", true)
+    private val removeNOP by setting("RemoveNOP", false) // May cause some bugs in Minecraft Forge Mod
 
-    private val exclusions by value("Exclusions", listOf())
+    private val exclusions by setting("Exclusions", listOf())
 
     override fun ResourceCache.transform() {
         Logger.info(" - Shrinking classes...")

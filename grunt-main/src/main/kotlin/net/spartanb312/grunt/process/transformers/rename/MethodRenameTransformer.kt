@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.rename
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.hierarchy.FastHierarchy
 import net.spartanb312.grunt.process.resource.NameGenerator
@@ -8,6 +8,7 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isAnnotation
 import net.spartanb312.grunt.utils.extensions.isEnum
+import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.isNotExcludedIn
@@ -19,21 +20,19 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureTimeMillis
 
 /**
- * Renaming classes
- * Last update on 2024/06/26
- * Improvements:
- * 1.Reflect support
- * 2.Mixin support
- * 3.Renaming for multi-overrides methods
+ * Renaming methods
+ * Last update on 2024/07/02
  */
 object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) {
 
-    private val dictionary by value("Dictionary", "Alphabet")
-    private val heavyOverloads by value("HeavyOverloads", false)
-    private val randomKeywordPrefix by value("RandomKeywordPrefix", false)
-    private val prefix by value("Prefix", "")
-    private val exclusion by value("Exclusion", listOf())
-    private val excludedName by value("ExcludedName", listOf())
+    private val enums by setting("Enums", true)
+    private val interfaces by setting("Interfaces", true)
+    private val dictionary by setting("Dictionary", "Alphabet")
+    private val heavyOverloads by setting("HeavyOverloads", false)
+    private val randomKeywordPrefix by setting("RandomKeywordPrefix", false)
+    private val prefix by setting("Prefix", "")
+    private val exclusion by setting("Exclusion", listOf())
+    private val excludedName by setting("ExcludedName", listOf())
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming methods...")
@@ -45,25 +44,27 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
         }
         Logger.info("    Took ${buildTime}ms to build ${hierarchy.size} hierarchies")
 
-        val dic = NameGenerator.getByName(dictionary)
+        val dictionary = NameGenerator.getByName(dictionary)
         val mappings = ConcurrentHashMap<String, String>()
         val count = count {
             // Generate names and apply to children
             nonExcluded.asSequence()
-                .filter { !it.isEnum && !it.isAnnotation && it.name.isNotExcludedIn(exclusion) }
+                .filter { (enums || !it.isEnum) && !it.isAnnotation && it.name.isNotExcludedIn(exclusion) && (interfaces || !it.isInterface) }
                 .forEach { classNode ->
                     val info = hierarchy.getHierarchyInfo(classNode)
                     if (!info.missingDependencies) {
+                        val isEnum = classNode.isEnum
                         for (methodNode in classNode.methods) {
                             if (methodNode.name.startsWith("<")) continue
                             if (methodNode.name == "main") continue
+                            if (isEnum && methodNode.name == "values") continue
                             if (methodNode.name.isExcludedIn(excludedName)) continue
                             if (methodNode.isNative) continue
                             if (hierarchy.isPrimeMethod(classNode, methodNode)) {
                                 val readyToApply = mutableMapOf<String, String>()
                                 var shouldApply = true
                                 val newName = (if (randomKeywordPrefix) "$nextBadKeyword " else "") +
-                                        prefix + dic.nextName(heavyOverloads, methodNode.desc)
+                                        prefix + dictionary.nextName(heavyOverloads, methodNode.desc)
                                 readyToApply[combine(classNode.name, methodNode.name, methodNode.desc)] = newName
                                 // Check children
                                 info.children.forEach { c ->
@@ -100,12 +101,12 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
                 }
         }.get()
 
-        Logger.info("    Applying remapping for methods...")
+        Logger.info("    Applying mappings for methods...")
         // Remap
         applyRemap("methods", mappings)
         Logger.info(
             "    Renamed $count methods" +
-                    if (heavyOverloads) " with ${dic.overloadsCount} overloads in ${dic.actualNameCount} names" else ""
+                    if (heavyOverloads) " with ${dictionary.overloadsCount} overloads in ${dictionary.actualNameCount} names" else ""
         )
     }
 

@@ -1,10 +1,9 @@
 package net.spartanb312.grunt.process.transformers.rename
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.process.transformers.rename.ClassRenameTransformer.malNamePrefix
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.isNotExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
@@ -18,13 +17,13 @@ import org.objectweb.asm.tree.ClassNode
  */
 object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
 
-    private val dictionary by value("Dictionary", "Alphabet")
-    private val parent by value("Parent", "net/spartanb312/obf/")
-    private val prefix by value("Prefix", "")
-    private val shuffled by value("Shuffled", false)
-    private val corruptedName by value("CorruptedName", false)
-    private val corruptedNameExclusion by value("CorruptedNameExclusions", listOf())
-    private val exclusion by value("Exclusion", listOf())
+    private val dictionary by setting("Dictionary", "Alphabet")
+    private val parent by setting("Parent", "net/spartanb312/obf/")
+    private val prefix by setting("Prefix", "")
+    private val shuffled by setting("Shuffled", false)
+    private val corruptedName by setting("CorruptedName", false)
+    private val corruptedNameExclusion by setting("CorruptedNameExclusions", listOf())
+    private val exclusion by setting("Exclusion", listOf())
 
     private val ClassNode.malNamePrefix
         get() = if (corruptedName) {
@@ -49,7 +48,7 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
             }
         }.get()
 
-        Logger.info("    Applying remapping for classes...")
+        Logger.info("    Applying mappings for classes...")
         applyRemap("classes", mappings, true)
         Logger.info("    Renamed $count classes")
     }

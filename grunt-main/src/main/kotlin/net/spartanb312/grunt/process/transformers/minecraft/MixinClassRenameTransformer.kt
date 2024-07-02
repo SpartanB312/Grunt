@@ -3,7 +3,7 @@ package net.spartanb312.grunt.process.transformers.minecraft
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -14,29 +14,35 @@ import java.nio.charset.StandardCharsets
 
 /**
  * Support minecraft mixin class renaming
+ * Last update on 2024/06/28
  */
 object MixinClassRenameTransformer : Transformer("MixinClassRename", Category.Minecraft) {
 
-    private val mixinDictionary by value("MixinDictionary", "Alphabet")
-    private val targetMixinPackage by value("TargetMixinPackage", "net/spartanb312/obf/mixins/")
-    private val mixinFile by value("MixinFile", "mixins.example.json")
-    private val refmapFile by value("RefmapFile", "mixins.example.refmap.json")
-    private val exclusion by value("Exclusion", listOf())
+    private val mixinDictionary by setting("MixinDictionary", "Alphabet")
+    private val targetMixinPackage by setting("TargetMixinPackage", "net/spartanb312/obf/mixins/")
+    private val mixinFile by setting("MixinFile", "mixins.example.json")
+    private val refmapFile by setting("RefmapFile", "mixins.example.refmap.json")
+    private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming mixin classes...")
-        val mixinDic = NameGenerator.getByName(mixinDictionary)
+        if (mixinClasses.isEmpty()) {
+            Logger.info("    No mixin classes found")
+            return
+        }
+
+        val dictionary = NameGenerator.getByName(mixinDictionary)
         val mappings: MutableMap<String, String> = HashMap()
         val count = count {
             mixinClasses.forEach {
                 if (it.name.isNotExcludedIn(exclusion)) {
-                    mappings[it.name] = targetMixinPackage + mixinDic.nextName()
+                    mappings[it.name] = targetMixinPackage + dictionary.nextName()
                     add()
                 }
             }
         }.get()
 
-        Logger.info("    Applying remapping for mixin classes...")
+        Logger.info("    Applying mappings for mixin classes...")
         applyRemap("mixin classes", mappings, true)
 
         Logger.info("    Remapping mixin files...")

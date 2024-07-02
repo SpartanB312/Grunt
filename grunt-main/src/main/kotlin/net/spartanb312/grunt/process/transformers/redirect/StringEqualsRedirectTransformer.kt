@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.builder.INVOKESTATIC
@@ -14,10 +14,12 @@ import org.objectweb.asm.tree.MethodInsnNode
 
 /**
  * Replace string.equals()
+ * Last update on 2024/06/28
  */
-object StringEqualsRedirectTransformer : Transformer("RedirectStringEquals", Category.Redirect) {
+object
+StringEqualsRedirectTransformer : Transformer("RedirectStringEquals", Category.Redirect) {
 
-    private val ignoreCase by value("IgnoreCase", true)
+    private val ignoreCase by setting("IgnoreCase", true)
 
     override fun ResourceCache.transform() {
         Logger.info(" - Redirecting string equals calls...")

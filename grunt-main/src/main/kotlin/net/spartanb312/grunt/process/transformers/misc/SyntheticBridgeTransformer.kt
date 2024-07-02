@@ -15,6 +15,7 @@ import org.objectweb.asm.tree.FieldNode
 /**
  * Insert synthetic and bridge to crash decompiler
  * Invalid for modern tools like Recaf
+ * Last update on 2024/06/26
  */
 object SyntheticBridgeTransformer : Transformer("SyntheticBridge", Category.Miscellaneous) {
 

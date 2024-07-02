@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.misc
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.isExcludedIn
@@ -10,16 +10,13 @@ import org.objectweb.asm.tree.ClassNode
 /**
  * Clone random classes as trash classes
  * Last update on 2024/06/26
- * Improvements:
- * 1.Fake usage of cloned classes
- * 2.Replace LDC with random values
  */
 object ClonedClassTransformer : Transformer("ClonedClass", Category.Miscellaneous) {
 
-    private val count by value("Count", 0)
-    private val suffix by value("Suffix", "-cloned")
-    private val removeAnnotations by value("RemoveAnnotations", true)
-    private val exclusion by value("Exclusion", listOf())
+    private val count by setting("Count", 0)
+    private val suffix by setting("Suffix", "-cloned")
+    private val removeAnnotations by setting("RemoveAnnotations", true)
+    private val exclusion by setting("Exclusion", listOf())
 
     private val cloneNameMap = mutableMapOf<String, Int>() // Origin, CloneID
 

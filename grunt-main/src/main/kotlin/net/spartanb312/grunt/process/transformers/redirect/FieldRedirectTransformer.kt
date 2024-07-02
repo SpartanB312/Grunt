@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
@@ -18,24 +18,24 @@ import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.VarInsnNode
 
 /**
- * Known as scramble in ESkid
- * Presented with refined version
+ * Scramble field calls
+ * Last update on 2024/06/28
  */
 object FieldRedirectTransformer : Transformer("FieldRedirect", Category.Redirect) {
 
-    private val intensity by value("Intensity", 1)
-    private val randomName by value("RandomName", false)
-    private val redirectGetStatic by value("RedirectGetStatic", true)
-    private val redirectSetStatic by value("RedirectSetStatic", true)
-    private val redirectGetField by value("RedirectGetValue", true)
-    private val redirectSetField by value("RedirectSetField", true)
+    private val intensity by setting("Intensity", 1)
+    private val randomName by setting("RandomName", false)
+    private val redirectGetStatic by setting("RedirectGetStatic", true)
+    private val redirectSetStatic by setting("RedirectSetStatic", true)
+    private val redirectGetField by setting("RedirectGetValue", true)
+    private val redirectSetField by setting("RedirectSetField", true)
 
-    private val generateOuterClass by value("GenerateOuterClass", false)
-    private val excludedClasses by value("ExcludedClasses", listOf())
-    private val excludedFieldName by value("ExcludedFieldName", listOf())
+    private val generateOuterClass by setting("GenerateOuterClass", false)
+    private val excludedClasses by setting("ExcludedClasses", listOf())
+    private val excludedFieldName by setting("ExcludedFieldName", listOf())
 
-    private val downCalls by value("NativeDownCalls", true)
-    private val upCalls by value("NativeUpCalls", false)
+    private val downCalls by setting("NativeDownCalls", true)
+    private val upCalls by setting("NativeUpCalls", false)
 
     override fun ResourceCache.transform() {
         Logger.info(" - Redirecting field calls...")

@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.misc
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.builder.ARETURN
@@ -14,13 +14,11 @@ import org.objectweb.asm.tree.FieldNode
 
 /**
  * Generates watermarks in your class
- * Last update on 2024/06/26
- * Improvements:
- * 1.Annotation watermark
+ * Last update on 2024/07/02
  */
 object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
 
-    private val markers by value(
+    private val markers by setting(
         "Watermark Message",
         listOf(
             "PROTECTED BY GRUNT KLASS MASTER",
@@ -34,8 +32,8 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
         )
     )
 
-    private val fieldMark by value("Field Mark", true)
-    private val methodMark by value("Method Mark", true)
+    private val fieldMark by setting("Field Mark", true)
+    private val methodMark by setting("Method Mark", true)
 
     override fun ResourceCache.transform() {
         Logger.info(" - Adding watermarks...")

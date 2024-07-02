@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.misc
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.extensions.isAbstract
@@ -14,17 +14,21 @@ import org.objectweb.asm.tree.InvokeDynamicInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
 
+/**
+ * Append annotation for native obfuscate
+ * Last update on 2024/06/26
+ */
 object NativeCandidateTransformer : Transformer("NativeCandidate", Category.Miscellaneous) {
 
-    val nativeAnnotation by value("NativeAnnotation", "Lnet/spartanb312/example/Native;")
-    private val upCallLimit by value("UpCallLimit", 0)
-    private val exclusions by value("Exclusions", listOf())
+    val nativeAnnotation by setting("NativeAnnotation", "Lnet/spartanb312/example/Native;")
+    private val upCallLimit by setting("UpCallLimit", 0)
+    private val exclusions by setting("Exclusions", listOf())
 
     val appendedMethods = mutableListOf<MethodNode>() // from other place
 
     override fun ResourceCache.transform() {
         Logger.info(" - Adding annotations on native transformable methods...")
-        val candidateMethod = mutableListOf<MethodNode>()
+        val candidateMethod = mutableSetOf<MethodNode>()
         nonExcluded.asSequence()
             .filter {
                 !it.isInterface && !it.isAnnotation && !it.isEnum && !it.isAbstract

@@ -131,6 +131,7 @@ class FastHierarchy(
     }
 
     override fun isSubType(child: String, father: String): Boolean {
+        if (child == father) return true
         val childInfo = hierarchyNodes[child] ?: return false
         val fatherInfo = hierarchyNodes[father] ?: return false
         return if (childInfo.parents.contains(fatherInfo)) true

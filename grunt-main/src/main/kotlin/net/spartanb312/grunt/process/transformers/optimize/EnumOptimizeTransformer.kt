@@ -10,11 +10,12 @@ import org.objectweb.asm.tree.MethodInsnNode
 
 /**
  * Optimize enum casts
+ * Last update on 2024/07/02
  */
 object EnumOptimizeTransformer : Transformer("EnumOptimize", Category.Optimization) {
 
     override fun ResourceCache.transform() {
-        Logger.info("    Optimizing enums...")
+        Logger.info(" - Optimizing enums...")
         val count = count {
             nonExcluded.asSequence()
                 .filter { it.isEnum }

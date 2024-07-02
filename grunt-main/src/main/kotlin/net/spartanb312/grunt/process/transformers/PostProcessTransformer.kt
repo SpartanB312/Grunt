@@ -3,7 +3,7 @@ package net.spartanb312.grunt.process.transformers
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.dot
@@ -17,12 +17,12 @@ import java.nio.charset.StandardCharsets
  */
 object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneous) {
 
-    override val enabled by value("Enabled", true)
-    private val manifest by value("Manifest", true)
-    private val pluginMain by value("Plugin YML", true)
-    private val bungeeMain by value("Bungee YML", true)
-    private val fabricMain by value("Fabric JSON", true)
-    private val manifestReplace by value("ManifestPrefix", listOf("Main-Class:"))
+    override val enabled by setting("Enabled", true)
+    private val manifest by setting("Manifest", true)
+    private val pluginMain by setting("Plugin YML", true)
+    private val bungeeMain by setting("Bungee YML", true)
+    private val fabricMain by setting("Fabric JSON", true)
+    private val manifestReplace by setting("ManifestPrefix", listOf("Main-Class:"))
 
     override fun ResourceCache.transform() {
         Logger.info(" - Post processing resources...")

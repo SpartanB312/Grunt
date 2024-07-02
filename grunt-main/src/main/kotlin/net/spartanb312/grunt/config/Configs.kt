@@ -13,19 +13,19 @@ object Configs {
     private val gsonPretty: Gson = GsonBuilder().setPrettyPrinting().create()
 
     object Settings : Configurable("Settings") {
-        val input by value("Input", "input.jar")
-        val output by value("Output", "output.jar")
-        val libraries by value("Libraries", listOf())
-        val exclusions by value("Exclusions", listOf())
-        val mixinPackages by value("MixinPackage", listOf("net/spartanb312/client/mixins/"))
-        val generateRemap by value("DumpMappings", true)
-        val remapOutput by value("MappingsOutput", "mappings.json")
-        val parallel by value("ParallelProcessing", false)
-        val customDictionary by value("CustomDictionary", listOf())
-        val dictionaryStartIndex by value("DictionaryStartIndex", 0)
-        val corruptOutput by value("CorruptOutput", false)
-        val fileRemovePrefix by value("FileRemovePrefix", listOf())
-        val fileRemoveSuffix by value("FileRemoveSuffix", listOf())
+        val input by setting("Input", "input.jar")
+        val output by setting("Output", "output.jar")
+        val libraries by setting("Libraries", listOf())
+        val exclusions by setting("Exclusions", listOf())
+        val mixinPackages by setting("MixinPackage", listOf("net/spartanb312/client/mixins/"))
+        val generateRemap by setting("DumpMappings", true)
+        val remapOutput by setting("MappingsOutput", "mappings.json")
+        val parallel by setting("ParallelProcessing", false)
+        val customDictionary by setting("CustomDictionary", listOf())
+        val dictionaryStartIndex by setting("DictionaryStartIndex", 0)
+        val corruptOutput by setting("CorruptOutput", false)
+        val fileRemovePrefix by setting("FileRemovePrefix", listOf())
+        val fileRemoveSuffix by setting("FileRemoveSuffix", listOf())
     }
 
     init {

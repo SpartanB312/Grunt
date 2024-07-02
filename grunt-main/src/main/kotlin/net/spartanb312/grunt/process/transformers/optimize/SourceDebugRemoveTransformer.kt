@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.optimize
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
@@ -9,13 +9,14 @@ import org.objectweb.asm.tree.LineNumberNode
 
 /**
  * Remove or replace source debug info in class
+ * Last update on 2024/06/26
  */
 object SourceDebugRemoveTransformer : Transformer("SourceDebugRemove", Category.Miscellaneous) {
 
-    private val sourceDebug by value("SourceDebug", true)
-    private val lineDebug by value("LineDebug", true)
-    private val renameSourceDebug by value("RenameSourceDebug", false)
-    private val sourceNames by value(
+    private val sourceDebug by setting("SourceDebug", true)
+    private val lineDebug by setting("LineDebug", true)
+    private val renameSourceDebug by setting("RenameSourceDebug", false)
+    private val sourceNames by setting(
         "SourceNames", listOf(
             "114514.java",
             "1919810.kt",

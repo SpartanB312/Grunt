@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.optimize
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
@@ -16,9 +16,9 @@ import org.objectweb.asm.tree.MethodInsnNode
  */
 object KotlinOptimizeTransformer : Transformer("KotlinOptimizer", Category.Optimization) {
 
-    private val removeMetadata by value("RemoveMetadata", true)
-    private val removeIntrinsics by value("RemoveIntrinsics", true)
-    private val intrinsicsRemoval by value(
+    private val removeMetadata by setting("RemoveMetadata", true)
+    private val removeIntrinsics by setting("RemoveIntrinsics", true)
+    private val intrinsicsRemoval by setting(
         "IntrinsicsRemoval", listOf(
             "checkExpressionValueIsNotNull",
             "checkNotNullExpressionValue",
@@ -28,9 +28,9 @@ object KotlinOptimizeTransformer : Transformer("KotlinOptimizer", Category.Optim
             "checkNotNullParameter"
         )
     )
-    private val replaceLdc by value("ReplaceLdc", true)
-    private val intrinsicsExclusion by value("IntrinsicsExclusions", listOf())
-    private val metadataExclusion by value("MetadataExclusions", listOf())
+    private val replaceLdc by setting("ReplaceLdc", true)
+    private val intrinsicsExclusion by setting("IntrinsicsExclusions", listOf())
+    private val metadataExclusion by setting("MetadataExclusions", listOf())
 
     override fun ResourceCache.transform() {
         if (removeIntrinsics || removeIntrinsics) Logger.info(" - Optimizing kotlin classes...")

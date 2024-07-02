@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.rename
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -9,11 +9,12 @@ import net.spartanb312.grunt.utils.logging.Logger
 
 /**
  * Rename local variables
+ * Last update on 2024/06/26
  */
 object LocalVariableRenameTransformer : Transformer("LocalVariableRename", Category.Renaming) {
 
-    private val dictionary by value("Dictionary", "Alphabet")
-    private val thisRef by value("ThisReference", false)
+    private val dictionary by setting("Dictionary", "Alphabet")
+    private val thisRef by setting("ThisReference", false)
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming local variables...")

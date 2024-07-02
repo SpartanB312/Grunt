@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.misc
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.builder.*
@@ -12,12 +12,13 @@ import org.objectweb.asm.tree.FieldNode
 
 /**
  * Generates trash classes
+ * Last update on 2024/06/26
  */
 object TrashClassTransformer : Transformer("TrashClass", Category.Miscellaneous) {
 
-    private val packages by value("Package", "net/spartanb312/obf/")
-    private val prefix by value("Prefix", "Trash")
-    private val count by value("Count", 0)
+    private val packages by setting("Package", "net/spartanb312/obf/")
+    private val prefix by setting("Prefix", "Trash")
+    private val count by setting("Count", 0)
 
     override fun ResourceCache.transform() {
         Logger.info(" - Generating trash classes...")

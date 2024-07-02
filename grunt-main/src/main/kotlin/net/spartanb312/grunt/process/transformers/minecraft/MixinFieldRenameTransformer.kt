@@ -1,79 +1,73 @@
 package net.spartanb312.grunt.process.transformers.minecraft
 
-import net.spartanb312.grunt.config.value
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
-import net.spartanb312.grunt.process.hierarchy.FastHierarchy
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.utils.extensions.isAnnotation
+import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.isNotExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
-import kotlin.system.measureTimeMillis
+import java.util.*
 
 /**
  * Renaming fields for mixin classes
+ * Last update on 2024/07/02
  */
 object MixinFieldRenameTransformer : Transformer("MixinFieldRename", Category.Minecraft) {
 
-    private val dictionary by value("Dictionary", "Alphabet")
-    private val prefix by value("Prefix", "")
-    private val exclusion by value("Exclusion", listOf())
-    private val excludedName by value("ExcludedName", listOf("INSTANCE"))
+    private val dictionary by setting("Dictionary", "Alphabet")
+    private val prefix by setting("Prefix", "")
+    private val exclusion by setting("Exclusion", listOf())
+    private val excludedName by setting("ExcludedName", listOf("INSTANCE", "Companion"))
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming mixin fields...")
-
-        Logger.info("    Building hierarchy graph...")
-        val hierarchy = FastHierarchy(this, mixinClasses)
-        val buildTime = measureTimeMillis {
-            hierarchy.build()
+        if (mixinClasses.isEmpty()) {
+            Logger.info("    No mixin classes found")
+            return
         }
-        Logger.info("    Took ${buildTime}ms to build ${hierarchy.size} hierarchies")
 
+        val dictionary = NameGenerator.getByName(dictionary)
         val mappings = HashMap<String, String>()
-        mixinClasses.asSequence()
-            .filter { !it.isAnnotation && it.name.isNotExcludedIn(exclusion) }
-            .forEach { classNode ->
-                val dictionary = NameGenerator.getByName(dictionary)
-                val info = hierarchy.getHierarchyInfo(classNode)
-                if (!info.missingDependencies) {
-                    for (fieldNode in classNode.fields) {
-                        if (fieldNode.name.isExcludedIn(excludedName)) continue
-                        if (fieldNode.visibleAnnotations?.any { it.desc.isExcludedIn(annotations) } == true) continue
-                        if (fieldNode.invisibleAnnotations?.any { it.desc.isExcludedIn(annotations) } == true) continue
-                        if (hierarchy.isPrimeField(classNode, fieldNode)) {
-                            val key = classNode.name + "." + fieldNode.name
-                            val newName = prefix + dictionary.nextName()
-                            mappings[key] = newName
-                            // Apply for children
-                            info.children.forEach { c ->
-                                if (c is FastHierarchy.HierarchyInfo) {
-                                    val childKey = c.classNode.name + "." + fieldNode.name
-                                    mappings[childKey] = newName
-                                }
-                            }
-                        } else continue
+        val fields: MutableList<FieldNode> = ArrayList()
+        nonExcluded.forEach { fields.addAll(it.fields) }
+        fields.shuffle()
+
+        val count = count {
+            for (fieldNode in fields) {
+                if (fieldNode.name.isExcludedIn(excludedName)) continue
+                if (fieldNode.visibleAnnotations?.any { it.desc.isExcludedIn(annotations) } == true) continue
+                if (fieldNode.invisibleAnnotations?.any { it.desc.isExcludedIn(annotations) } == true) continue
+                val name = prefix + dictionary.nextName()
+                val stack: Stack<ClassNode> = Stack()
+                stack.add(getOwner(fieldNode, classes))
+                while (stack.size > 0) {
+                    val classNode = stack.pop()
+                    val key = classNode.name + "." + fieldNode.name
+                    if (key.isNotExcludedIn(exclusion)) {
+                        mappings[key] = name
+                    }
+                    classes.values.forEach {
+                        if (it.superName == classNode.name || it.interfaces.contains(classNode.name)) stack.add(it)
                     }
                 }
+                add()
             }
+        }.get()
 
-        Logger.info("    Applying remapping for mixin fields...")
+        Logger.info("    Applying mappings for mixin fields...")
         applyRemap("mixin fields", mappings)
 
-        Logger.info("    Renamed ${mappings.size} mixin fields")
+        Logger.info("    Renamed $count mixin fields")
     }
 
-    fun FastHierarchy.isPrimeField(owner: ClassNode, field: FieldNode): Boolean {
-        val ownerInfo = getHierarchyInfo(owner)
-        if (ownerInfo.missingDependencies) return false
-        return ownerInfo.parents.none { p ->
-            if (p is FastHierarchy.HierarchyInfo) {
-                p.classNode.fields.any { it.name == field.name && it.desc == field.desc }
-            } else true//Missing dependencies
-        }
+
+    private fun getOwner(field: FieldNode, classNodes: MutableMap<String, ClassNode>): ClassNode? {
+        for (clazz in classNodes.values) if (clazz.fields.contains(field)) return clazz
+        return null
     }
 
     private val annotations = mutableListOf(

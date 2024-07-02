@@ -26,11 +26,11 @@ open class Configurable(var name: String) {
 
 }
 
-fun Configurable.value(name: String, value: String) = value0(StringValue(name, value))
-fun Configurable.value(name: String, value: Int) = value0(IntValue(name, value))
-fun Configurable.value(name: String, value: Float) = value0(FloatValue(name, value))
-fun Configurable.value(name: String, value: Boolean) = value0(BooleanValue(name, value))
-fun Configurable.value(name: String, value: List<String>) = value0(ListValue(name, value))
+fun Configurable.setting(name: String, value: String) = value0(StringValue(name, value))
+fun Configurable.setting(name: String, value: Int) = value0(IntValue(name, value))
+fun Configurable.setting(name: String, value: Float) = value0(FloatValue(name, value))
+fun Configurable.setting(name: String, value: Boolean) = value0(BooleanValue(name, value))
+fun Configurable.setting(name: String, value: List<String>) = value0(ListValue(name, value))
 
 abstract class AbstractValue<T>(val name: String, var value: T) : ReadWriteProperty<Any?, T> {
     abstract fun saveValue(jsonObject: JsonObject)
