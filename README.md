@@ -4,6 +4,8 @@ Grunt Reborn is a continuation of Grunt project witch is a free and open source 
 
 Some ideas are from ESkid and other obfuscator, and be presented with refined version.
 
+Discord server link: https://discord.gg/ysB2fMfeYW
+
 ## Features
 
 Notice: Many features from my private obfuscator Guardian (Made in 2022) are experimental which are unstable.
