@@ -45,9 +45,7 @@ object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
                 while (stack.size > 0) {
                     val classNode = stack.pop()
                     val key = classNode.name + "." + fieldNode.name
-                    if (key.isNotExcludedIn(exclusion)) {
-                        mappings[key] = name
-                    }
+                    if (key.isNotExcludedIn(exclusion)) mappings[key] = name
                     classes.values.forEach {
                         if (it.superName == classNode.name || it.interfaces.contains(classNode.name)) stack.add(it)
                     }

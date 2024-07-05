@@ -11,6 +11,7 @@ import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AnnotationNode
+import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 
 /**
@@ -39,6 +40,8 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
     private val annotationMark by setting("AnnotationMark", true)
     private val annotations by setting("Annotations", listOf("ProtectedByGrunt", "JvavMetadata"))
     private val versions by setting("Versions", listOf("114514", "1919810", "69420"))
+    private val interfaceMark by setting("InterfaceMark", false)
+    private val fatherOfJava by setting("FatherOfJava", "jvav/lang/YuShengJun")
 
     override fun ResourceCache.transform() {
         Logger.info(" - Adding watermarks...")
@@ -46,6 +49,11 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
             nonExcluded.asSequence()
                 .filter { !it.isInterface }
                 .forEach { classNode ->
+                    if (interfaceMark) {
+                        classNode.interfaces = classNode.interfaces ?: mutableListOf()
+                        classNode.interfaces.add(fatherOfJava)
+                        add(1)
+                    }
                     if (fieldMark) {
                         classNode.fields = classNode.fields ?: arrayListOf()
                         val marker = markers.random()
@@ -142,9 +150,22 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                         annotation.visit("d2", markers.random())
                         classNode.visibleAnnotations = classNode.visibleAnnotations ?: mutableListOf()
                         classNode.visibleAnnotations.add(annotation)
+                        add(1)
                     }
                 }
         }.get()
+        if (interfaceMark) {
+            val fatherNode = ClassNode()
+            fatherNode.visit(
+                Opcodes.V1_8,
+                Opcodes.ACC_PUBLIC + Opcodes.ACC_ABSTRACT + Opcodes.ACC_INTERFACE,
+                fatherOfJava,
+                null,
+                "java/lang/Object",
+                null
+            )
+            addTrashClass(fatherNode)
+        }
         Logger.info("    Added $count watermarks")
     }
 

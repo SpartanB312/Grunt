@@ -6,7 +6,7 @@ import net.spartanb312.grunt.config.Configs.isExcluded
 import net.spartanb312.grunt.config.Configs.isMixinClass
 import net.spartanb312.grunt.config.Configs.saveToFile
 import net.spartanb312.grunt.config.Configs.shouldRemove
-import net.spartanb312.grunt.process.hierarchy.FastHierarchy
+import net.spartanb312.grunt.process.hierarchy.Hierarchy
 import net.spartanb312.grunt.utils.corruptCRC32
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.ClassReader
@@ -24,6 +24,12 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
     val libraries = mutableMapOf<String, ClassNode>()
     val resources = mutableMapOf<String, ByteArray>()
     val trashClasses = mutableMapOf<String, ClassNode>()
+
+    val allClasses
+        get() = mutableListOf<ClassNode>().apply {
+            addAll(classes.values)
+            addAll(libraries.values)
+        }
 
     val nonExcluded get() = classes.filter { !it.key.isExcluded }.values
     val mixinClasses get() = classes.filter { it.key.isMixinClass }.values
@@ -73,8 +79,9 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
 
     fun dumpJar(targetFile: String) = ZipOutputStream(File(targetFile).outputStream()).apply {
         Logger.info("Building hierarchies...")
-        val hierarchy = FastHierarchy(this@ResourceCache, true)
+        val hierarchy = Hierarchy(this@ResourceCache)
         hierarchy.build()
+        hierarchy.printMissing()
         if (Configs.Settings.corruptOutput) {
             Logger.info("Corrupting output...")
             corruptCRC32()
@@ -84,13 +91,13 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         for (classNode in classes.values) {
             if (classNode.name == "module-info" || classNode.name.shouldRemove) continue
             val byteArray = try {
-                ClassDumper(this@ResourceCache, hierarchy, true).apply {
+                ClassDumper(this@ResourceCache, hierarchy, false).apply {
                     classNode.accept(this)
                 }.toByteArray()
             } catch (ignore: Exception) {
                 Logger.error("Failed to dump class ${classNode.name}. Force use COMPUTE_MAXS")
                 try {
-                    ClassDumper(this@ResourceCache, hierarchy, false).apply {
+                    ClassDumper(this@ResourceCache, hierarchy, true).apply {
                         classNode.accept(this)
                     }.toByteArray()
                 } catch (exception: Exception) {

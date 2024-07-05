@@ -60,7 +60,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                     .forEach { insnNode ->
                         if (insnNode is MethodInsnNode && (0..99).random() < rate) {
                             val handle = Handle(
-                                if (insnNode.opcode == Opcodes.INVOKESPECIAL) 7 else 6,
+                                Opcodes.H_INVOKESTATIC,
                                 classNode.name,
                                 bootstrapName,
                                 MethodType.methodType(
