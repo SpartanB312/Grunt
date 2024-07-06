@@ -20,7 +20,7 @@ import org.objectweb.asm.tree.MethodNode
 object FloatingPointEncryptTransformer : Transformer("FloatingPointEncrypt", Category.Renaming) {
 
     private val times by setting("Intensity", 1)
-    private val exclusion by setting("Exclusions", listOf())
+    private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
         Logger.info(" - Encrypting floating point numbers...")

@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom
 object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encryption) {
 
     private val times by setting("Intensity", 1)
-    private val exclusion by setting("Exclusions", listOf())
+    private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
         Logger.info(" - Encrypting integer numbers...")

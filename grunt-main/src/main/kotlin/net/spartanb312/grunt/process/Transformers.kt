@@ -20,6 +20,7 @@ object Transformers : Collection<Transformer> by mutableListOf(
     NumberEncryptTransformer,
     FloatingPointEncryptTransformer,
     StringEqualsRedirectTransformer,
+    ArithmeticEncryptTransformer,
     FieldRedirectTransformer,
     MethodRedirectTransformer,
     NativeCandidateTransformer,

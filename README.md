@@ -1,16 +1,19 @@
-# Grunt Reborn
+# Gruntpocalypse
 
-Grunt Reborn is a continuation of Grunt project witch is a free and open source lightweight obfuscator.
+Gruntpocalypse (Grunt Reborn) is a continuation of Grunt project.
 
-Some ideas are from ESkid and other obfuscator, and be presented with refined version.
+This is a free and open source lightweight obfuscator aiming for stability and versatility.
+
+Some ideas are from other obfuscator, and be presented with refined version.
 
 Discord server link: https://discord.gg/ysB2fMfeYW
 
 ## Features
 
-Notice: Many features from my private obfuscator Guardian (Made in 2022) are experimental which are unstable.
+If you encounter any compatibility issues, please raise an issue on GitHub.
 
-If you encounter any compatibility issues, please raise an issue on GitHub. By the way, I appended the stability level on each feature. If you encountered unstable situation. You can turn off the low stability-level features.
+By the way, I appended the stability level on each feature. If you encountered unstable situation. You can turn off the
+low stability-level features.
 
 The reborn project is under development. Here is the feature TODO list.
 
@@ -20,7 +23,7 @@ Stability level: [1]=Unstable [5]=Stable
 
 * [X] [5]ClassRename
 * [X] [5]FieldRename
-* [X] [4]MethodRename
+* [X] [5]MethodRename
 * [X] [5]LocalVarRename
 
 ### Minecraft:
@@ -30,7 +33,7 @@ Stability level: [1]=Unstable [5]=Stable
 
 ### Encrypt:
 
-* [ ] [4]ArithmeticEncrypt
+* [X] [4]ArithmeticEncrypt
 * [X] [5]NumberEncrypt
 * [X] [5]FloatingPointEncrypt
 * [X] [5]StringEncrypt
@@ -40,8 +43,7 @@ Stability level: [1]=Unstable [5]=Stable
 * [X] [4]MethodCallRedirect
 * [X] [4]FieldCallRedirect (Known as Scramble)
 * [X] [5]StringEqualsRedirect
-* [ ] [0]InvokeDynamic
-* [ ] [2]ShuffleUtils
+* [X] [5]InvokeDynamic
 
 ### Optimization:
 
@@ -53,7 +55,6 @@ Stability level: [1]=Unstable [5]=Stable
 
 ### Miscellaneous:
 
-* [ ] [0]ClassLoader
 * [X] [5]Watermark
 * [X] [5]NativeCandidate
 * [X] [5]ShuffleMembers
@@ -64,10 +65,7 @@ Stability level: [1]=Unstable [5]=Stable
 
 ### ControlFlow:
 
-* [ ] [0]BlockSplit
-* [ ] [0]LookupSwitch
-* [ ] [0]ReplaceGoto
-* [ ] [0]TableSwitch
+* [ ] [0]ImplicitJump
 
 ## License: GNU General Public License 3.0
 

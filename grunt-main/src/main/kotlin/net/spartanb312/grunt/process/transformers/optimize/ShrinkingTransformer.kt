@@ -18,12 +18,11 @@ object ShrinkingTransformer : Transformer("Shrinking", Category.Optimization) {
     private val removeInnerClass by setting("RemoveInnerClass", true)
     private val removeUnusedLabel by setting("RemoveUnusedLabel", true)
     private val removeNOP by setting("RemoveNOP", false) // May cause some bugs in Minecraft Forge Mod
-
-    private val exclusions by setting("Exclusions", listOf())
+    private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
         Logger.info(" - Shrinking classes...")
-        val nonExcluded = nonExcluded.filter { it.name.isNotExcludedIn(exclusions) }
+        val nonExcluded = nonExcluded.filter { it.name.isNotExcludedIn(exclusion) }
         if (removeInnerClass) {
             val innerClassCount = count {
                 nonExcluded.forEach { classNode ->

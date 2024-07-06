@@ -1,9 +1,11 @@
 package net.spartanb312.grunt.process.transformers.optimize
 
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isEnum
+import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.MethodInsnNode
@@ -14,11 +16,13 @@ import org.objectweb.asm.tree.MethodInsnNode
  */
 object EnumOptimizeTransformer : Transformer("EnumOptimize", Category.Optimization) {
 
+    private val exclusion by setting("Exclusion", listOf())
+
     override fun ResourceCache.transform() {
         Logger.info(" - Optimizing enums...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { it.isEnum }
+                .filter { it.isEnum && !it.name.isExcludedIn(exclusion) }
                 .forEach { classNode ->
                     val desc = "[L${classNode.name};"
                     val valuesMethod = classNode.methods.firstOrNull {

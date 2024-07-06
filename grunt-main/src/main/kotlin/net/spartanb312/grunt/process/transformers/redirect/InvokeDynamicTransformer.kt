@@ -5,14 +5,11 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
-import net.spartanb312.grunt.utils.Counter
+import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
-import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.logging.Logger
-import net.spartanb312.grunt.utils.massiveBlankString
-import net.spartanb312.grunt.utils.massiveString
 import org.objectweb.asm.Handle
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
@@ -32,12 +29,13 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
 
     private val rate by setting("ReplacePercentage", 10)
     private val massiveRandom by setting("MassiveRandomBlank", true)
+    private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
         Logger.info(" - Replacing invokes to InvokeDynamic...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.isInterface && it.version >= Opcodes.V1_7 }
+                .filter { !it.isInterface && it.version >= Opcodes.V1_7 && !it.name.isExcludedIn(exclusion) }
                 .forEach { classNode ->
                     val bootstrapName = if (massiveRandom) massiveBlankString else massiveString
                     val decryptName = if (massiveRandom) massiveBlankString else massiveString

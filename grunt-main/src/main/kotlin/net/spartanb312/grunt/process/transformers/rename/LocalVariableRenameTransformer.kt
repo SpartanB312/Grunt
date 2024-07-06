@@ -5,6 +5,7 @@ import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
+import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
 
 /**
@@ -15,11 +16,14 @@ object LocalVariableRenameTransformer : Transformer("LocalVariableRename", Categ
 
     private val dictionary by setting("Dictionary", "Alphabet")
     private val thisRef by setting("ThisReference", false)
+    private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming local variables...")
         val count = count {
-            nonExcluded.forEach { classNode ->
+            nonExcluded.asSequence()
+                .filter { !it.name.isExcludedIn(exclusion) }
+                .forEach { classNode ->
                 for (methodNode in classNode.methods) {
                     val dic = NameGenerator.getByName(dictionary)
                     methodNode.localVariables?.forEach {

@@ -22,7 +22,7 @@ object NativeCandidateTransformer : Transformer("NativeCandidate", Category.Misc
 
     val nativeAnnotation by setting("NativeAnnotation", "Lnet/spartanb312/example/Native;")
     private val upCallLimit by setting("UpCallLimit", 0)
-    private val exclusions by setting("Exclusions", listOf())
+    private val exclusion by setting("Exclusion", listOf())
 
     val appendedMethods = mutableSetOf<MethodNode>() // from other place
 
@@ -32,7 +32,7 @@ object NativeCandidateTransformer : Transformer("NativeCandidate", Category.Misc
         nonExcluded.asSequence()
             .filter {
                 !it.isInterface && !it.isAnnotation && !it.isEnum && !it.isAbstract
-                        && it.name.isNotExcludedIn(exclusions)
+                        && it.name.isNotExcludedIn(exclusion)
             }.forEach { classNode ->
                 classNode.methods.forEach { methodNode ->
                     if (!appendedMethods.contains(methodNode)) {

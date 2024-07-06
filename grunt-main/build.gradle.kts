@@ -11,7 +11,7 @@ repositories {
 
 val kotlinVersion = "1.9.21"
 val kotlinxCoroutineVersion = "1.7.3"
-val asmVersion = "9.4"
+val asmVersion = "9.7"
 
 val library: Configuration by configurations.creating
 

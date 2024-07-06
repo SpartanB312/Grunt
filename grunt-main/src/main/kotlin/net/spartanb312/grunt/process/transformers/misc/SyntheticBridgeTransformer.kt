@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.process.transformers.misc
 
+import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.Counter
@@ -7,6 +8,7 @@ import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.hasAnnotations
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isInitializer
+import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
@@ -19,13 +21,17 @@ import org.objectweb.asm.tree.FieldNode
  */
 object SyntheticBridgeTransformer : Transformer("SyntheticBridge", Category.Miscellaneous) {
 
+    private val exclusion by setting("Exclusion", listOf())
+
     override fun ResourceCache.transform() {
         Logger.info(" - Inserting synthetic/bridge...")
         val count = count {
-            nonExcluded.forEach { classNode ->
-                pushSynthetic(classNode)
-                pushBridge(classNode)
-            }
+            nonExcluded.asSequence()
+                .filter { !it.name.isExcludedIn(exclusion) }
+                .forEach { classNode ->
+                    pushSynthetic(classNode)
+                    pushBridge(classNode)
+                }
         }.get()
         Logger.info("    Inserted $count synthetic/bridge")
     }

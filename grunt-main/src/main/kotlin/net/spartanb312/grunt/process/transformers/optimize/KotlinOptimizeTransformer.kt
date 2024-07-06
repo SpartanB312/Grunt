@@ -31,8 +31,8 @@ object KotlinOptimizeTransformer : Transformer("KotlinOptimizer", Category.Optim
         )
     )
     private val replaceLdc by setting("ReplaceLdc", true)
-    private val intrinsicsExclusion by setting("IntrinsicsExclusions", listOf())
-    private val metadataExclusion by setting("MetadataExclusions", listOf())
+    private val intrinsicsExclusion by setting("IntrinsicsExclusion", listOf())
+    private val metadataExclusion by setting("MetadataExclusion", listOf())
 
     override fun ResourceCache.transform() {
         if (removeIntrinsics || removeIntrinsics) Logger.info(" - Optimizing kotlin classes...")

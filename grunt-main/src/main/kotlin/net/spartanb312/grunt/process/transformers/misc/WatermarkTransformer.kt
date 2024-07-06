@@ -8,6 +8,7 @@ import net.spartanb312.grunt.utils.builder.LDC
 import net.spartanb312.grunt.utils.builder.method
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isInterface
+import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AnnotationNode
@@ -42,12 +43,13 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
     private val versions by setting("Versions", listOf("114514", "1919810", "69420"))
     private val interfaceMark by setting("InterfaceMark", false)
     private val fatherOfJava by setting("FatherOfJava", "jvav/lang/YuShengJun")
+    private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
         Logger.info(" - Adding watermarks...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.isInterface }
+                .filter { !it.isInterface && !it.name.isExcludedIn(exclusion) }
                 .forEach { classNode ->
                     if (interfaceMark) {
                         classNode.interfaces = classNode.interfaces ?: mutableListOf()

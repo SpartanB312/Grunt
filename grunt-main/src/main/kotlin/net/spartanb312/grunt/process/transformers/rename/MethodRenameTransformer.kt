@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureTimeMillis
 
 /**
- * Renaming methods with FunctionalInterface Invokedynamic MultiSource check.
+ * Renaming methods with FunctionalInterface InvokeDynamic MultiSource check.
  * Last update on 2024/07/05
  */
 object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) {
@@ -93,11 +93,10 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
                                                         if (check.name == methodNode.name && check.desc == methodNode.desc) {
                                                             // Skip multi origin methods
                                                             shouldApply = false
-                                                            //multiSource.add("${parent.classNode.name}.${methodNode.name}${methodNode.desc}")
                                                         }
                                                     }
                                                 }
-                                            }
+                                            } else shouldApply = false
                                         }
 
                                         val childKey = combine(child.classNode.name, methodNode.name, methodNode.desc)
