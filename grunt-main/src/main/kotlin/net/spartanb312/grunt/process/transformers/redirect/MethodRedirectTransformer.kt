@@ -7,6 +7,7 @@ import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransforme
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.getCallingMethodNodeAndOwner
+import net.spartanb312.grunt.utils.extensions.isPrivate
 import net.spartanb312.grunt.utils.extensions.setPublic
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
@@ -45,13 +46,13 @@ object MethodRedirectTransformer : Transformer("MethodRedirect", Category.Redire
                                     val callingOwner = pair.first
                                     val callingMethod = pair.second
                                     if (nonExcluded.contains(callingOwner)) {
+                                        var shouldOuter = generateOuterClass
                                         // Set accesses
-                                        if (generateOuterClass) {
-                                            callingMethod.setPublic()
-                                            callingOwner.setPublic()
+                                        if (shouldOuter) {
+                                            if(callingMethod.isPrivate || callingMethod.isPrivate) shouldOuter = false
                                         }
                                         val newName = "${it.name}_redirected_${getRandomString(10)}"
-                                        val newMethod = it.genMethod(newName, generateOuterClass)
+                                        val newMethod = it.genMethod(newName, shouldOuter)
                                         if (newMethod != null) {
                                             it.name = newName
                                             if (it.opcode == Opcodes.INVOKEVIRTUAL) {
@@ -77,7 +78,7 @@ object MethodRedirectTransformer : Transformer("MethodRedirect", Category.Redire
                                                 }
                                             }
 
-                                            if (generateOuterClass) {
+                                            if (shouldOuter) {
                                                 val newOwner = newClasses.getOrPut(classNode) {
                                                     ClassNode().apply {
                                                         visit(

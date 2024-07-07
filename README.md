@@ -40,8 +40,8 @@ Stability level: [1]=Unstable [5]=Stable
 
 ### Redirect:
 
-* [X] [4]MethodCallRedirect
-* [X] [4]FieldCallRedirect (Known as Scramble)
+* [X] [5]MethodCallRedirect (MethodScramble)
+* [X] [5]FieldCallRedirect (FieldScramble)
 * [X] [5]StringEqualsRedirect
 * [X] [5]InvokeDynamic
 
@@ -65,7 +65,8 @@ Stability level: [1]=Unstable [5]=Stable
 
 ### ControlFlow:
 
-* [ ] [0]ImplicitJump
+* [X] [4]ImplicitJump
+* [ ] [0]TryCatchWrapper (Provisional)
 
 ## License: GNU General Public License 3.0
 

@@ -30,6 +30,7 @@ object MixinFieldRenameTransformer : Transformer("MixinFieldRename", Category.Mi
             return
         }
 
+        Logger.info("    Generating mappings for mixin fields...")
         val dictionary = NameGenerator.getByName(dictionary)
         val mappings = HashMap<String, String>()
         val fields: MutableList<FieldNode> = ArrayList()

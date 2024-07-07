@@ -29,6 +29,7 @@ object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming fields...")
+        Logger.info("    Generating mappings for fields...")
 
         val dictionary = NameGenerator.getByName(dictionary)
         val mappings = HashMap<String, String>()

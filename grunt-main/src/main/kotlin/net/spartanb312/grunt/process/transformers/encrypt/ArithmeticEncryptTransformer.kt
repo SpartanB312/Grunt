@@ -10,6 +10,7 @@ import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.MethodNode
 import kotlin.random.Random
 
@@ -27,9 +28,7 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
                     classNode.methods.asSequence()
                         .filter { !it.isAbstract && !it.isNative }
                         .forEach { methodNode: MethodNode ->
-                            if (encryptArithmetic(methodNode)) {
-                                Logger.info("Modified ${classNode.name}.${methodNode.name}")
-                            }
+                            encryptArithmetic(methodNode)
                         }
                 }
         }.get()
@@ -90,92 +89,22 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
                         }
 
                         insn.opcode == Opcodes.INEG -> {
-                            if (Random.nextBoolean()) {
-                                ICONST_M1
-                                IXOR
-                                ICONST_1
-                                IADD
-                            } else {
-                                ICONST_1
-                                ISUB
-                                ICONST_M1
-                                IXOR
-                            }
+                            +generateINEG()
                             modified = true
                         }
 
                         insn.opcode == Opcodes.IXOR -> {
-                            when (Random.nextInt(3)) {
-                                0 -> {
-                                    DUP2
-                                    IOR
-                                    DUP_X2
-                                    POP
-                                    IAND
-                                    ISUB
-                                }
-
-                                1 -> {
-                                    DUP2
-                                    ICONST_M1
-                                    IXOR
-                                    IAND
-                                    DUP_X2
-                                    POP
-                                    SWAP
-                                    ICONST_M1
-                                    IXOR
-                                    IAND
-                                    IOR
-                                }
-
-                                2 -> {
-                                    DUP2
-                                    IOR
-                                    DUP_X2
-                                    POP
-                                    ICONST_M1
-                                    IXOR
-                                    SWAP
-                                    ICONST_M1
-                                    IXOR
-                                    IOR
-                                    IAND
-                                }
-
-                                else -> {
-                                    DUP2
-                                    IOR
-                                    DUP_X2
-                                    POP
-                                    IAND
-                                    ICONST_M1
-                                    IXOR
-                                    IAND
-                                }
-                            }
+                            +generateIXOR()
                             modified = true
                         }
 
                         insn.opcode == Opcodes.IOR -> {
-                            DUP_X1
-                            ICONST_M1
-                            IXOR
-                            IAND
-                            IADD
+                            +generateIOR()
                             modified = true
                         }
 
                         insn.opcode == Opcodes.IAND -> {
-                            SWAP
-                            DUP_X1
-                            ICONST_M1
-                            IXOR
-                            IOR
-                            SWAP
-                            ICONST_M1
-                            IXOR
-                            ISUB
+                            +generateIAND()
                             modified = true
                         }
 
@@ -190,6 +119,96 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
         }
         methodNode.instructions = insnList
         return modified
+    }
+
+    fun generateINEG(type: Int = Random.nextInt(2)): InsnList = insnList {
+        when (type) {
+            0 -> {
+                ICONST_M1
+                IXOR
+                ICONST_1
+                IADD
+            }
+
+            else -> {
+                ICONST_1
+                ISUB
+                ICONST_M1
+                IXOR
+            }
+        }
+    }
+
+    fun generateIAND(): InsnList = insnList {
+        SWAP
+        DUP_X1
+        ICONST_M1
+        IXOR
+        IOR
+        SWAP
+        ICONST_M1
+        IXOR
+        ISUB
+    }
+
+    fun generateIOR(): InsnList = insnList {
+        DUP_X1
+        ICONST_M1
+        IXOR
+        IAND
+        IADD
+    }
+
+    fun generateIXOR(type: Int = Random.nextInt(3)): InsnList = insnList {
+        when (type) {
+            0 -> {
+                DUP2
+                IOR
+                DUP_X2
+                POP
+                IAND
+                ISUB
+            }
+
+            1 -> {
+                DUP2
+                ICONST_M1
+                IXOR
+                IAND
+                DUP_X2
+                POP
+                SWAP
+                ICONST_M1
+                IXOR
+                IAND
+                IOR
+            }
+
+            2 -> {
+                DUP2
+                IOR
+                DUP_X2
+                POP
+                ICONST_M1
+                IXOR
+                SWAP
+                ICONST_M1
+                IXOR
+                IOR
+                IAND
+            }
+
+            else -> {
+                DUP2
+                IOR
+                DUP_X2
+                POP
+                IAND
+                ICONST_M1
+                IXOR
+                IAND
+            }
+        }
     }
 
 }

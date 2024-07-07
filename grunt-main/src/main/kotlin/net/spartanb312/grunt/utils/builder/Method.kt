@@ -67,6 +67,9 @@ class InsnListBuilder(val insnList: InsnList) {
     operator fun AbstractInsnNode.unaryPlus() = insnList.add(this)
 
     @InsnBuilder
+    operator fun InsnList.unaryPlus() = insnList.add(this)
+
+    @InsnBuilder
     operator fun Int.unaryPlus() = +InsnNode(this)
 
     fun getLabelNodes(objects: Array<Any?>): Array<Any?> {
@@ -245,6 +248,9 @@ val InsnListBuilder.I2S get() = insn(Opcodes.I2S)
 
 @InsnBuilder
 val InsnListBuilder.THIS get() = ALOAD(0)
+
+@InsnBuilder
+val InsnListBuilder.NOP get() = insn(Opcodes.NOP)
 
 @InsnBuilder
 infix fun InsnListBuilder.GOTO(labelNode: LabelNode) = +JumpInsnNode(GOTO, labelNode)

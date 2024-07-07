@@ -5,6 +5,7 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
+import net.spartanb312.grunt.process.transformers.flow.ImplicitJumpTransformer
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.isAbstract
@@ -41,8 +42,14 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                     val decryptName = if (massiveRandom) massiveBlankString else massiveString
                     val decryptValue = Random.nextInt(0x8, 0x800)
                     if (shouldApply(classNode, bootstrapName, decryptValue)) {
-                        classNode.methods.add(createDecryptMethod(decryptName, decryptValue))
-                        classNode.methods.add(createBootstrap(classNode.name, bootstrapName, decryptName))
+                        val decrypt = createDecryptMethod(decryptName, decryptValue)
+                        val bsm = createBootstrap(classNode.name, bootstrapName, decryptName)
+                        if (ImplicitJumpTransformer.enabled) {
+                            ImplicitJumpTransformer.processMethodNode(decrypt)
+                            ImplicitJumpTransformer.processMethodNode(bsm)
+                        }
+                        classNode.methods.add(decrypt)
+                        classNode.methods.add(bsm)
                     }
                 }
         }.get()

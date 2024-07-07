@@ -31,6 +31,7 @@ object MixinClassRenameTransformer : Transformer("MixinClassRename", Category.Mi
             return
         }
 
+        Logger.info("    Generating mappings for mixin classes...")
         val targetMixinPackage = targetMixinPackage.removeSuffix("/") + "/"
         val dictionary = NameGenerator.getByName(mixinDictionary)
         val mappings: MutableMap<String, String> = HashMap()

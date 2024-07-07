@@ -47,6 +47,7 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
         val indyBlacklist = buildIndyBlacklist()
         Logger.info("    Took $buildTime ms to build ${hierarchy.size} hierarchies")
 
+        Logger.info("    Generating mappings for methods...")
         val dictionary = NameGenerator.getByName(dictionary)
         val mappings = ConcurrentHashMap<String, String>()
         val count = count {

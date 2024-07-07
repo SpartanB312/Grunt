@@ -5,6 +5,8 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
 import net.spartanb312.grunt.utils.*
+import net.spartanb312.grunt.utils.builder.*
+import net.spartanb312.grunt.utils.extensions.isPrivate
 import net.spartanb312.grunt.utils.extensions.setPublic
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
@@ -19,7 +21,7 @@ import org.objectweb.asm.tree.VarInsnNode
 
 /**
  * Scramble field calls
- * Last update on 2024/06/28
+ * Last update on 2024/07/08
  */
 object FieldRedirectTransformer : Transformer("FieldRedirect", Category.Redirect) {
 
@@ -60,7 +62,9 @@ object FieldRedirectTransformer : Transformer("FieldRedirect", Category.Redirect
                                     var shouldOuter = generateOuterClass
                                     val callingField =
                                         classes[it.owner]?.fields?.find { f -> f.name == it.name && f.desc == it.desc }
-                                    if (callingField != null) callingField.setPublic() else shouldOuter = false
+                                    if (callingField != null) {
+                                        if (callingField.isPrivate) shouldOuter = false
+                                    } else shouldOuter = false
                                     val genMethod = when {
                                         it.opcode == Opcodes.GETSTATIC && redirectGetStatic ->
                                             genMethod(
@@ -155,76 +159,69 @@ object FieldRedirectTransformer : Transformer("FieldRedirect", Category.Redirect
     }
 
     private fun genMethod(field: FieldInsnNode, methodName: String): MethodNode {
+        val access = Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC
         return when (field.opcode) {
-            Opcodes.GETFIELD -> MethodNode(
-                Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC,
+            Opcodes.GETFIELD -> method(
+                access,
                 methodName,
                 "(L${field.owner};)${field.desc}",
                 null,
                 null
-            ).apply {
-                visitCode()
-                instructions = InsnList().apply {
-                    add(VarInsnNode(Opcodes.ALOAD, 0))
-                    add(FieldInsnNode(Opcodes.GETFIELD, field.owner, field.name, field.desc))
-                    add(InsnNode(desc.getReturnType()))
+            ) {
+                InsnList {
+                    ALOAD(0)
+                    GETFIELD(field.owner, field.name, field.desc)
+                    INSN(methodNode.desc.getReturnType())
                 }
-                visitEnd()
             }
 
-            Opcodes.PUTFIELD -> MethodNode(
-                Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC,
+            Opcodes.PUTFIELD -> method(
+                access,
                 methodName,
                 "(L${field.owner};${field.desc})V",
                 null,
                 null,
-            ).apply {
-                visitCode()
-                instructions = InsnList().apply {
+            ) {
+                InsnList {
                     var stack = 0
-                    Type.getArgumentTypes(desc).forEach {
-                        add(VarInsnNode(it.getLoadType(), stack))
+                    Type.getArgumentTypes(methodNode.desc).forEach {
+                        VAR(it.getLoadType(), stack)
                         stack += it.size
                     }
-                    add(FieldInsnNode(Opcodes.PUTFIELD, field.owner, field.name, field.desc))
-                    add(InsnNode(Opcodes.RETURN))
+                    PUTFIELD(field.owner, field.name, field.desc)
+                    RETURN
                 }
-                visitEnd()
             }
 
-            Opcodes.GETSTATIC -> MethodNode(
-                Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC,
+            Opcodes.GETSTATIC -> method(
+                access,
                 methodName,
                 "()${field.desc}",
                 null,
                 null
-            ).apply {
-                visitCode()
-                instructions = InsnList().apply {
-                    add(FieldInsnNode(Opcodes.GETSTATIC, field.owner, field.name, field.desc))
-                    add(InsnNode(desc.getReturnType()))
+            ) {
+                InsnList {
+                    GETSTATIC(field.owner, field.name, field.desc)
+                    INSN(methodNode.desc.getReturnType())
                 }
-                visitEnd()
             }
 
-            Opcodes.PUTSTATIC -> MethodNode(
-                Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC,
+            Opcodes.PUTSTATIC -> method(
+                access,
                 methodName,
                 "(${field.desc})V",
                 null,
                 null,
-            ).apply {
-                visitCode()
-                instructions = InsnList().apply {
+            ) {
+                InsnList {
                     var stack = 0
-                    Type.getArgumentTypes(desc).forEach {
-                        add(VarInsnNode(it.getLoadType(), stack))
+                    Type.getArgumentTypes(methodNode.desc).forEach {
+                        VAR(it.getLoadType(), stack)
                         stack += it.size
                     }
-                    add(FieldInsnNode(Opcodes.PUTSTATIC, field.owner, field.name, field.desc))
-                    add(InsnNode(Opcodes.RETURN))
+                    PUTSTATIC(field.owner, field.name, field.desc)
+                    RETURN
                 }
-                visitEnd()
             }
 
             else -> throw Exception("Unsupported")
