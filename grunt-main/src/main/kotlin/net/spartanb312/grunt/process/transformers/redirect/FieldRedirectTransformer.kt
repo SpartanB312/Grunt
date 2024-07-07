@@ -104,7 +104,7 @@ object FieldRedirectTransformer : Transformer("FieldRedirect", Category.Redirect
                                                 visit(
                                                     Opcodes.V1_6,
                                                     Opcodes.ACC_PUBLIC,
-                                                    "${classNode.name}\$Static",
+                                                    "${classNode.name}\$FieldStatic",
                                                     null,
                                                     "java/lang/Object",
                                                     null

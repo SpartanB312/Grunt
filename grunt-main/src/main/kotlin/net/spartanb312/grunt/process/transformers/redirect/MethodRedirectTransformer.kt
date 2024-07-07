@@ -84,7 +84,7 @@ object MethodRedirectTransformer : Transformer("MethodRedirect", Category.Redire
                                                         visit(
                                                             classNode.version,
                                                             Opcodes.ACC_PUBLIC,
-                                                            "${classNode.name}\$Static",
+                                                            "${classNode.name}\$MethodStatic",
                                                             null,
                                                             "java/lang/Object",
                                                             null
