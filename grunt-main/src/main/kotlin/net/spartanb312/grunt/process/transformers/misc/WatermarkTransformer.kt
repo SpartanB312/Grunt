@@ -7,6 +7,7 @@ import net.spartanb312.grunt.utils.builder.ARETURN
 import net.spartanb312.grunt.utils.builder.LDC
 import net.spartanb312.grunt.utils.builder.method
 import net.spartanb312.grunt.utils.count
+import net.spartanb312.grunt.utils.extensions.hasAnnotations
 import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
@@ -38,7 +39,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
 
     private val fieldMark by setting("FieldMark", true)
     private val methodMark by setting("MethodMark", true)
-    private val annotationMark by setting("AnnotationMark", true)
+    private val annotationMark by setting("AnnotationMark", false)
     private val annotations by setting("Annotations", listOf("ProtectedByGrunt", "JvavMetadata"))
     private val versions by setting("Versions", listOf("114514", "1919810", "69420"))
     private val interfaceMark by setting("InterfaceMark", false)
@@ -143,9 +144,8 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                         }
                         add(1)
                     }
-                    if (annotationMark) {
-                        val annotation =
-                            AnnotationNode("Lnet/spartanb312/grunt/${annotations.randomOrNull() ?: "ProtectedByGrunt"};")
+                    if (annotationMark && !classNode.hasAnnotations) {
+                        val annotation = AnnotationNode("Lnet/spartanb312/grunt/${annotations.randomOrNull() ?: "ProtectedByGrunt"};")
                         annotation.visit("version", versions.random())
                         annotation.visit("mapping", "jvav/lang/ZhangHaoYangException")
                         annotation.visit("d1", markers.random())
