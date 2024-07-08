@@ -90,14 +90,16 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         Logger.info("Writing classes...")
         for (classNode in classes.values) {
             if (classNode.name == "module-info" || classNode.name.shouldRemove) continue
+            val classInfo = hierarchy.getClassInfo(classNode)
+            val useComputeMax = Configs.Settings.useComputeMax || classInfo.missingDependencies || classNode.isExcluded
             val byteArray = try {
-                ClassDumper(this@ResourceCache, hierarchy, false).apply {
+                ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {
                     classNode.accept(this)
                 }.toByteArray()
             } catch (ignore: Exception) {
-                Logger.error("Failed to dump class ${classNode.name}. Force use COMPUTE_MAXS")
+                Logger.error("Failed to dump class ${classNode.name}. Trying ${if (useComputeMax) "COMPUTE_FRAMES" else "COMPUTE_MAXS"}")
                 try {
-                    ClassDumper(this@ResourceCache, hierarchy, true).apply {
+                    ClassDumper(this@ResourceCache, hierarchy, !useComputeMax).apply {
                         classNode.accept(this)
                     }.toByteArray()
                 } catch (exception: Exception) {

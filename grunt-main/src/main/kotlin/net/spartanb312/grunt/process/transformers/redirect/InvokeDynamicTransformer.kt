@@ -29,7 +29,7 @@ import kotlin.random.Random
 object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect) {
 
     private val rate by setting("ReplacePercentage", 10)
-    private val massiveRandom by setting("MassiveRandomBlank", true)
+    private val massiveRandom by setting("MassiveRandomBlank", false)
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {

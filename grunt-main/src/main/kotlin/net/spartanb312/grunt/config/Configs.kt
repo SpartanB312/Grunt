@@ -20,7 +20,7 @@ object Configs {
         val mixinPackages by setting("MixinPackage", listOf("net/spartanb312/client/mixins/"))
         val generateRemap by setting("DumpMappings", true)
         val remapOutput by setting("MappingsOutput", "mappings.json")
-        val parallel by setting("ParallelProcessing", false)
+        val useComputeMax by setting("UseComputeMax", false)
         val customDictionary by setting("CustomDictionary", listOf())
         val dictionaryStartIndex by setting("DictionaryStartIndex", 0)
         val corruptOutput by setting("CorruptOutput", false)
