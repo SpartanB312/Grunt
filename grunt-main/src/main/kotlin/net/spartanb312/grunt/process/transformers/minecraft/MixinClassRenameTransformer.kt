@@ -8,7 +8,7 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.isNotExcludedIn
+import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
 import java.nio.charset.StandardCharsets
 
@@ -37,7 +37,7 @@ object MixinClassRenameTransformer : Transformer("MixinClassRename", Category.Mi
         val mappings: MutableMap<String, String> = HashMap()
         val count = count {
             mixinClasses.forEach {
-                if (it.name.isNotExcludedIn(exclusion)) {
+                if (it.name.notInList(exclusion)) {
                     mappings[it.name] = targetMixinPackage + dictionary.nextName()
                     add()
                 }

@@ -37,6 +37,8 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
     val classMappings = mutableMapOf<String, String>()
     private val mappingsJsonObject = JsonObject()
 
+    fun getMapping(name: String): String = classMappings.getOrElse(name) { name }
+
     fun applyRemap(type: String, mappings: Map<String, String>, remapClassNames: Boolean = false) {
         if (Configs.Settings.generateRemap) {
             val obj = JsonObject()

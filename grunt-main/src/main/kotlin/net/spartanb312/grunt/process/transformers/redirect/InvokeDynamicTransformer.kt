@@ -36,7 +36,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
         Logger.info(" - Replacing invokes to InvokeDynamic...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.isInterface && it.version >= Opcodes.V1_7 && !it.name.isExcludedIn(exclusion) }
+                .filter { !it.isInterface && it.version >= Opcodes.V1_7 && getMapping(it.name).notInList(exclusion) }
                 .forEach { classNode ->
                     val bootstrapName = if (massiveRandom) massiveBlankString else massiveString
                     val decryptName = if (massiveRandom) massiveBlankString else massiveString

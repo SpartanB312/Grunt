@@ -5,8 +5,8 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.isExcludedIn
-import net.spartanb312.grunt.utils.isNotExcludedIn
+import net.spartanb312.grunt.utils.inList
+import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.nextBadKeyword
 import org.objectweb.asm.tree.ClassNode
@@ -39,14 +39,14 @@ object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
 
         val count = count {
             for (fieldNode in fields) {
-                if (fieldNode.name.isExcludedIn(excludedName)) continue
+                if (fieldNode.name.inList(excludedName)) continue
                 val name = malPrefix + dictionary.nextName()
                 val stack: Stack<ClassNode> = Stack()
                 stack.add(getOwner(fieldNode, classes))
                 while (stack.size > 0) {
                     val classNode = stack.pop()
                     val key = classNode.name + "." + fieldNode.name
-                    if (key.isNotExcludedIn(exclusion)) mappings[key] = name
+                    if (key.notInList(exclusion)) mappings[key] = name
                     classes.values.forEach {
                         if (it.superName == classNode.name || it.interfaces.contains(classNode.name)) stack.add(it)
                     }

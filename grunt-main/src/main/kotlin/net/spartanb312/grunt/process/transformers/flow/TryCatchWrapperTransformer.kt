@@ -5,8 +5,8 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.builder.insnList
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.tree.MethodNode
 
 /**
@@ -21,7 +21,7 @@ object TryCatchWrapperTransformer : Transformer("TryCatchWrapper", Category.Cont
         Logger.info(" - Wrapping jumps with try catch")
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.name.isExcludedIn(exclusion) }
+                .filter { it.name.notInList(exclusion) }
                 .forEach { classNode ->
                     classNode.methods.forEach { methodNode ->
                         add(processMethodNode(methodNode))

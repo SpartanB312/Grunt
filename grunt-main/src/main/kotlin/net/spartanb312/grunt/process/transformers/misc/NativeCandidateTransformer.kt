@@ -7,7 +7,7 @@ import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isAnnotation
 import net.spartanb312.grunt.utils.extensions.isEnum
 import net.spartanb312.grunt.utils.extensions.isInterface
-import net.spartanb312.grunt.utils.isNotExcludedIn
+import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.tree.FieldInsnNode
 import org.objectweb.asm.tree.InvokeDynamicInsnNode
@@ -32,7 +32,7 @@ object NativeCandidateTransformer : Transformer("NativeCandidate", Category.Misc
         nonExcluded.asSequence()
             .filter {
                 !it.isInterface && !it.isAnnotation && !it.isEnum && !it.isAbstract
-                        && it.name.isNotExcludedIn(exclusion)
+                        && it.name.notInList(exclusion)
             }.forEach { classNode ->
                 classNode.methods.forEach { methodNode ->
                     if (!appendedMethods.contains(methodNode)) {

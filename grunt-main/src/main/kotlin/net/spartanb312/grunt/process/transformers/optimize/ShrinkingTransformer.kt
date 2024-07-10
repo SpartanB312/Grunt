@@ -4,7 +4,7 @@ import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.isNotExcludedIn
+import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
@@ -22,7 +22,7 @@ object ShrinkingTransformer : Transformer("Shrinking", Category.Optimization) {
 
     override fun ResourceCache.transform() {
         Logger.info(" - Shrinking classes...")
-        val nonExcluded = nonExcluded.filter { it.name.isNotExcludedIn(exclusion) }
+        val nonExcluded = nonExcluded.filter { it.name.notInList(exclusion) }
         if (removeInnerClass) {
             val innerClassCount = count {
                 nonExcluded.forEach { classNode ->

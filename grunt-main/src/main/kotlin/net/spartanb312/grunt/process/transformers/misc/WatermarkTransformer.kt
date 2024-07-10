@@ -9,8 +9,8 @@ import net.spartanb312.grunt.utils.builder.method
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.hasAnnotations
 import net.spartanb312.grunt.utils.extensions.isInterface
-import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.ClassNode
@@ -50,7 +50,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
         Logger.info(" - Adding watermarks...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.isInterface && !it.name.isExcludedIn(exclusion) }
+                .filter { !it.isInterface && it.name.notInList(exclusion) }
                 .forEach { classNode ->
                     if (interfaceMark) {
                         classNode.interfaces = classNode.interfaces ?: mutableListOf()

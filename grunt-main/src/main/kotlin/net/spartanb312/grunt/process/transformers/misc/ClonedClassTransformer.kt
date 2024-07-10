@@ -3,8 +3,8 @@ package net.spartanb312.grunt.process.transformers.misc
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.tree.ClassNode
 
 /**
@@ -22,7 +22,7 @@ object ClonedClassTransformer : Transformer("ClonedClass", Category.Miscellaneou
 
     override fun ResourceCache.transform() {
         Logger.info(" - Cloning redundant classes...")
-        val workingRange = nonExcluded.filter { !it.name.isExcludedIn(exclusion) }
+        val workingRange = nonExcluded.filter { it.name.notInList(exclusion) }
         repeat(count) {
             val origin = workingRange.random()
             val cloneID = cloneNameMap.getOrPut(origin.name) { 0 }

@@ -35,6 +35,10 @@ object Configs {
         }
     }
 
+    fun resetConfig() {
+        configs.forEach { it }
+    }
+
     fun loadConfig(path: String) {
         val map = path.jsonMap
         configs.forEach {

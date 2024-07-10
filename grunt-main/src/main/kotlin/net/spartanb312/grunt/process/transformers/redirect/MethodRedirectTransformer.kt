@@ -8,7 +8,6 @@ import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.getCallingMethodNodeAndOwner
 import net.spartanb312.grunt.utils.extensions.isPrivate
-import net.spartanb312.grunt.utils.extensions.setPublic
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -36,11 +35,11 @@ object MethodRedirectTransformer : Transformer("MethodRedirect", Category.Redire
         val newClasses = mutableMapOf<ClassNode, ClassNode>() // Owner Companion
         val count = count {
             nonExcluded.asSequence()
-                .filter { it.name.isNotExcludedIn(excludedClasses) }
+                .filter { it.name.notInList(excludedClasses) }
                 .forEach { classNode ->
                     classNode.methods.toList().forEach { methodNode ->
                         methodNode.instructions.toList().forEach {
-                            if (it is MethodInsnNode && it.name.isNotExcludedIn(excludedMethodName)) {
+                            if (it is MethodInsnNode && it.name.notInList(excludedMethodName)) {
                                 val pair = it.getCallingMethodNodeAndOwner(this@transform)
                                 if (pair != null) {
                                     val callingOwner = pair.first
@@ -49,10 +48,15 @@ object MethodRedirectTransformer : Transformer("MethodRedirect", Category.Redire
                                         var shouldOuter = generateOuterClass
                                         // Set accesses
                                         if (shouldOuter) {
-                                            if(callingMethod.isPrivate || callingMethod.isPrivate) shouldOuter = false
+                                            if (callingMethod.isPrivate || callingMethod.isPrivate) shouldOuter = false
                                         }
                                         val newName = "${it.name}_redirected_${getRandomString(10)}"
-                                        val newMethod = it.genMethod(newName, shouldOuter)
+                                        val newMethod = it.genMethod(
+                                            newName,
+                                            callingMethod.signature,
+                                            callingMethod.exceptions.toTypedArray(),
+                                            shouldOuter
+                                        )
                                         if (newMethod != null) {
                                             it.name = newName
                                             if (it.opcode == Opcodes.INVOKEVIRTUAL) {
@@ -115,7 +119,12 @@ object MethodRedirectTransformer : Transformer("MethodRedirect", Category.Redire
         if (generateOuterClass) Logger.info("    Generated ${newClasses.size} outer classes")
     }
 
-    private fun MethodInsnNode.genMethod(methodName: String, outer: Boolean): MethodNode? {
+    private fun MethodInsnNode.genMethod(
+        methodName: String,
+        signature: String?,
+        exceptions: Array<String>?,
+        outer: Boolean
+    ): MethodNode? {
         return when (opcode) {
             Opcodes.INVOKESTATIC -> method(
                 (if (outer) Opcodes.ACC_PUBLIC else Opcodes.ACC_PRIVATE) + Opcodes.ACC_STATIC,

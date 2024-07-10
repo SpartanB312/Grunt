@@ -4,8 +4,8 @@ import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.tree.LineNumberNode
 
 /**
@@ -31,7 +31,7 @@ object SourceDebugRemoveTransformer : Transformer("SourceDebugRemove", Category.
         Logger.info(" - Removing/Editing debug information...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.name.isExcludedIn(exclusion) }
+                .filter { it.name.notInList(exclusion) }
                 .forEach { classNode ->
                     if (sourceDebug) {
                         if (renameSourceDebug) {

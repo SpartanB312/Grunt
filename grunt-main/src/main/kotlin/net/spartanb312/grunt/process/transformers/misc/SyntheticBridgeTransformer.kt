@@ -8,8 +8,8 @@ import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.hasAnnotations
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isInitializer
-import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
@@ -27,7 +27,7 @@ object SyntheticBridgeTransformer : Transformer("SyntheticBridge", Category.Misc
         Logger.info(" - Inserting synthetic/bridge...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.name.isExcludedIn(exclusion) }
+                .filter { it.name.notInList(exclusion) }
                 .forEach { classNode ->
                     pushSynthetic(classNode)
                     pushBridge(classNode)

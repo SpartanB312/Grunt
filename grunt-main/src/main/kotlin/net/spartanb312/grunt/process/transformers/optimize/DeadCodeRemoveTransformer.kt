@@ -3,13 +3,11 @@ package net.spartanb312.grunt.process.transformers.optimize
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.process.transformers.misc.WatermarkTransformer
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isAbstract
-import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.extensions.isNative
-import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.InsnNode
 
@@ -25,7 +23,7 @@ object DeadCodeRemoveTransformer : Transformer("DeadCodeRemove", Category.Optimi
         Logger.info(" - Removing dead codes...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.name.isExcludedIn(exclusion) }
+                .filter { it.name.notInList(exclusion) }
                 .forEach { classNode ->
                 classNode.methods.toList().asSequence()
                     .filter { !it.isNative && !it.isAbstract }

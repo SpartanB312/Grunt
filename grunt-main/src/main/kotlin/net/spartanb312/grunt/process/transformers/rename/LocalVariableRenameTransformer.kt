@@ -1,12 +1,12 @@
 package net.spartanb312.grunt.process.transformers.rename
 
 import net.spartanb312.grunt.config.setting
-import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.Transformer
+import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 
 /**
  * Rename local variables
@@ -22,7 +22,7 @@ object LocalVariableRenameTransformer : Transformer("LocalVariableRename", Categ
         Logger.info(" - Renaming local variables...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.name.isExcludedIn(exclusion) }
+                .filter { it.name.notInList(exclusion) }
                 .forEach { classNode ->
                 for (methodNode in classNode.methods) {
                     val dic = NameGenerator.getByName(dictionary)

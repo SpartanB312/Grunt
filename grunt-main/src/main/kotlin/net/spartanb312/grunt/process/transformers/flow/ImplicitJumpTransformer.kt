@@ -29,10 +29,11 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
 
     override fun ResourceCache.transform() {
         Logger.info(" - Replacing jumps to implicit operations")
+        staticUtilList.clear()
         staticUtilList.addAll(generateUtilList(allClasses))
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.name.isExcludedIn(exclusion) }
+                .filter { it.name.notInList(exclusion) }
                 .forEach { classNode ->
                     classNode.methods.forEach { methodNode ->
                         add(processMethodNode(methodNode))
@@ -99,30 +100,20 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
         methodNode: MethodNode,
         returnType: Type
     ): InsnList {
-        return when (Random.nextInt(7)) {
+        return when (Random.nextInt(6)) {
             0 -> insnList {
+                val action = Action.entries.random()
                 val val1 = Random.nextInt(Int.MAX_VALUE / 2)
                 val val2 = Random.nextInt(Int.MAX_VALUE / 2)
                 INT(val1)
                 INT(val2)
-                +ArithmeticEncryptTransformer.generateIXOR()
-                INT(val1 xor val2)
+                +action.insnList
+                INT(action.convert.invoke(val1, val2))
                 IF_ICMPEQ(targetLabel)
                 +generateTrashCode(methodNode, returnType)
             }
 
             1 -> insnList {
-                val val1 = Random.nextInt(Int.MAX_VALUE / 2)
-                val val2 = Random.nextInt(Int.MAX_VALUE / 2)
-                INT(val1)
-                INT(val2)
-                +ArithmeticEncryptTransformer.generateIOR()
-                INT(val1 or val2)
-                IF_ICMPEQ(targetLabel)
-                +generateTrashCode(methodNode, returnType)
-            }
-
-            2 -> insnList {
                 val action = Action.entries.random()
                 var val1: Int
                 var val2: Int
@@ -141,7 +132,7 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
 
             }
 
-            3 -> insnList {
+            2 -> insnList {
                 val action = Action.entries.random()
                 var val1: Int
                 var val2: Int
@@ -160,7 +151,7 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
 
             }
 
-            4 -> insnList {
+            3 -> insnList {
                 val action = Action.entries.random()
                 var val1: Int
                 var val2: Int
@@ -179,7 +170,7 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
 
             }
 
-            5 -> insnList {
+            4 -> insnList {
                 val action = Action.entries.random()
                 var val1: Int
                 var val2: Int
@@ -293,13 +284,12 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
                 }
 
                 Type.OBJECT -> {
-                    if (Random.nextBoolean()) {
-                        ACONST_NULL
-                        ARETURN
-                    } else {
-                        ACONST_NULL
-                        ATHROW
+                    val trashCallMethod = findRandomGivenReturnTypeMethod(Type.VOID)
+                    if (junkCode && trashCallMethod != null) {
+                        +generateTrashCall(trashCallMethod)
                     }
+                    ACONST_NULL
+                    ARETURN
                 }
 
                 else -> {

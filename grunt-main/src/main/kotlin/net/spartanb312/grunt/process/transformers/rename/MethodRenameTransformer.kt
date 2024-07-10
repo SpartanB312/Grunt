@@ -10,8 +10,8 @@ import net.spartanb312.grunt.utils.extensions.isAnnotation
 import net.spartanb312.grunt.utils.extensions.isEnum
 import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.extensions.isNative
-import net.spartanb312.grunt.utils.isExcludedIn
-import net.spartanb312.grunt.utils.isNotExcludedIn
+import net.spartanb312.grunt.utils.inList
+import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.nextBadKeyword
 import org.objectweb.asm.tree.AnnotationNode
@@ -54,8 +54,8 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
             // Generate names and apply to children
             nonExcluded.asSequence()
                 .filter {
-                    it.name.isNotExcludedIn(exclusion)
-                            && it.name.isNotExcludedIn(indyBlacklist)
+                    it.name.notInList(exclusion)
+                            && it.name.notInList(indyBlacklist)
                             && !it.checkFunctionalInterface()
                             && !it.isAnnotation
                             && (enums || !it.isEnum)
@@ -69,7 +69,7 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
                             if (methodNode.name.startsWith("<")) continue
                             if (methodNode.name == "main") continue
                             if (isEnum && methodNode.name == "values") continue
-                            if (methodNode.name.isExcludedIn(excludedName)) continue
+                            if (methodNode.name.inList(excludedName)) continue
                             if (methodNode.isNative) continue
                             if (hierarchy.isSourceMethod(classNode, methodNode)) {
                                 val readyToApply = mutableMapOf<String, String>()

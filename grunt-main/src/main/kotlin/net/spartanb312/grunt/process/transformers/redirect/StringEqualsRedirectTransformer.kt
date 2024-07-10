@@ -9,8 +9,8 @@ import net.spartanb312.grunt.utils.builder.SWAP
 import net.spartanb312.grunt.utils.builder.insnList
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.match
-import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.tree.MethodInsnNode
 
 /**
@@ -26,7 +26,7 @@ object StringEqualsRedirectTransformer : Transformer("RedirectStringEquals", Cat
         Logger.info(" - Redirecting string equals calls...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.name.isExcludedIn(exclusion) }
+                .filter { it.name.notInList(exclusion) }
                 .forEach { classNode ->
                     classNode.methods.forEach { methodNode ->
                         for (insnNode in methodNode.instructions.toArray()) {

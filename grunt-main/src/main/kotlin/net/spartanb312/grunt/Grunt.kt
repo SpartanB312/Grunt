@@ -10,11 +10,12 @@ import kotlin.system.measureTimeMillis
  * Gruntpocalypse
  * A continuation of Grunt witch is a lightweight java bytecode obfuscator
  */
-const val VERSION = "2.0.0.240709"
+const val VERSION = "2.0.0.240711"
 const val TYPE = "Beta"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
-fun main(args: Array<String>) {
+// Obfuscator Entry. Handled by console mode or UI mode
+fun run(configName: String) {
 
     // Splash
     println(
@@ -32,9 +33,9 @@ fun main(args: Array<String>) {
     println("==========================================================")
 
     Logger.info("Initializing Grunt Obfuscator...")
-    val configName = args.getOrNull(0) ?: "config.json"
     Logger.info("Using config $configName")
     try {
+        Configs.resetConfig()
         Configs.loadConfig(configName)
         Configs.saveConfig(configName)
     } catch (ignore: Exception) {
@@ -58,4 +59,10 @@ fun main(args: Array<String>) {
     }
     Logger.info("Finished in $time ms!")
 
+}
+
+// For console mode
+fun main(args: Array<String>) {
+    val configName = args.getOrNull(0) ?: "config.json"
+    run(configName)
 }

@@ -14,8 +14,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.IntInsnNode
 import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodNode
-import java.util.*
-import java.util.concurrent.ThreadLocalRandom
+import kotlin.random.Random
 
 /**
  * Encrypt integer numbers
@@ -65,9 +64,9 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
     }
 
     private fun xor(value: Int) = insnList {
-        val first = Random(ThreadLocalRandom.current().nextInt().toLong()).nextInt(Short.MAX_VALUE.toInt()) + value
-        val second = -Random(ThreadLocalRandom.current().nextInt().toLong()).nextInt(Short.MAX_VALUE.toInt()) + value
-        val random = Random(ThreadLocalRandom.current().nextInt().toLong()).nextInt(Short.MAX_VALUE.toInt())
+        val first = Random.nextInt(Short.MAX_VALUE.toInt()) + value
+        val second = -Random.nextInt(Short.MAX_VALUE.toInt()) + value
+        val random = Random.nextInt(Short.MAX_VALUE.toInt())
         INT(first xor value)
         INT(second xor value + random)
         IXOR

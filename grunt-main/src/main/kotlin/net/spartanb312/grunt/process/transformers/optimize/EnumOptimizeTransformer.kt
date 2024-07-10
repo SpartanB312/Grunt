@@ -5,8 +5,8 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isEnum
-import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.MethodInsnNode
 
@@ -22,7 +22,7 @@ object EnumOptimizeTransformer : Transformer("EnumOptimize", Category.Optimizati
         Logger.info(" - Optimizing enums...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { it.isEnum && !it.name.isExcludedIn(exclusion) }
+                .filter { it.isEnum && it.name.notInList(exclusion) }
                 .forEach { classNode ->
                     val desc = "[L${classNode.name};"
                     val valuesMethod = classNode.methods.firstOrNull {

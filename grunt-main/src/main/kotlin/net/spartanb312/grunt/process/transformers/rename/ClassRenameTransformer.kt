@@ -5,7 +5,7 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.isNotExcludedIn
+import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.tree.ClassNode
 
@@ -41,7 +41,7 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
         val count = count {
             val classes = if (shuffled) nonExcluded.shuffled() else nonExcluded
             classes.forEach {
-                if (it.name.isNotExcludedIn(exclusion)) {
+                if (it.name.notInList(exclusion)) {
                     mappings[it.name] = parent + prefix + it.malNamePrefix + nameGenerator.nextName()
                     add()
                 }

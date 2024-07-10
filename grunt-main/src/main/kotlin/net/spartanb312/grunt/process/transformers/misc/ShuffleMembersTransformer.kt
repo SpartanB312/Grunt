@@ -4,8 +4,8 @@ import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.isExcludedIn
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 
 /**
  * Shuffle members
@@ -23,7 +23,7 @@ object ShuffleMembersTransformer : Transformer("ShuffleMembers", Category.Miscel
         Logger.info(" - Shuffling members...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { !it.name.isExcludedIn(exclusion) }
+                .filter { it.name.notInList(exclusion) }
                 .forEach { classNode ->
                     if (methods) classNode.methods?.let {
                         classNode.methods = it.shuffled()

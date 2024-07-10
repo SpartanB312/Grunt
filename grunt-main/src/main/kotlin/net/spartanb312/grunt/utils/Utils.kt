@@ -37,10 +37,10 @@ fun ZipOutputStream.corruptCRC32() {
 inline val String.splash get() = replace(".", "/")
 inline val String.dot get() = replace("/", ".")
 
-fun String.isNotExcludedIn(list: List<String>): Boolean =
-    !isExcludedIn(list)
+fun String.notInList(list: List<String>): Boolean =
+    !inList(list)
 
-fun String.isExcludedIn(list: List<String>): Boolean {
+fun String.inList(list: List<String>): Boolean {
     return list.any { this.startsWith(it) }
 }
 

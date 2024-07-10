@@ -24,6 +24,8 @@ open class Configurable(var name: String) {
         return value
     }
 
+    fun resetAll() = values.forEach { it.reset() }
+
 }
 
 fun Configurable.setting(name: String, value: String) = value0(StringValue(name, value))
@@ -33,12 +35,17 @@ fun Configurable.setting(name: String, value: Boolean) = value0(BooleanValue(nam
 fun Configurable.setting(name: String, value: List<String>) = value0(ListValue(name, value))
 
 abstract class AbstractValue<T>(val name: String, var value: T) : ReadWriteProperty<Any?, T> {
+    val defaultValue = value
     abstract fun saveValue(jsonObject: JsonObject)
     abstract fun getValue(jsonObject: JsonObject)
 
     final override fun getValue(thisRef: Any?, property: KProperty<*>): T = value
     final override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
         this.value = value
+    }
+
+    fun reset() {
+        value = defaultValue
     }
 }
 
