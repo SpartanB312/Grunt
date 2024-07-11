@@ -8,7 +8,7 @@ import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
 
 /**
- * Shuffle members
+ * Shuffle members in class file
  * Last update on 2024/06/26
  */
 object ShuffleMembersTransformer : Transformer("ShuffleMembers", Category.Miscellaneous) {

@@ -28,7 +28,7 @@ import kotlin.system.measureTimeMillis
 object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) {
 
     private val enums by setting("Enums", true)
-    private val interfaces by setting("Interfaces", false)
+    private val interfaces by setting("Interfaces", false) // Make sure you've loaded all the dependencies
     private val dictionary by setting("Dictionary", "Alphabet")
     private val heavyOverloads by setting("HeavyOverloads", false)
     private val randomKeywordPrefix by setting("RandomKeywordPrefix", false)

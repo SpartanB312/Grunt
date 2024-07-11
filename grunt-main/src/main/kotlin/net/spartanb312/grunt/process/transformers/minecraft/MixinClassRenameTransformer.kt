@@ -13,7 +13,7 @@ import net.spartanb312.grunt.utils.logging.Logger
 import java.nio.charset.StandardCharsets
 
 /**
- * Support minecraft mixin class renaming
+ * Renaming mixin classes
  * Last update on 2024/06/28
  */
 object MixinClassRenameTransformer : Transformer("MixinClassRename", Category.Minecraft) {

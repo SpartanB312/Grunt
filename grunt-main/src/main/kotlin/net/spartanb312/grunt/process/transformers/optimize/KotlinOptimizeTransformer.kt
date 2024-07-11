@@ -13,7 +13,7 @@ import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 
 /**
- * Optimize kotlin redundant calls
+ * Remove kotlin redundant calls
  * Last update on 24/07/02
  */
 object KotlinOptimizeTransformer : Transformer("KotlinOptimizer", Category.Optimization) {

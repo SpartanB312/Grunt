@@ -14,6 +14,10 @@ import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.MethodNode
 import kotlin.random.Random
 
+/**
+ * Replace logic operations with substitutions
+ * Last update on 24/07/02
+ */
 object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.Encryption) {
 
     private val times by setting("Intensity", 1)

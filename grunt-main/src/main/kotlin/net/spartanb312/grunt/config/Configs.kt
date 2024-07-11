@@ -19,7 +19,6 @@ object Configs {
         val exclusions by setting("Exclusions", listOf())
         val mixinPackages by setting("MixinPackage", listOf("net/spartanb312/client/mixins/"))
         val generateRemap by setting("DumpMappings", true)
-        val remapOutput by setting("MappingsOutput", "mappings.json")
         val useComputeMax by setting("UseComputeMax", false)
         val customDictionary by setting("CustomDictionary", listOf())
         val dictionaryStartIndex by setting("DictionaryStartIndex", 0)
@@ -71,6 +70,10 @@ object Configs {
         }
 
     fun JsonObject.saveToFile(file: File) {
+        if (!file.exists()) {
+            file.parentFile?.mkdirs()
+            file.createNewFile()
+        }
         val saveJSon = PrintWriter(FileWriter(file))
         saveJSon.println(gsonPretty.toJson(this))
         saveJSon.close()

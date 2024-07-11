@@ -12,8 +12,6 @@ import org.objectweb.asm.tree.ClassNode
 /**
  * Renaming classes
  * Last update on 2024/06/26
- * Improvements:
- * 1.Reflect support
  */
 object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
 

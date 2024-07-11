@@ -14,6 +14,8 @@ import org.objectweb.asm.commons.ClassRemapper
 import org.objectweb.asm.commons.SimpleRemapper
 import org.objectweb.asm.tree.ClassNode
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.jar.JarFile
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -35,7 +37,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
     val mixinClasses get() = classes.filter { it.key.isMixinClass }.values
 
     val classMappings = mutableMapOf<String, String>()
-    private val mappingsJsonObject = JsonObject()
+    private val mappingObjects = mutableMapOf<String, JsonObject>()
 
     fun getMapping(name: String): String = classMappings.getOrElse(name) { name }
 
@@ -46,7 +48,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                 obj.addProperty(prev, new)
                 classMappings[prev] = new
             }
-            mappingsJsonObject.add(type, obj)
+            mappingObjects[type] = JsonObject().apply { add(type, obj) }
         }
         val remapper = SimpleRemapper(mappings)
         for ((name, node) in classes.toMutableMap()) {
@@ -125,7 +127,12 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
 
         if (Configs.Settings.generateRemap) {
             Logger.info("Writing mappings...")
-            mappingsJsonObject.saveToFile(File(Configs.Settings.remapOutput))
+            if (mappingObjects.isNotEmpty()) {
+                val dir = "mappings/${SimpleDateFormat("yyyy-MM-dd HH-mm-ss").format(Date())} ${Configs.Settings.input}/"
+                mappingObjects.forEach { (name, obj) ->
+                    obj.saveToFile(File("$dir$name.json"))
+                }
+            }
         }
     }
 
@@ -150,22 +157,36 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
 
     private fun readLibs() {
         Logger.info("Reading Libraries...")
-        libs.map { File(it) }.forEach { jar ->
-            Logger.info("  - ${jar.name}")
-            JarFile(jar).apply {
-                entries().asSequence()
-                    .filter { !it.isDirectory }
-                    .forEach forLoop@{
-                        if (it.name.endsWith(".class")) {
-                            kotlin.runCatching {
-                                ClassReader(getInputStream(it)).apply {
-                                    val classNode = ClassNode()
-                                    accept(classNode, ClassReader.EXPAND_FRAMES)
-                                    libraries[classNode.name] = classNode
-                                }
-                            }
-                        }
+        libs.map { File(it) }.forEach { file ->
+            if (file.isDirectory) {
+                readDirectory(file)
+            } else {
+                readJar(JarFile(file))
+            }
+        }
+    }
+
+    private fun readDirectory(directory: File) {
+        directory.listFiles()?.forEach { file ->
+            if (file.isDirectory) {
+                readDirectory(file)
+            } else {
+                readJar(JarFile(file))
+            }
+        }
+    }
+
+    private fun readJar(jar: JarFile) {
+        Logger.info("  - ${jar.name}")
+        jar.entries().asSequence().filter { !it.isDirectory }.forEach {
+            if (it.name.endsWith(".class")) {
+                kotlin.runCatching {
+                    ClassReader(jar.getInputStream(it)).apply {
+                        val classNode = ClassNode()
+                        accept(classNode, ClassReader.EXPAND_FRAMES)
+                        libraries[classNode.name] = classNode
                     }
+                }
             }
         }
     }

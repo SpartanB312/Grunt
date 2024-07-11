@@ -17,7 +17,7 @@ import org.objectweb.asm.tree.MethodNode
 import kotlin.random.Random
 
 /**
- * Encrypt integer numbers
+ * Encrypt integer and long numbers
  * Last update on 2024/06/26
  */
 object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encryption) {
