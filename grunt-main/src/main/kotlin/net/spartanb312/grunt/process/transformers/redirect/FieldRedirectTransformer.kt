@@ -160,14 +160,14 @@ object FieldRedirectTransformer : Transformer("FieldRedirect", Category.Redirect
         return this
     }
 
-    private fun genMethod(field: FieldInsnNode, signature: String?, methodName: String): MethodNode {
+    private fun genMethod(field: FieldInsnNode, methodName: String, signature: String?): MethodNode {
         val access = Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC
         return when (field.opcode) {
             Opcodes.GETFIELD -> method(
                 access,
                 methodName,
                 "(L${field.owner};)${field.desc}",
-                null,
+                signature,
                 null
             ) {
                 InsnList {
@@ -181,7 +181,7 @@ object FieldRedirectTransformer : Transformer("FieldRedirect", Category.Redirect
                 access,
                 methodName,
                 "(L${field.owner};${field.desc})V",
-                null,
+                signature,
                 null,
             ) {
                 InsnList {
@@ -199,7 +199,7 @@ object FieldRedirectTransformer : Transformer("FieldRedirect", Category.Redirect
                 access,
                 methodName,
                 "()${field.desc}",
-                null,
+                signature,
                 null
             ) {
                 InsnList {
@@ -212,7 +212,7 @@ object FieldRedirectTransformer : Transformer("FieldRedirect", Category.Redirect
                 access,
                 methodName,
                 "(${field.desc})V",
-                null,
+                signature,
                 null,
             ) {
                 InsnList {

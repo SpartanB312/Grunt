@@ -23,14 +23,20 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
     private val replaceGoto by setting("ReplaceGoto", true)
     private val replaceIf by setting("ReplaceIf", true)
     private val junkCode by setting("JunkCode", true)
+    private val expandedJunkCode by setting("ExpandedJunkCode", true)
     private val exclusion by setting("Exclusion", listOf())
 
-    private val staticUtilList = mutableSetOf<TrashCallMethod>()
+    private val nonExcludedUtilList = mutableListOf<TrashCallMethod>()
+    private val allStaticUtilList = mutableSetOf<TrashCallMethod>()
 
     override fun ResourceCache.transform() {
         Logger.info(" - Replacing jumps to implicit operations")
-        staticUtilList.clear()
-        staticUtilList.addAll(generateUtilList(allClasses))
+        nonExcludedUtilList.clear()
+        nonExcludedUtilList.addAll(generateUtilList(nonExcluded))
+        if (expandedJunkCode) {
+            allStaticUtilList.clear()
+            allStaticUtilList.addAll(generateUtilList(allClasses))
+        }
         val count = count {
             nonExcluded.asSequence()
                 .filter { it.name.notInList(exclusion) }
@@ -210,7 +216,9 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
     }
 
     private fun findRandomGivenReturnTypeMethod(sort: Int): TrashCallMethod? {
-        return staticUtilList.filter { it.returnType.sort == sort }.randomOrNull()
+        val nonExcluded = nonExcludedUtilList.filter { it.returnType.sort == sort }.randomOrNull()
+        if (!expandedJunkCode) return nonExcluded
+        return nonExcluded ?: allStaticUtilList.filter { it.returnType.sort == sort }.randomOrNull()
     }
 
     private fun generateTrashCode(methodNode: MethodNode, returnType: Type): InsnList {
