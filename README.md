@@ -40,7 +40,7 @@ Stability level: [1]=Unstable [5]=Stable
 
 ### Redirect:
 
-* [X] [5]MethodCallRedirect (MethodScramble)
+* [X] [4]MethodCallRedirect (MethodScramble)
 * [X] [5]FieldCallRedirect (FieldScramble)
 * [X] [5]StringEqualsRedirect
 * [X] [5]InvokeDynamic
