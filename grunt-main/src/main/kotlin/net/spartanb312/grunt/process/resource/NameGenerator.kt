@@ -1,6 +1,7 @@
 package net.spartanb312.grunt.process.resource
 
 import net.spartanb312.grunt.config.Configs
+import net.spartanb312.grunt.utils.blanks
 import java.util.concurrent.atomic.AtomicInteger
 
 sealed class NameGenerator(val name: String) {
@@ -22,6 +23,7 @@ sealed class NameGenerator(val name: String) {
                 charArray.add(chars[index % size])
                 index /= size
                 if (index == 0) break
+                index -= 1
             }
             charArray.reversed().joinToString(separator = "")
         }
@@ -45,6 +47,10 @@ sealed class NameGenerator(val name: String) {
             actualNameCount++
             return newName
         }
+    }
+
+    class Blank : NameGenerator("Blank") {
+        override val chars = blanks
     }
 
     class Alphabet : NameGenerator("alphabet") {
@@ -73,6 +79,7 @@ sealed class NameGenerator(val name: String) {
         fun getByName(name: String): NameGenerator =
             when (name.lowercase()) {
                 "alphabet" -> Alphabet()
+                "blank" -> Blank()
                 "chinese" -> Chinese()
                 "confuse" -> Confuse()
                 "custom" -> Custom()

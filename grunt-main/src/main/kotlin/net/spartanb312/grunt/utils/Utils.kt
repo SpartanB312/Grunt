@@ -6,7 +6,7 @@ import java.util.zip.CRC32
 import java.util.zip.ZipOutputStream
 import kotlin.random.Random
 
-private val blanks = listOf(
+val blanks = listOf(
     '\u0020', '\u00a0', '\u1680', '\u180e', '\u2000', '\u2001', '\u2002', '\u2003', '\u2004',
     '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200a', '\u200b', '\u200c', '\u200d',
     '\u200e', '\u200f', '\u202f', '\u205f', '\u3000', '\ufeff'
