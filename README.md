@@ -32,6 +32,9 @@ If most of the project dependencies are unavailable for some reasons. I suggest 
 * [X] [5]MethodRename
 * [X] [5]LocalVarRename
 
+  The method renamer support MultiSource, InvokeDynamic, and FunctionalInterface check. (MultiSource: A class extends/implements more than 2 class/interfaces with same method name and descriptor. Example: A implements B and C, B and C are both independent interface and have method invoke(I)J. All the related hierarchy will apply to a same method name)
+
+  That's why Grunt is one of the few obfuscators that can perfectly support interface method renaming
 ### Minecraft:
 
 * [X] [4]MixinClassRename
