@@ -16,12 +16,13 @@ import kotlin.random.Random
 
 /**
  * Replace direct jump to implicit jump
- * Last update on 24/07/07
+ * Last update on 24/07/15
  */
 object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflow) {
 
     private val replaceGoto by setting("ReplaceGoto", true)
     private val replaceIf by setting("ReplaceIf", true)
+    private val useLocalVar by setting("UseLocalVar", true)
     private val junkCode by setting("JunkCode", true)
     private val expandedJunkCode by setting("ExpandedJunkCode", true)
     private val exclusion by setting("Exclusion", listOf())
@@ -81,6 +82,7 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
             }
             methodNode.instructions = newInsn
         }
+        if ((replaceIf || replaceGoto) && useLocalVar) methodNode.maxLocals += 1
         return count
     }
 
@@ -111,10 +113,9 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
                 val action = Action.entries.random()
                 val val1 = Random.nextInt(Int.MAX_VALUE / 2)
                 val val2 = Random.nextInt(Int.MAX_VALUE / 2)
-                INT(val1)
-                INT(val2)
-                +action.insnList
-                INT(action.convert.invoke(val1, val2))
+                val val3 = action.convert.invoke(val1, val2)
+                val usage = if (useLocalVar) LocalVarUsages.entries.random() else LocalVarUsages.Default
+                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
                 IF_ICMPEQ(targetLabel)
                 +generateTrashCode(methodNode, returnType)
             }
@@ -129,10 +130,8 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) >= val3)
-                INT(val1)
-                INT(val2)
-                +action.insnList
-                INT(val3)
+                val usage = if (useLocalVar) LocalVarUsages.entries.random() else LocalVarUsages.Default
+                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
                 IF_ICMPLT(targetLabel)
                 +generateTrashCode(methodNode, returnType)
 
@@ -148,10 +147,8 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) < val3)
-                INT(val1)
-                INT(val2)
-                +action.insnList
-                INT(val3)
+                val usage = if (useLocalVar) LocalVarUsages.entries.random() else LocalVarUsages.Default
+                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
                 IF_ICMPGE(targetLabel)
                 +generateTrashCode(methodNode, returnType)
 
@@ -167,10 +164,8 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) <= val3)
-                INT(val1)
-                INT(val2)
-                +action.insnList
-                INT(val3)
+                val usage = if (useLocalVar) LocalVarUsages.entries.random() else LocalVarUsages.Default
+                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
                 IF_ICMPGT(targetLabel)
                 +generateTrashCode(methodNode, returnType)
 
@@ -186,10 +181,8 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) > val3)
-                INT(val1)
-                INT(val2)
-                +action.insnList
-                INT(val3)
+                val usage = if (useLocalVar) LocalVarUsages.entries.random() else LocalVarUsages.Default
+                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
                 IF_ICMPLE(targetLabel)
                 +generateTrashCode(methodNode, returnType)
 
@@ -205,10 +198,8 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) == val3)
-                INT(val1)
-                INT(val2)
-                +action.insnList
-                INT(val3)
+                val usage = if (useLocalVar) LocalVarUsages.entries.random() else LocalVarUsages.Default
+                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
                 IF_ICMPNE(targetLabel)
                 +generateTrashCode(methodNode, returnType)
             }
@@ -314,6 +305,53 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
         XOR({ a, b -> a xor b }, { ArithmeticEncryptTransformer.generateIXOR() });
 
         val insnList get() = insnListProvider.invoke()
+    }
+
+    private enum class LocalVarUsages(
+        private val insnListProvider: (Int, Int, Int, Int, InsnList) -> InsnList
+    ) {
+        Default({ val1, val2, val3, _, insnList ->
+            insnList {
+                INT(val1)
+                INT(val2)
+                +insnList
+                INT(val3)
+            }
+        }),
+        Type1({ val1, val2, val3, maxLocals, insnList ->
+            insnList {
+                INT(val2)
+                ISTORE(maxLocals + 1)
+                INT(val1)
+                ILOAD(maxLocals + 1)
+                +insnList
+                INT(val3)
+            }
+        }),
+        Type2({ val1, val2, val3, maxLocals, insnList ->
+            insnList {
+                INT(val3)
+                ISTORE(maxLocals + 1)
+                INT(val1)
+                INT(val2)
+                +insnList
+                ILOAD(maxLocals + 1)
+            }
+        }),
+        Type3({ val1, val2, val3, maxLocals, insnList ->
+            insnList {
+                INT(val1)
+                INT(val3)
+                ISTORE(maxLocals + 1)
+                INT(val2)
+                +insnList
+                ILOAD(maxLocals + 1)
+            }
+        });
+
+        fun localVarUsage(val1: Int, val2: Int, val3: Int, maxLocals: Int, insnList: InsnList): InsnList {
+            return insnListProvider.invoke(val1, val2, val3, maxLocals, insnList)
+        }
     }
 
 }
