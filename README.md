@@ -72,7 +72,6 @@ If most of the project dependencies are unavailable for some reasons. I suggest 
 ### ControlFlow:
 
 * [X] [4]ImplicitJump
-* [ ] [0]TryCatchWrapper (Provisional)
 
 ## License: GNU General Public License 3.0
 
