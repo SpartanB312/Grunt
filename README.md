@@ -46,8 +46,8 @@ If most of the project dependencies are unavailable for some reasons. I suggest 
 
 ### Redirect:
 
-* [X] [4]MethodCallRedirect (MethodScramble)
-* [X] [5]FieldCallRedirect (FieldScramble)
+* [X] [4]MethodScramble
+* [X] [5]FieldScramble
 * [X] [5]StringEqualsRedirect
 * [X] [5]InvokeDynamic
 
@@ -72,7 +72,6 @@ If most of the project dependencies are unavailable for some reasons. I suggest 
 ### ControlFlow:
 
 * [X] [4]ImplicitJump
-* [ ] [0]TryCatchWrapper (Provisional)
 
 ## License: GNU General Public License 3.0
 

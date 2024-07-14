@@ -19,7 +19,7 @@ import org.objectweb.asm.tree.MethodNode
  * Scramble field calls
  * Last update on 2024/07/08
  */
-object FieldRedirectTransformer : Transformer("FieldRedirect", Category.Redirect) {
+object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect) {
 
     private val intensity by setting("Intensity", 1)
     private val randomName by setting("RandomName", false)

@@ -20,7 +20,7 @@ import kotlin.random.Random
  * Redirect method calls
  * Last update on 24/07/02
  */
-object MethodRedirectTransformer : Transformer("MethodRedirect", Category.Redirect) {
+object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redirect) {
 
     private val generateOuterClass by setting("GenerateOuterClass", true)
     private val randomCall by setting("RandomCall", true)
