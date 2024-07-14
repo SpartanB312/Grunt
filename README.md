@@ -19,6 +19,12 @@ The reborn project is under development. Here is the feature TODO list.
 
 Stability level: [1]=Unstable [5]=Stable
 
+## Notice
+
+The dependencies of your project is highly required to ensure stability and intensity. You should add all of them to your config. (Especially method and field renamer, which'll search all source methods and invoke dynamic insn for safe renaming. If the one class on the hierarchy tree missing dependencies, the whole hierarchy tree will be excluded).
+
+If most of the project dependencies are unavailable for some reasons. I suggest you to enable useComputeMaxs in Global setting to ensure stability as much as possible. (If you encountered VerifyError, You should first try to complete the dependencies. It is recommended to only enable computeMaxs when dependencies cannot be completed)
+
 ### Renamer:
 
 * [X] [5]ClassRename
@@ -40,7 +46,7 @@ Stability level: [1]=Unstable [5]=Stable
 
 ### Redirect:
 
-* [X] [5]MethodCallRedirect (MethodScramble)
+* [X] [4]MethodCallRedirect (MethodScramble)
 * [X] [5]FieldCallRedirect (FieldScramble)
 * [X] [5]StringEqualsRedirect
 * [X] [5]InvokeDynamic
