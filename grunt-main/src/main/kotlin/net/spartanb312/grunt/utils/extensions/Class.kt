@@ -49,6 +49,5 @@ inline fun ClassNode.getOrCreateClinit(): MethodNode =
 
 val ClassNode.hasAnnotations: Boolean
     get() {
-        return visibleAnnotations != null && visibleAnnotations.isNotEmpty()
-                || invisibleAnnotations != null && invisibleAnnotations.isNotEmpty()
+        return (visibleAnnotations != null && visibleAnnotations.isNotEmpty()) || (invisibleAnnotations != null && invisibleAnnotations.isNotEmpty())
     }

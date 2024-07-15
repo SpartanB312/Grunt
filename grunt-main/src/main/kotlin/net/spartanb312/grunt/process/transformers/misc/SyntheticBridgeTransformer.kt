@@ -7,6 +7,7 @@ import net.spartanb312.grunt.utils.Counter
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.hasAnnotations
 import net.spartanb312.grunt.utils.extensions.isAbstract
+import net.spartanb312.grunt.utils.extensions.isAnnotation
 import net.spartanb312.grunt.utils.extensions.isInitializer
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
@@ -26,7 +27,7 @@ object SyntheticBridgeTransformer : Transformer("SyntheticBridge", Category.Misc
         Logger.info(" - Inserting synthetic/bridge...")
         val count = count {
             nonExcluded.asSequence()
-                .filter { it.name.notInList(exclusion) }
+                .filter { !it.isAnnotation && it.name.notInList(exclusion) }
                 .forEach { classNode ->
                     pushSynthetic(classNode)
                     pushBridge(classNode)
