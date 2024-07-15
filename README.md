@@ -8,14 +8,14 @@ Some ideas are from other obfuscator, and be presented with refined version.
 
 Discord server link: https://discord.gg/ysB2fMfeYW
 
-## Features
+## Compatibility
 
-If you encounter any compatibility issues, please raise an issue on GitHub.
+100% passed [JVM Obfuscation Test](https://github.com/sim0n/jvm-obfuscation-tester)
+
+If you encounter any compatibility issues, please raise an issue on GitHub to help us improve Grunt.
 
 By the way, I appended the stability level on each feature. If you encountered unstable situation. You can turn off the
 low stability-level features.
-
-The reborn project is under development. Here is the feature TODO list.
 
 Stability level: [1]=Unstable [5]=Stable
 
@@ -32,8 +32,8 @@ If most of the project dependencies are unavailable for some reasons. I suggest 
 * [X] [5]MethodRename
 * [X] [5]LocalVarRename
 
-  The method renamer support MultiSource, InvokeDynamic, and FunctionalInterface check. 
- 
+  The method renamer support MultiSource, InvokeDynamic, and FunctionalInterface check.
+
   MultiSource: A class extends/implements more than 2 class/interfaces with same method name and descriptor. (Example: A implements B and C, B and C both are independent interface and have method invoke(I)J.)
 
   That's why Grunt is one of the few obfuscators that can stably support interface method renaming
