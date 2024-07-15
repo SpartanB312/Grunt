@@ -25,6 +25,8 @@ The dependencies of your project is highly required to ensure stability and inte
 
 If most of the project dependencies are unavailable for some reasons. I suggest you to enable useComputeMaxs in Global setting to ensure stability as much as possible. (If you encountered VerifyError, You should first try to complete the dependencies. It is recommended to only enable computeMaxs when dependencies cannot be completed)
 
+## Features
+
 ### Renamer:
 
 * [X] [5]ClassRename
