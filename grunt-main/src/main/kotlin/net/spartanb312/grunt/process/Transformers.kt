@@ -17,11 +17,12 @@ object Transformers : Collection<Transformer> by mutableListOf(
     DeadCodeRemoveTransformer,
     ClonedClassTransformer,
     TrashClassTransformer,
-    ImplicitJumpTransformer,
+    ImplicitJumpTransformer, // Execute 1
     StringEncryptTransformer,
     NumberEncryptTransformer,
     FloatingPointEncryptTransformer,
     ArithmeticEncryptTransformer,
+    ImplicitJumpTransformer, // Execute 2
     StringEqualsRedirectTransformer,
     FieldScrambleTransformer,
     MethodScrambleTransformer,

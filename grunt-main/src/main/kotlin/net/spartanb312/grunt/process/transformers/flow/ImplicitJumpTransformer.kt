@@ -20,6 +20,7 @@ import kotlin.random.Random
  */
 object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflow) {
 
+    private val beforeEncrypt by setting("ExecuteBeforeEncrypt", false)
     private val replaceGoto by setting("ReplaceGoto", true)
     private val replaceIf by setting("ReplaceIf", true)
     private val useLocalVar by setting("UseLocalVar", true)
@@ -30,7 +31,11 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
     private val nonExcludedUtilList = mutableListOf<TrashCallMethod>()
     private val allStaticUtilList = mutableSetOf<TrashCallMethod>()
 
+    private var flag = 0
+
     override fun ResourceCache.transform() {
+        if (flag == 2) flag = 1 else flag++
+        if ((beforeEncrypt && flag != 1) || (!beforeEncrypt && flag == 1)) return
         Logger.info(" - Replacing jumps to implicit operations")
         nonExcludedUtilList.clear()
         nonExcludedUtilList.addAll(generateUtilList(nonExcluded))

@@ -16,11 +16,12 @@ import kotlin.random.Random
 
 /**
  * Replace logic operations with substitutions
- * Last update on 24/07/02
+ * Last update on 24/07/15
  */
 object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.Encryption) {
 
     private val times by setting("Intensity", 1)
+    private val maxInsnSize by setting("MaxInsnSize", 16384)
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
@@ -48,6 +49,11 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
                     skipInsn--
                     continue
                 }
+                val currentSize = insnList.size() + methodNode.instructions.size() - index
+                if (currentSize >= maxInsnSize) {
+                    +insn
+                    continue
+                } // Avoid method too large
                 if (index < methodNode.instructions.size() - 2) {
                     val next = methodNode.instructions[index + 1]
                     val nextNext = methodNode.instructions[index + 2]

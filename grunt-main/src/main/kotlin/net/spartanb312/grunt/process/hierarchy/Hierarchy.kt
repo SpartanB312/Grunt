@@ -87,7 +87,7 @@ class Hierarchy(private val resourceCache: ResourceCache) {
 
     private fun buildClassInfo(name: String, subClassInfo: ClassInfo? = null): ClassInfo {
         val info = classInfos[name]
-        if (info == null) {
+        return if (info == null) {
             val classNode = resourceCache.getClassNode(name)
             val newInfo = ClassInfo(name, classNode ?: ClassInfo.dummyClassNode)
             if (subClassInfo != null) newInfo.children.add(subClassInfo)
@@ -97,10 +97,10 @@ class Hierarchy(private val resourceCache: ResourceCache) {
                 newInfo.parents.add(buildClassInfo(it, newInfo))
             }
             classInfos[newInfo.name] = newInfo
-            return newInfo
+            newInfo
         } else {
             if (subClassInfo != null) info.children.add(subClassInfo)
-            return info
+            info
         }
     }
 
