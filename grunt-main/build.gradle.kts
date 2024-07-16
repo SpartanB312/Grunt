@@ -9,7 +9,6 @@ repositories {
     maven("https://mvnrepository.com/artifact/")
 }
 
-val kotlinVersion = "1.9.21"
 val kotlinxCoroutineVersion = "1.7.3"
 val asmVersion = "9.7"
 
@@ -18,8 +17,6 @@ val library: Configuration by configurations.creating
 dependencies {
     //Kotlin
     library(kotlin("stdlib"))
-    library("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutineVersion")
-    library("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
 
     //ASM
     library("org.ow2.asm:asm:$asmVersion")

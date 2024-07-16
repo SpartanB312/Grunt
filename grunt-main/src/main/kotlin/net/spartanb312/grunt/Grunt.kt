@@ -10,8 +10,8 @@ import kotlin.system.measureTimeMillis
  * Gruntpocalypse
  * A continuation of Grunt witch is a lightweight java bytecode obfuscator
  */
-const val VERSION = "2.0.1"
-const val SUBTITLE = "build 240715"
+const val VERSION = "2.0.2"
+const val SUBTITLE = "build 240717"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
 // Obfuscator Entry. Handled by console mode or UI mode

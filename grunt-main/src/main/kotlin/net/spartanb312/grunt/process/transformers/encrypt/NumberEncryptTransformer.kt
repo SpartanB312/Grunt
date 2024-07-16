@@ -18,11 +18,12 @@ import kotlin.random.Random
 
 /**
  * Encrypt integer and long numbers
- * Last update on 2024/06/26
+ * Last update on 2024/07/15
  */
 object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encryption) {
 
     private val times by setting("Intensity", 1)
+    private val maxInsnSize by setting("MaxInsnSize", 16384)
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
@@ -39,20 +40,22 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                                 methodNode.instructions
                                     .filter { it.opcode != Opcodes.NEWARRAY }
                                     .forEach {
-                                        if (it.opcode in 0x2..0x8) {
-                                            methodNode.instructions.insertBefore(it, xor(it.opcode - 0x3))
-                                            methodNode.instructions.remove(it)
-                                            if (t == 0) add()
-                                        } else if (it is IntInsnNode) {
-                                            methodNode.instructions.insertBefore(it, xor(it.operand))
-                                            methodNode.instructions.remove(it)
-                                            if (t == 0) add()
-                                        } else if (it is LdcInsnNode && it.cst is Int) {
-                                            val value = it.cst as Int
-                                            if (value < -(Short.MAX_VALUE * 8) + Int.MAX_VALUE) {
-                                                methodNode.instructions.insertBefore(it, xor(value))
+                                        if (methodNode.instructions.size() < maxInsnSize) {
+                                            if (it.opcode in 0x2..0x8) {
+                                                methodNode.instructions.insertBefore(it, xor(it.opcode - 0x3))
                                                 methodNode.instructions.remove(it)
                                                 if (t == 0) add()
+                                            } else if (it is IntInsnNode) {
+                                                methodNode.instructions.insertBefore(it, xor(it.operand))
+                                                methodNode.instructions.remove(it)
+                                                if (t == 0) add()
+                                            } else if (it is LdcInsnNode && it.cst is Int) {
+                                                val value = it.cst as Int
+                                                if (value < -(Short.MAX_VALUE * 8) + Int.MAX_VALUE) {
+                                                    methodNode.instructions.insertBefore(it, xor(value))
+                                                    methodNode.instructions.remove(it)
+                                                    if (t == 0) add()
+                                                }
                                             }
                                         }
                                     }
