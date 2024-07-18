@@ -13,18 +13,18 @@ object Configs {
     private val gsonPretty: Gson = GsonBuilder().setPrettyPrinting().create()
 
     object Settings : Configurable("Settings") {
-        val input by setting("Input", "input.jar")
-        val output by setting("Output", "output.jar")
-        val libraries by setting("Libraries", listOf())
-        val exclusions by setting("Exclusions", listOf())
-        val mixinPackages by setting("MixinPackage", listOf("net/spartanb312/client/mixins/"))
-        val generateRemap by setting("DumpMappings", true)
-        val useComputeMax by setting("UseComputeMax", false)
-        val customDictionary by setting("CustomDictionary", listOf())
-        val dictionaryStartIndex by setting("DictionaryStartIndex", 0)
-        val corruptOutput by setting("CorruptOutput", false)
-        val fileRemovePrefix by setting("FileRemovePrefix", listOf())
-        val fileRemoveSuffix by setting("FileRemoveSuffix", listOf())
+        var input by setting("Input", "input.jar")
+        var output by setting("Output", "output.jar")
+        var libraries by setting("Libraries", listOf())
+        var exclusions by setting("Exclusions", listOf())
+        var mixinPackages by setting("MixinPackage", listOf("net/spartanb312/client/mixins/"))
+        var generateRemap by setting("DumpMappings", true)
+        var useComputeMax by setting("UseComputeMax", false)
+        var customDictionary by setting("CustomDictionary", listOf())
+        var dictionaryStartIndex by setting("DictionaryStartIndex", 0)
+        var corruptOutput by setting("CorruptOutput", false)
+        var fileRemovePrefix by setting("FileRemovePrefix", listOf())
+        var fileRemoveSuffix by setting("FileRemoveSuffix", listOf())
     }
 
     init {
@@ -35,7 +35,11 @@ object Configs {
     }
 
     fun resetConfig() {
-        configs.forEach { it }
+        configs.forEach { config ->
+            config.getValues().forEach { value ->
+                value.reset()
+            }
+        }
     }
 
     fun loadConfig(path: String) {

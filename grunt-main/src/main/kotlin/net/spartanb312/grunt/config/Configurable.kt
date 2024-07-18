@@ -9,6 +9,8 @@ open class Configurable(var name: String) {
 
     private val values = mutableListOf<AbstractValue<*>>()
 
+    fun getValues() = values.toList()
+
     fun saveValue(): JsonObject {
         return JsonObject().apply {
             values.forEach { it.saveValue(this) }
@@ -34,8 +36,9 @@ fun Configurable.setting(name: String, value: Float) = value0(FloatValue(name, v
 fun Configurable.setting(name: String, value: Boolean) = value0(BooleanValue(name, value))
 fun Configurable.setting(name: String, value: List<String>) = value0(ListValue(name, value))
 
-abstract class AbstractValue<T>(val name: String, var value: T) : ReadWriteProperty<Any?, T> {
-    val defaultValue = value
+abstract class AbstractValue<T>(val name: String, val defaultValue: T) : ReadWriteProperty<Any?, T> {
+    var value = defaultValue
+
     abstract fun saveValue(jsonObject: JsonObject)
     abstract fun getValue(jsonObject: JsonObject)
 
