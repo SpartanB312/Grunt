@@ -26,6 +26,10 @@ dependencies {
     //GSON
     library("com.google.code.gson:gson:2.10")
 
+    //GUI
+    library("com.miglayout:miglayout-swing:5.3")
+    library("com.github.weisj:darklaf-core:3.0.2")
+
     implementation(library)
 }
 
@@ -44,6 +48,7 @@ tasks {
     }
 
     jar {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         archiveBaseName.set(project.name.toLowerCase())
 
         manifest {

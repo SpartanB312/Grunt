@@ -1,9 +1,11 @@
 package net.spartanb312.grunt
 
 import net.spartanb312.grunt.config.Configs
+import net.spartanb312.grunt.gui.GuiFrame
 import net.spartanb312.grunt.process.Transformers
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.logging.Logger
+import java.awt.GraphicsEnvironment
 import kotlin.system.measureTimeMillis
 
 /**
@@ -14,9 +16,7 @@ const val VERSION = "2.0.2"
 const val SUBTITLE = "build 240717"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
-// Obfuscator Entry. Handled by console mode or UI mode
-fun run(configName: String) {
-
+fun main(args: Array<String>) {
     // Splash
     println(
         """
@@ -33,18 +33,44 @@ fun run(configName: String) {
     println("==========================================================")
 
     Logger.info("Initializing Grunt Obfuscator...")
-    Logger.info("Using config $configName")
-    try {
-        Configs.resetConfig()
-        Configs.loadConfig(configName)
-        Configs.saveConfig(configName)
-    } catch (ignore: Exception) {
-        Logger.info("Failed to read config $configName!But we generated a new one.")
-        Configs.saveConfig(configName)
-        Logger.info("Type (Y/N) if you want to continue")
-        if (readlnOrNull()?.lowercase() == "n") return
-    }
 
+    val needGui = args.contains("-gui")
+    val config = args.firstOrNull { it.endsWith(".json") } ?: "config.json"
+
+    Logger.info("Using config $config")
+
+    if (needGui) {
+        if (GraphicsEnvironment.isHeadless()){
+            println("Gui is not allowed in your environment. pls remove [-gui]")
+            return
+        }
+
+        try {
+            Configs.loadConfig(config)
+        } catch (ignore: Exception) {
+            Configs.saveConfig(config)
+        }
+
+        GuiFrame.loadConfig(config)
+        GuiFrame.view()
+    } else {
+
+        try {
+            Configs.resetConfig()
+            Configs.loadConfig(config)
+            Configs.saveConfig(config)
+        } catch (ignore: Exception) {
+            Logger.info("Failed to read config $config! But we generated a new one.")
+            Configs.saveConfig(config)
+            Logger.info("Type (Y/N) if you want to continue")
+            if (readlnOrNull()?.lowercase() == "n") return
+        }
+
+        runProcess()
+    }
+}
+
+fun runProcess() {
     // Process
     val time = measureTimeMillis {
         ResourceCache(Configs.Settings.input, Configs.Settings.libraries).apply {
@@ -58,11 +84,4 @@ fun run(configName: String) {
         }.dumpJar(Configs.Settings.output)
     }
     Logger.info("Finished in $time ms!")
-
-}
-
-// For console mode
-fun main(args: Array<String>) {
-    val configName = args.getOrNull(0) ?: "config.json"
-    run(configName)
 }
