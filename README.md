@@ -2,7 +2,7 @@
 
 Gruntpocalypse (Grunt Reborn) is a continuation of Grunt project.
 
-This is a free and open source lightweight obfuscator aiming for stability and versatility.
+This is a free and open source obfuscator written in kotlin aiming for stability and versatility.
 
 Some ideas are from other obfuscator, and be presented with refined version.
 
