@@ -20,7 +20,7 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
     private val prefix by setting("Prefix", "")
     private val shuffled by setting("Shuffled", false)
     private val corruptedName by setting("CorruptedName", false)
-    private val corruptedNameExclusion by setting("CorruptedNameExclusions", listOf())
+    private val corruptedNameExclusion by setting("CorruptedNameExclusion", listOf())
     private val exclusion by setting("Exclusion", listOf())
 
     private val ClassNode.malNamePrefix

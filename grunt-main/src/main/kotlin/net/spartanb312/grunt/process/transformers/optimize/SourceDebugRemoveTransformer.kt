@@ -12,7 +12,7 @@ import org.objectweb.asm.tree.LineNumberNode
  * Remove or replace source debug info in class
  * Last update on 2024/06/26
  */
-object SourceDebugRemoveTransformer : Transformer("SourceDebugRemove", Category.Miscellaneous) {
+object SourceDebugRemoveTransformer : Transformer("SourceDebugRemove", Category.Optimization) {
 
     private val sourceDebug by setting("SourceDebug", true)
     private val lineDebug by setting("LineDebug", true)

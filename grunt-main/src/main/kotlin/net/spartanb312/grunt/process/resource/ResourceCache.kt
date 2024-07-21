@@ -85,7 +85,6 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         Logger.info("Building hierarchies...")
         val hierarchy = Hierarchy(this@ResourceCache)
         hierarchy.build()
-        hierarchy.printMissing()
         if (Configs.Settings.corruptOutput) {
             Logger.info("Corrupting output...")
             corruptCRC32()
@@ -96,7 +95,9 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
             if (classNode.name == "module-info" || classNode.name.shouldRemove) continue
             val classInfo = hierarchy.getClassInfo(classNode)
             val useComputeMax = Configs.Settings.useComputeMax || classInfo.missingDependencies || classNode.isExcluded
+            val missing = classInfo.missingDependencies && !Configs.Settings.useComputeMax && !classNode.isExcluded
             val byteArray = try {
+                if (missing) Logger.warn("Using COMPUTE_MAXS due to ${classNode.name} missing dependencies.")
                 ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {
                     classNode.accept(this)
                 }.toByteArray()
@@ -115,6 +116,8 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
             write(byteArray)
             closeEntry()
         }
+        hierarchy.printMissing()
+        hierarchy.buildMissingMap()
 
         Logger.info("Writing resources...")
         for ((name, bytes) in resources) {
@@ -128,7 +131,8 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         if (Configs.Settings.generateRemap) {
             Logger.info("Writing mappings...")
             if (mappingObjects.isNotEmpty()) {
-                val dir = "mappings/${SimpleDateFormat("yyyy-MM-dd HH-mm-ss").format(Date())} ${Configs.Settings.input}/"
+                val dir =
+                    "mappings/${SimpleDateFormat("yyyy-MM-dd HH-mm-ss").format(Date())} ${Configs.Settings.input}/"
                 mappingObjects.forEach { (name, obj) ->
                     obj.saveToFile(File("$dir$name.json"))
                 }

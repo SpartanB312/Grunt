@@ -19,6 +19,7 @@ import javax.swing.filechooser.FileNameExtensionFilter
 
 
 class GeneralPanel : JPanel() {
+
     private val libs = DefaultListModel<String>()
     private val exclusions = JTextArea("", 3, 50)
     private val mixinPackages = JTextArea("", 3, 50)
@@ -37,105 +38,97 @@ class GeneralPanel : JPanel() {
         )
 
         //Libraries
-        run {
-            fun chooseFile() {
-                val chooser = JFileChooser(File(this::class.java.getProtectionDomain().codeSource.location.toURI().getPath()))
-                chooser.fileSelectionMode = JFileChooser.FILES_AND_DIRECTORIES
-                chooser.isMultiSelectionEnabled = true
-                chooser.fileFilter = FileNameExtensionFilter("Jar File", "jar")
-                if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
-                    for (file in chooser.selectedFiles) {
-                        libs.addElement(file.absolutePath.removePrefix(FileChooseUtils.CURRENT_PATH))
-                    }
+        fun chooseFile() {
+            val chooser =
+                JFileChooser(File(this::class.java.protectionDomain.codeSource.location.toURI().path))
+            chooser.fileSelectionMode = JFileChooser.FILES_AND_DIRECTORIES
+            chooser.isMultiSelectionEnabled = true
+            chooser.fileFilter = FileNameExtensionFilter("Jar File", "jar")
+            if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
+                for (file in chooser.selectedFiles) {
+                    libs.addElement(file.absolutePath.removePrefix(FileChooseUtils.CURRENT_PATH))
                 }
             }
+        }
 
-            val jList = JList(libs)
-            val addButton = JButton("Add")
-            val removeButton = JButton("Remove")
-            addButton.addActionListener { chooseFile() }
-            removeButton.addActionListener {
-                for (index in jList.selectedIndices.reversedArray()) {
-                    libs.remove(index)
-                }
+        val jList = JList(libs)
+        val addButton = JButton("Add")
+        val removeButton = JButton("Remove")
+        addButton.addActionListener { chooseFile() }
+        removeButton.addActionListener {
+            for (index in jList.selectedIndices.reversedArray()) {
+                libs.remove(index)
             }
-            jList.addMouseListener(object : MouseListener {
-                override fun mouseClicked(e: MouseEvent) {
-                    if (libs.isEmpty) {
-                        chooseFile()
-                    }
+        }
+        jList.addMouseListener(object : MouseListener {
+            override fun mouseClicked(e: MouseEvent) {
+                if (libs.isEmpty) {
+                    chooseFile()
+                }
 //                    else if (e.clickCount == 2) {
 //                        libs.remove(jList.selectedIndex)
 //                    }
-                }
-
-                override fun mousePressed(e: MouseEvent?) {}
-                override fun mouseReleased(e: MouseEvent?) {}
-                override fun mouseEntered(e: MouseEvent?) {}
-                override fun mouseExited(e: MouseEvent?) {}
-            })
-
-            val libraries = JPanel(MigLayout(LC().fillX().flowX(), AC().grow().gap()))
-            libraries.border = TitledBorder("Libraries").apply {
-                titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
-                titleColor = Color(0x4d89c9)
             }
-            libraries.add(jList, CC().cell(0, 0, 1, 2).minWidth("150").minHeight("70").growX())
-            libraries.add(addButton, CC().cell(1, 0).growX())
-            libraries.add(removeButton, CC().cell(1, 1).growX().alignY("top"))
-            add(libraries, CC().span().grow())
+
+            override fun mousePressed(e: MouseEvent?) {}
+            override fun mouseReleased(e: MouseEvent?) {}
+            override fun mouseEntered(e: MouseEvent?) {}
+            override fun mouseExited(e: MouseEvent?) {}
+        })
+
+        val libraries = JPanel(MigLayout(LC().fillX().flowX(), AC().grow().gap()))
+        libraries.border = TitledBorder("Libraries").apply {
+            titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
+            titleColor = Color(0x4d89c9)
         }
+        libraries.add(jList, CC().cell(0, 0, 1, 2).minWidth("150").minHeight("70").growX())
+        libraries.add(addButton, CC().cell(1, 0).growX())
+        libraries.add(removeButton, CC().cell(1, 1).growX().alignY("top"))
+        add(libraries, CC().span().grow())
 
         //Exclusions
-        run {
-            val exclusions = JPanel(MigLayout(LC().fill()))
-            exclusions.border = TitledBorder("Exclusions").apply {
-                titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
-                titleColor = Color(0x4d89c9)
-            }
-            exclusions.add(this.exclusions, CC().grow())
-            add(exclusions, CC().span().grow())
+        val exclusions = JPanel(MigLayout(LC().fill()))
+        exclusions.border = TitledBorder("Exclusions").apply {
+            titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
+            titleColor = Color(0x4d89c9)
         }
+        exclusions.add(this.exclusions, CC().grow())
+        add(exclusions, CC().span().grow())
+
 
         //Mixin Package
-        run {
-            val mixinsPackage = JPanel(MigLayout(LC().fill()))
-            mixinsPackage.border = TitledBorder("MixinPackage").apply {
-                titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
-                titleColor = Color(0x4d89c9)
-            }
-            mixinsPackage.add(this.mixinPackages, CC().grow())
-            add(mixinsPackage, CC().span().grow())
+        val mixinsPackage = JPanel(MigLayout(LC().fill()))
+        mixinsPackage.border = TitledBorder("MixinPackage").apply {
+            titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
+            titleColor = Color(0x4d89c9)
         }
+        mixinsPackage.add(this.mixinPackages, CC().grow())
+        add(mixinsPackage, CC().span().grow())
 
         //Custom Dictionary
-        run {
-            val dictionary = JPanel(MigLayout(LC().fillX().flowX(), AC().gap().grow()))
-            dictionary.border = TitledBorder("CustomDictionary").apply {
-                titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
-                titleColor = Color(0x4d89c9)
-            }
-            (dictionaryStartIndex.editor as DefaultEditor).textField.horizontalAlignment = CENTER
-            dictionary.add(JLabel("DictionaryStartIndex:"), CC().cell(0, 0))
-            dictionary.add(dictionaryStartIndex, CC().wrap().minWidth("150"))
-            dictionary.add(JLabel("CustomDictionary:"), CC().cell(0, 1))
-            dictionary.add(customDictionary, CC().cell(1, 1).growX())
-            add(dictionary, CC().span().grow())
+        val dictionary = JPanel(MigLayout(LC().fillX().flowX(), AC().gap().grow()))
+        dictionary.border = TitledBorder("CustomDictionary").apply {
+            titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
+            titleColor = Color(0x4d89c9)
         }
+        (dictionaryStartIndex.editor as DefaultEditor).textField.horizontalAlignment = CENTER
+        dictionary.add(JLabel("DictionaryStartIndex:"), CC().cell(0, 0))
+        dictionary.add(dictionaryStartIndex, CC().wrap().minWidth("150"))
+        dictionary.add(JLabel("CustomDictionary:"), CC().cell(0, 1))
+        dictionary.add(customDictionary, CC().cell(1, 1).growX())
+        add(dictionary, CC().span().grow())
 
         //File Remove
-        run {
-            val fileRemove = JPanel(MigLayout(LC().fillX().flowX(), AC().gap().grow()))
-            fileRemove.border = TitledBorder("FileRemove").apply {
-                titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
-                titleColor = Color(0x4d89c9)
-            }
-            fileRemove.add(JLabel("FileRemovePrefix:"), CC().cell(0, 0))
-            fileRemove.add(fileRemovePrefix, CC().cell(1, 0).growX())
-            fileRemove.add(JLabel("FileRemoveSuffix:"), CC().cell(0, 1))
-            fileRemove.add(fileRemoveSuffix, CC().cell(1, 1).growX())
-            add(fileRemove, CC().span().grow())
+        val fileRemove = JPanel(MigLayout(LC().fillX().flowX(), AC().gap().grow()))
+        fileRemove.border = TitledBorder("FileRemove").apply {
+            titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
+            titleColor = Color(0x4d89c9)
         }
+        fileRemove.add(JLabel("FileRemovePrefix:"), CC().cell(0, 0))
+        fileRemove.add(fileRemovePrefix, CC().cell(1, 0).growX())
+        fileRemove.add(JLabel("FileRemoveSuffix:"), CC().cell(0, 1))
+        fileRemove.add(fileRemoveSuffix, CC().cell(1, 1).growX())
+        add(fileRemove, CC().span().grow())
     }
 
     /**
@@ -167,4 +160,5 @@ class GeneralPanel : JPanel() {
         Configs.Settings.fileRemovePrefix = fileRemovePrefix.text.split("\n").filter { it.isNotEmpty() }
         Configs.Settings.fileRemoveSuffix = fileRemoveSuffix.text.split("\n").filter { it.isNotEmpty() }
     }
+
 }

@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import net.spartanb312.grunt.config.Configs.isExcluded
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -34,24 +35,26 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
 
     override fun ResourceCache.transform() {
         Logger.info(" - Replacing invokes to InvokeDynamic...")
+        if (ImplicitJumpTransformer.enabled) ImplicitJumpTransformer.rebuildUtilList(this@transform)
         val count = count {
-            nonExcluded.asSequence()
-                .filter { !it.isInterface && it.version >= Opcodes.V1_7 && getMapping(it.name).notInList(exclusion) }
-                .forEach { classNode ->
-                    val bootstrapName = if (massiveRandom) massiveBlankString else massiveString
-                    val decryptName = if (massiveRandom) massiveBlankString else massiveString
-                    val decryptValue = Random.nextInt(0x8, 0x800)
-                    if (shouldApply(classNode, bootstrapName, decryptValue)) {
-                        val decrypt = createDecryptMethod(decryptName, decryptValue)
-                        val bsm = createBootstrap(classNode.name, bootstrapName, decryptName)
-                        if (ImplicitJumpTransformer.enabled) {
-                            ImplicitJumpTransformer.processMethodNode(decrypt)
-                            ImplicitJumpTransformer.processMethodNode(bsm)
-                        }
-                        classNode.methods.add(decrypt)
-                        classNode.methods.add(bsm)
+            classes.filter {
+                val map = getMapping(it.value.name)
+                !it.value.isInterface && it.value.version >= Opcodes.V1_7 && !map.isExcluded && map.notInList(exclusion)
+            }.values.forEach { classNode ->
+                val bootstrapName = if (massiveRandom) massiveBlankString else massiveString
+                val decryptName = if (massiveRandom) massiveBlankString else massiveString
+                val decryptValue = Random.nextInt(0x8, 0x800)
+                if (shouldApply(classNode, bootstrapName, decryptValue)) {
+                    val decrypt = createDecryptMethod(decryptName, decryptValue)
+                    val bsm = createBootstrap(classNode.name, bootstrapName, decryptName)
+                    if (ImplicitJumpTransformer.enabled) {
+                        ImplicitJumpTransformer.processMethodNode(decrypt)
+                        ImplicitJumpTransformer.processMethodNode(bsm)
                     }
+                    classNode.methods.add(decrypt)
+                    classNode.methods.add(bsm)
                 }
+            }
         }.get()
         Logger.info("    Replaced $count invokes")
     }

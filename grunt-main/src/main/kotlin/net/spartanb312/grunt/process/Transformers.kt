@@ -9,33 +9,48 @@ import net.spartanb312.grunt.process.transformers.optimize.*
 import net.spartanb312.grunt.process.transformers.redirect.*
 import net.spartanb312.grunt.process.transformers.rename.*
 
+/**
+ * Execution order
+ * 000 Optimization
+ * 010 Trash classes
+ * 020 Controlflow 1
+ * 030 Encryption
+ * 040 Controlflow 2
+ * 050 Redirect
+ * 060 Miscellaneous 1
+ * 070 Renaming
+ * 080 Minecraft
+ * 090 InvokeDynamic
+ * 100 Miscellaneous 2
+ * MAX PostProcess
+ */
 object Transformers : Collection<Transformer> by mutableListOf(
-    SourceDebugRemoveTransformer,
-    ShrinkingTransformer,
-    KotlinOptimizeTransformer,
-    EnumOptimizeTransformer,
-    DeadCodeRemoveTransformer,
-    ClonedClassTransformer,
-    TrashClassTransformer,
-    ImplicitJumpTransformer, // Execute 1
-    StringEncryptTransformer,
-    NumberEncryptTransformer,
-    FloatingPointEncryptTransformer,
-    ArithmeticEncryptTransformer,
-    ImplicitJumpTransformer, // Execute 2
-    StringEqualsRedirectTransformer,
-    FieldScrambleTransformer,
-    MethodScrambleTransformer,
-    NativeCandidateTransformer,
-    SyntheticBridgeTransformer,
-    LocalVariableRenameTransformer,
-    MethodRenameTransformer,
-    FieldRenameTransformer,
-    ClassRenameTransformer,
-    MixinFieldRenameTransformer,
-    MixinClassRenameTransformer,
-    InvokeDynamicTransformer,
-    ShuffleMembersTransformer,
-    WatermarkTransformer,
-    PostProcessTransformer
+    SourceDebugRemoveTransformer order 0,
+    ShrinkingTransformer order 1,
+    KotlinOptimizeTransformer order 2,
+    EnumOptimizeTransformer order 3,
+    DeadCodeRemoveTransformer order 4,
+    ClonedClassTransformer order 10,
+    TrashClassTransformer order 11,
+    ImplicitJumpTransformer order 20,
+    StringEncryptTransformer order 30,
+    NumberEncryptTransformer order 31,
+    FloatingPointEncryptTransformer order 32,
+    ArithmeticEncryptTransformer order 33,
+    //ImplicitJumpTransformer order 40,
+    StringEqualsRedirectTransformer order 50,
+    FieldScrambleTransformer order 51,
+    MethodScrambleTransformer order 52,
+    NativeCandidateTransformer order 60,
+    SyntheticBridgeTransformer order 61,
+    LocalVariableRenameTransformer order 70,
+    MethodRenameTransformer order 71,
+    FieldRenameTransformer order 72,
+    ClassRenameTransformer order 73,
+    MixinFieldRenameTransformer order 80,
+    MixinClassRenameTransformer order 81,
+    InvokeDynamicTransformer order 90,
+    ShuffleMembersTransformer order 100,
+    WatermarkTransformer order 101,
+    PostProcessTransformer order Int.MAX_VALUE
 )

@@ -65,7 +65,7 @@ inline val MethodNode.isNative get() = Modifier.isNative(access)
 
 inline val MethodNode.isAbstract get() = Modifier.isAbstract(access)
 
-inline val MethodNode.isMainMethod get() = (name == "main") && (desc == "([Ljava/lang/String; args)V")
+inline val MethodNode.isMainMethod get() = (name == "main") && (desc == "([Ljava/lang/String;)V")
 
 inline val MethodNode.isInitializer get() = (name == "<init>") || (name == "<clinit>")
 

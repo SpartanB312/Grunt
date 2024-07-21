@@ -21,8 +21,8 @@ class Hierarchy(private val resourceCache: ResourceCache) {
         val parents = mutableSetOf<ClassInfo>()
         val children = mutableSetOf<ClassInfo>()
         var iterated = false
-        var missingDependencies = false
         val isBroken = classNode == dummyClassNode
+        var missingDependencies = isBroken
 
         companion object {
             val dummyClassNode = ClassNode()
@@ -56,15 +56,7 @@ class Hierarchy(private val resourceCache: ResourceCache) {
             }
         }
 
-        // Update missing dependencies states
-        classInfos.values.forEach { classInfo ->
-            classInfo.missingDependencies = classInfo.parents.any { it.isBroken } || classInfo.isBroken
-        }
-
-        // Missing dependencies
-        classInfos.values.forEach {
-            if (it.isBroken) missingDependencies[it] = it.children.toList()
-        }
+        buildMissingMap()
     }
 
     fun isSubType(child: ClassInfo, father: ClassInfo): Boolean {
@@ -101,6 +93,18 @@ class Hierarchy(private val resourceCache: ResourceCache) {
         } else {
             if (subClassInfo != null) info.children.add(subClassInfo)
             info
+        }
+    }
+
+    fun buildMissingMap() {
+        // Update missing dependencies states
+        classInfos.values.forEach { classInfo ->
+            classInfo.missingDependencies = classInfo.parents.any { it.isBroken } || classInfo.isBroken
+        }
+
+        // Missing dependencies
+        classInfos.values.forEach {
+            if (it.isBroken) missingDependencies[it] = it.children.toList()
         }
     }
 

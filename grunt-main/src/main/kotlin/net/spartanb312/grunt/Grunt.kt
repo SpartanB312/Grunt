@@ -10,10 +10,10 @@ import kotlin.system.measureTimeMillis
 
 /**
  * Gruntpocalypse
- * A continuation of Grunt witch is a lightweight java bytecode obfuscator
+ * A java bytecode obfuscator
  */
-const val VERSION = "2.0.2"
-const val SUBTITLE = "build 240717"
+const val VERSION = "2.1.0"
+const val SUBTITLE = "build 240721"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
 fun main(args: Array<String>) {
@@ -34,38 +34,40 @@ fun main(args: Array<String>) {
 
     Logger.info("Initializing Grunt Obfuscator...")
 
-    val needGui = args.contains("-gui")
-    val config = args.firstOrNull { it.endsWith(".json") } ?: "config.json"
+    var guiMode = false
+    val config = args.firstOrNull { it.endsWith(".json") } ?: run {
+        guiMode = true
+        "config.json"
+    } // If config is provided, use console mode
 
     Logger.info("Using config $config")
 
-    if (needGui) {
-        if (GraphicsEnvironment.isHeadless()){
-            println("Gui is not allowed in your environment. pls remove [-gui]")
-            return
-        }
+    if (GraphicsEnvironment.isHeadless()) {
+        Logger.error("Gui is not allowed in your environment. Switching to console mode.")
+        guiMode = false
+    }
 
+    if (guiMode) {
         try {
             Configs.loadConfig(config)
+            Configs.saveConfig(config) // Clean up the config
         } catch (ignore: Exception) {
+            Logger.info("Failed to read config $config! But we generated a new one.")
             Configs.saveConfig(config)
         }
-
         GuiFrame.loadConfig(config)
         GuiFrame.view()
     } else {
-
         try {
             Configs.resetConfig()
             Configs.loadConfig(config)
-            Configs.saveConfig(config)
+            Configs.saveConfig(config) // Clean up the config
         } catch (ignore: Exception) {
             Logger.info("Failed to read config $config! But we generated a new one.")
             Configs.saveConfig(config)
             Logger.info("Type (Y/N) if you want to continue")
             if (readlnOrNull()?.lowercase() == "n") return
         }
-
         runProcess()
     }
 }
@@ -77,7 +79,7 @@ fun runProcess() {
             readJar()
             val obfTime = measureTimeMillis {
                 Logger.info("Processing...")
-                Transformers.forEach { if (it.enabled) with(it) { transform() } }
+                Transformers.sortedBy { it.order }.forEach { if (it.enabled) with(it) { transform() } }
             }
             Logger.info("Took $obfTime ms to process!")
             Logger.info("Dumping to ${Configs.Settings.output}")

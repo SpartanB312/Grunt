@@ -10,13 +10,14 @@ import net.spartanb312.grunt.VERSION
 import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.gui.panel.BasicPanel
 import net.spartanb312.grunt.gui.panel.GeneralPanel
-import net.spartanb312.grunt.gui.panel.LoggerPanel
+import net.spartanb312.grunt.gui.panel.ConsolePanel
 import net.spartanb312.grunt.gui.panel.TransformerPanel
-import net.spartanb312.grunt.gui.util.LoggerCapture
+import net.spartanb312.grunt.gui.util.LoggerPrinter
 import net.spartanb312.grunt.runProcess
 import net.spartanb312.grunt.utils.logging.SimpleLogger
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.Image
 import java.io.PrintWriter
 import java.io.StringWriter
 import javax.swing.*
@@ -25,29 +26,34 @@ import javax.swing.border.EmptyBorder
 import kotlin.concurrent.thread
 
 object GuiFrame {
-    val logger = SimpleLogger("Grunt Gui")
+
+    val logger = SimpleLogger("Grunt-UI")
 
     private val mainFrame = JFrame("")
     private val frameSize = Dimension(755, 535)
 
     var currentConfig: String = "config.json"
 
-    //Page
+    // Page
     val tabbedPanel = JTabbedPane()
 
-    //Config
+    // Config
     val basicPanel = BasicPanel()
     val generalPanel = GeneralPanel()
     val transformerPanel = TransformerPanel()
 
-    //Logger
-    var loggerPanel = LoggerPanel()
-    val captureInfo = LoggerCapture(System.out) { loggerPanel.info(it) }
+    // Console
+    var consolePanel = ConsolePanel()
+    val captureInfo = LoggerPrinter(System.out) { consolePanel.info(it) }
+
     init {
         System.setOut(captureInfo)
     }
 
     init {
+        val imageIcon = ImageIcon(GuiFrame::class.java.getResource("/logo.png"))
+        mainFrame.iconImage = imageIcon.image.getScaledInstance(40, 40, Image.SCALE_DEFAULT)
+
         mainFrame.title = "Gruntpocalypse v$VERSION | $SUBTITLE"
         mainFrame.defaultCloseOperation = EXIT_ON_CLOSE
         mainFrame.size = frameSize
@@ -58,8 +64,8 @@ object GuiFrame {
         )
 
         tabbedPanel.addTab("General", JScrollPane(generalPanel).apply { verticalScrollBar.unitIncrement = 16 })
-        tabbedPanel.addTab("Transformer", transformerPanel)
-        tabbedPanel.addTab("Logger", loggerPanel)
+        tabbedPanel.addTab("Obfuscation", transformerPanel)
+        tabbedPanel.addTab("Console", consolePanel)
 
         mainFrame.add(tabbedPanel, CC().cell(0, 0))
         mainFrame.add(basicPanel, CC().cell(0, 1))
@@ -71,13 +77,13 @@ object GuiFrame {
     fun startObf() {
         setValues()
         thread(
-            name = "Grunt Process",
+            name = "process",
             priority = Thread.MAX_PRIORITY
         ) {
             disableAll()
             tabbedPanel.selectedIndex = 2
             try {
-               runProcess()
+                runProcess()
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -85,8 +91,8 @@ object GuiFrame {
                     e.printStackTrace(PrintWriter(it))
                 }.toString()
 
-                //Send To Gui Logger
-                loggerPanel.err(stacktrace)
+                // Send To Gui Logger
+                consolePanel.err(stacktrace)
 
                 val panel = JPanel().apply {
                     border = EmptyBorder(5, 5, 5, 5)
@@ -95,7 +101,12 @@ object GuiFrame {
 
                 panel.add(JScrollPane(JTextArea(stacktrace).also { it.isEditable = false }))
 
-                JOptionPane.showMessageDialog(this.mainFrame, panel, "ERROR encountered at " + e.stackTrace[0].className, JOptionPane.ERROR_MESSAGE)
+                JOptionPane.showMessageDialog(
+                    this.mainFrame,
+                    panel,
+                    "ERROR encountered at " + e.stackTrace[0].className,
+                    JOptionPane.ERROR_MESSAGE
+                )
             }
             enableAll()
         }
@@ -122,7 +133,7 @@ object GuiFrame {
 
     fun loadConfig(path: String) {
         currentConfig = path
-        logger.info("Load Config $currentConfig")
+        logger.info("Loading config $currentConfig")
         Configs.loadConfig(currentConfig)
         refreshElement()
     }
@@ -130,13 +141,13 @@ object GuiFrame {
     fun saveConfig(path: String) {
         currentConfig = path
 
-        logger.info("Save Config $currentConfig")
+        logger.info("Saving config $currentConfig")
         setValues()
         Configs.saveConfig(currentConfig)
     }
 
     fun resetValue() {
-        logger.info("Reset Value")
+        logger.info("Reset all settings")
         Configs.resetConfig()
         refreshElement()
     }
@@ -156,4 +167,5 @@ object GuiFrame {
     fun view() {
         mainFrame.isVisible = true
     }
+
 }

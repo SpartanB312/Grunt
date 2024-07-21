@@ -22,7 +22,7 @@ import kotlin.random.Random
  */
 object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redirect) {
 
-    private val generateOuterClass by setting("GenerateOuterClass", true)
+    private val generateOuterClass by setting("GenerateOuterClass", false)
     private val randomCall by setting("RandomCall", true)
     private val excludedClasses by setting("ExcludedClasses", listOf())
     private val excludedMethodName by setting("ExcludedMethodName", listOf())

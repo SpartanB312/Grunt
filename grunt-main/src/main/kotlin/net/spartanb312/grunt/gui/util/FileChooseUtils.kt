@@ -7,6 +7,7 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
 object FileChooseUtils {
+
     val CURRENT_PATH = Paths.get("").toAbsolutePath().toString() + File.separatorChar
 
     fun chooseJsonFile(parent: Component): String? {
@@ -21,7 +22,7 @@ object FileChooseUtils {
         val chooser = JFileChooser(file)
         chooser.fileFilter = FileNameExtensionFilter("Json File", "json")
         chooser.selectedFile = file
-            return if (chooser.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
+        return if (chooser.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
             chooser.selectedFile.absolutePath.removePrefix(CURRENT_PATH)
         } else null
     }
@@ -31,7 +32,8 @@ object FileChooseUtils {
         chooser.fileFilter = FileNameExtensionFilter("Jar File", "jar")
 
         return if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
-             chooser.selectedFile.absolutePath.removePrefix(CURRENT_PATH)
+            chooser.selectedFile.absolutePath.removePrefix(CURRENT_PATH)
         } else null
     }
+
 }

@@ -17,7 +17,7 @@ import org.objectweb.asm.tree.MethodNode
  * Encrypt floating point numbers
  * Last update on 2024/07/02
  */
-object FloatingPointEncryptTransformer : Transformer("FloatingPointEncrypt", Category.Renaming) {
+object FloatingPointEncryptTransformer : Transformer("FloatingPointEncrypt", Category.Encryption) {
 
     private val times by setting("Intensity", 1)
     private val maxInsnSize by setting("MaxInsnSize", 16384)

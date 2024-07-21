@@ -20,7 +20,7 @@ import kotlin.random.Random
  */
 object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflow) {
 
-    private val beforeEncrypt by setting("ExecuteBeforeEncrypt", false)
+    private var beforeEncrypt by setting("ExecuteBeforeEncrypt", false)
     private val replaceGoto by setting("ReplaceGoto", true)
     private val replaceIf by setting("ReplaceIf", true)
     private val useLocalVar by setting("UseLocalVar", true)
@@ -31,18 +31,15 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
     private val nonExcludedUtilList = mutableListOf<TrashCallMethod>()
     private val allStaticUtilList = mutableSetOf<TrashCallMethod>()
 
-    private var flag = 0
+    override var order: Int
+        get() = if (beforeEncrypt) 20 else 40
+        set(value) {
+            beforeEncrypt = value == 20
+        }
 
     override fun ResourceCache.transform() {
-        if (flag == 2) flag = 1 else flag++
-        if ((beforeEncrypt && flag != 1) || (!beforeEncrypt && flag == 1)) return
         Logger.info(" - Replacing jumps to implicit operations")
-        nonExcludedUtilList.clear()
-        nonExcludedUtilList.addAll(generateUtilList(nonExcluded))
-        if (expandedJunkCode) {
-            allStaticUtilList.clear()
-            allStaticUtilList.addAll(generateUtilList(allClasses))
-        }
+        rebuildUtilList(this)
         val count = count {
             nonExcluded.asSequence()
                 .filter { it.name.notInList(exclusion) }
@@ -356,6 +353,15 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
 
         fun localVarUsage(val1: Int, val2: Int, val3: Int, maxLocals: Int, insnList: InsnList): InsnList {
             return insnListProvider.invoke(val1, val2, val3, maxLocals, insnList)
+        }
+    }
+
+    fun rebuildUtilList(resourceCache: ResourceCache) {
+        nonExcludedUtilList.clear()
+        nonExcludedUtilList.addAll(generateUtilList(resourceCache.nonExcluded))
+        if (expandedJunkCode) {
+            allStaticUtilList.clear()
+            allStaticUtilList.addAll(generateUtilList(resourceCache.allClasses))
         }
     }
 

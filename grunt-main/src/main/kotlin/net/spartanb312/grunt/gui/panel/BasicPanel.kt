@@ -11,8 +11,8 @@ import java.io.File
 import javax.swing.*
 import javax.swing.border.TitledBorder
 
-
 class BasicPanel : JPanel() {
+
     val input = JTextField()
     val output = JTextField()
     private val inputBrowse = JButton("Browse")
@@ -28,8 +28,8 @@ class BasicPanel : JPanel() {
 
     val loadButton = JButton("Load Config")
     val saveButton = JButton("Save Config")
-    val resetButton = JButton("Reset Value")
-    val startSave = JCheckBox("Save when start obfuscate", true)
+    val resetButton = JButton("Reset Values")
+    val startSave = JCheckBox("Save when obfuscation starts", true)
 
     init {
         layout = MigLayout(
@@ -56,7 +56,8 @@ class BasicPanel : JPanel() {
             GuiFrame.loadConfig(file)
         }
         saveButton.addActionListener {
-            val file = FileChooseUtils.choosePathSaveJsonFile(parent, File(GuiFrame.currentConfig)) ?: return@addActionListener
+            val file =
+                FileChooseUtils.choosePathSaveJsonFile(parent, File(GuiFrame.currentConfig)) ?: return@addActionListener
             GuiFrame.saveConfig(file.removeSuffix(".json").plus(".json"))
         }
         resetButton.addActionListener {
@@ -120,4 +121,5 @@ class BasicPanel : JPanel() {
         Settings.corruptOutput = this.corruptOutput.isSelected
         Settings.generateRemap = this.dumpMappings.isSelected
     }
+
 }

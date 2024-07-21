@@ -9,7 +9,6 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.Transformers
 import java.awt.Color
 import java.awt.Font
-import java.util.stream.Collectors
 import javax.swing.*
 import javax.swing.JSpinner.DefaultEditor
 import javax.swing.border.TitledBorder
@@ -45,9 +44,7 @@ class TransformerPanel : JTabbedPane() {
         val scrollPane = JScrollPane(panel)
         scrollPane.verticalScrollBar.unitIncrement = 16
 
-        val transformers = Transformers.stream()
-            .filter { t -> t.category == category }
-            .collect(Collectors.toSet())
+        val transformers = Transformers.filter { t -> t.category == category }.toSet()
 
         val span = CC().span()
         for (transformer in transformers) {
@@ -80,7 +77,7 @@ class TransformerPanel : JTabbedPane() {
         }
 
         this.add(JLabel("${value.name}:"), CC().cell(0, row))
-        this.add(checkBox,  CC().cell(1, row))
+        this.add(checkBox, CC().cell(1, row))
     }
 
 
@@ -88,16 +85,24 @@ class TransformerPanel : JTabbedPane() {
         val textBox = JTextField(value.value)
         textBox.document.addDocumentListener(object : DocumentListener {
 
-            override fun insertUpdate(e: DocumentEvent) { setValue() }
-            override fun removeUpdate(e: DocumentEvent) { setValue() }
-            override fun changedUpdate(e: DocumentEvent) { setValue() }
+            override fun insertUpdate(e: DocumentEvent) {
+                setValue()
+            }
+
+            override fun removeUpdate(e: DocumentEvent) {
+                setValue()
+            }
+
+            override fun changedUpdate(e: DocumentEvent) {
+                setValue()
+            }
 
             fun setValue() {
                 value.value = textBox.text
             }
         })
 
-        this.add(JLabel("${value.name}:"),  CC().cell(0, row))
+        this.add(JLabel("${value.name}:"), CC().cell(0, row))
         this.add(textBox, CC().wrap().minWidth("300"))
     }
 
@@ -124,11 +129,19 @@ class TransformerPanel : JTabbedPane() {
     }
 
     private fun JPanel.addListValueComponent(listValue: ListValue, row: Int) {
-        val textBox = JTextArea(listValue.value.joinToString("\n"), 3, 45)
+        val textBox = JTextArea(listValue.value.joinToString("\n"), 3, 35)
         textBox.document.addDocumentListener(object : DocumentListener {
-            override fun insertUpdate(e: DocumentEvent) { setValue() }
-            override fun removeUpdate(e: DocumentEvent) { setValue() }
-            override fun changedUpdate(e: DocumentEvent) { setValue() }
+            override fun insertUpdate(e: DocumentEvent) {
+                setValue()
+            }
+
+            override fun removeUpdate(e: DocumentEvent) {
+                setValue()
+            }
+
+            override fun changedUpdate(e: DocumentEvent) {
+                setValue()
+            }
 
             fun setValue() {
                 listValue.value = textBox.text.split('\n').filter { it.isNotEmpty() }

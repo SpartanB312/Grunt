@@ -6,10 +6,7 @@ import net.spartanb312.grunt.process.hierarchy.Hierarchy
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.extensions.isAnnotation
-import net.spartanb312.grunt.utils.extensions.isEnum
-import net.spartanb312.grunt.utils.extensions.isInterface
-import net.spartanb312.grunt.utils.extensions.isNative
+import net.spartanb312.grunt.utils.extensions.*
 import net.spartanb312.grunt.utils.inList
 import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
@@ -28,7 +25,7 @@ import kotlin.system.measureTimeMillis
 object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) {
 
     private val enums by setting("Enums", true)
-    private val interfaces by setting("Interfaces", true) // Make sure you've loaded all the dependencies
+    private val interfaces by setting("Interfaces", false) // Make sure you've loaded all the dependencies
     private val dictionary by setting("Dictionary", "Alphabet")
     private val heavyOverloads by setting("HeavyOverloads", false)
     private val randomKeywordPrefix by setting("RandomKeywordPrefix", false)
@@ -66,8 +63,8 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
                     if (!info.missingDependencies) {
                         val isEnum = classNode.isEnum
                         for (methodNode in classNode.methods) {
-                            if (methodNode.name.startsWith("<")) continue
-                            if (methodNode.name == "main") continue
+                            if (methodNode.isInitializer) continue
+                            if (methodNode.isMainMethod) continue
                             if (isEnum && methodNode.name == "values") continue
                             if (methodNode.name.inList(excludedName)) continue
                             if (methodNode.isNative) continue
