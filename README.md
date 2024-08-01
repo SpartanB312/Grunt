@@ -1,6 +1,6 @@
 # Gruntpocalypse
 
-Gruntpocalypse (Grunt Reborn) is a continuation of Grunt project.
+Gruntpocalypse is a continuation of Grunt project.
 
 This is a free and open source obfuscator written in kotlin aiming for stability and versatility.
 
@@ -21,45 +21,44 @@ Stability level: [1]=Unstable [5]=Stable
 
 ## Notice
 
-The dependencies of your project is highly required to ensure stability and intensity. You should add all of them to your config. (Especially method and field renamer, which'll search all source methods and invoke dynamic insn for safe renaming. If the one class on the hierarchy tree missing dependencies, the whole hierarchy tree will be excluded).
+Controlflow requires ComputeMaxs disabled. Please ensure your included classes with full dependencies.
 
-If most of the project dependencies are unavailable for some reasons. I suggest you to enable useComputeMaxs in Global setting to ensure stability as much as possible. (If you encountered VerifyError, You should first try to complete the dependencies. It is recommended to only enable computeMaxs when dependencies cannot be completed)
+The dependencies of your project is highly required to ensure stability and intensity. If most of the project dependencies are unavailable for some reasons. I suggest you to enable useComputeMaxs in Global setting to ensure stability as much as possible. (If you encountered VerifyError, You should first try to complete the dependencies. It is recommended to only enable computeMaxs and disable controlflow obfuscation when most dependencies cannot be completed)
 
-## Features
+## Features:
 
-### Renamer:
+### Renamer
 
 * [X] [5]ClassRename
 * [X] [5]FieldRename
 * [X] [5]MethodRename
 * [X] [5]LocalVarRename
 
-  The method renamer support MultiSource, InvokeDynamic, and FunctionalInterface check.
+  The method renamer support InterfaceOverlap, InvokeDynamic, and FunctionalInterface check.
 
-  MultiSource: A class extends/implements more than 2 class/interfaces with same method name and descriptor. (Example: A implements B and C, B and C both are independent interface and have method invoke(I)J.)
+  InterfaceOverlap: A class extends/implements more than 2 class/interfaces with same method name and descriptor. (Example: A implements B and C, B and C both are independent interface and have method invoke(I)J.)
 
-  That's why Grunt is one of the few obfuscators that can stably support interface method renaming
-
-### Minecraft:
+### Minecraft
 
 * [X] [4]MixinClassRename
 * [X] [4]MixinFieldRename
 
-### Encrypt:
+### Encrypt
 
 * [X] [4]ArithmeticEncrypt
 * [X] [5]NumberEncrypt
 * [X] [5]FloatingPointEncrypt
 * [X] [5]StringEncrypt
 
-### Redirect:
+### Redirect
 
 * [X] [4]MethodScramble
 * [X] [5]FieldScramble
 * [X] [5]StringEqualsRedirect
 * [X] [5]InvokeDynamic
+* [ ] [0]NativeBSM (WIP. Coming in 2.2) 
 
-### Optimization:
+### Optimization
 
 * [X] [5]SourceDebugRemove
 * [X] [5]EnumOptimization
@@ -67,7 +66,7 @@ If most of the project dependencies are unavailable for some reasons. I suggest 
 * [X] [5]KotlinOptimize
 * [X] [4]Shrinking
 
-### Miscellaneous:
+### Miscellaneous
 
 * [X] [5]Watermark
 * [X] [5]NativeCandidate
@@ -77,9 +76,10 @@ If most of the project dependencies are unavailable for some reasons. I suggest 
 * [X] [5]SyntheticBridge
 * [X] [5]PostProcess
 
-### ControlFlow:
+### ControlFlow
 
 * [X] [4]ImplicitJump
+* [ ] [0]FlattenReturn (WIP. Coming in 2.2) 
 
 ## License: GNU General Public License 3.0
 
