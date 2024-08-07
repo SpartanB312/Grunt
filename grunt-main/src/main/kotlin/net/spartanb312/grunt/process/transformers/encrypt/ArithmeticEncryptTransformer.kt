@@ -16,7 +16,7 @@ import kotlin.random.Random
 
 /**
  * Replace logic operations with substitutions
- * Last update on 24/07/15
+ * Last update on 24/08/07
  */
 object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.Encryption) {
 
@@ -27,15 +27,18 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
     override fun ResourceCache.transform() {
         Logger.info(" - Encrypting arithmetic instructions...")
         val count = count {
-            nonExcluded.asSequence()
-                .filter { c -> exclusion.none { c.name.startsWith(it) } }
-                .forEach { classNode ->
-                    classNode.methods.asSequence()
-                        .filter { !it.isAbstract && !it.isNative }
-                        .forEach { methodNode: MethodNode ->
-                            encryptArithmetic(methodNode)
-                        }
-                }
+            repeat(times) { t ->
+                if (times > 1) Logger.info("    Encrypting integers ${t + 1} of $times times")
+                nonExcluded.asSequence()
+                    .filter { c -> exclusion.none { c.name.startsWith(it) } }
+                    .forEach { classNode ->
+                        classNode.methods.asSequence()
+                            .filter { !it.isAbstract && !it.isNative }
+                            .forEach { methodNode: MethodNode ->
+                                encryptArithmetic(methodNode)
+                            }
+                    }
+            }
         }.get()
         Logger.info("    Encrypted $count arithmetic instructions")
     }

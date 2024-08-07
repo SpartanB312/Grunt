@@ -2,6 +2,8 @@ package net.spartanb312.grunt.process.transformers.flow
 
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
+import net.spartanb312.grunt.process.hierarchy.Hierarchy
+import net.spartanb312.grunt.process.hierarchy.ReferenceSearch
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.encrypt.ArithmeticEncryptTransformer
 import net.spartanb312.grunt.utils.*
@@ -40,9 +42,11 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
     override fun ResourceCache.transform() {
         Logger.info(" - Replacing jumps to implicit operations")
         rebuildUtilList(this)
+        val hierarchy = Hierarchy(this)
+        hierarchy.build(true)
         val count = count {
             nonExcluded.asSequence()
-                .filter { it.name.notInList(exclusion) }
+                .filter { it.name.notInList(exclusion) && !it.missingReference(hierarchy) }
                 .forEach { classNode ->
                     classNode.methods.forEach { methodNode ->
                         add(processMethodNode(methodNode))
@@ -136,7 +140,6 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
                 +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
                 IF_ICMPLT(targetLabel)
                 +generateTrashCode(methodNode, returnType)
-
             }
 
             2 -> insnList {
@@ -153,7 +156,6 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
                 +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
                 IF_ICMPGE(targetLabel)
                 +generateTrashCode(methodNode, returnType)
-
             }
 
             3 -> insnList {
@@ -170,7 +172,6 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
                 +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
                 IF_ICMPGT(targetLabel)
                 +generateTrashCode(methodNode, returnType)
-
             }
 
             4 -> insnList {
@@ -187,7 +188,6 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
                 +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
                 IF_ICMPLE(targetLabel)
                 +generateTrashCode(methodNode, returnType)
-
             }
 
             else -> insnList {
@@ -363,6 +363,10 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
             allStaticUtilList.clear()
             allStaticUtilList.addAll(generateUtilList(resourceCache.allClasses))
         }
+    }
+
+    private fun ClassNode.missingReference(hierarchy: Hierarchy): Boolean {
+        return ReferenceSearch.checkMissing(this, hierarchy).isNotEmpty()
     }
 
 }

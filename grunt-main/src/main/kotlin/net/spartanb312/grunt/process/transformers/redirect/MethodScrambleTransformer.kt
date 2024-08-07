@@ -130,8 +130,8 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
                 (if (outer) Opcodes.ACC_PUBLIC else Opcodes.ACC_PRIVATE) + Opcodes.ACC_STATIC,
                 methodName,
                 desc,
-                null,
-                null
+                signature,
+                exceptions
             ) {
                 InsnList {
                     var stack = 0
@@ -148,8 +148,8 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
                 (if (outer) Opcodes.ACC_PUBLIC else Opcodes.ACC_PRIVATE) + Opcodes.ACC_STATIC,
                 methodName,
                 "(L$owner;${desc.removePrefix("(")}",
-                null,
-                null
+                signature,
+                exceptions
             ) {
                 InsnList {
                     var stack = 0
@@ -162,10 +162,7 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
                 }
             }
 
-            // TODO InvokeInterface
             Opcodes.INVOKEINTERFACE -> null
-
-            // See InitializerRedirect
             Opcodes.INVOKESPECIAL -> null
             else -> throw Exception("Unsupported")
         }

@@ -15,11 +15,10 @@ import org.objectweb.asm.tree.MethodNode
 
 /**
  * Encrypt floating point numbers
- * Last update on 2024/07/02
+ * Last update on 2024/08/07
  */
 object FloatingPointEncryptTransformer : Transformer("FloatingPointEncrypt", Category.Encryption) {
 
-    private val times by setting("Intensity", 1)
     private val maxInsnSize by setting("MaxInsnSize", 16384)
     private val exclusion by setting("Exclusion", listOf())
 

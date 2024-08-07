@@ -12,7 +12,7 @@ import kotlin.system.measureTimeMillis
  * Gruntpocalypse
  * A java bytecode obfuscator
  */
-const val VERSION = "2.1.0"
+const val VERSION = "2.1.1"
 const val SUBTITLE = "build 240721"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 

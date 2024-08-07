@@ -7,6 +7,7 @@ import net.spartanb312.grunt.config.Configs.isMixinClass
 import net.spartanb312.grunt.config.Configs.saveToFile
 import net.spartanb312.grunt.config.Configs.shouldRemove
 import net.spartanb312.grunt.process.hierarchy.Hierarchy
+import net.spartanb312.grunt.process.hierarchy.ReferenceSearch
 import net.spartanb312.grunt.utils.corruptCRC32
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.ClassReader
@@ -84,7 +85,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
     fun dumpJar(targetFile: String) = ZipOutputStream(File(targetFile).outputStream()).apply {
         Logger.info("Building hierarchies...")
         val hierarchy = Hierarchy(this@ResourceCache)
-        hierarchy.build()
+        hierarchy.build(true)
         if (Configs.Settings.corruptOutput) {
             Logger.info("Corrupting output...")
             corruptCRC32()
@@ -93,11 +94,19 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         Logger.info("Writing classes...")
         for (classNode in classes.values) {
             if (classNode.name == "module-info" || classNode.name.shouldRemove) continue
+            val missingReference = ReferenceSearch.checkMissing(classNode, hierarchy)
+            if (missingReference.isNotEmpty()) {
+                Logger.error("Class ${classNode.name} missing reference:")
+                for (missing in missingReference) {
+                    Logger.error(" - ${missing.name}")
+                }
+            }
             val classInfo = hierarchy.getClassInfo(classNode)
-            val useComputeMax = Configs.Settings.useComputeMax || classInfo.missingDependencies || classNode.isExcluded
-            val missing = classInfo.missingDependencies && !Configs.Settings.useComputeMax && !classNode.isExcluded
+            val missingAny = classInfo.missingDependencies || missingReference.isNotEmpty()
+            val useComputeMax = Configs.Settings.useComputeMax || missingAny || classNode.isExcluded
+            val missing = missingAny && !Configs.Settings.useComputeMax && !classNode.isExcluded
             val byteArray = try {
-                if (missing) Logger.warn("Using COMPUTE_MAXS due to ${classNode.name} missing dependencies.")
+                if (missing) Logger.warn("Using COMPUTE_MAXS due to ${classNode.name} missing dependencies or reference.")
                 ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {
                     classNode.accept(this)
                 }.toByteArray()
@@ -116,8 +125,8 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
             write(byteArray)
             closeEntry()
         }
-        hierarchy.printMissing()
         hierarchy.buildMissingMap()
+        hierarchy.printMissing()
 
         Logger.info("Writing resources...")
         for ((name, bytes) in resources) {

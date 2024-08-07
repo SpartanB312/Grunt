@@ -29,9 +29,10 @@ class Hierarchy(private val resourceCache: ResourceCache) {
         }
     }
 
-    fun build() {
+    fun build(includeLibs: Boolean = false) {
         // Build all class infos
-        resourceCache.classes.forEach { getClassInfo(it.key) }
+        if (includeLibs) resourceCache.allClasses.forEach { getClassInfo(it) }
+        else resourceCache.classes.forEach { getClassInfo(it.key) }
 
         // Iterate parents
         classInfos.values.forEach { classInfo ->

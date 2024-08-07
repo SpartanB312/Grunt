@@ -24,15 +24,21 @@ class ClassDumper(
                 try {
                     super.getCommonSuperClass(type1, type2)
                 } catch (exception: Exception) {
-                    val missing1 = clazz1 == null && try {
+                    try {
                         Class.forName(type1)
-                        false
                     } catch (ignore: Exception) {
-                        true
+                        if (clazz1 == null) {
+                            Logger.error("Missing dependency $type1")
+                            throw Exception("Can't find common super class due to missing $type1")
+                        }
                     }
-                    if (missing1) {
-                        Logger.error("Missing dependency $type1")
-                        throw Exception("Can't find common super class due to missing $type1")
+                    try {
+                        Class.forName(type2)
+                    } catch (ignore: Exception) {
+                        if (clazz2 == null) {
+                            Logger.error("Missing dependency $type2")
+                            throw Exception("Can't find common super class due to missing $type2")
+                        }
                     }
                     "java/lang/Object"
                 }
