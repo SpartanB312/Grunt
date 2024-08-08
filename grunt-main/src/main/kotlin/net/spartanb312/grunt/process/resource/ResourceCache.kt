@@ -141,7 +141,8 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
             Logger.info("Writing mappings...")
             if (mappingObjects.isNotEmpty()) {
                 val dir =
-                    "mappings/${SimpleDateFormat("yyyy-MM-dd HH-mm-ss").format(Date())} ${Configs.Settings.input}/"
+                    "mappings/${SimpleDateFormat("yyyy-MM-dd HH-mm-ss").format(Date())}" +
+                            " ${File(Configs.Settings.input).name}/"
                 mappingObjects.forEach { (name, obj) ->
                     obj.saveToFile(File("$dir$name.json"))
                 }
