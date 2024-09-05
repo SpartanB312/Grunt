@@ -19,15 +19,15 @@ object ReferenceSearch {
         val missingReference = mutableListOf<Hierarchy.ClassInfo>()
         methodNode.instructions.forEach { insn ->
             if (insn is FieldInsnNode) {
-                var name = insn.owner.substringAfterLast("[")
-                if (name.startsWith("L")) name = name.removePrefix("L").removeSuffix(";")
+                val name = if (!insn.owner.startsWith("[")) insn.owner
+                else insn.owner.substringAfterLast("[").removePrefix("L").removeSuffix(";")
                 val info = hierarchy.getClassInfo(name)
                 if (info.isBroken) missingReference.add(info)
 
             }
             if (insn is MethodInsnNode) {
-                var name = insn.owner.substringAfterLast("[")
-                if (name.startsWith("L")) name = name.removePrefix("L").removeSuffix(";")
+                val name = if (!insn.owner.startsWith("[")) insn.owner
+                else insn.owner.substringAfterLast("[").removePrefix("L").removeSuffix(";")
                 val info = hierarchy.getClassInfo(name)
                 if (info.isBroken) missingReference.add(info)
             }

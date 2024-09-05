@@ -323,9 +323,9 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
         Type1({ val1, val2, val3, maxLocals, insnList ->
             insnList {
                 INT(val2)
-                ISTORE(maxLocals + 1)
+                ISTORE(maxLocals)
                 INT(val1)
-                ILOAD(maxLocals + 1)
+                ILOAD(maxLocals)
                 +insnList
                 INT(val3)
             }
@@ -333,21 +333,21 @@ object ImplicitJumpTransformer : Transformer("ImplicitJump", Category.Controlflo
         Type2({ val1, val2, val3, maxLocals, insnList ->
             insnList {
                 INT(val3)
-                ISTORE(maxLocals + 1)
+                ISTORE(maxLocals)
                 INT(val1)
                 INT(val2)
                 +insnList
-                ILOAD(maxLocals + 1)
+                ILOAD(maxLocals)
             }
         }),
         Type3({ val1, val2, val3, maxLocals, insnList ->
             insnList {
                 INT(val1)
                 INT(val3)
-                ISTORE(maxLocals + 1)
+                ISTORE(maxLocals)
                 INT(val2)
                 +insnList
-                ILOAD(maxLocals + 1)
+                ILOAD(maxLocals)
             }
         });
 
