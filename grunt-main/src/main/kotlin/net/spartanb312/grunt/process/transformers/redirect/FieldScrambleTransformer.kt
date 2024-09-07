@@ -95,46 +95,48 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                                                     callingField.signature
                                                 ).appendAnnotation(true)
 
-                                            else -> throw Exception("Unsupported")
+                                            else -> null
                                         }
 
-                                        if (shouldOuter) {
-                                            genMethod.access = Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC
-                                            val clazz = newClasses.getOrPut(classNode) {
-                                                ClassNode().apply {
-                                                    visit(
-                                                        classNode.version,
-                                                        Opcodes.ACC_PUBLIC,
-                                                        "${classNode.name}\$FieldStatic",
-                                                        null,
-                                                        "java/lang/Object",
-                                                        null
-                                                    )
+                                        if (genMethod != null) {
+                                            if (shouldOuter) {
+                                                genMethod.access = Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC
+                                                val clazz = newClasses.getOrPut(classNode) {
+                                                    ClassNode().apply {
+                                                        visit(
+                                                            classNode.version,
+                                                            Opcodes.ACC_PUBLIC,
+                                                            "${classNode.name}\$FieldStatic",
+                                                            null,
+                                                            "java/lang/Object",
+                                                            null
+                                                        )
+                                                    }
                                                 }
+                                                methodNode.instructions.set(
+                                                    it,
+                                                    MethodInsnNode(
+                                                        Opcodes.INVOKESTATIC,
+                                                        clazz.name,
+                                                        genMethod.name,
+                                                        genMethod.desc
+                                                    )
+                                                )
+                                                clazz.methods.add(genMethod)
+                                            } else {
+                                                methodNode.instructions.set(
+                                                    it,
+                                                    MethodInsnNode(
+                                                        Opcodes.INVOKESTATIC,
+                                                        classNode.name,
+                                                        genMethod.name,
+                                                        genMethod.desc
+                                                    )
+                                                )
+                                                classNode.methods.add(genMethod)
                                             }
-                                            methodNode.instructions.set(
-                                                it,
-                                                MethodInsnNode(
-                                                    Opcodes.INVOKESTATIC,
-                                                    clazz.name,
-                                                    genMethod.name,
-                                                    genMethod.desc
-                                                )
-                                            )
-                                            clazz.methods.add(genMethod)
-                                        } else {
-                                            methodNode.instructions.set(
-                                                it,
-                                                MethodInsnNode(
-                                                    Opcodes.INVOKESTATIC,
-                                                    classNode.name,
-                                                    genMethod.name,
-                                                    genMethod.desc
-                                                )
-                                            )
-                                            classNode.methods.add(genMethod)
+                                            add()
                                         }
-                                        add()
                                     }
                                 }
                             }
