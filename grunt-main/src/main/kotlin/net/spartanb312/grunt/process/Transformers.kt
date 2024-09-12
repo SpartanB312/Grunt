@@ -2,7 +2,7 @@ package net.spartanb312.grunt.process
 
 import net.spartanb312.grunt.process.transformers.PostProcessTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.*
-import net.spartanb312.grunt.process.transformers.flow.ImplicitJumpTransformer
+import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.process.transformers.minecraft.*
 import net.spartanb312.grunt.process.transformers.misc.*
 import net.spartanb312.grunt.process.transformers.optimize.*
@@ -32,11 +32,12 @@ object Transformers : Collection<Transformer> by mutableListOf(
     DeadCodeRemoveTransformer order 4,
     ClonedClassTransformer order 10,
     TrashClassTransformer order 11,
-    ImplicitJumpTransformer order 20,
+    ControlflowTransformer order 20,
     StringEncryptTransformer order 30,
     NumberEncryptTransformer order 31,
     FloatingPointEncryptTransformer order 32,
     ArithmeticEncryptTransformer order 33,
+    ConstPoolEncryptTransformer order 34,
     //ImplicitJumpTransformer order 40,
     StringEqualsRedirectTransformer order 50,
     FieldScrambleTransformer order 51,

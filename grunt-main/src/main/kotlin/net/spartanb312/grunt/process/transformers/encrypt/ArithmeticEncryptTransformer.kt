@@ -1,16 +1,16 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
 import net.spartanb312.grunt.config.setting
+import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.utils.Counter
+import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
-import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.InsnList
+import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
 import kotlin.random.Random
 
@@ -18,7 +18,7 @@ import kotlin.random.Random
  * Replace logic operations with substitutions
  * Last update on 24/08/07
  */
-object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.Encryption) {
+object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.Encryption), MethodProcessor {
 
     private val times by setting("Intensity", 1)
     private val maxInsnSize by setting("MaxInsnSize", 16384)
@@ -41,6 +41,10 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
             }
         }.get()
         Logger.info("    Encrypted $count arithmetic instructions")
+    }
+
+    override fun transformMethod(owner: ClassNode, method: MethodNode) {
+        Counter().encryptArithmetic(method)
     }
 
     private fun Counter.encryptArithmetic(methodNode: MethodNode): Boolean {
@@ -102,22 +106,22 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
                         }
 
                         insn.opcode == Opcodes.INEG -> {
-                            +generateINEG()
+                            +replaceINEG()
                             modified = true
                         }
 
                         insn.opcode == Opcodes.IXOR -> {
-                            +generateIXOR()
+                            +replaceIXOR()
                             modified = true
                         }
 
                         insn.opcode == Opcodes.IOR -> {
-                            +generateIOR()
+                            +replaceIOR()
                             modified = true
                         }
 
                         insn.opcode == Opcodes.IAND -> {
-                            +generateIAND()
+                            +replaceIAND()
                             modified = true
                         }
 
@@ -132,96 +136,6 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
         }
         methodNode.instructions = insnList
         return modified
-    }
-
-    fun generateINEG(type: Int = Random.nextInt(2)): InsnList = insnList {
-        when (type) {
-            0 -> {
-                ICONST_M1
-                IXOR
-                ICONST_1
-                IADD
-            }
-
-            else -> {
-                ICONST_1
-                ISUB
-                ICONST_M1
-                IXOR
-            }
-        }
-    }
-
-    fun generateIAND(): InsnList = insnList {
-        SWAP
-        DUP_X1
-        ICONST_M1
-        IXOR
-        IOR
-        SWAP
-        ICONST_M1
-        IXOR
-        ISUB
-    }
-
-    fun generateIOR(): InsnList = insnList {
-        DUP_X1
-        ICONST_M1
-        IXOR
-        IAND
-        IADD
-    }
-
-    fun generateIXOR(type: Int = Random.nextInt(3)): InsnList = insnList {
-        when (type) {
-            0 -> {
-                DUP2
-                IOR
-                DUP_X2
-                POP
-                IAND
-                ISUB
-            }
-
-            1 -> {
-                DUP2
-                ICONST_M1
-                IXOR
-                IAND
-                DUP_X2
-                POP
-                SWAP
-                ICONST_M1
-                IXOR
-                IAND
-                IOR
-            }
-
-            2 -> {
-                DUP2
-                IOR
-                DUP_X2
-                POP
-                ICONST_M1
-                IXOR
-                SWAP
-                ICONST_M1
-                IXOR
-                IOR
-                IAND
-            }
-
-            else -> {
-                DUP2
-                IOR
-                DUP_X2
-                POP
-                IAND
-                ICONST_M1
-                IXOR
-                IAND
-            }
-        }
     }
 
 }

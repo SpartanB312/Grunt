@@ -1,6 +1,7 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
 import net.spartanb312.grunt.config.setting
+import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.Counter
@@ -9,15 +10,17 @@ import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.xor
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodNode
 
 /**
  * Encrypt floating point numbers
- * Last update on 2024/08/07
+ * Last update on 2024/09/13
  */
-object FloatingPointEncryptTransformer : Transformer("FloatingPointEncrypt", Category.Encryption) {
+object FloatingPointEncryptTransformer : Transformer("FloatingPointEncrypt", Category.Encryption), MethodProcessor {
 
     private val maxInsnSize by setting("MaxInsnSize", 16384)
     private val exclusion by setting("Exclusion", listOf())
@@ -38,34 +41,20 @@ object FloatingPointEncryptTransformer : Transformer("FloatingPointEncrypt", Cat
         Logger.info("    Encrypted $count floating point numbers")
     }
 
+    override fun transformMethod(owner: ClassNode, method: MethodNode) {
+        Counter().encryptFloatingPoint(method)
+    }
+
     private fun Counter.encryptFloatingPoint(methodNode: MethodNode) {
         methodNode.instructions.toList().forEach {
             fun encryptFloat(cst: Float) {
-                val intBits = cst.asInt()
-                val key = kotlin.random.Random.nextInt()
-                val encryptedIntBits = intBits xor key
-                val insnList = insnList {
-                    INT(encryptedIntBits)
-                    INT(key)
-                    IXOR
-                    INVOKESTATIC("java/lang/Float", "intBitsToFloat", "(I)F")
-                }
-                methodNode.instructions.insertBefore(it, insnList)
+                methodNode.instructions.insertBefore(it, xor(cst))
                 methodNode.instructions.remove(it)
                 add()
             }
 
             fun encryptDouble(cst: Double) {
-                val longBits = cst.asLong()
-                val key = kotlin.random.Random.nextLong()
-                val encryptedLongBits = longBits xor key
-                val insnList = insnList {
-                    LDC(encryptedLongBits)
-                    LDC(key)
-                    LXOR
-                    INVOKESTATIC("java/lang/Double", "longBitsToDouble", "(J)D")
-                }
-                methodNode.instructions.insertBefore(it, insnList)
+                methodNode.instructions.insertBefore(it, xor(cst))
                 methodNode.instructions.remove(it)
                 add()
             }
@@ -85,9 +74,5 @@ object FloatingPointEncryptTransformer : Transformer("FloatingPointEncrypt", Cat
             }
         }
     }
-
-    private fun Double.asLong(): Long = java.lang.Double.doubleToRawLongBits(this)
-
-    private fun Float.asInt(): Int = java.lang.Float.floatToRawIntBits(this)
 
 }

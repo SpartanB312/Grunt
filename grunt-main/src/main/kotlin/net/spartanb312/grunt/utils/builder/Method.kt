@@ -93,7 +93,13 @@ class InsnListBuilder(val insnList: InsnList) {
 infix fun InsnListBuilder.INT(value: Int) = +value.toInsnNode()
 
 @InsnBuilder
+infix fun InsnListBuilder.LONG(value: Long) = +value.toInsnNode()
+
+@InsnBuilder
 infix fun InsnListBuilder.FLOAT(value: Float) = +value.toInsnNode()
+
+@InsnBuilder
+infix fun InsnListBuilder.DOUBLE(value: Double) = +value.toInsnNode()
 
 @InsnBuilder
 infix fun InsnListBuilder.LABEL(labelNode: LabelNode) = +labelNode

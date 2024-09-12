@@ -23,7 +23,10 @@ Stability level: [1]=Unstable [5]=Stable
 
 Controlflow requires ComputeMaxs disabled. Please ensure your included classes with full dependencies.
 
-The dependencies of your project is highly required to ensure stability and intensity. If most of the project dependencies are unavailable for some reasons. I suggest you to enable useComputeMaxs in Global setting to ensure stability as much as possible. (If you encountered VerifyError, You should first try to complete the dependencies. It is recommended to only enable computeMaxs and disable controlflow obfuscation when most dependencies cannot be completed)
+The dependencies of your project is highly required to ensure stability and intensity. If most of the project
+dependencies are unavailable for some reasons. I suggest you to enable useComputeMaxs in Global setting to ensure
+stability as much as possible. (If you encountered VerifyError, You should first try to complete the dependencies. It is
+recommended to only enable computeMaxs and disable controlflow obfuscation when most dependencies cannot be completed)
 
 ## Features:
 
@@ -36,7 +39,8 @@ The dependencies of your project is highly required to ensure stability and inte
 
   The method renamer support InterfaceOverlap, InvokeDynamic, and FunctionalInterface check.
 
-  InterfaceOverlap: A class extends/implements more than 2 class/interfaces with same method name and descriptor. (Example: A implements B and C, B and C both are independent interface and have method invoke(I)J.)
+  InterfaceOverlap: A class extends/implements more than 2 class/interfaces with same method name and descriptor. (
+  Example: A implements B and C, B and C both are independent interface and have method invoke(I)J.)
 
 ### Minecraft
 
@@ -46,6 +50,7 @@ The dependencies of your project is highly required to ensure stability and inte
 ### Encrypt
 
 * [X] [4]ArithmeticEncrypt
+* [X] [5]ConstPoolEncrypt
 * [X] [5]NumberEncrypt
 * [X] [5]FloatingPointEncrypt
 * [X] [5]StringEncrypt
@@ -56,7 +61,6 @@ The dependencies of your project is highly required to ensure stability and inte
 * [X] [5]FieldScramble
 * [X] [5]StringEqualsRedirect
 * [X] [5]InvokeDynamic
-* [ ] [0]NativeBSM (WIP. Coming in 2.2) 
 
 ### Optimization
 
@@ -79,7 +83,7 @@ The dependencies of your project is highly required to ensure stability and inte
 ### ControlFlow
 
 * [X] [4]ImplicitJump
-* [ ] [0]FlattenReturn (WIP. Coming in 2.2) 
+* [ ] [0] (Provide ur suggestion in Discord)
 
 ## License: GNU General Public License 3.0
 

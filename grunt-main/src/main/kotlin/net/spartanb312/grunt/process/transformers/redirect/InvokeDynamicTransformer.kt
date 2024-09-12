@@ -6,7 +6,7 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
-import net.spartanb312.grunt.process.transformers.flow.ImplicitJumpTransformer
+import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.isAbstract
@@ -35,7 +35,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
 
     override fun ResourceCache.transform() {
         Logger.info(" - Replacing invokes to InvokeDynamic...")
-        if (ImplicitJumpTransformer.enabled) ImplicitJumpTransformer.rebuildUtilList(this@transform)
+        if (ControlflowTransformer.enabled) ControlflowTransformer.rebuildUtilList(this@transform)
         val count = count {
             classes.filter {
                 val map = getMapping(it.value.name)
@@ -47,9 +47,9 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 if (shouldApply(classNode, bootstrapName, decryptValue)) {
                     val decrypt = createDecryptMethod(decryptName, decryptValue)
                     val bsm = createBootstrap(classNode.name, bootstrapName, decryptName)
-                    if (ImplicitJumpTransformer.enabled) {
-                        ImplicitJumpTransformer.processMethodNode(decrypt)
-                        ImplicitJumpTransformer.processMethodNode(bsm)
+                    if (ControlflowTransformer.enabled) {
+                        ControlflowTransformer.processMethodNode(decrypt)
+                        ControlflowTransformer.processMethodNode(bsm)
                     }
                     classNode.methods.add(decrypt)
                     classNode.methods.add(bsm)

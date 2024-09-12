@@ -6,6 +6,7 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
+import net.spartanb312.grunt.utils.extensions.isInitializer
 import net.spartanb312.grunt.utils.extensions.isPublic
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
@@ -35,6 +36,8 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
     private val downCalls by setting("NativeDownCalls", true)
     private val upCalls by setting("NativeUpCalls", false)
 
+    val blackList = mutableListOf<ClassNode>()
+
     override fun ResourceCache.transform() {
         Logger.info(" - Redirecting field calls...")
         val newClasses = mutableMapOf<ClassNode, ClassNode>() // Owner Companion
@@ -42,16 +45,17 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
         repeat(intensity) {
             count += process(newClasses)
         }
+        blackList.clear()
         Logger.info("    Redirected $count field calls")
     }
 
     private fun ResourceCache.process(newClasses: MutableMap<ClassNode, ClassNode>): Int {
         val count = count {
             nonExcluded.asSequence()
-                .filter { it.name.notInList(excludedClasses) }
+                .filter { it.name.notInList(excludedClasses) && !blackList.contains(it) }
                 .forEach { classNode ->
                     classNode.methods.toList().asSequence()
-                        .filter { it.name != "<init>" && it.name != "<clinit>" }
+                        .filter { !it.isInitializer }
                         .forEach { methodNode ->
                             methodNode.instructions.toList().forEach {
                                 if (it is FieldInsnNode && it.name.notInList(excludedFieldName)) {

@@ -1,6 +1,7 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
 import net.spartanb312.grunt.config.setting
+import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.*
@@ -10,20 +11,17 @@ import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.Type
+import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
-import java.lang.invoke.CallSite
-import java.lang.invoke.MethodHandles
-import java.lang.invoke.MethodType
 import kotlin.random.Random
 
 /**
  * Encrypt strings
- * Last update on 2024/06/26
+ * Last update on 2024/09/13
  */
-object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encryption) {
+object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encryption), MethodProcessor {
 
     private val times by setting("Intensity", 1)
     private val exclusion by setting("Exclusion", listOf())
@@ -36,8 +34,8 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                 nonExcluded.asSequence()
                     .filter { c -> !c.isInterface && c.version > Opcodes.V1_5 && exclusion.none { c.name.startsWith(it) } }
                     .forEach { classNode ->
-                        val randomString = getRandomString(10)
-                        val random = Random.nextInt(0x8, 0x800)
+                        val decryptMethodName = getRandomString(10)
+                        val key = Random.nextInt(0x8, 0x800)
                         var shouldAdd = false
                         for (methodNode in classNode.methods) {
                             if (methodNode.isAbstract) continue
@@ -48,25 +46,45 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                                         insnNode,
                                         MethodInsnNode(
                                             Opcodes.INVOKESTATIC, classNode.name,
-                                            randomString, "(Ljava/lang/String;)Ljava/lang/String;",
+                                            decryptMethodName, "(Ljava/lang/String;)Ljava/lang/String;",
                                             false
                                         )
                                     )
-                                    (insnNode as LdcInsnNode).cst = encrypt(insnNode.cst as String, random)
+                                    (insnNode as LdcInsnNode).cst = encrypt(insnNode.cst as String, key)
                                     if (t == 0) add()
                                     shouldAdd = true
                                 }
 
                         }
-                        if (shouldAdd) classNode.methods.add(createDecryptMethod(randomString, random))
+                        if (shouldAdd) classNode.methods.add(createDecryptMethod(decryptMethodName, key))
                     }
             }
         }.get()
         Logger.info("    Encrypted $count strings")
     }
 
+    override fun transformMethod(owner: ClassNode, method: MethodNode) {
+        val decryptMethodName = getRandomString(10)
+        val key = Random.nextInt(0x8, 0x800)
+        var shouldAdd = false
+        method.instructions.asSequence()
+            .filter { (it is LdcInsnNode && it.cst is String) }
+            .forEach { insnNode ->
+                method.instructions.insert(
+                    insnNode,
+                    MethodInsnNode(
+                        Opcodes.INVOKESTATIC, method.name,
+                        decryptMethodName, "(Ljava/lang/String;)Ljava/lang/String;",
+                        false
+                    )
+                )
+                (insnNode as LdcInsnNode).cst = encrypt(insnNode.cst as String, key)
+                shouldAdd = true
+            }
+        if (shouldAdd) owner.methods.add(createDecryptMethod(decryptMethodName, key))
+    }
 
-    fun createDecryptMethod(methodName: String, decryptValue: Int): MethodNode = method(
+    fun createDecryptMethod(methodName: String, key: Int): MethodNode = method(
         Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC + Opcodes.ACC_SYNTHETIC + Opcodes.ACC_BRIDGE,
         methodName,
         "(Ljava/lang/String;)Ljava/lang/String;",
@@ -93,7 +111,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             ALOAD(0)
             ILOAD(2)
             INVOKEVIRTUAL("java/lang/String", "charAt", "(I)C")
-            LDC(decryptValue)
+            LDC(key)
             IXOR
             I2C
             INVOKEVIRTUAL("java/lang/StringBuilder", "append", "(C)Ljava/lang/StringBuilder;")
