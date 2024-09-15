@@ -17,7 +17,8 @@ object ReplaceIf {
         insnNode: JumpInsnNode,
         targetLabel: LabelNode,
         methodNode: MethodNode,
-        returnType: Type
+        returnType: Type,
+        reverse: Boolean
     ): InsnList {
         return insnList {
             val delegateLabel = Label()
@@ -25,7 +26,7 @@ object ReplaceIf {
             +JumpInsnNode(insnNode.opcode, getLabelNode(delegateLabel))
             GOTO(elseLabel)
             LABEL(delegateLabel)
-            +ReplaceGoto.generate(targetLabel, methodNode, returnType)
+            +ReplaceGoto.generate(targetLabel, methodNode, returnType, reverse)
             LABEL(elseLabel)
         }
     }

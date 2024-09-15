@@ -18,10 +18,11 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.JumpInsnNode
 import org.objectweb.asm.tree.MethodNode
+import kotlin.random.Random
 
 /**
- * Replace direct jump to implicit jump
- * Last update on 24/09/13
+ * Obfuscating the controlflow
+ * Last update on 24/09/16
  */
 object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow), MethodProcessor {
 
@@ -29,6 +30,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     private val replaceGoto by setting("ReplaceGoto", true)
     private val replaceIf by setting("ReplaceIf", true)
     private val intensity by setting("Intensity", 1)
+    private val reverse by setting("RandomReversedCondition", true)
     val useLocalVar by setting("UseLocalVar", true)
     val junkCode by setting("JunkCode", true)
     val expandedJunkCode by setting("ExpandedJunkCode", true)
@@ -69,7 +71,12 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->
                         if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO) {
-                            +ReplaceGoto.generate(insnNode.label, methodNode, returnType)
+                            +ReplaceGoto.generate(
+                                insnNode.label,
+                                methodNode,
+                                returnType,
+                                reverse && Random.nextBoolean()
+                            )
                             count++
                         } else +insnNode
                     }
@@ -87,7 +94,13 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                                     || insnNode.opcode == Opcodes.IF_ICMPLE
                                     || insnNode.opcode == Opcodes.IF_ICMPNE)
                         ) {
-                            +ReplaceIf.generate(insnNode, insnNode.label, methodNode, returnType)
+                            +ReplaceIf.generate(
+                                insnNode,
+                                insnNode.label,
+                                methodNode,
+                                returnType,
+                                reverse && Random.nextBoolean()
+                            )
                             count++
                         } else +insnNode
                     }

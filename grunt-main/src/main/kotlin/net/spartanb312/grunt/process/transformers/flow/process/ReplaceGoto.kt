@@ -2,6 +2,7 @@ package net.spartanb312.grunt.process.transformers.flow.process
 
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.utils.builder.*
+import org.objectweb.asm.Label
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.LabelNode
@@ -13,7 +14,8 @@ object ReplaceGoto {
     fun generate(
         targetLabel: LabelNode,
         methodNode: MethodNode,
-        returnType: Type
+        returnType: Type,
+        reverse: Boolean
     ): InsnList {
         return when (Random.nextInt(6)) {
             0 -> insnList {
@@ -25,8 +27,16 @@ object ReplaceGoto {
                     if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
                     else LocalVarUsages.Default
                 +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
-                IF_ICMPEQ(targetLabel)
-                +JunkCode.generate(methodNode, returnType)
+                if (reverse) {
+                    val junkLabel = Label()
+                    IF_ICMPNE(junkLabel)
+                    GOTO(targetLabel)
+                    LABEL(junkLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                } else {
+                    IF_ICMPEQ(targetLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                }
             }
 
             1 -> insnList {
@@ -43,8 +53,16 @@ object ReplaceGoto {
                     if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
                     else LocalVarUsages.Default
                 +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
-                IF_ICMPLT(targetLabel)
-                +JunkCode.generate(methodNode, returnType)
+                if (reverse) {
+                    val junkLabel = Label()
+                    IF_ICMPGE(junkLabel)
+                    GOTO(targetLabel)
+                    LABEL(junkLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                } else {
+                    IF_ICMPLT(targetLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                }
             }
 
             2 -> insnList {
@@ -61,8 +79,16 @@ object ReplaceGoto {
                     if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
                     else LocalVarUsages.Default
                 +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
-                IF_ICMPGE(targetLabel)
-                +JunkCode.generate(methodNode, returnType)
+                if (reverse) {
+                    val junkLabel = Label()
+                    IF_ICMPLT(junkLabel)
+                    GOTO(targetLabel)
+                    LABEL(junkLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                } else {
+                    IF_ICMPGE(targetLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                }
             }
 
             3 -> insnList {
@@ -79,8 +105,16 @@ object ReplaceGoto {
                     if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
                     else LocalVarUsages.Default
                 +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
-                IF_ICMPGT(targetLabel)
-                +JunkCode.generate(methodNode, returnType)
+                if (reverse) {
+                    val junkLabel = Label()
+                    IF_ICMPLE(junkLabel)
+                    GOTO(targetLabel)
+                    LABEL(junkLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                } else {
+                    IF_ICMPGT(targetLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                }
             }
 
             4 -> insnList {
@@ -97,8 +131,16 @@ object ReplaceGoto {
                     if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
                     else LocalVarUsages.Default
                 +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
-                IF_ICMPLE(targetLabel)
-                +JunkCode.generate(methodNode, returnType)
+                if (reverse) {
+                    val junkLabel = Label()
+                    IF_ICMPGT(junkLabel)
+                    GOTO(targetLabel)
+                    LABEL(junkLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                } else {
+                    IF_ICMPLE(targetLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                }
             }
 
             else -> insnList {
@@ -114,8 +156,16 @@ object ReplaceGoto {
                 val usage = if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
                 else LocalVarUsages.Default
                 +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
-                IF_ICMPNE(targetLabel)
-                +JunkCode.generate(methodNode, returnType)
+                if (reverse) {
+                    val junkLabel = Label()
+                    IF_ICMPEQ(junkLabel)
+                    GOTO(targetLabel)
+                    LABEL(junkLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                } else {
+                    IF_ICMPNE(targetLabel)
+                    +JunkCode.generate(methodNode, returnType)
+                }
             }
         }
     }
