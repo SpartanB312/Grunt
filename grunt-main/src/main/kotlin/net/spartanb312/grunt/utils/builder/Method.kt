@@ -253,6 +253,9 @@ val InsnListBuilder.I2D get() = insn(Opcodes.I2D)
 val InsnListBuilder.I2S get() = insn(Opcodes.I2S)
 
 @InsnBuilder
+val InsnListBuilder.L2I get() = insn(Opcodes.L2I)
+
+@InsnBuilder
 val InsnListBuilder.THIS get() = ALOAD(0)
 
 @InsnBuilder

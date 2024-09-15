@@ -10,6 +10,7 @@ import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.getRandomString
+import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.xor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
@@ -31,10 +32,12 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
     private val string by setting("String", true)
     private val heavyEncrypt by setting("HeavyEncrypt", false)
     private val dontScramble by setting("DontScramble", true)
+    private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
         val companions = mutableMapOf<ClassNode, MutableList<ConstRef<*>>>()
-        nonExcluded.forEach {
+        val filtered = nonExcluded.filter { it.name.notInList(exclusion) }
+        filtered.forEach {
             companions[
                 ClassNode().apply {
                     visit(
@@ -49,7 +52,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                 }
             ] = mutableListOf()
         }
-        nonExcluded.forEach { classNode ->
+        filtered.forEach { classNode ->
             classNode.methods.forEach { methodNode ->
                 if (!methodNode.isAbstract && !methodNode.isNative) {
                     val insnList = insnList {

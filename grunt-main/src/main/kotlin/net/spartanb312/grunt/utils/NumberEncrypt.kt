@@ -1,6 +1,5 @@
 package net.spartanb312.grunt.utils
 
-import jdk.incubator.vector.VectorOperators.L2I
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.toInsnNode
 import org.objectweb.asm.tree.InsnList

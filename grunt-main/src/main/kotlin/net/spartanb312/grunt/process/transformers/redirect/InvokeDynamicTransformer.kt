@@ -7,6 +7,7 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
+import net.spartanb312.grunt.process.transformers.flow.process.JunkCode
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.isAbstract
@@ -35,7 +36,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
 
     override fun ResourceCache.transform() {
         Logger.info(" - Replacing invokes to InvokeDynamic...")
-        if (ControlflowTransformer.enabled) ControlflowTransformer.rebuildUtilList(this@transform)
+        if (ControlflowTransformer.enabled) JunkCode.refresh(this@transform)
         val count = count {
             classes.filter {
                 val map = getMapping(it.value.name)

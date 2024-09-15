@@ -52,6 +52,7 @@ object Transformers : Collection<Transformer> by mutableListOf(
     MixinClassRenameTransformer order 81,
     InvokeDynamicTransformer order 90,
     ShuffleMembersTransformer order 100,
-    WatermarkTransformer order 101,
+    CrasherTransformer order 101,
+    WatermarkTransformer order 102,
     PostProcessTransformer order Int.MAX_VALUE
 )
