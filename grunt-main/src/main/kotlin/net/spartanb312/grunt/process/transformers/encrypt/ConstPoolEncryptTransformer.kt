@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
+import net.spartanb312.grunt.annotation.DONT_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -7,6 +8,7 @@ import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransform
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.redirect.FieldScrambleTransformer
 import net.spartanb312.grunt.utils.builder.*
+import net.spartanb312.grunt.utils.extensions.appendAnnotation
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.getRandomString
@@ -48,7 +50,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                         "java/lang/Object",
                         null
                     )
-                    if (dontScramble) FieldScrambleTransformer.blackList.add(this)
+                    if (dontScramble) appendAnnotation(DONT_SCRAMBLE)
                 }
             ] = mutableListOf()
         }
@@ -100,7 +102,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
             if (refList.isNotEmpty()) {
                 addTrashClass(clazz)
                 val clinit = method(
-                    Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC,
+                    Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC,
                     "<clinit>",
                     "()V",
                     null,

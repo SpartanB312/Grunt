@@ -3,6 +3,7 @@
 package net.spartanb312.grunt.utils.extensions
 
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
 import java.lang.reflect.Modifier
@@ -51,3 +52,23 @@ val ClassNode.hasAnnotations: Boolean
     get() {
         return (visibleAnnotations != null && visibleAnnotations.isNotEmpty()) || (invisibleAnnotations != null && invisibleAnnotations.isNotEmpty())
     }
+
+fun ClassNode.appendAnnotation(annotation: String): ClassNode {
+    visitAnnotation(annotation, false)
+    return this
+}
+
+fun ClassNode.removeAnnotation(annotation: String) {
+    invisibleAnnotations?.toList()?.forEach {
+        if (it.desc == annotation) invisibleAnnotations.remove(it)
+    }
+    visibleAnnotations?.toList()?.forEach {
+        if (it.desc == annotation) visibleAnnotations.remove(it)
+    }
+}
+
+fun ClassNode.hasAnnotation(desc: String): Boolean = findAnnotation(desc) != null
+
+fun ClassNode.findAnnotation(desc: String): AnnotationNode? {
+    return visibleAnnotations?.find { it.desc == desc } ?: invisibleAnnotations?.find { it.desc == desc }
+}

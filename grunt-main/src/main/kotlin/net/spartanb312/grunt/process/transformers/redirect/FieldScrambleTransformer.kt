@@ -1,11 +1,14 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import net.spartanb312.grunt.annotation.DONT_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
+import net.spartanb312.grunt.utils.extensions.hasAnnotation
+import net.spartanb312.grunt.utils.extensions.hasAnnotations
 import net.spartanb312.grunt.utils.extensions.isInitializer
 import net.spartanb312.grunt.utils.extensions.isPublic
 import net.spartanb312.grunt.utils.logging.Logger
@@ -36,8 +39,6 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
     private val downCalls by setting("NativeDownCalls", true)
     private val upCalls by setting("NativeUpCalls", false)
 
-    val blackList = mutableListOf<ClassNode>()
-
     override fun ResourceCache.transform() {
         Logger.info(" - Redirecting field calls...")
         val newClasses = mutableMapOf<ClassNode, ClassNode>() // Owner Companion
@@ -45,14 +46,13 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
         repeat(intensity) {
             count += process(newClasses)
         }
-        blackList.clear()
         Logger.info("    Redirected $count field calls")
     }
 
     private fun ResourceCache.process(newClasses: MutableMap<ClassNode, ClassNode>): Int {
         val count = count {
             nonExcluded.asSequence()
-                .filter { it.name.notInList(excludedClasses) && !blackList.contains(it) }
+                .filter { it.name.notInList(excludedClasses) }
                 .forEach { classNode ->
                     classNode.methods.toList().asSequence()
                         .filter { !it.isInitializer }
@@ -63,7 +63,9 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                                     val callingField = callingOwner?.fields?.find { field ->
                                         field.name == it.name && field.desc == it.desc
                                     }
-                                    if (callingField != null) {
+                                    val skipOwner = callingOwner?.hasAnnotation(DONT_SCRAMBLE) == true
+                                    val skipField = callingField?.hasAnnotation(DONT_SCRAMBLE) == true
+                                    if (callingField != null && !skipField && !skipOwner) {
                                         val shouldOuter =
                                             generateOuterClass && callingOwner.isPublic && callingField.isPublic
                                         val genMethod = when {

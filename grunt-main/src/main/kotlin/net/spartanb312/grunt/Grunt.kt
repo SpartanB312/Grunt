@@ -4,6 +4,8 @@ import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.gui.GuiFrame
 import net.spartanb312.grunt.process.Transformers
 import net.spartanb312.grunt.process.resource.ResourceCache
+import net.spartanb312.grunt.process.transformers.PostProcessTransformer
+import net.spartanb312.grunt.process.transformers.PostProcessTransformer.finalize
 import net.spartanb312.grunt.utils.logging.Logger
 import java.awt.GraphicsEnvironment
 import kotlin.system.measureTimeMillis
@@ -80,6 +82,7 @@ fun runProcess() {
             val obfTime = measureTimeMillis {
                 Logger.info("Processing...")
                 Transformers.sortedBy { it.order }.forEach { if (it.enabled) with(it) { transform() } }
+                with(PostProcessTransformer) { finalize() }
             }
             Logger.info("Took $obfTime ms to process!")
             Logger.info("Dumping to ${Configs.Settings.output}")

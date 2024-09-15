@@ -125,3 +125,23 @@ val MethodNode.hasAnnotations: Boolean
     get() {
         return !(visibleAnnotations.isNullOrEmpty() && invisibleAnnotations.isNullOrEmpty())
     }
+
+fun MethodNode.appendAnnotation(annotation: String): MethodNode {
+    visitAnnotation(annotation, false)
+    return this
+}
+
+fun MethodNode.removeAnnotation(annotation: String) {
+    invisibleAnnotations?.toList()?.forEach {
+        if (it.desc == annotation) invisibleAnnotations.remove(it)
+    }
+    visibleAnnotations?.toList()?.forEach {
+        if (it.desc == annotation) visibleAnnotations.remove(it)
+    }
+}
+
+fun MethodNode.hasAnnotation(desc: String): Boolean = findAnnotation(desc) != null
+
+fun MethodNode.findAnnotation(desc: String): AnnotationNode? {
+    return visibleAnnotations?.find { it.desc == desc } ?: invisibleAnnotations?.find { it.desc == desc }
+}

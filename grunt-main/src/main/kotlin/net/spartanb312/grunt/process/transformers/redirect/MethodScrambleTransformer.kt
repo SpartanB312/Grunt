@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import net.spartanb312.grunt.annotation.DONT_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -7,6 +8,7 @@ import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransforme
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.getCallingMethodNodeAndOwner
+import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.extensions.isPrivate
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
@@ -44,7 +46,9 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
                                 if (pair != null) {
                                     val callingOwner = pair.first
                                     val callingMethod = pair.second
-                                    if (nonExcluded.contains(callingOwner)) {
+                                    val skipOwner = callingOwner.hasAnnotation(DONT_SCRAMBLE)
+                                    val skipMethod = callingMethod.hasAnnotation(DONT_SCRAMBLE)
+                                    if (nonExcluded.contains(callingOwner) && !skipOwner && !skipMethod) {
                                         var shouldOuter = generateOuterClass
                                         // Set accesses
                                         if (shouldOuter) {

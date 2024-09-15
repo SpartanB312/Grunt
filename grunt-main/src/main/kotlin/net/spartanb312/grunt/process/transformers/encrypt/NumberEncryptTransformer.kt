@@ -70,7 +70,7 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                             add()
                         }
                     } else if (it.opcode in Opcodes.LCONST_0..Opcodes.LCONST_1) {
-                        methodNode.instructions.insertBefore(it, xor(it.opcode - 0x9))
+                        methodNode.instructions.insertBefore(it, xor((it.opcode - 0x9).toLong()))
                         methodNode.instructions.remove(it)
                         add()
                     } else if (it is LdcInsnNode && it.cst is Long) {
