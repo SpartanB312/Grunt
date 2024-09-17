@@ -83,7 +83,10 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 
 ### ControlFlow
 
-* [X] [4]ImplicitJump
+* [X] [4]ReplaceGoto
+* [X] [4]ReplaceIfCompare
+* [ ] [4]SwitchWrapper (Coming in next major version)
+* [X] [4]JunkCodeGenerator
 * [ ] [0] (Provide ur suggestion in Discord)
 
 ## License: GNU General Public License 3.0
