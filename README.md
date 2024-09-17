@@ -72,6 +72,7 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 
 ### Miscellaneous
 
+* [X] [5]Crasher
 * [X] [5]Watermark
 * [X] [5]NativeCandidate
 * [X] [5]ShuffleMembers
