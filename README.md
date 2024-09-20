@@ -1,5 +1,7 @@
 # Gruntpocalypse
 
+[![CodeFactor](https://www.codefactor.io/repository/github/spartanb312/grunt/badge)](https://www.codefactor.io/repository/github/spartanb312/grunt)
+
 Gruntpocalypse is a continuation of Grunt project.
 
 This is a free and open source obfuscator written in kotlin aiming for stability and versatility.
