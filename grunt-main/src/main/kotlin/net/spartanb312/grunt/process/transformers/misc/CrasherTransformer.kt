@@ -3,6 +3,8 @@ package net.spartanb312.grunt.process.transformers.misc
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
+import net.spartanb312.grunt.utils.count
+import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.massiveBlankString
 import net.spartanb312.grunt.utils.massiveString
 import net.spartanb312.grunt.utils.notInList
@@ -22,17 +24,22 @@ object CrasherTransformer : Transformer("Crasher", Category.Miscellaneous) {
         } else this
 
     override fun ResourceCache.transform() {
-        nonExcluded.asSequence()
-            .filter { it.name.notInList(exclusion) }
-            .forEach { classNode ->
-                classNode.methods.forEach { methodNode ->
-                    methodNode.signature = methodNode.signature.bigBrainSignature
+        Logger.info(" - Adding crashers on classes...")
+        val count = count {
+            nonExcluded.asSequence()
+                .filter { it.name.notInList(exclusion) }
+                .forEach { classNode ->
+                    classNode.methods.forEach { methodNode ->
+                        methodNode.signature = methodNode.signature.bigBrainSignature
+                    }
+                    classNode.fields.forEach { fieldNode ->
+                        fieldNode.signature = fieldNode.signature.bigBrainSignature
+                    }
+                    classNode.signature = classNode.signature.bigBrainSignature
+                    add()
                 }
-                classNode.fields.forEach { fieldNode ->
-                    fieldNode.signature = fieldNode.signature.bigBrainSignature
-                }
-                classNode.signature = classNode.signature.bigBrainSignature
-            }
+        }.get()
+        Logger.info("    Added $count crashers")
     }
 
 }

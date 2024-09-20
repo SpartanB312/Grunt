@@ -22,10 +22,12 @@ object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
     private val dictionary by setting("Dictionary", "Alphabet")
     private val randomKeywordPrefix by setting("RandomKeywordPrefix", false)
     private val prefix by setting("Prefix", "")
+    private val reversed by setting("Reversed", false)
     private val exclusion by setting("Exclusion", listOf())
     private val excludedName by setting("ExcludedName", listOf("INSTANCE", "Companion"))
 
     private val malPrefix = (if (randomKeywordPrefix) "$nextBadKeyword " else "") + prefix
+    private val suffix get() = if (reversed) "\u200E" else ""
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming fields...")
@@ -40,7 +42,7 @@ object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
         val count = count {
             for (fieldNode in fields) {
                 if (fieldNode.name.inList(excludedName)) continue
-                val name = malPrefix + dictionary.nextName()
+                val name = malPrefix + dictionary.nextName() + suffix
                 val stack: Stack<ClassNode> = Stack()
                 stack.add(getOwner(fieldNode, classes))
                 while (stack.size > 0) {

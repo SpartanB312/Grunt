@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import net.spartanb312.grunt.annotation.DISABLE_INVOKEDYNAMIC
 import net.spartanb312.grunt.config.Configs.isExcluded
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
@@ -10,6 +11,7 @@ import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.process.transformers.flow.process.JunkCode
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
+import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.logging.Logger
@@ -40,7 +42,9 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
         val count = count {
             classes.filter {
                 val map = getMapping(it.value.name)
-                !it.value.isInterface && it.value.version >= Opcodes.V1_7 && !map.isExcluded && map.notInList(exclusion)
+                !it.value.isInterface && it.value.version >= Opcodes.V1_7
+                        && !map.isExcluded && map.notInList(exclusion)
+                        && !it.value.hasAnnotation(DISABLE_INVOKEDYNAMIC)
             }.values.forEach { classNode ->
                 val bootstrapName = if (massiveRandom) massiveBlankString else massiveString
                 val decryptName = if (massiveRandom) massiveBlankString else massiveString
@@ -65,41 +69,43 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
         classNode.methods
             .filter { !it.isAbstract }
             .forEach { methodNode ->
-                methodNode.instructions.filter { it is MethodInsnNode && it.opcode != Opcodes.INVOKESPECIAL }
-                    .forEach { insnNode ->
-                        if (insnNode is MethodInsnNode && (0..99).random() < rate) {
-                            val handle = Handle(
-                                Opcodes.H_INVOKESTATIC,
-                                classNode.name,
-                                bootstrapName,
-                                MethodType.methodType(
-                                    CallSite::class.java,
-                                    MethodHandles.Lookup::class.java,
-                                    String::class.java,
-                                    MethodType::class.java,
-                                    String::class.java,
-                                    String::class.java,
-                                    String::class.java,
-                                    Integer::class.java
-                                ).toMethodDescriptorString(),
-                                false
-                            )
-                            val invokeDynamicInsnNode = InvokeDynamicInsnNode(
-                                bootstrapName,
-                                if (insnNode.opcode == Opcodes.INVOKESTATIC) insnNode.desc
-                                else insnNode.desc.replace("(", "(Ljava/lang/Object;"),
-                                handle,
-                                encrypt(insnNode.owner.replace("/", "."), decryptValue),
-                                encrypt(insnNode.name, decryptValue),
-                                encrypt(insnNode.desc, decryptValue),
-                                if (insnNode.opcode == Opcodes.INVOKESTATIC) 0 else 1
-                            )
-                            methodNode.instructions.insertBefore(insnNode, invokeDynamicInsnNode)
-                            methodNode.instructions.remove(insnNode)
-                            shouldApply = true
-                            add()
+                if (!methodNode.hasAnnotation(DISABLE_INVOKEDYNAMIC)) {
+                    methodNode.instructions.filter { it is MethodInsnNode && it.opcode != Opcodes.INVOKESPECIAL }
+                        .forEach { insnNode ->
+                            if (insnNode is MethodInsnNode && (0..99).random() < rate) {
+                                val handle = Handle(
+                                    Opcodes.H_INVOKESTATIC,
+                                    classNode.name,
+                                    bootstrapName,
+                                    MethodType.methodType(
+                                        CallSite::class.java,
+                                        MethodHandles.Lookup::class.java,
+                                        String::class.java,
+                                        MethodType::class.java,
+                                        String::class.java,
+                                        String::class.java,
+                                        String::class.java,
+                                        Integer::class.java
+                                    ).toMethodDescriptorString(),
+                                    false
+                                )
+                                val invokeDynamicInsnNode = InvokeDynamicInsnNode(
+                                    bootstrapName,
+                                    if (insnNode.opcode == Opcodes.INVOKESTATIC) insnNode.desc
+                                    else insnNode.desc.replace("(", "(Ljava/lang/Object;"),
+                                    handle,
+                                    encrypt(insnNode.owner.replace("/", "."), decryptValue),
+                                    encrypt(insnNode.name, decryptValue),
+                                    encrypt(insnNode.desc, decryptValue),
+                                    if (insnNode.opcode == Opcodes.INVOKESTATIC) 0 else 1
+                                )
+                                methodNode.instructions.insertBefore(insnNode, invokeDynamicInsnNode)
+                                methodNode.instructions.remove(insnNode)
+                                shouldApply = true
+                                add()
+                            }
                         }
-                    }
+                }
             }
         return shouldApply
     }

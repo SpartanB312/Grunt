@@ -12,16 +12,16 @@ import net.spartanb312.grunt.process.transformers.rename.*
 /**
  * Execution order
  * 000 Optimization
- * 010 Trash classes
+ * 010 Miscellaneous 1
  * 020 Controlflow 1
  * 030 Encryption 1
  * 040 Controlflow 2
  * 050 Encryption 2
  * 060 Redirect
- * 070 Miscellaneous 1
+ * 070 Miscellaneous 2
  * 080 Renaming
  * 090 Minecraft
- * 100 InvokeDynamic & Miscellaneous 2
+ * 100 InvokeDynamic & Miscellaneous 3
  * MAX PostProcess
  */
 object Transformers : Collection<Transformer> by mutableListOf(
@@ -32,6 +32,7 @@ object Transformers : Collection<Transformer> by mutableListOf(
     DeadCodeRemoveTransformer order 4,
     ClonedClassTransformer order 10,
     TrashClassTransformer order 11,
+    HWIDAuthenticatorTransformer order 12,
     //ControlflowTransformer order 20,
     StringEncryptTransformer order 30,
     NumberEncryptTransformer order 31,

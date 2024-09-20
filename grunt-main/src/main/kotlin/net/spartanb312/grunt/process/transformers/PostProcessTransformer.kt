@@ -3,11 +3,12 @@ package net.spartanb312.grunt.process.transformers
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
-import net.spartanb312.grunt.annotation.DONT_SCRAMBLE
+import net.spartanb312.grunt.annotation.DISABLE_CONTROLFLOW
+import net.spartanb312.grunt.annotation.DISABLE_INVOKEDYNAMIC
+import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.utils.builder.insnList
 import net.spartanb312.grunt.utils.dot
 import net.spartanb312.grunt.utils.extensions.removeAnnotation
 import net.spartanb312.grunt.utils.logging.Logger
@@ -37,7 +38,11 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
 
     fun ResourceCache.finalize() {
         // Remove annotation
-        val annotationRemoval = arrayOf(DONT_SCRAMBLE)
+        val annotationRemoval = arrayOf(
+            DISABLE_CONTROLFLOW,
+            DISABLE_INVOKEDYNAMIC,
+            DISABLE_SCRAMBLE
+        )
         nonExcluded.forEach { clazz ->
             clazz.methods.forEach { method ->
                 annotationRemoval.forEach { method.removeAnnotation(it) }

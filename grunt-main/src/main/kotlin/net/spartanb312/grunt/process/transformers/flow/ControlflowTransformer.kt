@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.process.transformers.flow
 
+import net.spartanb312.grunt.annotation.DISABLE_CONTROLFLOW
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
@@ -11,6 +12,7 @@ import net.spartanb312.grunt.process.transformers.flow.process.ReplaceGoto
 import net.spartanb312.grunt.process.transformers.flow.process.ReplaceIf
 import net.spartanb312.grunt.utils.builder.insnList
 import net.spartanb312.grunt.utils.count
+import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.Opcodes
@@ -49,10 +51,15 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
         hierarchy.build(true)
         val count = count {
             nonExcluded.asSequence()
-                .filter { it.name.notInList(exclusion) && !it.missingReference(hierarchy) }
-                .forEach { classNode ->
+                .filter {
+                    it.name.notInList(exclusion)
+                            && !it.missingReference(hierarchy)
+                            && !it.hasAnnotation(DISABLE_CONTROLFLOW)
+                }.forEach { classNode ->
                     classNode.methods.forEach { methodNode ->
-                        add(processMethodNode(methodNode))
+                        if (!methodNode.hasAnnotation(DISABLE_CONTROLFLOW)) {
+                            add(processMethodNode(methodNode))
+                        }
                     }
                 }
         }

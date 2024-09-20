@@ -30,8 +30,11 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
     private val heavyOverloads by setting("HeavyOverloads", false)
     private val randomKeywordPrefix by setting("RandomKeywordPrefix", false)
     private val prefix by setting("Prefix", "")
+    private val reversed by setting("Reversed", false)
     private val exclusion by setting("Exclusion", listOf())
     private val excludedName by setting("ExcludedName", listOf())
+
+    private val suffix get() = if (reversed) "\u200E" else ""
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming methods...")
@@ -72,7 +75,7 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
                                 val readyToApply = mutableMapOf<String, String>()
                                 var shouldApply = true
                                 val newName = (if (randomKeywordPrefix) "$nextBadKeyword " else "") +
-                                        prefix + dictionary.nextName(heavyOverloads, methodNode.desc)
+                                        prefix + dictionary.nextName(heavyOverloads, methodNode.desc) + suffix
                                 readyToApply[combine(classNode.name, methodNode.name, methodNode.desc)] = newName
                                 // Check children
                                 info.children.forEach { child ->

@@ -81,6 +81,7 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 * [X] [5]TrashClass
 * [X] [5]ClonedClass
 * [X] [5]SyntheticBridge
+* [X] [5]HWIDAuthentication
 * [X] [5]PostProcess
 
 ### ControlFlow

@@ -73,7 +73,8 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                 method.instructions.insert(
                     insnNode,
                     MethodInsnNode(
-                        Opcodes.INVOKESTATIC, method.name,
+                        Opcodes.INVOKESTATIC,
+                        owner.name,
                         decryptMethodName, "(Ljava/lang/String;)Ljava/lang/String;",
                         false
                     )

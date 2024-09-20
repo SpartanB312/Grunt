@@ -18,6 +18,7 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
     private val dictionary by setting("Dictionary", "Alphabet")
     private val parent by setting("Parent", "net/spartanb312/obf/")
     private val prefix by setting("Prefix", "")
+    private val reversed by setting("Reversed", false)
     private val shuffled by setting("Shuffled", false)
     private val corruptedName by setting("CorruptedName", false)
     private val corruptedNameExclusion by setting("CorruptedNameExclusion", listOf())
@@ -31,6 +32,8 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
             } else "\u0000"
         } else ""
 
+    private val suffix get() = if (reversed) "\u200E" else ""
+
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming classes...")
         Logger.info("    Generating mappings for classes...")
@@ -40,7 +43,7 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
             val classes = if (shuffled) nonExcluded.shuffled() else nonExcluded
             classes.forEach {
                 if (it.name.notInList(exclusion)) {
-                    mappings[it.name] = parent + prefix + it.malNamePrefix + nameGenerator.nextName()
+                    mappings[it.name] = parent + prefix + it.malNamePrefix + nameGenerator.nextName() + suffix
                     add()
                 }
             }

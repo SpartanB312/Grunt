@@ -51,6 +51,29 @@ class MethodBuilder(val methodNode: MethodNode) {
         methodNode.tryCatchBlocks = methodNode.tryCatchBlocks ?: mutableListOf()
         methodNode.tryCatchBlocks.add(tryCatchBlock)
     }
+
+    @MethodBuilderDSL
+    fun FRAME(type: Int, numLocal: Int, local: Array<Any?>?, numStack: Int, stack: Array<Any?>?) {
+        methodNode.visitFrame(type, numLocal, local, numStack, stack)
+    }
+
+    @MethodBuilderDSL
+    fun MethodBuilder.LOCAL(
+        name: String,
+        descriptor: String,
+        signature: String?,
+        start: Label,
+        end: Label,
+        index: Int
+    ) {
+        val localVariable = LocalVariableNode(
+            name, descriptor, signature,
+            getLabelNode(start),
+            getLabelNode(end), index
+        )
+        methodNode.localVariables = if (methodNode.localVariables != null) methodNode.localVariables else mutableListOf()
+        methodNode.localVariables.add(localVariable)
+    }
 }
 
 fun getLabelNode(label: Label): LabelNode {
@@ -235,6 +258,12 @@ val InsnListBuilder.ICONST_3 get() = insn(Opcodes.ICONST_3)
 val InsnListBuilder.ICONST_4 get() = insn(Opcodes.ICONST_4)
 
 @InsnBuilder
+val InsnListBuilder.LCONST_0 get() = insn(Opcodes.LCONST_0)
+
+@InsnBuilder
+val InsnListBuilder.LCONST_1 get() = insn(Opcodes.LCONST_1)
+
+@InsnBuilder
 val InsnListBuilder.I2C get() = insn(Opcodes.I2C)
 
 @InsnBuilder
@@ -413,7 +442,7 @@ fun InsnListBuilder.INVOKESPECIAL(owner: String, name: String, desc: String, isI
     +MethodInsnNode(INVOKESPECIAL, owner, name, desc, isInterface)
 
 @InsnBuilder
-fun InsnListBuilder.INVOKEINTERFACE(owner: String, name: String, desc: String, isInterface: Boolean = false) =
+fun InsnListBuilder.INVOKEINTERFACE(owner: String, name: String, desc: String, isInterface: Boolean = true) =
     +MethodInsnNode(INVOKEINTERFACE, owner, name, desc, isInterface)
 
 @InsnBuilder

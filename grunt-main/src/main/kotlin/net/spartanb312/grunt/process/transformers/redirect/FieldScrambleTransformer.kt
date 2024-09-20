@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
-import net.spartanb312.grunt.annotation.DONT_SCRAMBLE
+import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -8,7 +8,6 @@ import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransforme
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
-import net.spartanb312.grunt.utils.extensions.hasAnnotations
 import net.spartanb312.grunt.utils.extensions.isInitializer
 import net.spartanb312.grunt.utils.extensions.isPublic
 import net.spartanb312.grunt.utils.logging.Logger
@@ -63,8 +62,8 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                                     val callingField = callingOwner?.fields?.find { field ->
                                         field.name == it.name && field.desc == it.desc
                                     }
-                                    val skipOwner = callingOwner?.hasAnnotation(DONT_SCRAMBLE) == true
-                                    val skipField = callingField?.hasAnnotation(DONT_SCRAMBLE) == true
+                                    val skipOwner = callingOwner?.hasAnnotation(DISABLE_SCRAMBLE) == true
+                                    val skipField = callingField?.hasAnnotation(DISABLE_SCRAMBLE) == true
                                     if (callingField != null && !skipField && !skipOwner) {
                                         val shouldOuter =
                                             generateOuterClass && callingOwner.isPublic && callingField.isPublic
