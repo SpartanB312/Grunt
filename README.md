@@ -2,13 +2,11 @@
 
 [![CodeFactor](https://www.codefactor.io/repository/github/spartanb312/grunt/badge)](https://www.codefactor.io/repository/github/spartanb312/grunt)
 
-Gruntpocalypse is a continuation of Grunt project.
+Gruntpocalypse is a jvm bytecode obfuscator written in kotlin with 30+ transformers.
 
-This is a free and open source obfuscator written in kotlin aiming for stability and versatility.
+This project aims for stability and versatility. Some ideas are from other obfuscators.
 
-Some ideas are from other obfuscator, and be presented with refined version.
-
-Discord server link: https://discord.gg/ysB2fMfeYW
+Join our Discord server and provide your suggestions: https://discord.gg/ysB2fMfeYW
 
 ## Compatibility
 
@@ -30,7 +28,7 @@ dependencies are unavailable for some reasons. I suggest you to enable useComput
 stability as much as possible. (If you encountered VerifyError, You should first try to complete the dependencies. It is
 recommended to only enable computeMaxs and disable controlflow obfuscation when most dependencies cannot be completed)
 
-## Features:
+## Features
 
 ### Renamer
 
