@@ -60,8 +60,7 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
                             && !it.isAnnotation
                             && (enums || !it.isEnum)
                             && (interfaces || !it.isInterface)
-                }
-                .forEach { classNode ->
+                }.forEach { classNode ->
                     val info = hierarchy.getClassInfo(classNode)
                     if (!info.missingDependencies) {
                         val isEnum = classNode.isEnum

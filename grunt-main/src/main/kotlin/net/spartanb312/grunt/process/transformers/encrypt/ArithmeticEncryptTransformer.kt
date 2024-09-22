@@ -4,6 +4,10 @@ import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
+import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIAND
+import net.spartanb312.grunt.process.transformers.encrypt.number.replaceINEG
+import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIOR
+import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIXOR
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.isAbstract

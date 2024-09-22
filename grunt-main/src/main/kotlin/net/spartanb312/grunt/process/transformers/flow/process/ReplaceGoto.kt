@@ -1,5 +1,8 @@
 package net.spartanb312.grunt.process.transformers.flow.process
 
+import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIAND
+import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIOR
+import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIXOR
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.utils.builder.*
 import org.objectweb.asm.Label
@@ -171,9 +174,9 @@ object ReplaceGoto {
     }
 
     private enum class Action(val convert: (Int, Int) -> Int, val insnListProvider: () -> InsnList) {
-        AND({ a, b -> a and b }, { net.spartanb312.grunt.utils.replaceIAND() }),
-        OR({ a, b -> a or b }, { net.spartanb312.grunt.utils.replaceIOR() }),
-        XOR({ a, b -> a xor b }, { net.spartanb312.grunt.utils.replaceIXOR() });
+        AND({ a, b -> a and b }, { replaceIAND() }),
+        OR({ a, b -> a or b }, { replaceIOR() }),
+        XOR({ a, b -> a xor b }, { replaceIXOR() });
 
         val insnList get() = insnListProvider.invoke()
     }

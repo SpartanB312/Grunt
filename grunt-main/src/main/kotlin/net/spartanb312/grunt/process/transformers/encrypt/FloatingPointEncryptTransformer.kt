@@ -4,13 +4,12 @@ import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
+import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptorClassic
 import net.spartanb312.grunt.utils.Counter
-import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.logging.Logger
-import net.spartanb312.grunt.utils.xor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.LdcInsnNode
@@ -48,13 +47,13 @@ object FloatingPointEncryptTransformer : Transformer("FloatingPointEncrypt", Cat
     private fun Counter.encryptFloatingPoint(methodNode: MethodNode) {
         methodNode.instructions.toList().forEach {
             fun encryptFloat(cst: Float) {
-                methodNode.instructions.insertBefore(it, xor(cst))
+                methodNode.instructions.insertBefore(it, NumberEncryptorClassic.encrypt(cst))
                 methodNode.instructions.remove(it)
                 add()
             }
 
             fun encryptDouble(cst: Double) {
-                methodNode.instructions.insertBefore(it, xor(cst))
+                methodNode.instructions.insertBefore(it, NumberEncryptorClassic.encrypt(cst))
                 methodNode.instructions.remove(it)
                 add()
             }

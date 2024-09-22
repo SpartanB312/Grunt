@@ -6,13 +6,13 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
+import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptorClassic
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.appendAnnotation
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.notInList
-import net.spartanb312.grunt.utils.xor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
@@ -101,7 +101,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
             if (refList.isNotEmpty()) {
                 addTrashClass(clazz)
                 val clinit = method(
-                    Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC,
+                    Opcodes.ACC_STATIC,
                     "<clinit>",
                     "()V",
                     null,
@@ -113,7 +113,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                             clazz.fields.add(it.field)
                             when (it) {
                                 is ConstRef.NumberRef -> {
-                                    +xor(it.value as Number)
+                                    +NumberEncryptorClassic.encrypt(it.value as Number)
                                     PUTSTATIC(clazz.name, it.field.name, it.field.desc)
                                 }
 

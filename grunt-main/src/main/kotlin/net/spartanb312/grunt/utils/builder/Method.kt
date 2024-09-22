@@ -71,7 +71,8 @@ class MethodBuilder(val methodNode: MethodNode) {
             getLabelNode(start),
             getLabelNode(end), index
         )
-        methodNode.localVariables = if (methodNode.localVariables != null) methodNode.localVariables else mutableListOf()
+        methodNode.localVariables =
+            if (methodNode.localVariables != null) methodNode.localVariables else mutableListOf()
         methodNode.localVariables.add(localVariable)
     }
 }
@@ -283,6 +284,54 @@ val InsnListBuilder.I2S get() = insn(Opcodes.I2S)
 
 @InsnBuilder
 val InsnListBuilder.L2I get() = insn(Opcodes.L2I)
+
+@InsnBuilder
+val InsnListBuilder.AALOAD get() = insn(Opcodes.AALOAD)
+
+@InsnBuilder
+val InsnListBuilder.IALOAD get() = insn(Opcodes.IALOAD)
+
+@InsnBuilder
+val InsnListBuilder.LALOAD get() = insn(Opcodes.LALOAD)
+
+@InsnBuilder
+val InsnListBuilder.FALOAD get() = insn(Opcodes.FALOAD)
+
+@InsnBuilder
+val InsnListBuilder.DALOAD get() = insn(Opcodes.DALOAD)
+
+@InsnBuilder
+val InsnListBuilder.BALOAD get() = insn(Opcodes.BALOAD)
+
+@InsnBuilder
+val InsnListBuilder.CALOAD get() = insn(Opcodes.CALOAD)
+
+@InsnBuilder
+val InsnListBuilder.SALOAD get() = insn(Opcodes.SALOAD)
+
+@InsnBuilder
+val InsnListBuilder.AASTORE get() = insn(Opcodes.AASTORE)
+
+@InsnBuilder
+val InsnListBuilder.IASTORE get() = insn(Opcodes.IASTORE)
+
+@InsnBuilder
+val InsnListBuilder.LASTORE get() = insn(Opcodes.LASTORE)
+
+@InsnBuilder
+val InsnListBuilder.FASTORE get() = insn(Opcodes.FASTORE)
+
+@InsnBuilder
+val InsnListBuilder.DASTORE get() = insn(Opcodes.DASTORE)
+
+@InsnBuilder
+val InsnListBuilder.BASTORE get() = insn(Opcodes.BASTORE)
+
+@InsnBuilder
+val InsnListBuilder.CASTORE get() = insn(Opcodes.CASTORE)
+
+@InsnBuilder
+val InsnListBuilder.SASTORE get() = insn(Opcodes.SASTORE)
 
 @InsnBuilder
 val InsnListBuilder.THIS get() = ALOAD(0)
