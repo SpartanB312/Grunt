@@ -86,7 +86,7 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 
 * [X] [4]ReplaceGoto
 * [X] [4]ReplaceIfCompare
-* [ ] [4]SwitchWrapper (Coming in next major version)
+* [X] [4]SwitchWrapper
 * [X] [4]JunkCodeGenerator
 * [ ] [0] (Provide ur suggestion in Discord)
 
