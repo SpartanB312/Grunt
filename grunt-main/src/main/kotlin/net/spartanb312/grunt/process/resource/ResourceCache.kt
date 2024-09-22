@@ -102,9 +102,9 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                 }
             }
             val classInfo = hierarchy.getClassInfo(classNode)
-            val missingAny = classInfo.missingDependencies || missingReference.isNotEmpty()
-            val useComputeMax = Configs.Settings.useComputeMax || missingAny || classNode.isExcluded
-            val missing = missingAny && !Configs.Settings.useComputeMax && !classNode.isExcluded
+            val missingAny = (classInfo.missingDependencies || missingReference.isNotEmpty()) && Configs.Settings.libsMissingCheck
+            val useComputeMax = Configs.Settings.forceUseComputeMax || missingAny || classNode.isExcluded
+            val missing = missingAny && !Configs.Settings.forceUseComputeMax && !classNode.isExcluded
             val byteArray = try {
                 if (missing) Logger.warn("Using COMPUTE_MAXS due to ${classNode.name} missing dependencies or reference.")
                 ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {

@@ -18,7 +18,8 @@ class BasicPanel : JPanel() {
     private val inputBrowse = JButton("Browse")
     private val outputBrowse = JButton("Browse")
 
-    val useComputeMax = JCheckBox("UseComputeMax")
+    val useCMPTMaxIfMissing = JCheckBox("LibsMissingCheck")
+    val useComputeMax = JCheckBox("ForceUseComputeMax")
     val corruptOutput = JCheckBox("CorruptOutput")
     val dumpMappings = JCheckBox("DumpMappings")
 
@@ -65,9 +66,10 @@ class BasicPanel : JPanel() {
         }
 
         add(obfButton, CC().cell(3, 0, 1, 2).grow())
-        add(useComputeMax, CC().cell(3, 2).grow())
-        add(corruptOutput, CC().cell(3, 3).grow())
-        add(dumpMappings, CC().cell(3, 4).grow())
+        add(useCMPTMaxIfMissing, CC().cell(3, 2).grow())
+        add(useComputeMax, CC().cell(3, 3).grow())
+        add(corruptOutput, CC().cell(3, 4).grow())
+        add(dumpMappings, CC().cell(3, 5).grow())
 
         add(JLabel("Input:"), CC().cell(0, 0).growX())
         add(input, CC().cell(1, 0).growX())
@@ -108,7 +110,8 @@ class BasicPanel : JPanel() {
         input.text = Settings.input
         output.text = Settings.output
 
-        useComputeMax.isSelected = Settings.useComputeMax
+        useComputeMax.isSelected = Settings.forceUseComputeMax
+        useCMPTMaxIfMissing.isSelected = Settings.libsMissingCheck
         corruptOutput.isSelected = Settings.corruptOutput
         dumpMappings.isSelected = Settings.generateRemap
     }
@@ -117,7 +120,8 @@ class BasicPanel : JPanel() {
         Settings.input = this.input.text
         Settings.output = this.output.text
 
-        Settings.useComputeMax = this.useComputeMax.isSelected
+        Settings.forceUseComputeMax = this.useComputeMax.isSelected
+        Settings.libsMissingCheck = this.useCMPTMaxIfMissing.isSelected
         Settings.corruptOutput = this.corruptOutput.isSelected
         Settings.generateRemap = this.dumpMappings.isSelected
     }

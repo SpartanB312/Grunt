@@ -6,6 +6,7 @@ import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.isInitializer
 import net.spartanb312.grunt.utils.extensions.isPublic
 import net.spartanb312.grunt.utils.extensions.isStatic
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.InsnList
@@ -17,13 +18,14 @@ object JunkCode {
     private val nonExcludedUtilList = mutableListOf<TrashCallMethod>()
     private val allStaticUtilList = mutableSetOf<TrashCallMethod>()
 
-    fun generate(methodNode: MethodNode, returnType: Type): InsnList {
+    fun generate(methodNode: MethodNode, returnType: Type, junkCodes: Int): InsnList {
         return if (methodNode.isInitializer) insnList {
             ACONST_NULL
             ATHROW
         } else insnList {
             when (returnType.sort) {
                 Type.INT -> {
+                    if (junkCodes > 0) +generateAndPop(junkCodes)
                     val trashCallMethod = findRandomGivenReturnTypeMethod(Type.INT)
                     if (ControlflowTransformer.junkCode && trashCallMethod != null) {
                         +generateTrashCall(trashCallMethod)
@@ -32,6 +34,7 @@ object JunkCode {
                 }
 
                 Type.FLOAT -> {
+                    if (junkCodes > 0) +generateAndPop(junkCodes)
                     val trashCallMethod = findRandomGivenReturnTypeMethod(Type.FLOAT)
                     if (ControlflowTransformer.junkCode && trashCallMethod != null) {
                         +generateTrashCall(trashCallMethod)
@@ -40,6 +43,7 @@ object JunkCode {
                 }
 
                 Type.BOOLEAN -> {
+                    if (junkCodes > 0) +generateAndPop(junkCodes)
                     val trashCallMethod = findRandomGivenReturnTypeMethod(Type.BOOLEAN)
                     if (ControlflowTransformer.junkCode && trashCallMethod != null) {
                         +generateTrashCall(trashCallMethod)
@@ -48,6 +52,7 @@ object JunkCode {
                 }
 
                 Type.CHAR -> {
+                    if (junkCodes > 0) +generateAndPop(junkCodes)
                     val trashCallMethod = findRandomGivenReturnTypeMethod(Type.CHAR)
                     if (ControlflowTransformer.junkCode && trashCallMethod != null) {
                         +generateTrashCall(trashCallMethod)
@@ -56,6 +61,7 @@ object JunkCode {
                 }
 
                 Type.SHORT -> {
+                    if (junkCodes > 0) +generateAndPop(junkCodes)
                     val trashCallMethod = findRandomGivenReturnTypeMethod(Type.SHORT)
                     if (ControlflowTransformer.junkCode && trashCallMethod != null) {
                         +generateTrashCall(trashCallMethod)
@@ -64,6 +70,7 @@ object JunkCode {
                 }
 
                 Type.LONG -> {
+                    if (junkCodes > 0) +generateAndPop(junkCodes)
                     val trashCallMethod = findRandomGivenReturnTypeMethod(Type.LONG)
                     if (ControlflowTransformer.junkCode && trashCallMethod != null) {
                         +generateTrashCall(trashCallMethod)
@@ -72,6 +79,7 @@ object JunkCode {
                 }
 
                 Type.DOUBLE -> {
+                    if (junkCodes > 0) +generateAndPop(junkCodes)
                     val trashCallMethod = findRandomGivenReturnTypeMethod(Type.DOUBLE)
                     if (ControlflowTransformer.junkCode && trashCallMethod != null) {
                         +generateTrashCall(trashCallMethod)
@@ -80,6 +88,7 @@ object JunkCode {
                 }
 
                 Type.VOID -> {
+                    if (junkCodes > 0) +generateAndPop(junkCodes)
                     val trashCallMethod = findRandomGivenReturnTypeMethod(Type.VOID)
                     if (ControlflowTransformer.junkCode && trashCallMethod != null) {
                         +generateTrashCall(trashCallMethod)
@@ -88,6 +97,7 @@ object JunkCode {
                 }
 
                 Type.OBJECT -> {
+                    if (junkCodes > 0) +generateAndPop(junkCodes)
                     val trashCallMethod = findRandomGivenReturnTypeMethod(Type.VOID)
                     if (ControlflowTransformer.junkCode && trashCallMethod != null) {
                         +generateTrashCall(trashCallMethod)
@@ -97,8 +107,22 @@ object JunkCode {
                 }
 
                 else -> {
+                    if (junkCodes > 0) +generateAndPop(junkCodes)
                     ACONST_NULL
                     ATHROW
+                }
+            }
+        }
+    }
+
+    fun generateAndPop(count: Int): InsnList {
+        return insnList {
+            repeat(count) {
+                val type = types.entries.random()
+                val trashCallMethod = findRandomGivenReturnTypeMethod(type.key)
+                if (ControlflowTransformer.junkCode && trashCallMethod != null) {
+                    +generateTrashCall(trashCallMethod)
+                    INSN(type.value)
                 }
             }
         }
@@ -112,6 +136,17 @@ object JunkCode {
             allStaticUtilList.addAll(generateUtilList(resourceCache.allClasses))
         }
     }
+
+    private val types = mutableMapOf(
+        Type.VOID to Opcodes.NOP,
+        Type.INT to Opcodes.POP,
+        Type.FLOAT to Opcodes.POP,
+        Type.BOOLEAN to Opcodes.POP,
+        Type.CHAR to Opcodes.POP,
+        Type.SHORT to Opcodes.POP,
+        Type.DOUBLE to Opcodes.POP2,
+        Type.LONG to Opcodes.POP2
+    )
 
     private fun findRandomGivenReturnTypeMethod(sort: Int): TrashCallMethod? {
         val nonExcluded = nonExcludedUtilList.filter { it.returnType.sort == sort }.randomOrNull()

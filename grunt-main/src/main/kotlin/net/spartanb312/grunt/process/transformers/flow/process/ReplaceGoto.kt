@@ -32,10 +32,10 @@ object ReplaceGoto {
                     IF_ICMPNE(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 } else {
                     IF_ICMPEQ(targetLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 }
             }
 
@@ -58,10 +58,10 @@ object ReplaceGoto {
                     IF_ICMPGE(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 } else {
                     IF_ICMPLT(targetLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 }
             }
 
@@ -84,10 +84,10 @@ object ReplaceGoto {
                     IF_ICMPLT(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 } else {
                     IF_ICMPGE(targetLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 }
             }
 
@@ -110,10 +110,10 @@ object ReplaceGoto {
                     IF_ICMPLE(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 } else {
                     IF_ICMPGT(targetLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 }
             }
 
@@ -136,10 +136,10 @@ object ReplaceGoto {
                     IF_ICMPGT(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 } else {
                     IF_ICMPLE(targetLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 }
             }
 
@@ -161,10 +161,10 @@ object ReplaceGoto {
                     IF_ICMPEQ(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 } else {
                     IF_ICMPNE(targetLabel)
-                    +JunkCode.generate(methodNode, returnType)
+                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
                 }
             }
         }

@@ -10,6 +10,7 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.flow.process.JunkCode
 import net.spartanb312.grunt.process.transformers.flow.process.ReplaceGoto
 import net.spartanb312.grunt.process.transformers.flow.process.ReplaceIf
+import net.spartanb312.grunt.process.transformers.flow.process.TableSwitch
 import net.spartanb312.grunt.utils.builder.insnList
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
@@ -31,10 +32,17 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     private var beforeEncrypt by setting("ExecuteBeforeEncrypt", false)
     private val replaceGoto by setting("ReplaceGoto", true)
     private val replaceIf by setting("ReplaceIf", true)
+    private val tableSwitch by setting("TableSwitch", true)
+    private val switchRate by setting("SwitchRate", 30)
+    private val maxSwitchCase by setting("MaxSwitchCase", 5)
     private val intensity by setting("Intensity", 1)
     private val reverse by setting("RandomReversedCondition", true)
+    private val reverseChance by setting("ReverseChance", 50)
+    val jumpBack by setting("SwitchJumpBack", true)
+    val jumpChance by setting("JumpChance", 30)
     val useLocalVar by setting("UseLocalVar", true)
     val junkCode by setting("JunkCode", true)
+    val maxJunkCode by setting("MaxJunkCode", 3)
     val expandedJunkCode by setting("ExpandedJunkCode", true)
     val exclusion by setting("Exclusion", listOf())
 
@@ -82,7 +90,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                                 insnNode.label,
                                 methodNode,
                                 returnType,
-                                reverse && Random.nextBoolean()
+                                reverse && Random.nextInt(100) <= reverseChance
                             )
                             count++
                         } else +insnNode
@@ -106,7 +114,28 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                                 insnNode.label,
                                 methodNode,
                                 returnType,
-                                reverse && Random.nextBoolean()
+                                reverse && Random.nextInt(100) <= reverseChance
+                            )
+                            count++
+                        } else +insnNode
+                    }
+                }
+                methodNode.instructions = newInsn
+            }
+            if (tableSwitch) {
+                val newInsn = insnList {
+                    val range = 1..maxSwitchCase.coerceAtLeast(1)
+                    val returnType = Type.getReturnType(methodNode.desc)
+                    methodNode.instructions.forEach { insnNode ->
+                        if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO
+                            && Random.nextInt(0, 100) < switchRate
+                        ) {
+                            +TableSwitch.generate(
+                                insnNode.label,
+                                methodNode,
+                                returnType,
+                                range.random(),
+                                reverse && Random.nextInt(100) <= reverseChance
                             )
                             count++
                         } else +insnNode
