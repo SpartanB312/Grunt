@@ -10,9 +10,6 @@ import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.TableSwitchInsnNode
 import kotlin.random.Random
 
-/**
- * Will be enhanced in October Major Update (2.3.0)
- */
 object TableSwitch {
 
     fun generate(
@@ -45,8 +42,13 @@ object TableSwitch {
                 LABEL(label)
                 if (index == trueIndex) +ReplaceGoto.generate(targetLabel, methodNode, returnType, reverse)
                 else {
-                    if (ControlflowTransformer.jumpBack && Random.nextInt(100) <= ControlflowTransformer.jumpChance) +ReplaceGoto.generate(
-                        getLabelNode(startLabel),
+                    if (ControlflowTransformer.trappedCase && Random.nextInt(100) <= ControlflowTransformer.trapChance) +ReplaceGoto.generate(
+                        getLabelNode(labels.toMutableList().apply { remove(label) }.random()),
+                        methodNode,
+                        returnType,
+                        reverse
+                    ) else if (ControlflowTransformer.jumpBack && Random.nextInt(100) <= ControlflowTransformer.jumpChance) +ReplaceGoto.generate(
+                        getLabelNode(if (Random.nextBoolean()) defLabel else startLabel),
                         methodNode,
                         returnType,
                         reverse

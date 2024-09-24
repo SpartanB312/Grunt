@@ -14,7 +14,8 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 import kotlin.random.Random
 
-object StringSwitchTransformer : Transformer("StringSwitch", category = Category.Encryption), MethodProcessor {
+object StringSwitchTransformer : Transformer("StringSwitch", Category.Encryption), MethodProcessor {
+
     private val times by setting("Intensity", 1)
     private val exclusion by setting("Exclusions", listOf())
 
@@ -24,12 +25,13 @@ object StringSwitchTransformer : Transformer("StringSwitch", category = Category
             repeat(times) { t ->
                 if (times > 1) Logger.info("    Encrypting strings ${t + 1} of $times times")
                 nonExcluded.asSequence()
-                    .filter { c -> !c.isInterface
-                            && c.version > Opcodes.V1_5
-                            && exclusion.none {
-                        c.name.startsWith(it) }
-                    }
-                    .forEach { classNode ->
+                    .filter { c ->
+                        !c.isInterface
+                                && c.version > Opcodes.V1_5
+                                && exclusion.none {
+                            c.name.startsWith(it)
+                        }
+                    }.forEach { classNode ->
                         classNode.methods.toList().forEach { methodNode ->
                             if (EncryptionMethod.FlattenedSwitch.transform(classNode, methodNode)) add()
                         }
@@ -83,10 +85,12 @@ object StringSwitchTransformer : Transformer("StringSwitch", category = Category
                 val casesMapping = mutableMapOf<Int, InsnList>()
                 // here instancing LabelNode directly is soundness because we only use each node for one time.
                 val labels = Array(cases.size) { LabelNode() }
-                val decryptMethod = method(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
-                    getRandomString(10), "(Ljava/lang/String;)Ljava/lang/String;") {
+                val decryptMethod = method(
+                    Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+                    getRandomString(10), "(Ljava/lang/String;)Ljava/lang/String;"
+                ) {
                     var currentChar = 0
-                    var currentKey = keys[currentChar]
+                    var currentKey: Int
                     val dispatchLabel = LabelNode()
                     InsnList {
                         // 0 -> encrypted string
@@ -116,8 +120,10 @@ object StringSwitchTransformer : Transformer("StringSwitch", category = Category
                         INVOKEVIRTUAL("java/lang/String", "charAt", "(I)C")
                         ILOAD(2)
                         IXOR
-                        INVOKEVIRTUAL("java/lang/StringBuilder",
-                            "append", "(C)Ljava/lang/StringBuilder;")
+                        INVOKEVIRTUAL(
+                            "java/lang/StringBuilder",
+                            "append", "(C)Ljava/lang/StringBuilder;"
+                        )
                         POP
 
                         currentChar++
@@ -140,8 +146,10 @@ object StringSwitchTransformer : Transformer("StringSwitch", category = Category
                             INVOKEVIRTUAL("java/lang/String", "charAt", "(I)C")
                             ILOAD(2) // key
                             IXOR
-                            INVOKEVIRTUAL("java/lang/StringBuilder",
-                                "append", "(C)Ljava/lang/StringBuilder;")
+                            INVOKEVIRTUAL(
+                                "java/lang/StringBuilder",
+                                "append", "(C)Ljava/lang/StringBuilder;"
+                            )
                             POP
                             currentChar++
                             LDC(cases[currentChar])
@@ -166,8 +174,10 @@ object StringSwitchTransformer : Transformer("StringSwitch", category = Category
                         INVOKEVIRTUAL("java/lang/String", "charAt", "(I)C")
                         ILOAD(2)
                         IXOR
-                        INVOKEVIRTUAL("java/lang/StringBuilder",
-                            "append", "(C)Ljava/lang/StringBuilder;")
+                        INVOKEVIRTUAL(
+                            "java/lang/StringBuilder",
+                            "append", "(C)Ljava/lang/StringBuilder;"
+                        )
                         POP
                         ALOAD(1)
                         INVOKEVIRTUAL("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")

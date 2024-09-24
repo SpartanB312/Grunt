@@ -35,16 +35,16 @@ object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
 
         val dictionary = NameGenerator.getByName(dictionary)
         val mappings = HashMap<String, String>()
-        val fields: MutableList<FieldNode> = ArrayList()
-        nonExcluded.forEach { fields.addAll(it.fields) }
+        val fields: MutableList<Pair<FieldNode, ClassNode>> = ArrayList()
+        nonExcluded.forEach { fields.addAll(it.fields.map { field -> field to it }) }
         fields.shuffle()
 
         val count = count {
-            for (fieldNode in fields) {
+            for ((fieldNode, owner) in fields) {
                 if (fieldNode.name.inList(excludedName)) continue
                 val name = malPrefix + dictionary.nextName() + suffix
                 val stack: Stack<ClassNode> = Stack()
-                stack.add(getOwner(fieldNode, classes))
+                stack.add(owner)
                 while (stack.size > 0) {
                     val classNode = stack.pop()
                     val key = classNode.name + "." + fieldNode.name
@@ -61,11 +61,6 @@ object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
         applyRemap("fields", mappings)
 
         Logger.info("    Renamed $count fields")
-    }
-
-    private fun getOwner(field: FieldNode, classNodes: MutableMap<String, ClassNode>): ClassNode? {
-        for (clazz in classNodes.values) if (clazz.fields.contains(field)) return clazz
-        return null
     }
 
 }

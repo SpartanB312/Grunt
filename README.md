@@ -54,7 +54,7 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 * [X] [5]NumberEncrypt
 * [X] [5]FloatingPointEncrypt
 * [X] [5]StringEncrypt
-* [X] [3]StringSwitch
+* [X] [1]StringSwitch
 
 ### Redirect
 
@@ -85,10 +85,13 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 
 ### ControlFlow
 
-* [X] [4]ReplaceGoto
-* [X] [4]ReplaceIfCompare
-* [X] [4]SwitchWrapper
-* [X] [4]JunkCodeGenerator
+* [X] [4]BogusConditionJump (If, Goto) Generate fake jumps with random junk codes
+* [X] [4]MangledCompareJump (If, Goto) Generate random conditional jump with junk codes for direct jump
+* [X] [4]ReversedIfJump (If, Goto) Random mutation to the jump condition
+* [X] [4]TableSwitchJump (Switch) Generate TableSwitch to replace direct jumps
+* [X] [4]UnconditionalLoop (Switch) Random weird loops between switch labels
+* [X] [4]TrappedSwitchCase (Switch) Random trapped switch junk cases
+* [X] [4]JunkCodeGenerator (JunkCode) Generate junk calls
 * [ ] [0] (Provide ur suggestion in Discord)
 
 ## License: GNU General Public License 3.0
