@@ -33,6 +33,7 @@ object Transformers : Collection<Transformer> by mutableListOf(
     ClonedClassTransformer order 10,
     TrashClassTransformer order 11,
     HWIDAuthenticatorTransformer order 12,
+    StringSwitchTransformer order 18,
     //ControlflowTransformer order 20,
     StringEncryptTransformer order 30,
     NumberEncryptTransformer order 31,
