@@ -39,7 +39,6 @@ object Transformers : Collection<Transformer> by mutableListOf(
     FloatingPointEncryptTransformer order 32,
     ArithmeticEncryptTransformer order 33,
     ControlflowTransformer order 40,
-    StringSwitchTransformer order 50,
     ConstPoolEncryptTransformer order 51,
     StringEqualsRedirectTransformer order 60,
     FieldScrambleTransformer order 61,
