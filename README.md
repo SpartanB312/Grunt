@@ -52,7 +52,6 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 * [X] [4]ArithmeticEncrypt
 * [X] [5]ConstPoolEncrypt
 * [X] [5]NumberEncrypt
-* [X] [5]FloatingPointEncrypt
 * [X] [5]StringEncrypt
 
 ### Redirect
