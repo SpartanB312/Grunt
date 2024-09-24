@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
+import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
@@ -9,6 +10,7 @@ import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptor
 import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptorClassic
 import net.spartanb312.grunt.utils.Counter
 import net.spartanb312.grunt.utils.count
+import net.spartanb312.grunt.utils.extensions.appendAnnotation
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.extensions.isNative
@@ -38,6 +40,7 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                     .forEach { classNode ->
                         val list = mutableListOf<NumberEncryptorArrayed.Value>()
                         val field = if (arrayed && !classNode.isInterface) classNode.getOrCreateField() else null
+                        field?.appendAnnotation(DISABLE_SCRAMBLE)
                         classNode.methods.asSequence()
                             .filter { !it.isAbstract && !it.isNative }
                             .forEach { methodNode: MethodNode ->
