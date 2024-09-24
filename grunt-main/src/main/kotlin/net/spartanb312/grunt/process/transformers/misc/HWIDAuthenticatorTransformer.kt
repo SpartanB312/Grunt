@@ -23,6 +23,7 @@ import kotlin.math.min
 /**
  * Add Online/Offline HWID verification
  * Providing lightweight protection for your project
+ * Last update on 2024/09/20
  */
 object HWIDAuthenticatorTransformer : Transformer("HWIDAuthentication", Category.Miscellaneous) {
 

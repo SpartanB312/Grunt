@@ -25,7 +25,7 @@ import kotlin.random.Random
 
 /**
  * Obfuscating the controlflow
- * Last update on 24/09/16
+ * Last update on 24/09/24
  */
 object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow), MethodProcessor {
 
