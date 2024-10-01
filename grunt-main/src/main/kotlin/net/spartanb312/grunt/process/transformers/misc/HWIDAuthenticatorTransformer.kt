@@ -253,6 +253,7 @@ object HWIDAuthenticatorTransformer : Transformer("HWIDAuthentication", Category
                         verifyMethod.access = Opcodes.ACC_STATIC
                         classNode.methods.add(verifyMethod)
                     }
+                    if (classNode.version < Opcodes.V1_7) classNode.version = Opcodes.V1_7
                     add()
                 }
             centers.forEach { addTrashClass(it.first) }

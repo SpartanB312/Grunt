@@ -25,10 +25,10 @@ object ReplaceIf {
             if (ControlflowTransformer.reverseExistedIf && reversedOpcode != null
                 && Random.nextInt(100) <= ControlflowTransformer.reverseChance
             ) {
-                val junkLabel = Label()
-                +JumpInsnNode(reversedOpcode, getLabelNode(junkLabel))
+                val elseLabel = Label()
+                +JumpInsnNode(reversedOpcode, getLabelNode(elseLabel))
                 +ReplaceGoto.generate(targetLabel, methodNode, returnType, reverse)
-                LABEL(junkLabel)
+                LABEL(elseLabel)
             } else {
                 val delegateLabel = Label()
                 val elseLabel = Label()

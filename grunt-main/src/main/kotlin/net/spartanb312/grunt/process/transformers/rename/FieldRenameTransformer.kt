@@ -15,7 +15,7 @@ import java.util.*
 
 /**
  * Renaming fields
- * Last update on 2024/09/24
+ * Last update on 2024/10/02
  */
 object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
 
@@ -23,7 +23,12 @@ object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
     private val randomKeywordPrefix by setting("RandomKeywordPrefix", false)
     private val prefix by setting("Prefix", "")
     private val reversed by setting("Reversed", false)
-    private val exclusion by setting("Exclusion", listOf())
+    private val exclusion by setting(
+        "Exclusion", listOf(
+            "net/spartanb312/Example1",
+            "net/spartanb312/Example2.field"
+        )
+    )
     private val excludedName by setting("ExcludedName", listOf("INSTANCE", "Companion"))
 
     private val malPrefix = (if (randomKeywordPrefix) "$nextBadKeyword " else "") + prefix
