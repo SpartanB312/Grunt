@@ -20,7 +20,7 @@ import kotlin.system.measureTimeMillis
 
 /**
  * Renaming methods with FunctionalInterface InvokeDynamic MultiSource check.
- * Last update on 2024/10/02
+ * Last update on 2024/07/05
  */
 object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) {
 
@@ -31,14 +31,8 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
     private val randomKeywordPrefix by setting("RandomKeywordPrefix", false)
     private val prefix by setting("Prefix", "")
     private val reversed by setting("Reversed", false)
-    private val exclusion by setting(
-        "Exclusion", listOf(
-            "net/spartanb312/Example1",
-            "net/spartanb312/Example2.method",
-            "net/spartanb312/Example3.method()V",
-        )
-    )
-    private val excludedName by setting("ExcludedName", listOf("methodName"))
+    private val exclusion by setting("Exclusion", listOf())
+    private val excludedName by setting("ExcludedName", listOf())
 
     private val suffix get() = if (reversed) "\u200E" else ""
 
@@ -76,14 +70,12 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
                             if (isEnum && methodNode.name == "values") continue
                             if (methodNode.name.inList(excludedName)) continue
                             if (methodNode.isNative) continue
-                            val combined = combine(classNode.name, methodNode.name, methodNode.desc)
-                            if (combined.inList(exclusion)) continue
                             if (hierarchy.isSourceMethod(classNode, methodNode)) {
                                 val readyToApply = mutableMapOf<String, String>()
                                 var shouldApply = true
                                 val newName = (if (randomKeywordPrefix) "$nextBadKeyword " else "") +
                                         prefix + dictionary.nextName(heavyOverloads, methodNode.desc) + suffix
-                                readyToApply[combined] = newName
+                                readyToApply[combine(classNode.name, methodNode.name, methodNode.desc)] = newName
                                 // Check children
                                 info.children.forEach { child ->
                                     if (!child.isBroken) {
@@ -108,8 +100,7 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
                                         }
 
                                         val childKey = combine(child.classNode.name, methodNode.name, methodNode.desc)
-                                        if (childKey.notInList(exclusion)) readyToApply[childKey] = newName
-                                        else shouldApply = false
+                                        readyToApply[childKey] = newName
                                     } else shouldApply = false
                                 }
                                 if (classNode.isInterface) {

@@ -286,12 +286,6 @@ val InsnListBuilder.I2S get() = insn(Opcodes.I2S)
 val InsnListBuilder.L2I get() = insn(Opcodes.L2I)
 
 @InsnBuilder
-val InsnListBuilder.LSHL get() = insn(Opcodes.LSHL)
-
-@InsnBuilder
-val InsnListBuilder.LSHR get() = insn(Opcodes.LSHR)
-
-@InsnBuilder
 val InsnListBuilder.AALOAD get() = insn(Opcodes.AALOAD)
 
 @InsnBuilder

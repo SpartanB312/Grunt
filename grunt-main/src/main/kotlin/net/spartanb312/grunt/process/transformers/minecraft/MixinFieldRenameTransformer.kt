@@ -14,18 +14,13 @@ import java.util.*
 
 /**
  * Renaming fields for mixin classes
- * Last update on 2024/10/02
+ * Last update on 2024/07/02
  */
 object MixinFieldRenameTransformer : Transformer("MixinFieldRename", Category.Minecraft) {
 
     private val dictionary by setting("Dictionary", "Alphabet")
     private val prefix by setting("Prefix", "")
-    private val exclusion by setting(
-        "Exclusion", listOf(
-            "net/spartanb312/Example1",
-            "net/spartanb312/Example2.field"
-        )
-    )
+    private val exclusion by setting("Exclusion", listOf())
     private val excludedName by setting("ExcludedName", listOf("INSTANCE", "Companion"))
 
     override fun ResourceCache.transform() {
@@ -38,18 +33,18 @@ object MixinFieldRenameTransformer : Transformer("MixinFieldRename", Category.Mi
         Logger.info("    Generating mappings for mixin fields...")
         val dictionary = NameGenerator.getByName(dictionary)
         val mappings = HashMap<String, String>()
-        val fields: MutableList<Pair<FieldNode, ClassNode>> = ArrayList()
-        nonExcluded.forEach { fields.addAll(it.fields.map { field -> field to it }) }
+        val fields: MutableList<FieldNode> = ArrayList()
+        nonExcluded.forEach { fields.addAll(it.fields) }
         fields.shuffle()
 
         val count = count {
-            for ((fieldNode, owner) in fields) {
+            for (fieldNode in fields) {
                 if (fieldNode.name.inList(excludedName)) continue
                 if (fieldNode.visibleAnnotations?.any { it.desc.inList(annotations) } == true) continue
                 if (fieldNode.invisibleAnnotations?.any { it.desc.inList(annotations) } == true) continue
                 val name = prefix + dictionary.nextName()
                 val stack: Stack<ClassNode> = Stack()
-                stack.add(owner)
+                stack.add(getOwner(fieldNode, classes))
                 while (stack.size > 0) {
                     val classNode = stack.pop()
                     val key = classNode.name + "." + fieldNode.name
@@ -66,6 +61,12 @@ object MixinFieldRenameTransformer : Transformer("MixinFieldRename", Category.Mi
         applyRemap("mixin fields", mappings)
 
         Logger.info("    Renamed $count mixin fields")
+    }
+
+
+    private fun getOwner(field: FieldNode, classNodes: MutableMap<String, ClassNode>): ClassNode? {
+        for (clazz in classNodes.values) if (clazz.fields.contains(field)) return clazz
+        return null
     }
 
     private val annotations = mutableListOf(

@@ -21,14 +21,12 @@ object ReplaceIf {
         reverse: Boolean
     ): InsnList {
         return insnList {
-            val reversedOpcode = ifComparePairs[insnNode.opcode]
-            if (ControlflowTransformer.reverseExistedIf && reversedOpcode != null
-                && Random.nextInt(100) <= ControlflowTransformer.reverseChance
-            ) {
-                val elseLabel = Label()
-                +JumpInsnNode(reversedOpcode, getLabelNode(elseLabel))
+            val reversedOpcode = reversedCondition[insnNode.opcode]
+            if (ControlflowTransformer.reverseExistedIf && reversedOpcode != null && Random.nextBoolean()) {
+                val junkLabel = Label()
+                +JumpInsnNode(reversedOpcode, getLabelNode(junkLabel))
                 +ReplaceGoto.generate(targetLabel, methodNode, returnType, reverse)
-                LABEL(elseLabel)
+                LABEL(junkLabel)
             } else {
                 val delegateLabel = Label()
                 val elseLabel = Label()
@@ -41,7 +39,7 @@ object ReplaceIf {
         }
     }
 
-    val ifComparePairs = mutableMapOf(
+    private val reversedCondition = mutableMapOf(
         Opcodes.IF_ICMPEQ to Opcodes.IF_ICMPNE,
         Opcodes.IF_ICMPLE to Opcodes.IF_ICMPGT,
         Opcodes.IF_ICMPGE to Opcodes.IF_ICMPLT,

@@ -37,11 +37,11 @@ fun ZipOutputStream.corruptCRC32() {
 inline val String.splash get() = replace(".", "/")
 inline val String.dot get() = replace("/", ".")
 
-fun String.notInList(list: List<String>, startWith: Boolean = true): Boolean =
-    !inList(list, startWith)
+fun String.notInList(list: List<String>): Boolean =
+    !inList(list)
 
-fun String.inList(list: List<String>, startWith: Boolean = true): Boolean {
-    return list.any { if (startWith) this.startsWith(it) else this == it }
+fun String.inList(list: List<String>): Boolean {
+    return list.any { this.startsWith(it) }
 }
 
 inline fun <T> Sequence<T>.forEachThis(action: T.() -> Unit): Unit {

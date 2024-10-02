@@ -34,7 +34,6 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
 
     private val rate by setting("ReplacePercentage", 10)
     private val massiveRandom by setting("MassiveRandomBlank", false)
-    private val reobf by setting("Reobfuscate", true)
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
@@ -53,7 +52,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 if (shouldApply(classNode, bootstrapName, decryptValue)) {
                     val decrypt = createDecryptMethod(decryptName, decryptValue)
                     val bsm = createBootstrap(classNode.name, bootstrapName, decryptName)
-                    if (ControlflowTransformer.enabled && reobf) {
+                    if (ControlflowTransformer.enabled) {
                         ControlflowTransformer.processMethodNode(decrypt)
                         ControlflowTransformer.processMethodNode(bsm)
                     }

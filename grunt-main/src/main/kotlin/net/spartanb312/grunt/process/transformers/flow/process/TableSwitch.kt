@@ -47,7 +47,7 @@ object TableSwitch {
                         methodNode,
                         returnType,
                         reverse
-                    ) else if (ControlflowTransformer.fakeLoop && Random.nextInt(100) <= ControlflowTransformer.loopChance) +ReplaceGoto.generate(
+                    ) else if (ControlflowTransformer.jumpBack && Random.nextInt(100) <= ControlflowTransformer.jumpChance) +ReplaceGoto.generate(
                         getLabelNode(if (Random.nextBoolean()) defLabel else startLabel),
                         methodNode,
                         returnType,
