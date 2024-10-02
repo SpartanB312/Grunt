@@ -95,7 +95,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         for (classNode in classes.values) {
             if (classNode.name == "module-info" || classNode.name.shouldRemove) continue
             val missingReference = ReferenceSearch.checkMissing(classNode, hierarchy)
-            if (missingReference.isNotEmpty() && Configs.Settings.libsMissingCheck) {
+            if (missingReference.isNotEmpty()) {
                 Logger.error("Class ${classNode.name} missing reference:")
                 for (missing in missingReference) {
                     Logger.error(" - ${missing.name}")
@@ -126,7 +126,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
             closeEntry()
         }
         hierarchy.buildMissingMap()
-        if (Configs.Settings.libsMissingCheck) hierarchy.printMissing()
+        hierarchy.printMissing()
 
         Logger.info("Writing resources...")
         for ((name, bytes) in resources) {

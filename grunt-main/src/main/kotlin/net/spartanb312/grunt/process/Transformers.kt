@@ -55,6 +55,5 @@ object Transformers : Collection<Transformer> by mutableListOf(
     ShuffleMembersTransformer order 101,
     CrasherTransformer order 102,
     WatermarkTransformer order 103,
-    AlienTransformer order 105,
     PostProcessTransformer order Int.MAX_VALUE
 )

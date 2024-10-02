@@ -30,9 +30,6 @@ dependencies {
     library("com.miglayout:miglayout-swing:5.3")
     library("com.github.weisj:darklaf-core:3.0.2")
 
-
-    library("org.apache.commons:commons-lang3:3.0")
-
     implementation(library)
 }
 
