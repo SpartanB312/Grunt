@@ -25,24 +25,23 @@ import kotlin.random.Random
 
 /**
  * Obfuscating the controlflow
- * Last update on 24/09/16
+ * Last update on 24/09/24
  */
 object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow), MethodProcessor {
 
-    private var beforeEncrypt by setting("ExecuteBeforeEncrypt", false)
-    private val replaceGoto by setting("ReplaceGoto", true)
-    private val replaceIf by setting("ReplaceIf", true)
-    private val tableSwitch by setting("TableSwitch", true)
-    private val switchRate by setting("SwitchRate", 30)
-    private val maxSwitchCase by setting("MaxSwitchCase", 5)
     private val intensity by setting("Intensity", 1)
-    private val reverse by setting("RandomReversedCondition", true)
-    private val reverseChance by setting("ReverseChance", 50)
+    private var beforeEncrypt by setting("ExecuteBeforeEncrypt", false)
+    private val bogusJump by setting("BogusConditionJump", true)
+    private val mangledIf by setting("MangledCompareJump", true)
+    private val tableSwitch by setting("TableSwitchJump", true)
+    private val switchRate by setting("SwitchReplaceRate", 30)
+    private val maxSwitchCase by setting("MaxSwitchCase", 5)
     val reverseExistedIf by setting("ReverseExistedIf", true)
+    val reverseChance by setting("ReverseChance", 50)
     val trappedCase by setting("TrappedSwitchCase", true)
     val trapChance by setting("TrapChance", 30)
-    val jumpBack by setting("SwitchJumpBack", true)
-    val jumpChance by setting("JumpChance", 30)
+    val fakeLoop by setting("UnconditionalLoop", true)
+    val loopChance by setting("LoopChance", 30)
     val useLocalVar by setting("UseLocalVar", true)
     val junkCode by setting("JunkCode", true)
     val maxJunkCode by setting("MaxJunkCode", 3)
@@ -84,7 +83,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     fun processMethodNode(methodNode: MethodNode): Int {
         var count = 0
         repeat(intensity) {
-            if (replaceGoto) {
+            if (bogusJump) {
                 val newInsn = insnList {
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->
@@ -93,7 +92,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                                 insnNode.label,
                                 methodNode,
                                 returnType,
-                                reverse && Random.nextInt(100) <= reverseChance
+                                Random.nextBoolean()
                             )
                             count++
                         } else +insnNode
@@ -101,23 +100,17 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                 }
                 methodNode.instructions = newInsn
             }
-            if (replaceIf) {
+            if (mangledIf) {
                 val newInsn = insnList {
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->
-                        if (insnNode is JumpInsnNode && (insnNode.opcode == Opcodes.IF_ICMPEQ
-                                    || insnNode.opcode == Opcodes.IF_ICMPLT
-                                    || insnNode.opcode == Opcodes.IF_ICMPGE
-                                    || insnNode.opcode == Opcodes.IF_ICMPGT
-                                    || insnNode.opcode == Opcodes.IF_ICMPLE
-                                    || insnNode.opcode == Opcodes.IF_ICMPNE)
-                        ) {
+                        if (insnNode is JumpInsnNode && ReplaceIf.ifComparePairs.any { it.key == insnNode.opcode }) {
                             +ReplaceIf.generate(
                                 insnNode,
                                 insnNode.label,
                                 methodNode,
                                 returnType,
-                                reverse && Random.nextInt(100) <= reverseChance
+                                Random.nextBoolean()
                             )
                             count++
                         } else +insnNode
@@ -138,7 +131,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                                 methodNode,
                                 returnType,
                                 range.random(),
-                                reverse && Random.nextInt(100) <= reverseChance
+                                Random.nextBoolean()
                             )
                             count++
                         } else +insnNode
@@ -147,9 +140,10 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                 methodNode.instructions = newInsn
             }
         }
-        if ((replaceIf || replaceGoto) && useLocalVar) methodNode.maxLocals += 1
+        if ((mangledIf || bogusJump) && useLocalVar) methodNode.maxLocals += 1
         return count
     }
+
 
     private fun ClassNode.missingReference(hierarchy: Hierarchy): Boolean {
         return ReferenceSearch.checkMissing(this, hierarchy).isNotEmpty()

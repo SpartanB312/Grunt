@@ -14,8 +14,8 @@ import kotlin.system.measureTimeMillis
  * Gruntpocalypse
  * A java bytecode obfuscator
  */
-const val VERSION = "2.2.4"
-const val SUBTITLE = "build 240923"
+const val VERSION = "2.3.3"
+const val SUBTITLE = "build 241002"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
 fun main(args: Array<String>) {
@@ -79,12 +79,22 @@ fun runProcess() {
     val time = measureTimeMillis {
         ResourceCache(Configs.Settings.input, Configs.Settings.libraries).apply {
             readJar()
+            val timeUsage = mutableMapOf<String, Long>()
             val obfTime = measureTimeMillis {
                 Logger.info("Processing...")
-                Transformers.sortedBy { it.order }.forEach { if (it.enabled) with(it) { transform() } }
+                Transformers.sortedBy { it.order }.forEach {
+                    if (it.enabled) {
+                        val startTime = System.currentTimeMillis()
+                        with(it) { transform() }
+                        timeUsage[it.name] = System.currentTimeMillis() - startTime
+                    }
+                }
                 with(PostProcessTransformer) { finalize() }
             }
             Logger.info("Took $obfTime ms to process!")
+            if (Configs.Settings.timeUsage) timeUsage.forEach { (name, duration) ->
+                Logger.info("   $name $duration ms")
+            }
             Logger.info("Dumping to ${Configs.Settings.output}")
         }.dumpJar(Configs.Settings.output)
     }

@@ -11,7 +11,7 @@ import org.objectweb.asm.tree.ClassNode
 
 /**
  * Renaming classes
- * Last update on 2024/06/26
+ * Last update on 2024/10/02
  */
 object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
 
@@ -22,7 +22,13 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
     private val shuffled by setting("Shuffled", false)
     private val corruptedName by setting("CorruptedName", false)
     private val corruptedNameExclusion by setting("CorruptedNameExclusion", listOf())
-    private val exclusion by setting("Exclusion", listOf())
+    private val exclusion by setting(
+        "Exclusion", listOf(
+            "net/spartanb312/Example",
+            "net/spartanb312/component/Component**",
+            "net/spartanb312/package/**"
+        )
+    )
 
     private val ClassNode.malNamePrefix
         get() = if (corruptedName) {
@@ -37,12 +43,14 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming classes...")
         Logger.info("    Generating mappings for classes...")
+        val equalsExclusion = exclusion.filter { !it.endsWith("**") }
+        val startWithExclusion = buildList { exclusion.forEach { if (it.endsWith("**")) add(it.removeSuffix("**")) } }
         val nameGenerator = NameGenerator.getByName(dictionary)
         val mappings = mutableMapOf<String, String>()
         val count = count {
             val classes = if (shuffled) nonExcluded.shuffled() else nonExcluded
             classes.forEach {
-                if (it.name.notInList(exclusion)) {
+                if (it.name.notInList(equalsExclusion, false) && it.name.notInList(startWithExclusion)) {
                     mappings[it.name] = parent + prefix + it.malNamePrefix + nameGenerator.nextName() + suffix
                     add()
                 }

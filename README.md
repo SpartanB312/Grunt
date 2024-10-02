@@ -2,7 +2,7 @@
 
 [![CodeFactor](https://www.codefactor.io/repository/github/spartanb312/grunt/badge)](https://www.codefactor.io/repository/github/spartanb312/grunt)
 
-Gruntpocalypse is a jvm bytecode obfuscator written in kotlin with 30+ transformers.
+Gruntpocalypse is a jvm bytecode obfuscator written in kotlin with 30+ features.
 
 This project aims for stability and versatility. Some ideas are from other obfuscators.
 
@@ -52,7 +52,6 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 * [X] [4]ArithmeticEncrypt
 * [X] [5]ConstPoolEncrypt
 * [X] [5]NumberEncrypt
-* [X] [5]FloatingPointEncrypt
 * [X] [5]StringEncrypt
 
 ### Redirect
