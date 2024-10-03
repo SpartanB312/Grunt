@@ -5,6 +5,15 @@ import net.spartanb312.grunt.event.EventBus
 import net.spartanb312.grunt.event.EventPosting
 import net.spartanb312.grunt.process.Transformer
 
-class TransformerEvent(val transformer: Transformer) : CancellableEvent(), EventPosting by Companion {
-    companion object : EventBus()
+// Replaceable transformer
+sealed class TransformerEvent(var transformer: Transformer) : CancellableEvent() {
+
+    class Before(transformer: Transformer) : TransformerEvent(transformer), EventPosting by Companion {
+        companion object : EventBus()
+    }
+
+    class After(transformer: Transformer) : TransformerEvent(transformer), EventPosting by Companion {
+        companion object : EventBus()
+    }
+
 }

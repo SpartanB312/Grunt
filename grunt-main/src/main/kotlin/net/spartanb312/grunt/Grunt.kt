@@ -94,12 +94,15 @@ fun runProcess() {
                 Logger.info("Processing...")
                 Transformers.sortedBy { it.order }.forEach {
                     if (it.enabled) {
-                        val event = TransformerEvent(it)
-                        event.post()
-                        if (!event.cancelled) {
+                        val preEvent = TransformerEvent.Before(it)
+                        preEvent.post()
+                        if (!preEvent.cancelled) {
+                            val actualTransformer = preEvent.transformer
                             val startTime = System.currentTimeMillis()
-                            with(it) { transform() }
-                            timeUsage[it.name] = System.currentTimeMillis() - startTime
+                            with(actualTransformer) { transform() }
+                            timeUsage[actualTransformer.name] = System.currentTimeMillis() - startTime
+                            val postEvent = TransformerEvent.After(actualTransformer)
+                            postEvent.post()
                         }
                     }
                 }

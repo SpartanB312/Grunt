@@ -49,9 +49,9 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     val exclusion by setting("Exclusion", listOf())
 
     override var order: Int
-        get() = if (beforeEncrypt) 20 else 40
+        get() = if (beforeEncrypt) 200 else 400
         set(value) {
-            beforeEncrypt = value == 20
+            beforeEncrypt = value == 200
         }
 
     override fun ResourceCache.transform() {

@@ -37,8 +37,11 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
     private val dontScramble by setting("DontScramble", true)
     private val exclusion by setting("Exclusion", listOf())
 
+    val generatedClasses = mutableListOf<ClassNode>()
+
     override fun ResourceCache.transform() {
         Logger.info(" - Encrypting constant pools...")
+        generatedClasses.clear()
         val companions = mutableMapOf<ClassNode, MutableList<ConstRef<*>>>()
         val filtered = nonExcluded.filter { it.name.notInList(exclusion) }
         filtered.forEach {
@@ -106,6 +109,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
         companions.forEach { (clazz, refList) ->
             if (refList.isNotEmpty()) {
                 addTrashClass(clazz)
+                generatedClasses.add(clazz)
                 val clinit = method(
                     Opcodes.ACC_STATIC,
                     "<clinit>",
