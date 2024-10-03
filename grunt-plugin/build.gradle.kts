@@ -13,25 +13,14 @@ val kotlinxCoroutineVersion = "1.7.3"
 val asmVersion = "9.7"
 
 val library: Configuration by configurations.creating
+val projectModule: Configuration by configurations.creating
 
 dependencies {
     //Kotlin
-    library(kotlin("stdlib"))
-    library("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-
-    //ASM
-    library("org.ow2.asm:asm:$asmVersion")
-    library("org.ow2.asm:asm-tree:$asmVersion")
-    library("org.ow2.asm:asm-commons:$asmVersion")
-
-    //GSON
-    library("com.google.code.gson:gson:2.10")
-
-    //GUI
-    library("com.miglayout:miglayout-swing:5.3")
-    library("com.github.weisj:darklaf-core:3.0.2")
+    projectModule(project(":grunt-main"))
 
     implementation(library)
+    api(projectModule)
 }
 
 tasks {
@@ -54,7 +43,7 @@ tasks {
 
         manifest {
             attributes(
-                "Main-Class" to "net.spartanb312.grunt.GruntKt"
+                "Entry-Point" to "net.spartanb312.grunt.example.Main"
             )
         }
 

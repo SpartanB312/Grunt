@@ -8,10 +8,12 @@ import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransform
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptorClassic
 import net.spartanb312.grunt.utils.builder.*
+import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.appendAnnotation
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.getRandomString
+import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
@@ -36,6 +38,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
+        Logger.info(" - Encrypting constant pools...")
         val companions = mutableMapOf<ClassNode, MutableList<ConstRef<*>>>()
         val filtered = nonExcluded.filter { it.name.notInList(exclusion) }
         filtered.forEach {
@@ -53,50 +56,53 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                 }
             ] = mutableListOf()
         }
-        filtered.forEach { classNode ->
-            classNode.methods.forEach { methodNode ->
-                if (!methodNode.isAbstract && !methodNode.isNative) {
-                    val insnList = insnList {
-                        methodNode.instructions.forEach { insn ->
-                            if (insn is LdcInsnNode) {
-                                val owner = companions.keys.random()
-                                val list = companions[owner]!!
-                                val cst = insn.cst
-                                when {
-                                    cst is Int && integer -> ConstRef.IntRef(cst).let {
-                                        list.add(it)
-                                        GETSTATIC(owner.name, it.field.name, it.field.desc)
-                                    }
+        val count = count {
+            filtered.forEach { classNode ->
+                classNode.methods.forEach { methodNode ->
+                    if (!methodNode.isAbstract && !methodNode.isNative) {
+                        val insnList = insnList {
+                            methodNode.instructions.forEach { insn ->
+                                if (insn is LdcInsnNode) {
+                                    val owner = companions.keys.random()
+                                    val list = companions[owner]!!
+                                    val cst = insn.cst
+                                    when {
+                                        cst is Int && integer -> ConstRef.IntRef(cst).let {
+                                            list.add(it)
+                                            GETSTATIC(owner.name, it.field.name, it.field.desc)
+                                        }
 
-                                    cst is Long && long -> ConstRef.LongRef(cst).let {
-                                        list.add(it)
-                                        GETSTATIC(owner.name, it.field.name, it.field.desc)
-                                    }
+                                        cst is Long && long -> ConstRef.LongRef(cst).let {
+                                            list.add(it)
+                                            GETSTATIC(owner.name, it.field.name, it.field.desc)
+                                        }
 
-                                    cst is Float && float -> ConstRef.FloatRef(cst).let {
-                                        list.add(it)
-                                        GETSTATIC(owner.name, it.field.name, it.field.desc)
-                                    }
+                                        cst is Float && float -> ConstRef.FloatRef(cst).let {
+                                            list.add(it)
+                                            GETSTATIC(owner.name, it.field.name, it.field.desc)
+                                        }
 
-                                    cst is Double && double -> ConstRef.DoubleRef(cst).let {
-                                        list.add(it)
-                                        GETSTATIC(owner.name, it.field.name, it.field.desc)
-                                    }
+                                        cst is Double && double -> ConstRef.DoubleRef(cst).let {
+                                            list.add(it)
+                                            GETSTATIC(owner.name, it.field.name, it.field.desc)
+                                        }
 
-                                    cst is String && string -> ConstRef.StringRef(cst).let {
-                                        list.add(it)
-                                        GETSTATIC(owner.name, it.field.name, it.field.desc)
-                                    }
+                                        cst is String && string -> ConstRef.StringRef(cst).let {
+                                            list.add(it)
+                                            GETSTATIC(owner.name, it.field.name, it.field.desc)
+                                        }
 
-                                    else -> +insn
-                                }
-                            } else +insn
+                                        else -> +insn
+                                    }
+                                    add()
+                                } else +insn
+                            }
                         }
+                        methodNode.instructions = insnList
                     }
-                    methodNode.instructions = insnList
                 }
             }
-        }
+        }.get()
         companions.forEach { (clazz, refList) ->
             if (refList.isNotEmpty()) {
                 addTrashClass(clazz)
@@ -142,6 +148,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                 clazz.methods.add(clinit)
             }
         }
+        Logger.info("    Encrypted $count constants in ${companions.size} pools")
     }
 
     interface ConstRef<T> {

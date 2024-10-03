@@ -16,7 +16,7 @@ class SimpleLogger(private val name: String, savePath: String = "") : ILogger {
             else {
                 val file = File(savePath)
                 try {
-                    file.parentFile.mkdirs()
+                    file.parentFile?.mkdirs()
                     file.createNewFile()
                     file
                 } catch (ignore: Exception) {

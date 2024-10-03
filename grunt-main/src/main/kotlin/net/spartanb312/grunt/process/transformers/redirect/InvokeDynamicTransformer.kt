@@ -5,10 +5,12 @@ import net.spartanb312.grunt.config.Configs.isExcluded
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
+import net.spartanb312.grunt.process.transformers.encrypt.NumberEncryptTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.process.transformers.flow.process.JunkCode
+import net.spartanb312.grunt.process.transformers.rename.LocalVariableRenameTransformer
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
@@ -34,6 +36,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
 
     private val rate by setting("ReplacePercentage", 10)
     private val massiveRandom by setting("MassiveRandomBlank", false)
+    private val reobf by setting("Reobfuscate", true)
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
@@ -52,9 +55,15 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 if (shouldApply(classNode, bootstrapName, decryptValue)) {
                     val decrypt = createDecryptMethod(decryptName, decryptValue)
                     val bsm = createBootstrap(classNode.name, bootstrapName, decryptName)
-                    if (ControlflowTransformer.enabled) {
-                        ControlflowTransformer.processMethodNode(decrypt)
-                        ControlflowTransformer.processMethodNode(bsm)
+                    if (reobf) {
+                        if (ControlflowTransformer.enabled) {
+                            ControlflowTransformer.transformMethod(classNode, decrypt)
+                            ControlflowTransformer.transformMethod(classNode, bsm)
+                        }
+                        if (LocalVariableRenameTransformer.enabled) {
+                            LocalVariableRenameTransformer.transformMethod(classNode, decrypt)
+                            LocalVariableRenameTransformer.transformMethod(classNode, bsm)
+                        }
                     }
                     classNode.methods.add(decrypt)
                     classNode.methods.add(bsm)
@@ -70,41 +79,42 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
             .filter { !it.isAbstract }
             .forEach { methodNode ->
                 if (!methodNode.hasAnnotation(DISABLE_INVOKEDYNAMIC)) {
-                    methodNode.instructions.filter { it is MethodInsnNode && it.opcode != Opcodes.INVOKESPECIAL }
-                        .forEach { insnNode ->
-                            if (insnNode is MethodInsnNode && (0..99).random() < rate) {
-                                val handle = Handle(
-                                    Opcodes.H_INVOKESTATIC,
-                                    classNode.name,
-                                    bootstrapName,
-                                    MethodType.methodType(
-                                        CallSite::class.java,
-                                        MethodHandles.Lookup::class.java,
-                                        String::class.java,
-                                        MethodType::class.java,
-                                        String::class.java,
-                                        String::class.java,
-                                        String::class.java,
-                                        Integer::class.java
-                                    ).toMethodDescriptorString(),
-                                    false
-                                )
-                                val invokeDynamicInsnNode = InvokeDynamicInsnNode(
-                                    bootstrapName,
-                                    if (insnNode.opcode == Opcodes.INVOKESTATIC) insnNode.desc
-                                    else insnNode.desc.replace("(", "(Ljava/lang/Object;"),
-                                    handle,
-                                    encrypt(insnNode.owner.replace("/", "."), decryptValue),
-                                    encrypt(insnNode.name, decryptValue),
-                                    encrypt(insnNode.desc, decryptValue),
-                                    if (insnNode.opcode == Opcodes.INVOKESTATIC) 0 else 1
-                                )
-                                methodNode.instructions.insertBefore(insnNode, invokeDynamicInsnNode)
-                                methodNode.instructions.remove(insnNode)
-                                shouldApply = true
-                                add()
-                            }
+                    methodNode.instructions.filter {
+                        it is MethodInsnNode && (it.opcode != Opcodes.INVOKESPECIAL || !it.name.startsWith("<"))
+                    }.forEach { insnNode ->
+                        if (insnNode is MethodInsnNode && (0..99).random() < rate) {
+                            val handle = Handle(
+                                Opcodes.H_INVOKESTATIC,
+                                classNode.name,
+                                bootstrapName,
+                                MethodType.methodType(
+                                    CallSite::class.java,
+                                    MethodHandles.Lookup::class.java,
+                                    String::class.java,
+                                    MethodType::class.java,
+                                    String::class.java,
+                                    String::class.java,
+                                    String::class.java,
+                                    Integer::class.java
+                                ).toMethodDescriptorString(),
+                                false
+                            )
+                            val invokeDynamicInsnNode = InvokeDynamicInsnNode(
+                                bootstrapName,
+                                if (insnNode.opcode == Opcodes.INVOKESTATIC) insnNode.desc
+                                else insnNode.desc.replace("(", "(Ljava/lang/Object;"),
+                                handle,
+                                encrypt(insnNode.owner.replace("/", "."), decryptValue),
+                                encrypt(insnNode.name, decryptValue),
+                                encrypt(insnNode.desc, decryptValue),
+                                if (insnNode.opcode == Opcodes.INVOKESTATIC) 0 else 1
+                            )
+                            methodNode.instructions.insertBefore(insnNode, invokeDynamicInsnNode)
+                            methodNode.instructions.remove(insnNode)
+                            shouldApply = true
+                            add()
                         }
+                    }
                 }
             }
         return shouldApply

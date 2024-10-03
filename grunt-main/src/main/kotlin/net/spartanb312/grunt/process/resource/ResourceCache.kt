@@ -95,14 +95,14 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         for (classNode in classes.values) {
             if (classNode.name == "module-info" || classNode.name.shouldRemove) continue
             val missingReference = ReferenceSearch.checkMissing(classNode, hierarchy)
-            if (missingReference.isNotEmpty()) {
+            if (missingReference.isNotEmpty() && Configs.Settings.missingCheck) {
                 Logger.error("Class ${classNode.name} missing reference:")
                 for (missing in missingReference) {
                     Logger.error(" - ${missing.name}")
                 }
             }
             val classInfo = hierarchy.getClassInfo(classNode)
-            val missingAny = (classInfo.missingDependencies || missingReference.isNotEmpty()) && Configs.Settings.libsMissingCheck
+            val missingAny = (classInfo.missingDependencies || missingReference.isNotEmpty()) && Configs.Settings.missingCheck
             val useComputeMax = Configs.Settings.forceUseComputeMax || missingAny || classNode.isExcluded
             val missing = missingAny && !Configs.Settings.forceUseComputeMax && !classNode.isExcluded
             val byteArray = try {
@@ -126,7 +126,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
             closeEntry()
         }
         hierarchy.buildMissingMap()
-        hierarchy.printMissing()
+        if (Configs.Settings.missingCheck) hierarchy.printMissing()
 
         Logger.info("Writing resources...")
         for ((name, bytes) in resources) {

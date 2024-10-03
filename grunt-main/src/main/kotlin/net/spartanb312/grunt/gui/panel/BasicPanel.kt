@@ -111,7 +111,7 @@ class BasicPanel : JPanel() {
         output.text = Settings.output
 
         useComputeMax.isSelected = Settings.forceUseComputeMax
-        useCMPTMaxIfMissing.isSelected = Settings.libsMissingCheck
+        useCMPTMaxIfMissing.isSelected = Settings.missingCheck
         corruptOutput.isSelected = Settings.corruptOutput
         dumpMappings.isSelected = Settings.generateRemap
     }
@@ -121,7 +121,7 @@ class BasicPanel : JPanel() {
         Settings.output = this.output.text
 
         Settings.forceUseComputeMax = this.useComputeMax.isSelected
-        Settings.libsMissingCheck = this.useCMPTMaxIfMissing.isSelected
+        Settings.missingCheck = this.useCMPTMaxIfMissing.isSelected
         Settings.corruptOutput = this.corruptOutput.isSelected
         Settings.generateRemap = this.dumpMappings.isSelected
     }

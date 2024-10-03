@@ -7,6 +7,7 @@ import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
+import net.spartanb312.grunt.process.transformers.rename.ClassRenameTransformer
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
@@ -14,7 +15,7 @@ import java.nio.charset.StandardCharsets
 
 /**
  * Renaming mixin classes
- * Last update on 2024/06/28
+ * Last update on 2024/10/02
  */
 object MixinClassRenameTransformer : Transformer("MixinClassRename", Category.Minecraft) {
 
@@ -22,7 +23,13 @@ object MixinClassRenameTransformer : Transformer("MixinClassRename", Category.Mi
     private val targetMixinPackage by setting("TargetMixinPackage", "net/spartanb312/obf/mixins/")
     private val mixinFile by setting("MixinFile", "mixins.example.json")
     private val refmapFile by setting("RefmapFile", "mixins.example.refmap.json")
-    private val exclusion by setting("Exclusion", listOf())
+    private val exclusion by setting(
+        "Exclusion", listOf(
+            "net/spartanb312/Example",
+            "net/spartanb312/component/Component**",
+            "net/spartanb312/package/**"
+        )
+    )
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming mixin classes...")
@@ -32,12 +39,14 @@ object MixinClassRenameTransformer : Transformer("MixinClassRename", Category.Mi
         }
 
         Logger.info("    Generating mappings for mixin classes...")
+        val equalsExclusion = exclusion.filter { !it.endsWith("**") }
+        val startWithExclusion = buildList { exclusion.forEach { if (it.endsWith("**")) add(it.removeSuffix("**")) } }
         val targetMixinPackage = targetMixinPackage.removeSuffix("/") + "/"
         val dictionary = NameGenerator.getByName(mixinDictionary)
         val mappings: MutableMap<String, String> = HashMap()
         val count = count {
             mixinClasses.forEach {
-                if (it.name.notInList(exclusion)) {
+                if (it.name.notInList(equalsExclusion, false) && it.name.notInList(startWithExclusion)) {
                     mappings[it.name] = targetMixinPackage + dictionary.nextName()
                     add()
                 }

@@ -3,6 +3,7 @@ package net.spartanb312.grunt.config
 import com.google.gson.*
 import net.spartanb312.grunt.config.Configs.Settings.exclusions
 import net.spartanb312.grunt.config.Configs.Settings.mixinPackages
+import net.spartanb312.grunt.event.events.ConfigEvent
 import net.spartanb312.grunt.process.Transformers
 import org.objectweb.asm.tree.ClassNode
 import java.io.*
@@ -19,8 +20,9 @@ object Configs {
         var exclusions by setting("Exclusions", listOf())
         var mixinPackages by setting("MixinPackage", listOf("net/spartanb312/client/mixins/"))
         var generateRemap by setting("DumpMappings", true)
+        var timeUsage by setting("PrintTimeUsage", true)
         var forceUseComputeMax by setting("ForceUseComputeMax", false)
-        var libsMissingCheck by setting("LibsMissingCheck", true)
+        var missingCheck by setting("LibsMissingCheck", true)
         var customDictionary by setting("CustomDictionary", listOf())
         var dictionaryStartIndex by setting("DictionaryStartIndex", 0)
         var corruptOutput by setting("CorruptOutput", false)
@@ -44,6 +46,10 @@ object Configs {
     }
 
     fun loadConfig(path: String) {
+        ConfigEvent.Load(path).let {
+            it.post()
+            if (it.cancelled) return
+        }
         val map = path.jsonMap
         configs.forEach {
             map[it.name]?.asJsonObject?.let { jo -> it.getValue(jo) }
@@ -51,6 +57,10 @@ object Configs {
     }
 
     fun saveConfig(path: String) {
+        ConfigEvent.Save(path).let {
+            it.post()
+            if (it.cancelled) return
+        }
         val configFile = File(path)
         if (!configFile.exists()) {
             configFile.parentFile?.mkdirs()

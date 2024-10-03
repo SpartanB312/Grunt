@@ -1,13 +1,23 @@
 package net.spartanb312.grunt.process
 
 import net.spartanb312.grunt.process.transformers.PostProcessTransformer
-import net.spartanb312.grunt.process.transformers.encrypt.*
+import net.spartanb312.grunt.process.transformers.encrypt.ArithmeticEncryptTransformer
+import net.spartanb312.grunt.process.transformers.encrypt.ConstPoolEncryptTransformer
+import net.spartanb312.grunt.process.transformers.encrypt.NumberEncryptTransformer
+import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
-import net.spartanb312.grunt.process.transformers.minecraft.*
+import net.spartanb312.grunt.process.transformers.minecraft.MixinClassRenameTransformer
+import net.spartanb312.grunt.process.transformers.minecraft.MixinFieldRenameTransformer
 import net.spartanb312.grunt.process.transformers.misc.*
 import net.spartanb312.grunt.process.transformers.optimize.*
-import net.spartanb312.grunt.process.transformers.redirect.*
-import net.spartanb312.grunt.process.transformers.rename.*
+import net.spartanb312.grunt.process.transformers.redirect.FieldScrambleTransformer
+import net.spartanb312.grunt.process.transformers.redirect.InvokeDynamicTransformer
+import net.spartanb312.grunt.process.transformers.redirect.MethodScrambleTransformer
+import net.spartanb312.grunt.process.transformers.redirect.StringEqualsRedirectTransformer
+import net.spartanb312.grunt.process.transformers.rename.ClassRenameTransformer
+import net.spartanb312.grunt.process.transformers.rename.FieldRenameTransformer
+import net.spartanb312.grunt.process.transformers.rename.LocalVariableRenameTransformer
+import net.spartanb312.grunt.process.transformers.rename.MethodRenameTransformer
 
 /**
  * Execution order
@@ -24,7 +34,7 @@ import net.spartanb312.grunt.process.transformers.rename.*
  * 100 InvokeDynamic & Miscellaneous 3
  * MAX PostProcess
  */
-object Transformers : Collection<Transformer> by mutableListOf(
+object Transformers : MutableList<Transformer> by mutableListOf(
     SourceDebugRemoveTransformer order 0,
     ShrinkingTransformer order 1,
     KotlinOptimizeTransformer order 2,
@@ -36,8 +46,7 @@ object Transformers : Collection<Transformer> by mutableListOf(
     //ControlflowTransformer order 20,
     StringEncryptTransformer order 30,
     NumberEncryptTransformer order 31,
-    FloatingPointEncryptTransformer order 32,
-    ArithmeticEncryptTransformer order 33,
+    ArithmeticEncryptTransformer order 32,
     ControlflowTransformer order 40,
     ConstPoolEncryptTransformer order 51,
     StringEqualsRedirectTransformer order 60,
