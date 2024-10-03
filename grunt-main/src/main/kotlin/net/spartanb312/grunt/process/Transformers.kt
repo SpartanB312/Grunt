@@ -65,4 +65,8 @@ object Transformers : MutableList<Transformer> by mutableListOf(
     CrasherTransformer order 102,
     WatermarkTransformer order 103,
     PostProcessTransformer order Int.MAX_VALUE
-)
+) {
+    fun register(transformer: Transformer, order: Int) {
+        add(transformer order order)
+    }
+}

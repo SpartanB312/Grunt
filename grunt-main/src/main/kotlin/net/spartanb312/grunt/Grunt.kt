@@ -18,7 +18,7 @@ import kotlin.system.measureTimeMillis
  * A java bytecode obfuscator
  */
 const val VERSION = "2.4.0"
-const val SUBTITLE = "build 241003"
+const val SUBTITLE = "build 241004"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
 fun main(args: Array<String>) {
@@ -39,7 +39,6 @@ fun main(args: Array<String>) {
 
     Logger.info("Initializing Grunt Obfuscator...")
 
-    TransformerEvent
     // Plugins
     PluginManager.loadPlugins()
     PluginManager.initPlugins()

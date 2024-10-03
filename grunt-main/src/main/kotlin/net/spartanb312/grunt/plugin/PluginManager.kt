@@ -11,6 +11,11 @@ object PluginManager {
 
     private val plugins = mutableListOf<PluginInfo>()
 
+    // Force adding a plugin
+    fun addInternalPlugin(plugin: PluginInitializer) {
+        plugins.add(PluginInfo({ plugin }, plugin.javaClass.classLoader))
+    }
+
     fun loadPlugins() {
         Logger.info("Scanning plugins...")
         val dir = File("plugins/")
@@ -77,7 +82,7 @@ object PluginManager {
         }
     }
 
-    class PluginInfo(mainProvider: () -> PluginInitializer, val classLoader: ExternalClassLoader) {
+    class PluginInfo(mainProvider: () -> PluginInitializer, val classLoader: ClassLoader) {
         val instance by lazy { mainProvider.invoke() }
     }
 

@@ -17,7 +17,7 @@ val library: Configuration by configurations.creating
 dependencies {
     //Kotlin
     library(kotlin("stdlib"))
-    library("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    library("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutineVersion")
 
     //ASM
     library("org.ow2.asm:asm:$asmVersion")

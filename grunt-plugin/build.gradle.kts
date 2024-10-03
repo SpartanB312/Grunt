@@ -9,9 +9,6 @@ repositories {
     maven("https://mvnrepository.com/artifact/")
 }
 
-val kotlinxCoroutineVersion = "1.7.3"
-val asmVersion = "9.7"
-
 val library: Configuration by configurations.creating
 val projectModule: Configuration by configurations.creating
 
