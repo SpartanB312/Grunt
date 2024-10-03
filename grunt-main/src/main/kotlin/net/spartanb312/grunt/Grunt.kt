@@ -1,6 +1,7 @@
 package net.spartanb312.grunt
 
 import net.spartanb312.grunt.config.Configs
+import net.spartanb312.grunt.event.events.FinalizeEvent
 import net.spartanb312.grunt.event.events.GuiEvent
 import net.spartanb312.grunt.event.events.ProcessEvent
 import net.spartanb312.grunt.event.events.TransformerEvent
@@ -94,19 +95,23 @@ fun runProcess() {
                 Logger.info("Processing...")
                 Transformers.sortedBy { it.order }.forEach {
                     if (it.enabled) {
-                        val preEvent = TransformerEvent.Before(it)
+                        val preEvent = TransformerEvent.Before(it, this)
                         preEvent.post()
                         if (!preEvent.cancelled) {
                             val actualTransformer = preEvent.transformer
                             val startTime = System.currentTimeMillis()
                             with(actualTransformer) { transform() }
                             timeUsage[actualTransformer.name] = System.currentTimeMillis() - startTime
-                            val postEvent = TransformerEvent.After(actualTransformer)
+                            val postEvent = TransformerEvent.After(actualTransformer, this)
                             postEvent.post()
                         }
                     }
                 }
-                with(PostProcessTransformer) { finalize() }
+                with(PostProcessTransformer) {
+                    FinalizeEvent.Before(this@apply).post()
+                    finalize()
+                    FinalizeEvent.After(this@apply).post()
+                }
             }
             Logger.info("Took $obfTime ms to process!")
             if (Configs.Settings.timeUsage) timeUsage.forEach { (name, duration) ->

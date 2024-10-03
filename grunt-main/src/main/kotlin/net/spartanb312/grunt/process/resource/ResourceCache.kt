@@ -6,6 +6,8 @@ import net.spartanb312.grunt.config.Configs.isExcluded
 import net.spartanb312.grunt.config.Configs.isMixinClass
 import net.spartanb312.grunt.config.Configs.saveToFile
 import net.spartanb312.grunt.config.Configs.shouldRemove
+import net.spartanb312.grunt.event.events.WritingClassEvent
+import net.spartanb312.grunt.event.events.WritingResourceEvent
 import net.spartanb312.grunt.process.hierarchy.Hierarchy
 import net.spartanb312.grunt.process.hierarchy.ReferenceSearch
 import net.spartanb312.grunt.utils.corruptCRC32
@@ -102,28 +104,39 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                 }
             }
             val classInfo = hierarchy.getClassInfo(classNode)
-            val missingAny = (classInfo.missingDependencies || missingReference.isNotEmpty()) && Configs.Settings.missingCheck
+            val missingAny =
+                (classInfo.missingDependencies || missingReference.isNotEmpty()) && Configs.Settings.missingCheck
             val useComputeMax = Configs.Settings.forceUseComputeMax || missingAny || classNode.isExcluded
             val missing = missingAny && !Configs.Settings.forceUseComputeMax && !classNode.isExcluded
-            val byteArray = try {
-                if (missing) Logger.warn("Using COMPUTE_MAXS due to ${classNode.name} missing dependencies or reference.")
-                ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {
-                    classNode.accept(this)
-                }.toByteArray()
-            } catch (ignore: Exception) {
-                Logger.error("Failed to dump class ${classNode.name}. Trying ${if (useComputeMax) "COMPUTE_FRAMES" else "COMPUTE_MAXS"}")
-                try {
-                    ClassDumper(this@ResourceCache, hierarchy, !useComputeMax).apply {
+
+            val entryName = classNode.name + ".class"
+            val writingClassEvent = WritingClassEvent(entryName, classNode)
+            writingClassEvent.post()
+            if (!writingClassEvent.cancelled) {
+                val byteArray = try {
+                    if (missing) Logger.warn("Using COMPUTE_MAXS due to ${classNode.name} missing dependencies or reference.")
+                    ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {
                         classNode.accept(this)
                     }.toByteArray()
-                } catch (exception: Exception) {
-                    exception.printStackTrace()
-                    ByteArray(0)
+                } catch (ignore: Exception) {
+                    Logger.error("Failed to dump class ${classNode.name}. Trying ${if (useComputeMax) "COMPUTE_FRAMES" else "COMPUTE_MAXS"}")
+                    try {
+                        ClassDumper(this@ResourceCache, hierarchy, !useComputeMax).apply {
+                            classNode.accept(this)
+                        }.toByteArray()
+                    } catch (exception: Exception) {
+                        exception.printStackTrace()
+                        ByteArray(0)
+                    }
+                }
+                val event = WritingResourceEvent(entryName, byteArray)
+                event.post()
+                if (!event.cancelled) {
+                    putNextEntry(ZipEntry(entryName))
+                    write(byteArray)
+                    closeEntry()
                 }
             }
-            putNextEntry(ZipEntry(classNode.name + ".class"))
-            write(byteArray)
-            closeEntry()
         }
         hierarchy.buildMissingMap()
         if (Configs.Settings.missingCheck) hierarchy.printMissing()
@@ -131,9 +144,13 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         Logger.info("Writing resources...")
         for ((name, bytes) in resources) {
             if (name.shouldRemove) continue
-            putNextEntry(ZipEntry(name))
-            write(bytes)
-            closeEntry()
+            val event = WritingResourceEvent(name, bytes)
+            event.post()
+            if (!event.cancelled) {
+                putNextEntry(ZipEntry(name))
+                write(bytes)
+                closeEntry()
+            }
         }
         close()
 
@@ -208,6 +225,11 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
     fun addTrashClass(classNode: ClassNode) {
         classes[classNode.name] = classNode
         trashClasses[classNode.name] = classNode
+    }
+
+    fun removeClass(classNode: ClassNode) {
+        classes.remove(classNode.name)
+        trashClasses.remove(classNode.name)
     }
 
     fun getClassNode(name: String): ClassNode? {
