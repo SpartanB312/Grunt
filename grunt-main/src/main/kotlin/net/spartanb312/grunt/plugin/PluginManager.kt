@@ -26,7 +26,7 @@ object PluginManager {
 
     fun initPlugins() {
         if (plugins.isNotEmpty()) {
-            Logger.info("Initialing plugins...")
+            Logger.info("Initializing plugins...")
             plugins.forEach {
                 it.instance.onInit()
             }

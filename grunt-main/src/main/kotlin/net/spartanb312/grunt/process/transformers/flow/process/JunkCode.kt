@@ -1,8 +1,10 @@
 package net.spartanb312.grunt.process.transformers.flow.process
 
+import net.spartanb312.grunt.annotation.JUNKCALL_EXCLUDED
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.utils.builder.*
+import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.extensions.isInitializer
 import net.spartanb312.grunt.utils.extensions.isPublic
 import net.spartanb312.grunt.utils.extensions.isStatic
@@ -156,7 +158,7 @@ object JunkCode {
 
     private fun generateUtilList(classNodes: Collection<ClassNode>): Set<TrashCallMethod> {
         val staticUtilMethods = mutableSetOf<TrashCallMethod>()
-        classNodes.forEach { classNode ->
+        classNodes.asSequence().filter { !it.hasAnnotation(JUNKCALL_EXCLUDED) }.forEach { classNode ->
             classNode.methods.forEach { methodNode ->
                 val loadTypes = Type.getArgumentTypes(methodNode.desc)
                 if (classNode.isPublic && methodNode.isStatic && methodNode.isPublic && loadTypes.all {

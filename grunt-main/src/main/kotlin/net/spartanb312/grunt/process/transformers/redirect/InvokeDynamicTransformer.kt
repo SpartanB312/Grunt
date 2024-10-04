@@ -5,7 +5,6 @@ import net.spartanb312.grunt.config.Configs.isExcluded
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.process.transformers.encrypt.NumberEncryptTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
@@ -80,7 +79,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
             .forEach { methodNode ->
                 if (!methodNode.hasAnnotation(DISABLE_INVOKEDYNAMIC)) {
                     methodNode.instructions.filter {
-                        it is MethodInsnNode && (it.opcode != Opcodes.INVOKESPECIAL || !it.name.startsWith("<"))
+                        it is MethodInsnNode && it.opcode != Opcodes.INVOKESPECIAL
                     }.forEach { insnNode ->
                         if (insnNode is MethodInsnNode && (0..99).random() < rate) {
                             val handle = Handle(

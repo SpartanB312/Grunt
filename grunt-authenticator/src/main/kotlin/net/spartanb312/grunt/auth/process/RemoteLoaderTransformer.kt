@@ -1,6 +1,7 @@
 package net.spartanb312.grunt.auth.process
 
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
+import net.spartanb312.grunt.annotation.JUNKCALL_EXCLUDED
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.event.IListenerOwner
 import net.spartanb312.grunt.event.Listener
@@ -76,55 +77,6 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
                                     //println("Remapped $prevName -> $newName")
                                 }
                             }
-                            if (it is FieldInsnNode && it.opcode == Opcodes.GETSTATIC) {
-                                val next = it.next
-                                if (next is FieldInsnNode && next.opcode == Opcodes.PUTSTATIC) {
-                                    val reflectGet = insnList {
-                                        DUP
-                                        LDC(it.name)
-                                        INVOKEVIRTUAL(
-                                            "java/lang/Class",
-                                            "getDeclaredField",
-                                            "(Ljava/lang/String;)Ljava/lang/reflect/Field;",
-                                            false
-                                        )
-                                        ACONST_NULL
-                                        INVOKEVIRTUAL(
-                                            "java/lang/reflect/Field",
-                                            "get",
-                                            "(Ljava/lang/Object;)Ljava/lang/Object;",
-                                            false
-                                        )
-                                        // Wrap primitive
-                                        when (it.desc) {
-                                            "I" -> {
-                                                CHECKCAST("java/lang/Integer")
-                                                INVOKEVIRTUAL("java/lang/Integer", "intValue", "()I", false)
-                                            }
-
-                                            "J" -> {
-                                                CHECKCAST("java/lang/Long")
-                                                INVOKEVIRTUAL("java/lang/Long", "longValue", "()J", false)
-                                            }
-
-                                            "F" -> {
-                                                CHECKCAST("java/lang/Float")
-                                                INVOKEVIRTUAL("java/lang/Float", "floatValue", "()F", false)
-                                            }
-
-                                            "D" -> {
-                                                CHECKCAST("java/lang/Double")
-                                                INVOKEVIRTUAL("java/lang/Double", "doubleValue", "()D", false)
-                                            }
-
-                                            else -> CHECKCAST("java/lang/String")
-                                        }
-                                    }
-                                    clinit.instructions.insertBefore(it, reflectGet)
-                                    clinit.instructions.remove(it)
-                                }
-                            }
-                            if (it.opcode == Opcodes.RETURN) clinit.instructions.insertBefore(it, InsnNode(Opcodes.POP))
                         }
                     }
             }
@@ -132,11 +84,76 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
         listener<FinalizeEvent.Before> { event ->
             remoteClasses.clear()
             if (!enabled) return@listener
+
+            // Replace with reflection
+            event.resourceCache.classes.values.asSequence()
+                .filter { it.hasAnnotation(LOCAL_CLASS) }
+                .forEach { classNode ->
+                    val clinit = classNode.methods.find { it.name == "<clinit>" }!!
+                    for (it in clinit.instructions) {
+                        if (it is FieldInsnNode && it.opcode == Opcodes.GETSTATIC) {
+                            val next = it.next
+                            if (next is FieldInsnNode && next.opcode == Opcodes.PUTSTATIC) {
+                                val reflectGet = insnList {
+                                    DUP
+                                    LDC(it.name)
+                                    INVOKEVIRTUAL(
+                                        "java/lang/Class",
+                                        "getDeclaredField",
+                                        "(Ljava/lang/String;)Ljava/lang/reflect/Field;",
+                                        false
+                                    )
+                                    ACONST_NULL
+                                    INVOKEVIRTUAL(
+                                        "java/lang/reflect/Field",
+                                        "get",
+                                        "(Ljava/lang/Object;)Ljava/lang/Object;",
+                                        false
+                                    )
+                                    // Wrap primitive
+                                    when (it.desc) {
+                                        "I" -> {
+                                            CHECKCAST("java/lang/Integer")
+                                            INVOKEVIRTUAL("java/lang/Integer", "intValue", "()I", false)
+                                        }
+
+                                        "J" -> {
+                                            CHECKCAST("java/lang/Long")
+                                            INVOKEVIRTUAL("java/lang/Long", "longValue", "()J", false)
+                                        }
+
+                                        "F" -> {
+                                            CHECKCAST("java/lang/Float")
+                                            INVOKEVIRTUAL("java/lang/Float", "floatValue", "()F", false)
+                                        }
+
+                                        "D" -> {
+                                            CHECKCAST("java/lang/Double")
+                                            INVOKEVIRTUAL("java/lang/Double", "doubleValue", "()D", false)
+                                        }
+
+                                        else -> CHECKCAST("java/lang/String")
+                                    }
+                                }
+                                clinit.instructions.insertBefore(it, reflectGet)
+                                clinit.instructions.remove(it)
+                            }
+                        }
+                        if (it.opcode == Opcodes.RETURN) clinit.instructions.insertBefore(it, InsnNode(Opcodes.POP))
+                    }
+                }
             event.resourceCache.classes.values.forEach {
                 if (it.hasAnnotation(REMOTE_CLASS)) {
                     remoteClasses.add(it.name)
                 }
             }
+        }
+        listener<FinalizeEvent.After> { event ->
+            if (!enabled) return@listener
+            //event.resourceCache.classes.values.forEach {
+            //    it.removeAnnotation(REMOTE_CLASS)
+            //    it.removeAnnotation(LOCAL_CLASS)
+            //}
         }
         listener<WritingResourceEvent> { event ->
             if (!enabled) return@listener
@@ -187,6 +204,7 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
             generated.classNode.methods.clear()
             generated.classNode.fields.clear()
             generated.classNode.appendAnnotation(LOCAL_CLASS)
+            generated.classNode.appendAnnotation(JUNKCALL_EXCLUDED)
 
             // Generate remote class
             val remoteCompanion = ClassNode().apply {
@@ -200,6 +218,7 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
                 )
                 appendAnnotation(REMOTE_CLASS)
                 appendAnnotation(DISABLE_SCRAMBLE)
+                appendAnnotation(JUNKCALL_EXCLUDED)
             }
 
             // Generate local field initializer
@@ -282,6 +301,8 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
             addTrashClass(remoteCompanion)
         }
 
+        classLoader.appendAnnotation(JUNKCALL_EXCLUDED)
+        downloaderJar.appendAnnotation(JUNKCALL_EXCLUDED)
         addTrashClass(classLoader)
         addTrashClass(downloaderJar)
     }

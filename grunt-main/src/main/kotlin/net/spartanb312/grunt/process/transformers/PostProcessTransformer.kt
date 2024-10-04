@@ -6,6 +6,7 @@ import com.google.gson.JsonObject
 import net.spartanb312.grunt.annotation.DISABLE_CONTROLFLOW
 import net.spartanb312.grunt.annotation.DISABLE_INVOKEDYNAMIC
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
+import net.spartanb312.grunt.annotation.JUNKCALL_EXCLUDED
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -41,7 +42,8 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
         val annotationRemoval = arrayOf(
             DISABLE_CONTROLFLOW,
             DISABLE_INVOKEDYNAMIC,
-            DISABLE_SCRAMBLE
+            DISABLE_SCRAMBLE,
+            JUNKCALL_EXCLUDED
         )
         nonExcluded.forEach { clazz ->
             clazz.methods.forEach { method ->
