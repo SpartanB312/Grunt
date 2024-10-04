@@ -3,9 +3,6 @@ package net.spartanb312.grunt.auth.process
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.annotation.JUNKCALL_EXCLUDED
 import net.spartanb312.grunt.config.setting
-import net.spartanb312.grunt.event.IListenerOwner
-import net.spartanb312.grunt.event.Listener
-import net.spartanb312.grunt.event.ParallelListener
 import net.spartanb312.grunt.event.events.FinalizeEvent
 import net.spartanb312.grunt.event.events.ProcessEvent
 import net.spartanb312.grunt.event.events.TransformerEvent
@@ -24,6 +21,7 @@ import net.spartanb312.grunt.process.transformers.rename.ClassRenameTransformer
 import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.appendAnnotation
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
+import net.spartanb312.grunt.utils.extensions.removeAnnotation
 import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.*
@@ -38,7 +36,7 @@ import kotlin.random.Random
  * Server Mode: Use dedicate server to distribute exclusive jar to each user (W.I.P).
  * URL Mode: Download remote jar from a URL
  */
-object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellaneous), IListenerOwner {
+object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellaneous) {
 
     private val heavyEncrypt by setting("HeavyEncrypt", false)
     private val outputJar by setting("OutputJar", "remote.jar")
@@ -52,8 +50,6 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
     private val downloadURL by setting("DownloadURL", "(The remote url of your jar. URL mode only)")
 
     private val generated get() = ConstPoolEncryptTransformer.generatedClasses
-    override val listeners = ArrayList<Listener>()
-    override val parallelListeners = ArrayList<ParallelListener>()
 
     const val REMOTE_CLASS = "Lnet/spartanb312/grunt/annotation/RemoteClass;"
     const val LOCAL_CLASS = "Lnet/spartanb312/grunt/annotation/LocalClass;"
@@ -84,7 +80,6 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
         listener<FinalizeEvent.Before> { event ->
             remoteClasses.clear()
             if (!enabled) return@listener
-
             // Replace with reflection
             event.resourceCache.classes.values.asSequence()
                 .filter { it.hasAnnotation(LOCAL_CLASS) }
@@ -150,10 +145,10 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
         }
         listener<FinalizeEvent.After> { event ->
             if (!enabled) return@listener
-            //event.resourceCache.classes.values.forEach {
-            //    it.removeAnnotation(REMOTE_CLASS)
-            //    it.removeAnnotation(LOCAL_CLASS)
-            //}
+            event.resourceCache.classes.values.forEach {
+                it.removeAnnotation(REMOTE_CLASS)
+                it.removeAnnotation(LOCAL_CLASS)
+            }
         }
         listener<WritingResourceEvent> { event ->
             if (!enabled) return@listener
@@ -177,7 +172,6 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
                 close()
             }
         }
-        subscribe()
     }
 
     private val remoteClasses = mutableListOf<String>()

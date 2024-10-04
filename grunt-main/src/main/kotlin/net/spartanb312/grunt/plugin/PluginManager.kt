@@ -1,6 +1,7 @@
 package net.spartanb312.grunt.plugin
 
 import net.spartanb312.grunt.VERSION
+import net.spartanb312.grunt.utils.compareVersion
 import net.spartanb312.grunt.utils.logging.Logger
 import java.io.BufferedReader
 import java.io.File
@@ -24,6 +25,16 @@ object PluginManager {
         if (!dir.exists()) dir.mkdirs()
         readDirectory(dir)
         Logger.info("Found ${plugins.size} plugins")
+        plugins.forEach {
+            Logger.info("${it.instance.name} = [")
+            Logger.info("    version = ${it.instance.version},")
+            Logger.info("    author = ${it.instance.author},")
+            Logger.info("    description = ${it.instance.description}")
+            Logger.info("]")
+            if (!compareVersion(gruntVersion, it.instance.minVersion)) {
+                Logger.warn("Warning: Plugin ${it.instance.name} requires grunt version at least ${it.instance.minVersion}, but current version is $gruntVersion")
+            }
+        }
     }
 
     fun initPlugins() {

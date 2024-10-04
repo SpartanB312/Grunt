@@ -15,7 +15,7 @@ import net.spartanb312.grunt.utils.logging.Logger
  */
 fun main(args: Array<String>) {
     PluginManager.addInternalPlugin(Authenticator)
-    net.spartanb312.grunt.main(arrayOf("config.json"))
+    net.spartanb312.grunt.main(arrayOf("alien.json"))
 }
 
 const val NAME = "Authenticator"
@@ -25,7 +25,7 @@ object Authenticator : Plugin(
     NAME,
     VERSION,
     "B_312",
-    "This is an example plugin",
+    "Remote loading and verification services to protect your project",
     "2.4.0"
 ) {
 

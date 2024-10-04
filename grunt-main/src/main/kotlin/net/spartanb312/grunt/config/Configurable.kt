@@ -37,7 +37,17 @@ fun Configurable.setting(name: String, value: Boolean) = value0(BooleanValue(nam
 fun Configurable.setting(name: String, value: List<String>) = value0(ListValue(name, value))
 
 abstract class AbstractValue<T>(val name: String, val defaultValue: T) : ReadWriteProperty<Any?, T> {
+
+    private val valueListeners = ArrayList<(prev: T, input: T) -> Unit>()
     var value = defaultValue
+        set(value) {
+            if (value != field) {
+                val prev = field
+                val new = value
+                field = new
+                valueListeners.forEach { it(prev, field) }
+            }
+        }
 
     abstract fun saveValue(jsonObject: JsonObject)
     abstract fun getValue(jsonObject: JsonObject)
@@ -47,9 +57,15 @@ abstract class AbstractValue<T>(val name: String, val defaultValue: T) : ReadWri
         this.value = value
     }
 
+    fun listen(listener: (prev: T, input: T) -> Unit): AbstractValue<T> {
+        this.valueListeners.add(listener)
+        return this
+    }
+
     fun reset() {
         value = defaultValue
     }
+
 }
 
 class StringValue(name: String, value: String) : AbstractValue<String>(name, value) {

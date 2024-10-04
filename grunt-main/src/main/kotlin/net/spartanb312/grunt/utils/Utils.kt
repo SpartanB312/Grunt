@@ -120,9 +120,16 @@ fun getRandomString(length: Int): String {
     return str
 }
 
-// Return true if ver1 > ver2
+// Return true if ver1 >= ver2
 fun compareVersion(ver1: String, ver2: String): Boolean {
+    if (ver1 == ver2) return true
     val array1 = ver1.split(".").map { it.toInt() }
     val array2 = ver2.split(".").map { it.toInt() }
-    return array1[0] > array2[0] && array1[1] > array2[1] && array1[2] > array2[2]
+    if (array1[0] > array2[0]) return true
+    else if (array1[0] < array2[0]) return false
+    if (array1[1] > array2[1]) return true
+    else if (array1[1] < array2[1]) return false
+    if (array1[2] > array2[2]) return true
+    else if (array1[2] < array2[2]) return false
+    return false
 }
