@@ -9,7 +9,13 @@ import net.spartanb312.grunt.utils.logging.Logger
 /**
  * Example plugin
  */
-object Main : Plugin() {
+object Main : Plugin(
+    "Example",
+    "1.0.0",
+    "B_312",
+    "This is an example plugin",
+    "2.4.0"
+) {
 
     init {
         listener<TransformerEvent> {

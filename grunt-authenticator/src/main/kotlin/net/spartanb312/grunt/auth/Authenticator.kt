@@ -15,12 +15,19 @@ import net.spartanb312.grunt.utils.logging.Logger
  */
 fun main(args: Array<String>) {
     PluginManager.addInternalPlugin(Authenticator)
-    net.spartanb312.grunt.main(arrayOf("alien.json"))
+    net.spartanb312.grunt.main(arrayOf("config.json"))
 }
 
-object Authenticator : Plugin() {
+const val NAME = "Authenticator"
+const val VERSION = "1.0.0"
 
-    private const val VERSION = "1.0.0"
+object Authenticator : Plugin(
+    NAME,
+    VERSION,
+    "B_312",
+    "This is an example plugin",
+    "2.4.0"
+) {
 
     init {
         listener<TransformerEvent.Before> {
@@ -31,7 +38,7 @@ object Authenticator : Plugin() {
     }
 
     override fun onInit() {
-        Logger.info("Initializing authenticator $VERSION")
+        Logger.info("Initializing $NAME $VERSION")
         Transformers.register(RemoteLoaderTransformer, 510) // After const pool encrypt
     }
 

@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.plugin
 
+import net.spartanb312.grunt.VERSION
 import net.spartanb312.grunt.utils.logging.Logger
 import java.io.BufferedReader
 import java.io.File
@@ -9,6 +10,7 @@ import java.net.URL
 
 object PluginManager {
 
+    val gruntVersion = VERSION
     private val plugins = mutableListOf<PluginInfo>()
 
     // Force adding a plugin
