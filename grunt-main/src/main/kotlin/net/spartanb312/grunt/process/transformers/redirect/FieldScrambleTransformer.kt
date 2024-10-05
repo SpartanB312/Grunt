@@ -1,12 +1,13 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.method
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
 import net.spartanb312.grunt.utils.*
-import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.extensions.isInitializer
 import net.spartanb312.grunt.utils.extensions.isPublic
@@ -15,8 +16,10 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldInsnNode
+import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.VarInsnNode
 
 /**
  * Scramble field calls
@@ -177,10 +180,10 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                 signature,
                 null
             ) {
-                InsnList {
+                INSTRUCTIONS {
                     ALOAD(0)
                     GETFIELD(field.owner, field.name, field.desc)
-                    INSN(methodNode.desc.getReturnType())
+                    +InsnNode(methodNode.desc.getReturnType())
                 }
             }
 
@@ -191,10 +194,10 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                 signature,
                 null,
             ) {
-                InsnList {
+                INSTRUCTIONS {
                     var stack = 0
                     Type.getArgumentTypes(methodNode.desc).forEach {
-                        VAR(it.getLoadType(), stack)
+                        +VarInsnNode(it.getLoadType(), stack)
                         stack += it.size
                     }
                     PUTFIELD(field.owner, field.name, field.desc)
@@ -209,9 +212,9 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                 signature,
                 null
             ) {
-                InsnList {
+                INSTRUCTIONS {
                     GETSTATIC(field.owner, field.name, field.desc)
-                    INSN(methodNode.desc.getReturnType())
+                    +InsnNode(methodNode.desc.getReturnType())
                 }
             }
 
@@ -222,10 +225,10 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                 signature,
                 null,
             ) {
-                InsnList {
+                INSTRUCTIONS {
                     var stack = 0
                     Type.getArgumentTypes(methodNode.desc).forEach {
-                        VAR(it.getLoadType(), stack)
+                        +VarInsnNode(it.getLoadType(), stack)
                         stack += it.size
                     }
                     PUTSTATIC(field.owner, field.name, field.desc)

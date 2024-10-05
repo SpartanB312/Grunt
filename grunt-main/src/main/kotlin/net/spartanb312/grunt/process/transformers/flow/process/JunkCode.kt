@@ -1,9 +1,12 @@
 package net.spartanb312.grunt.process.transformers.flow.process
 
+import net.spartanb312.genesis.extensions.FLOAT
+import net.spartanb312.genesis.extensions.INT
+import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.instructions
 import net.spartanb312.grunt.annotation.JUNKCALL_EXCLUDED
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
-import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.extensions.isInitializer
 import net.spartanb312.grunt.utils.extensions.isPublic
@@ -12,6 +15,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.InsnList
+import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.MethodNode
 import kotlin.random.Random
 
@@ -21,10 +25,10 @@ object JunkCode {
     private val allStaticUtilList = mutableSetOf<TrashCallMethod>()
 
     fun generate(methodNode: MethodNode, returnType: Type, junkCodes: Int): InsnList {
-        return if (methodNode.isInitializer) insnList {
+        return if (methodNode.isInitializer) instructions {
             if (junkCodes > 0) +generateAndPop(junkCodes)
             RETURN
-        } else insnList {
+        } else instructions {
             when (returnType.sort) {
                 Type.INT -> {
                     if (junkCodes > 0) +generateAndPop(junkCodes)
@@ -118,13 +122,13 @@ object JunkCode {
     }
 
     fun generateAndPop(count: Int): InsnList {
-        return insnList {
+        return instructions {
             repeat(count) {
                 val type = types.entries.random()
                 val trashCallMethod = findRandomGivenReturnTypeMethod(type.key)
                 if (ControlflowTransformer.junkCode && trashCallMethod != null) {
                     +generateTrashCall(trashCallMethod)
-                    INSN(type.value)
+                    +InsnNode(type.value)
                 }
             }
         }
@@ -184,7 +188,7 @@ object JunkCode {
     }
 
     private fun generateTrashCall(target: TrashCallMethod): InsnList {
-        return insnList {
+        return instructions {
             if (target.loadTypes.isNotEmpty()) target.loadTypes.forEach { type: Type ->
                 when (type.sort) {
                     Type.INT -> INT(Random.nextInt())

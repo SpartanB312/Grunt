@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.process.transformers.flow
 
+import net.spartanb312.genesis.instructions
 import net.spartanb312.grunt.annotation.DISABLE_CONTROLFLOW
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
@@ -11,7 +12,6 @@ import net.spartanb312.grunt.process.transformers.flow.process.JunkCode
 import net.spartanb312.grunt.process.transformers.flow.process.ReplaceGoto
 import net.spartanb312.grunt.process.transformers.flow.process.ReplaceIf
 import net.spartanb312.grunt.process.transformers.flow.process.TableSwitch
-import net.spartanb312.grunt.utils.builder.insnList
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.logging.Logger
@@ -84,7 +84,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
         var count = 0
         repeat(intensity) {
             if (bogusJump) {
-                val newInsn = insnList {
+                val newInsn = instructions {
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->
                         if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO) {
@@ -101,7 +101,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                 methodNode.instructions = newInsn
             }
             if (mangledIf) {
-                val newInsn = insnList {
+                val newInsn = instructions {
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->
                         if (insnNode is JumpInsnNode && ReplaceIf.ifComparePairs.any { it.key == insnNode.opcode }) {
@@ -119,7 +119,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                 methodNode.instructions = newInsn
             }
             if (tableSwitch) {
-                val newInsn = insnList {
+                val newInsn = instructions {
                     val range = 1..maxSwitchCase.coerceAtLeast(1)
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->

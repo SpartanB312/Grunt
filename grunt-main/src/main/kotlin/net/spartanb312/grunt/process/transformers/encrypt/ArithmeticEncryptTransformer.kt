@@ -1,5 +1,7 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
+import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.instructions
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
@@ -9,7 +11,6 @@ import net.spartanb312.grunt.process.transformers.encrypt.number.replaceINEG
 import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIOR
 import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIXOR
 import net.spartanb312.grunt.utils.*
-import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.logging.Logger
@@ -53,7 +54,7 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
 
     private fun Counter.encryptArithmetic(methodNode: MethodNode): Boolean {
         var modified = false
-        val insnList = insnList {
+        val insnList = instructions {
             var skipInsn = 0
             for ((index, insn) in methodNode.instructions.withIndex()) {
                 if (skipInsn > 0) {

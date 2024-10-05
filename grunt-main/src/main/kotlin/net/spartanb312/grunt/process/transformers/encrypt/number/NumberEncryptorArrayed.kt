@@ -1,6 +1,9 @@
 package net.spartanb312.grunt.process.transformers.encrypt.number
 
-import net.spartanb312.grunt.utils.builder.*
+import net.spartanb312.genesis.extensions.INT
+import net.spartanb312.genesis.extensions.LONG
+import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.instructions
 import net.spartanb312.grunt.utils.extensions.toInsnNode
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
@@ -10,7 +13,7 @@ import org.objectweb.asm.tree.InsnList
 object NumberEncryptorArrayed : NumberEncryptor {
 
     fun <T : Number> encrypt(value: T, owner: ClassNode, field: FieldNode, list: MutableList<Value>): InsnList {
-        return insnList {
+        return instructions {
             when (value) {
                 is Int -> {
                     GETSTATIC(owner.name, field.name, field.desc)
@@ -93,7 +96,7 @@ object NumberEncryptorArrayed : NumberEncryptor {
         }
     }
 
-    fun decryptMethod(owner: ClassNode, field: FieldNode, values: List<Value>): InsnList = insnList {
+    fun decryptMethod(owner: ClassNode, field: FieldNode, values: List<Value>): InsnList = instructions {
         // Create array
         +values.size.toInsnNode()
         NEWARRAY(Opcodes.T_INT)

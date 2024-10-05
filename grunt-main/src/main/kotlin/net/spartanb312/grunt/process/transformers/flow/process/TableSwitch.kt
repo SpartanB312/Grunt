@@ -1,7 +1,11 @@
 package net.spartanb312.grunt.process.transformers.flow.process
 
+import net.spartanb312.genesis.extensions.INT
+import net.spartanb312.genesis.extensions.LABEL
+import net.spartanb312.genesis.extensions.insn.IXOR
+import net.spartanb312.genesis.extensions.node
+import net.spartanb312.genesis.instructions
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
-import net.spartanb312.grunt.utils.builder.*
 import org.objectweb.asm.Label
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.InsnList
@@ -19,7 +23,7 @@ object TableSwitch {
         conditions: Int,
         reverse: Boolean
     ): InsnList {
-        return insnList {
+        return instructions {
             val endCase = Random.nextInt()
             val startCase = endCase - conditions + 1
             val defLabel = Label()
@@ -35,20 +39,20 @@ object TableSwitch {
             +TableSwitchInsnNode(
                 startCase,
                 endCase,
-                getLabelNode(defLabel),
-                *labels.map { getLabelNode(it) }.toTypedArray()
+                defLabel.node,
+                *labels.map { it.node }.toTypedArray()
             )
             labels.forEachIndexed { index, label ->
                 LABEL(label)
                 if (index == trueIndex) +ReplaceGoto.generate(targetLabel, methodNode, returnType, reverse)
                 else {
                     if (ControlflowTransformer.trappedCase && Random.nextInt(100) <= ControlflowTransformer.trapChance) +ReplaceGoto.generate(
-                        getLabelNode(labels.toMutableList().apply { remove(label) }.random()),
+                        labels.toMutableList().apply { remove(label) }.random().node,
                         methodNode,
                         returnType,
                         reverse
                     ) else if (ControlflowTransformer.fakeLoop && Random.nextInt(100) <= ControlflowTransformer.loopChance) +ReplaceGoto.generate(
-                        getLabelNode(if (Random.nextBoolean()) defLabel else startLabel),
+                        (if (Random.nextBoolean()) defLabel else startLabel).node,
                         methodNode,
                         returnType,
                         reverse

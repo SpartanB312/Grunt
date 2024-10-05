@@ -1,6 +1,9 @@
 package net.spartanb312.grunt.process.transformers.encrypt.number
 
-import net.spartanb312.grunt.utils.builder.*
+import net.spartanb312.genesis.extensions.INT
+import net.spartanb312.genesis.extensions.LONG
+import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.instructions
 import net.spartanb312.grunt.utils.extensions.toInsnNode
 import org.objectweb.asm.tree.InsnList
 import kotlin.random.Random
@@ -21,7 +24,7 @@ object NumberEncryptorClassic : NumberEncryptor {
         val intBits = value.asInt()
         val key = Random.nextInt()
         val encryptedIntBits = intBits xor key
-        return insnList {
+        return instructions {
             INT(encryptedIntBits)
             INT(key)
             IXOR
@@ -33,7 +36,7 @@ object NumberEncryptorClassic : NumberEncryptor {
         val longBits = value.asLong()
         val key = Random.nextLong()
         val encryptedLongBits = longBits xor key
-        return insnList {
+        return instructions {
             LONG(encryptedLongBits)
             LONG(key)
             LXOR
@@ -45,7 +48,7 @@ object NumberEncryptorClassic : NumberEncryptor {
         val random = Random.nextInt(Int.MAX_VALUE)
         val negative = (if (Random.nextBoolean()) random else -random) + value
         val obfuscated = value xor negative
-        return insnList {
+        return instructions {
             if (Random.nextBoolean()) {
                 +negative.toInsnNode()
                 I2L
@@ -65,7 +68,7 @@ object NumberEncryptorClassic : NumberEncryptor {
     fun encrypt(value: Long): InsnList {
         val random = Random.nextLong()
         val obfuscated = value xor random
-        return insnList {
+        return instructions {
             +obfuscated.toInsnNode()
             +random.toInsnNode()
             LXOR

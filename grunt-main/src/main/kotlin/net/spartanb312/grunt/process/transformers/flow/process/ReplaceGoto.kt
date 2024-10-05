@@ -1,10 +1,13 @@
 package net.spartanb312.grunt.process.transformers.flow.process
 
+import net.spartanb312.genesis.extensions.INT
+import net.spartanb312.genesis.extensions.LABEL
+import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.instructions
 import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIAND
 import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIOR
 import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIXOR
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
-import net.spartanb312.grunt.utils.builder.*
 import org.objectweb.asm.Label
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.InsnList
@@ -21,7 +24,7 @@ object ReplaceGoto {
         reverse: Boolean
     ): InsnList {
         return when (Random.nextInt(6)) {
-            0 -> insnList {
+            0 -> instructions {
                 val action = Action.entries.random()
                 val val1 = Random.nextInt(Int.MAX_VALUE / 2)
                 val val2 = Random.nextInt(Int.MAX_VALUE / 2)
@@ -42,7 +45,7 @@ object ReplaceGoto {
                 }
             }
 
-            1 -> insnList {
+            1 -> instructions {
                 val action = Action.entries.random()
                 var val1: Int
                 var val2: Int
@@ -68,7 +71,7 @@ object ReplaceGoto {
                 }
             }
 
-            2 -> insnList {
+            2 -> instructions {
                 val action = Action.entries.random()
                 var val1: Int
                 var val2: Int
@@ -94,7 +97,7 @@ object ReplaceGoto {
                 }
             }
 
-            3 -> insnList {
+            3 -> instructions {
                 val action = Action.entries.random()
                 var val1: Int
                 var val2: Int
@@ -120,7 +123,7 @@ object ReplaceGoto {
                 }
             }
 
-            4 -> insnList {
+            4 -> instructions {
                 val action = Action.entries.random()
                 var val1: Int
                 var val2: Int
@@ -146,7 +149,7 @@ object ReplaceGoto {
                 }
             }
 
-            else -> insnList {
+            else -> instructions {
                 val action = Action.entries.random()
                 var val1: Int
                 var val2: Int
@@ -185,7 +188,7 @@ object ReplaceGoto {
         private val insnListProvider: (Int, Int, Int, Int, InsnList) -> InsnList
     ) {
         Default({ val1, val2, val3, _, insnList ->
-            insnList {
+            instructions {
                 INT(val1)
                 INT(val2)
                 +insnList
@@ -193,7 +196,7 @@ object ReplaceGoto {
             }
         }),
         Type1({ val1, val2, val3, maxLocals, insnList ->
-            insnList {
+            instructions {
                 INT(val2)
                 ISTORE(maxLocals)
                 INT(val1)
@@ -203,7 +206,7 @@ object ReplaceGoto {
             }
         }),
         Type2({ val1, val2, val3, maxLocals, insnList ->
-            insnList {
+            instructions {
                 INT(val3)
                 ISTORE(maxLocals)
                 INT(val1)
@@ -213,7 +216,7 @@ object ReplaceGoto {
             }
         }),
         Type3({ val1, val2, val3, maxLocals, insnList ->
-            insnList {
+            instructions {
                 INT(val1)
                 INT(val3)
                 ISTORE(maxLocals)

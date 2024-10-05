@@ -1,5 +1,11 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
+import net.spartanb312.genesis.extensions.insn.GETSTATIC
+import net.spartanb312.genesis.extensions.insn.LDC
+import net.spartanb312.genesis.extensions.insn.PUTSTATIC
+import net.spartanb312.genesis.extensions.insn.RETURN
+import net.spartanb312.genesis.instructions
+import net.spartanb312.genesis.method
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
@@ -7,7 +13,6 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptorClassic
-import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.appendAnnotation
 import net.spartanb312.grunt.utils.extensions.isAbstract
@@ -63,7 +68,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
             filtered.forEach { classNode ->
                 classNode.methods.forEach { methodNode ->
                     if (!methodNode.isAbstract && !methodNode.isNative) {
-                        val insnList = insnList {
+                        val insnList = instructions {
                             methodNode.instructions.forEach { insn ->
                                 if (insn is LdcInsnNode) {
                                     val owner = companions.keys.random()
@@ -119,7 +124,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                     null,
                     null
                 ) {
-                    InsnList {
+                    INSTRUCTIONS {
                         refList.forEach {
                             it.field.value = null
                             clazz.fields.add(it.field)

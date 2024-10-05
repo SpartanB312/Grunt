@@ -1,12 +1,12 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import net.spartanb312.genesis.extensions.insn.INVOKESTATIC
+import net.spartanb312.genesis.extensions.insn.INVOKEVIRTUAL
+import net.spartanb312.genesis.extensions.insn.SWAP
+import net.spartanb312.genesis.instructions
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.utils.builder.INVOKESTATIC
-import net.spartanb312.grunt.utils.builder.INVOKEVIRTUAL
-import net.spartanb312.grunt.utils.builder.SWAP
-import net.spartanb312.grunt.utils.builder.insnList
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.match
 import net.spartanb312.grunt.utils.logging.Logger
@@ -37,7 +37,7 @@ object StringEqualsRedirectTransformer : Transformer("RedirectStringEquals", Cat
                                         "(Ljava/lang/Object;)Z"
                                     )
                                 ) {
-                                    val replacement = insnList {
+                                    val replacement = instructions {
                                         INVOKEVIRTUAL("java/lang/Object", "hashCode", "()I")
                                         INVOKESTATIC("java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;")
                                         SWAP
@@ -54,7 +54,7 @@ object StringEqualsRedirectTransformer : Transformer("RedirectStringEquals", Cat
                                         "(Ljava/lang/String;)Z"
                                     ) && ignoreCase
                                 ) {
-                                    val replacement = insnList {
+                                    val replacement = instructions {
                                         INVOKEVIRTUAL("java/lang/String", "toUpperCase", "()Ljava/lang/String;")
                                         INVOKEVIRTUAL("java/lang/Object", "hashCode", "()I")
                                         INVOKESTATIC("java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;")

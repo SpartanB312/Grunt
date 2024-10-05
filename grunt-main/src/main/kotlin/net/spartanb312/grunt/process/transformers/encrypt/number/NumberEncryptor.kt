@@ -1,7 +1,7 @@
 package net.spartanb312.grunt.process.transformers.encrypt.number
 
-import net.spartanb312.grunt.utils.builder.*
-import net.spartanb312.grunt.utils.builder.insnList
+import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.instructions
 import org.objectweb.asm.tree.InsnList
 import kotlin.random.Random
 
@@ -13,7 +13,7 @@ interface NumberEncryptor {
 
 }
 
-fun replaceINEG(type: Int = Random.nextInt(2)): InsnList = insnList {
+fun replaceINEG(type: Int = Random.nextInt(2)): InsnList = instructions {
     when (type) {
         0 -> {
             ICONST_M1
@@ -31,7 +31,7 @@ fun replaceINEG(type: Int = Random.nextInt(2)): InsnList = insnList {
     }
 }
 
-fun replaceIAND(): InsnList = insnList {
+fun replaceIAND(): InsnList = instructions {
     SWAP
     DUP_X1
     ICONST_M1
@@ -43,7 +43,7 @@ fun replaceIAND(): InsnList = insnList {
     ISUB
 }
 
-fun replaceIOR(): InsnList = insnList {
+fun replaceIOR(): InsnList = instructions {
     DUP_X1
     ICONST_M1
     IXOR
@@ -51,7 +51,7 @@ fun replaceIOR(): InsnList = insnList {
     IADD
 }
 
-fun replaceIXOR(type: Int = Random.nextInt(3)): InsnList = insnList {
+fun replaceIXOR(type: Int = Random.nextInt(3)): InsnList = instructions {
     when (type) {
         0 -> {
             DUP2

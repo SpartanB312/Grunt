@@ -1,11 +1,14 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
+import net.spartanb312.genesis.extensions.FRAME
+import net.spartanb312.genesis.extensions.LABEL
+import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.method
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.*
-import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.logging.Logger
@@ -92,7 +95,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         null,
         null
     ) {
-        InsnList {
+        INSTRUCTIONS {
             val labelB = Label()
             val labelC = Label()
 
@@ -130,7 +133,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             INVOKEVIRTUAL("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")
             ARETURN
         }
-        Maxs(3, 3)
+        MAXS(3, 3)
     }
 
     fun encrypt(string: String, xor: Int): String {

@@ -1,7 +1,10 @@
 package net.spartanb312.grunt.process.transformers.flow.process
 
+import net.spartanb312.genesis.extensions.LABEL
+import net.spartanb312.genesis.extensions.insn.GOTO
+import net.spartanb312.genesis.extensions.node
+import net.spartanb312.genesis.instructions
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
-import net.spartanb312.grunt.utils.builder.*
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -20,19 +23,19 @@ object ReplaceIf {
         returnType: Type,
         reverse: Boolean
     ): InsnList {
-        return insnList {
+        return instructions {
             val reversedOpcode = ifComparePairs[insnNode.opcode]
             if (ControlflowTransformer.reverseExistedIf && reversedOpcode != null
                 && Random.nextInt(100) <= ControlflowTransformer.reverseChance
             ) {
                 val elseLabel = Label()
-                +JumpInsnNode(reversedOpcode, getLabelNode(elseLabel))
+                +JumpInsnNode(reversedOpcode, elseLabel.node)
                 +ReplaceGoto.generate(targetLabel, methodNode, returnType, reverse)
                 LABEL(elseLabel)
             } else {
                 val delegateLabel = Label()
                 val elseLabel = Label()
-                +JumpInsnNode(insnNode.opcode, getLabelNode(delegateLabel))
+                +JumpInsnNode(insnNode.opcode, delegateLabel.node)
                 GOTO(elseLabel)
                 LABEL(delegateLabel)
                 +ReplaceGoto.generate(targetLabel, methodNode, returnType, reverse)

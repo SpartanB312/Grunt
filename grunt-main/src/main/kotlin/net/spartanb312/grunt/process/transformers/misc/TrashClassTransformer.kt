@@ -1,9 +1,13 @@
 package net.spartanb312.grunt.process.transformers.misc
 
+import net.spartanb312.genesis.extensions.insn.ALOAD
+import net.spartanb312.genesis.extensions.insn.DUP
+import net.spartanb312.genesis.extensions.insn.INVOKESPECIAL
+import net.spartanb312.genesis.extensions.insn.RETURN
+import net.spartanb312.genesis.method
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
@@ -76,13 +80,13 @@ object TrashClassTransformer : Transformer("TrashClass", Category.Miscellaneous)
             null,
             null
         ) {
-            InsnList {
+            INSTRUCTIONS {
                 ALOAD(0)
                 DUP
                 INVOKESPECIAL("java/util/concurrent/ConcurrentHashMap", "<init>", "()V")
                 RETURN
-                Maxs(1, 1)
             }
+            MAXS(1, 1)
         }
         classNode.methods.add(methodNode)
         classNode.fields.add(fieldNode)

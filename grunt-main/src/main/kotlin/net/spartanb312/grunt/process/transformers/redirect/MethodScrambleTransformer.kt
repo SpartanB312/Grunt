@@ -1,12 +1,14 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import net.spartanb312.genesis.extensions.insn.INVOKESTATIC
+import net.spartanb312.genesis.extensions.insn.INVOKEVIRTUAL
+import net.spartanb312.genesis.method
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
 import net.spartanb312.grunt.utils.*
-import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.getCallingMethodNodeAndOwner
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.extensions.isPrivate
@@ -14,8 +16,10 @@ import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.VarInsnNode
 import kotlin.random.Random
 
 /**
@@ -137,14 +141,14 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
                 signature,
                 exceptions
             ) {
-                InsnList {
+                INSTRUCTIONS {
                     var stack = 0
                     Type.getArgumentTypes(methodNode.desc).forEach {
-                        VAR(it.getLoadType(), stack)
+                        +VarInsnNode(it.getLoadType(), stack)
                         stack += it.size
                     }
                     INVOKESTATIC(owner, name, desc)
-                    INSN(methodNode.desc.getReturnType())
+                    +InsnNode(methodNode.desc.getReturnType())
                 }
             }
 
@@ -155,14 +159,14 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
                 signature,
                 exceptions
             ) {
-                InsnList {
+                INSTRUCTIONS {
                     var stack = 0
                     Type.getArgumentTypes(methodNode.desc).forEach {
-                        VAR(it.getLoadType(), stack)
+                        +VarInsnNode(it.getLoadType(), stack)
                         stack += it.size
                     }
                     INVOKEVIRTUAL(owner, name, desc)
-                    INSN(methodNode.desc.getReturnType())
+                    +InsnNode(methodNode.desc.getReturnType())
                 }
             }
 

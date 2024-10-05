@@ -1,5 +1,9 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import net.spartanb312.genesis.extensions.FRAME
+import net.spartanb312.genesis.extensions.LABEL
+import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.method
 import net.spartanb312.grunt.annotation.DISABLE_INVOKEDYNAMIC
 import net.spartanb312.grunt.config.Configs.isExcluded
 import net.spartanb312.grunt.config.setting
@@ -11,7 +15,6 @@ import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.process.transformers.flow.process.JunkCode
 import net.spartanb312.grunt.process.transformers.rename.LocalVariableRenameTransformer
 import net.spartanb312.grunt.utils.*
-import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isInterface
@@ -143,7 +146,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
             val labelE = Label()
             TRYCATCH(labelA, labelB, labelC, "java/lang/Exception")
             TRYCATCH(labelD, labelE, labelC, "java/lang/Exception")
-            InsnList {
+            INSTRUCTIONS {
                 ALOAD(3)
                 CHECKCAST("java/lang/String")
                 ASTORE(7)
@@ -247,7 +250,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 ACONST_NULL
                 ARETURN
             }
-            Maxs(6, 13)
+            MAXS(6, 13)
         }
 
 }

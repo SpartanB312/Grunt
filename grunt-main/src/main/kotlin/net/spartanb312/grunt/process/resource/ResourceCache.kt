@@ -19,6 +19,7 @@ import org.objectweb.asm.tree.ClassNode
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.jar.JarFile
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -75,6 +76,16 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                     trashClasses.remove(name)
                     trashClasses[newName] = node
                 }
+            }
+        }
+
+        val seed = AtomicInteger()
+        val job = {
+            seed.incrementAndGet()
+            if (seed.get() >= 123456 xor seed.get()) {
+
+            } else {
+
             }
         }
     }

@@ -13,8 +13,10 @@ val kotlinxCoroutineVersion = "1.7.3"
 val asmVersion = "9.7"
 
 val library: Configuration by configurations.creating
+val projectModule: Configuration by configurations.creating
 
 dependencies {
+    projectModule(project(":genesis"))
     //Kotlin
     library(kotlin("stdlib"))
     library("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutineVersion")
@@ -32,6 +34,7 @@ dependencies {
     library("com.github.weisj:darklaf-core:3.0.2")
 
     implementation(library)
+    api(projectModule)
 }
 
 tasks {

@@ -1,11 +1,11 @@
 package net.spartanb312.grunt.process.transformers.misc
 
+import net.spartanb312.genesis.extensions.insn.ARETURN
+import net.spartanb312.genesis.extensions.insn.LDC
+import net.spartanb312.genesis.method
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.utils.builder.ARETURN
-import net.spartanb312.grunt.utils.builder.LDC
-import net.spartanb312.grunt.utils.builder.method
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.hasAnnotations
 import net.spartanb312.grunt.utils.extensions.isInterface
@@ -107,7 +107,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                                     null,
                                     null
                                 ) {
-                                    InsnList {
+                                    INSTRUCTIONS {
                                         LDC(marker)
                                         ARETURN
                                     }
@@ -122,7 +122,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                                     null,
                                     null
                                 ) {
-                                    InsnList {
+                                    INSTRUCTIONS {
                                         LDC(marker)
                                         ARETURN
                                     }
@@ -137,7 +137,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                                     null,
                                     null
                                 ) {
-                                    InsnList {
+                                    INSTRUCTIONS {
                                         LDC(marker)
                                         ARETURN
                                     }

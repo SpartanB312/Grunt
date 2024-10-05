@@ -1,6 +1,7 @@
 rootProject.name = "Grunt"
 
 // Main
+include(":genesis")
 include(":grunt-main")
 
 // Plugin
