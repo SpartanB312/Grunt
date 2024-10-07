@@ -79,10 +79,11 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 * [X] [5]ClonedClass
 * [X] [5]SyntheticBridge
 * [X] [5]HWIDAuthentication
+* [ ] [3]NoverifyHackery
 * [X] [5]PostProcess
 
 ### ControlFlow
-
+* [ ] [4]AntiSimulation™ Lite (Seed) Hide the seed of conditions
 * [X] [4]BogusConditionJump (If, Goto) Generate fake jumps with random junk codes
 * [X] [4]MangledCompareJump (If, Goto) Generate random conditional jump with junk codes for direct jump
 * [X] [4]ReversedIfJump (If, Goto) Random mutation to the jump condition
