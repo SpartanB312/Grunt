@@ -79,8 +79,11 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 * [X] [5]ClonedClass
 * [X] [5]SyntheticBridge
 * [X] [5]HWIDAuthentication
-* [ ] [3]NoverifyHackery
 * [X] [5]PostProcess
+
+### Plugins
+* [ ] [3]NoverifyHackery (Misc) Force noverify and hackery bytecodes [(reference)](https://github.com/char/noverify-hackery)
+* [ ] [4]RemoteLoader (Misc) Remote authentication and constant class loading services
 
 ### ControlFlow
 * [ ] [4]AntiSimulation™ Lite (Seed) Hide the seed of conditions
