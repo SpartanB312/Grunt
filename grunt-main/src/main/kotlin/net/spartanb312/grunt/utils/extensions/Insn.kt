@@ -3,6 +3,26 @@ package net.spartanb312.grunt.utils.extensions
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
 
+inline val Int.isReturn inline get() = (this in Opcodes.IRETURN..Opcodes.RETURN)
+
+inline val AbstractInsnNode.isIntInsn: Boolean
+    get() = (opcode in Opcodes.ICONST_M1..Opcodes.ICONST_5
+            || opcode == Opcodes.BIPUSH || opcode == Opcodes.SIPUSH
+            || (this is LdcInsnNode && this.cst is Int))
+
+inline val AbstractInsnNode.isLongInsn: Boolean
+    get() = opcode in Opcodes.LCONST_0..Opcodes.LCONST_1 || (this is LdcInsnNode && this.cst is Long)
+
+inline val AbstractInsnNode.isFloatInsn: Boolean
+    get() = opcode in Opcodes.FCONST_0..Opcodes.FCONST_2 || this is LdcInsnNode && this.cst is Float
+
+inline val AbstractInsnNode.isDoubleInsn: Boolean
+    get() = opcode in Opcodes.DCONST_0..Opcodes.DCONST_1 || this is LdcInsnNode && this.cst is Double
+
+inline val AbstractInsnNode.isNotInstruction: Boolean get() = this is LineNumberNode || this is FrameNode || this is LabelNode || this.opcode == Opcodes.NOP
+
+inline val AbstractInsnNode.isNumberInsn get() = isIntInsn || isLongInsn || isFloatInsn || isDoubleInsn
+
 fun MethodInsnNode.match(owner: String, name: String, desc: String): Boolean {
     return this.owner == owner && this.name == name && this.desc == desc
 }
@@ -55,40 +75,4 @@ fun AbstractInsnNode.getDoubleValue(): Double? {
 
         else -> null
     }
-}
-
-fun Int.toInsnNode(): AbstractInsnNode =
-    when (this) {
-        in -1..5 -> InsnNode(this + 0x3)
-        in Byte.MIN_VALUE..Byte.MAX_VALUE -> IntInsnNode(Opcodes.BIPUSH, this)
-        in Short.MIN_VALUE..Short.MAX_VALUE -> IntInsnNode(Opcodes.SIPUSH, this)
-        else -> LdcInsnNode(this)
-    }
-
-fun Long.toInsnNode(): AbstractInsnNode = if (this in 0..1) {
-    InsnNode((this + 9).toInt())
-} else {
-    LdcInsnNode(this)
-}
-
-fun Float.toInsnNode(): AbstractInsnNode {
-    return if (this in 0.0..2.0) {
-        InsnNode((this + 11).toInt())
-    } else {
-        LdcInsnNode(this)
-    }
-}
-
-fun Double.toInsnNode(): AbstractInsnNode {
-    return if (this in 0.0..1.0)
-        InsnNode((this + 14).toInt())
-    else
-        LdcInsnNode(this)
-}
-
-fun Int.getOpcodeInsn(): Int = when {
-    this >= -1 && this <= 5 -> this + 0x3
-    this >= Byte.MIN_VALUE && this <= Byte.MAX_VALUE -> Opcodes.BIPUSH
-    this >= Short.MIN_VALUE && this <= Short.MAX_VALUE -> Opcodes.SIPUSH
-    else -> throw RuntimeException("Expected value over -1 and under Short.MAX_VALUE")
 }

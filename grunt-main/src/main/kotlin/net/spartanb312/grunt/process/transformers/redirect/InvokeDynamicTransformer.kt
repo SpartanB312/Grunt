@@ -162,7 +162,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 ISTORE(10)
                 ALOAD(9)
                 INVOKESTATIC(className, decryptName, "(Ljava/lang/String;)Ljava/lang/String;", false)
-                LDC_TYPE(className)
+                LDC_TYPE("L$className;")
                 INVOKEVIRTUAL("java/lang/Class", "getClassLoader", "()Ljava/lang/ClassLoader;", false)
                 INVOKESTATIC(
                     "java/lang/invoke/MethodType",

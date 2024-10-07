@@ -176,7 +176,7 @@ object ReplaceGoto {
         }
     }
 
-    private enum class Action(val convert: (Int, Int) -> Int, val insnListProvider: () -> InsnList) {
+    enum class Action(val convert: (Int, Int) -> Int, val insnListProvider: () -> InsnList) {
         AND({ a, b -> a and b }, { replaceIAND() }),
         OR({ a, b -> a or b }, { replaceIOR() }),
         XOR({ a, b -> a xor b }, { replaceIXOR() });
@@ -184,7 +184,7 @@ object ReplaceGoto {
         val insnList get() = insnListProvider.invoke()
     }
 
-    private enum class LocalVarUsages(
+    enum class LocalVarUsages(
         private val insnListProvider: (Int, Int, Int, Int, InsnList) -> InsnList
     ) {
         Default({ val1, val2, val3, _, insnList ->

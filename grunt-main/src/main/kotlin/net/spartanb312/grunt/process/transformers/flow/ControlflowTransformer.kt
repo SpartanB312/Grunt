@@ -33,6 +33,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     private var beforeEncrypt by setting("ExecuteBeforeEncrypt", false)
     private val bogusJump by setting("BogusConditionJump", true)
     private val mangledIf by setting("MangledCompareJump", true)
+    private val ifRate by setting("IfReplaceRate", 50)
     private val tableSwitch by setting("TableSwitchJump", true)
     private val switchRate by setting("SwitchReplaceRate", 30)
     private val maxSwitchCase by setting("MaxSwitchCase", 5)
@@ -104,7 +105,9 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                 val newInsn = instructions {
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->
-                        if (insnNode is JumpInsnNode && ReplaceIf.ifComparePairs.any { it.key == insnNode.opcode }) {
+                        if (insnNode is JumpInsnNode && ReplaceIf.ifComparePairs.any { it.key == insnNode.opcode }
+                            && Random.nextInt(0, 100) <= ifRate
+                        ) {
                             +ReplaceIf.generate(
                                 insnNode,
                                 insnNode.label,
@@ -124,7 +127,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->
                         if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO
-                            && Random.nextInt(0, 100) < switchRate
+                            && Random.nextInt(0, 100) <= switchRate
                         ) {
                             +TableSwitch.generate(
                                 insnNode.label,
@@ -140,7 +143,8 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                 methodNode.instructions = newInsn
             }
         }
-        if ((mangledIf || bogusJump) && useLocalVar) methodNode.maxLocals += 1
+        if (tableSwitch) methodNode.maxLocals += 5
+        else if ((mangledIf || bogusJump) && useLocalVar) methodNode.maxLocals += 1
         return count
     }
 

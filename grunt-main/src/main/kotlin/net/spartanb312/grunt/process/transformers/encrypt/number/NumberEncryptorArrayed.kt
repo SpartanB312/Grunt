@@ -3,8 +3,8 @@ package net.spartanb312.grunt.process.transformers.encrypt.number
 import net.spartanb312.genesis.extensions.INT
 import net.spartanb312.genesis.extensions.LONG
 import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.extensions.toInsnNode
 import net.spartanb312.genesis.instructions
-import net.spartanb312.grunt.utils.extensions.toInsnNode
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode

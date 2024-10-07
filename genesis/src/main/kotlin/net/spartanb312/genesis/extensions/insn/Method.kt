@@ -14,7 +14,7 @@ import org.objectweb.asm.tree.MethodNode
  */
 @BuilderDSL
 fun InsnListBuilder.INVOKESTATIC(owner: String, name: String, desc: String, isInterface: Boolean = false) {
-    require(isInterface) {
+    require(!isInterface) {
         "INVOKESTATIC isInterface should always be false"
     }
     +MethodInsnNode(Opcodes.INVOKESTATIC, owner, name, desc, false)
@@ -36,7 +36,7 @@ fun InsnListBuilder.INVOKESTATIC(owner: ClassNode, methodNode: MethodNode) =
  */
 @BuilderDSL
 fun InsnListBuilder.INVOKEVIRTUAL(owner: String, name: String, desc: String, isInterface: Boolean = false) {
-    require(isInterface) {
+    require(!isInterface) {
         "INVOKEVIRTUAL isInterface should always be false"
     }
     +MethodInsnNode(Opcodes.INVOKEVIRTUAL, owner, name, desc, false)
@@ -57,7 +57,7 @@ fun InsnListBuilder.INVOKEVIRTUAL(owner: ClassNode, methodNode: MethodNode) =
  */
 @BuilderDSL
 fun InsnListBuilder.INVOKESPECIAL(owner: String, name: String, desc: String, isInterface: Boolean = false) {
-    require(isInterface) {
+    require(!isInterface) {
         "INVOKESPECIAL isInterface should always be false"
     }
     +MethodInsnNode(Opcodes.INVOKESPECIAL, owner, name, desc, false)

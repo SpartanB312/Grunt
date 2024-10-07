@@ -2,16 +2,14 @@ package net.spartanb312.grunt.process.transformers.flow.process
 
 import net.spartanb312.genesis.extensions.INT
 import net.spartanb312.genesis.extensions.LABEL
-import net.spartanb312.genesis.extensions.insn.IXOR
+import net.spartanb312.genesis.extensions.insn.ILOAD
+import net.spartanb312.genesis.extensions.insn.ISTORE
 import net.spartanb312.genesis.extensions.node
 import net.spartanb312.genesis.instructions
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import org.objectweb.asm.Label
 import org.objectweb.asm.Type
-import org.objectweb.asm.tree.InsnList
-import org.objectweb.asm.tree.LabelNode
-import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.TableSwitchInsnNode
+import org.objectweb.asm.tree.*
 import kotlin.random.Random
 
 object TableSwitch {
@@ -26,7 +24,6 @@ object TableSwitch {
         return instructions {
             val endCase = Random.nextInt()
             val startCase = endCase - conditions + 1
-            val defLabel = Label()
             val startLabel = Label()
             val labels = buildList { repeat(conditions) { add(Label()) } }
             val trueIndex = labels.indices.random()
@@ -35,11 +32,11 @@ object TableSwitch {
             LABEL(startLabel)
             INT(trueCase xor key)
             INT(key)
-            IXOR
+            +ReplaceGoto.Action.XOR.insnList
             +TableSwitchInsnNode(
                 startCase,
                 endCase,
-                defLabel.node,
+                startLabel.node,
                 *labels.map { it.node }.toTypedArray()
             )
             labels.forEachIndexed { index, label ->
@@ -52,7 +49,7 @@ object TableSwitch {
                         returnType,
                         reverse
                     ) else if (ControlflowTransformer.fakeLoop && Random.nextInt(100) <= ControlflowTransformer.loopChance) +ReplaceGoto.generate(
-                        (if (Random.nextBoolean()) defLabel else startLabel).node,
+                        startLabel.node,
                         methodNode,
                         returnType,
                         reverse
@@ -63,8 +60,6 @@ object TableSwitch {
                     )
                 }
             }
-            LABEL(defLabel)
-            +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
         }
     }
 

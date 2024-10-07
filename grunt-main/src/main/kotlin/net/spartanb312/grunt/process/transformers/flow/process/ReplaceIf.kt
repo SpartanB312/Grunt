@@ -45,6 +45,12 @@ object ReplaceIf {
     }
 
     val ifComparePairs = mutableMapOf(
+        Opcodes.IFEQ to Opcodes.IFNE,
+        Opcodes.IFLE to Opcodes.IFGT,
+        Opcodes.IFGE to Opcodes.IFLT,
+        Opcodes.IFNE to Opcodes.IFEQ,
+        Opcodes.IFGT to Opcodes.IFLE,
+        Opcodes.IFLT to Opcodes.IFGE,
         Opcodes.IF_ICMPEQ to Opcodes.IF_ICMPNE,
         Opcodes.IF_ICMPLE to Opcodes.IF_ICMPGT,
         Opcodes.IF_ICMPGE to Opcodes.IF_ICMPLT,

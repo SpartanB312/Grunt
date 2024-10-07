@@ -27,7 +27,8 @@ object JunkCode {
     fun generate(methodNode: MethodNode, returnType: Type, junkCodes: Int): InsnList {
         return if (methodNode.isInitializer) instructions {
             if (junkCodes > 0) +generateAndPop(junkCodes)
-            RETURN
+            ACONST_NULL
+            ATHROW
         } else instructions {
             when (returnType.sort) {
                 Type.INT -> {
