@@ -59,8 +59,11 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                     val bsm = createBootstrap(classNode.name, bootstrapName, decryptName)
                     if (reobf) {
                         if (ControlflowTransformer.enabled) {
+                            val antiSim = ControlflowTransformer.antiSimulation
+                            ControlflowTransformer.antiSimulation = false
                             ControlflowTransformer.transformMethod(classNode, decrypt)
                             ControlflowTransformer.transformMethod(classNode, bsm)
+                            ControlflowTransformer.antiSimulation = antiSim
                         }
                         if (LocalVariableRenameTransformer.enabled) {
                             LocalVariableRenameTransformer.transformMethod(classNode, decrypt)

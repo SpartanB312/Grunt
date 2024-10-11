@@ -23,7 +23,7 @@ import kotlin.random.Random
  */
 object AntiSimulation {
 
-    private val cachedOwner = mutableMapOf<ClassNode, ClassNode>()
+    private val cachedOwner = mutableMapOf<String, ClassNode>()
     lateinit var res: ResourceCache
 
     fun process(caller: ClassNode, action: InsnList): InsnList {
@@ -37,8 +37,8 @@ object AntiSimulation {
             INSTRUCTIONS { +action }
             MAXS(2, 3)
         }
-        val owner = cachedOwner.getOrPut(caller) {
-            val created = clazz(PUBLIC + FINAL, "${caller.name}\$processor")
+        val owner = cachedOwner.getOrPut(caller.name) {
+            val created = clazz(PUBLIC, "${caller.name}\$processor")
             res.addTrashClass(created)
             created
         }
