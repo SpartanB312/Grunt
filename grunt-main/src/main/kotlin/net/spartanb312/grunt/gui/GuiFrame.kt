@@ -13,6 +13,8 @@ import net.spartanb312.grunt.gui.panel.GeneralPanel
 import net.spartanb312.grunt.gui.panel.ConsolePanel
 import net.spartanb312.grunt.gui.panel.TransformerPanel
 import net.spartanb312.grunt.gui.util.LoggerPrinter
+import net.spartanb312.grunt.main
+import net.spartanb312.grunt.plugin.PluginManager
 import net.spartanb312.grunt.runProcess
 import net.spartanb312.grunt.utils.logging.SimpleLogger
 import java.awt.BorderLayout
@@ -166,6 +168,10 @@ object GuiFrame {
 
     fun view() {
         mainFrame.isVisible = true
+    }
+
+    fun setTitle(title:String) {
+        mainFrame.title = title
     }
 
 }

@@ -7,6 +7,7 @@ import net.miginfocom.swing.MigLayout
 import net.spartanb312.grunt.config.Configs.Settings
 import net.spartanb312.grunt.gui.GuiFrame
 import net.spartanb312.grunt.gui.util.FileChooseUtils
+import net.spartanb312.grunt.plugin.PluginManager
 import java.io.File
 import javax.swing.*
 import javax.swing.border.TitledBorder
@@ -23,6 +24,7 @@ class BasicPanel : JPanel() {
     val corruptOutput = JCheckBox("CorruptOutput")
     val dumpMappings = JCheckBox("DumpMappings")
 
+    val pluginPanel = JPanel()
     val configPanel = JPanel()
 
     val obfButton = JButton("Obfuscate")
@@ -76,15 +78,22 @@ class BasicPanel : JPanel() {
         add(inputBrowse, CC().cell(2, 0).growX())
         add(JLabel("Output:"), CC().cell(0, 1).growX())
         add(output, CC().cell(1, 1).growX())
-        add(outputBrowse, CC().cell(2, 1).growX())
 
-        configPanel.border = TitledBorder("Current Config: ${GuiFrame.currentConfig}")
+        val pluginsInf = if (PluginManager.hasPlugins) PluginManager.plugins.joinToString(",") {
+            it.instance.name + " " + it.instance.version
+        } else "(no plugin activated)"
+        pluginPanel.border = TitledBorder("Plugins: $pluginsInf")
+        pluginPanel.layout = MigLayout(LC(), AC().fill(), AC())
+
+        configPanel.border = TitledBorder("Current Config: ${GuiFrame.currentConfig} \n 114514")
         configPanel.layout = MigLayout(LC().fillY(), AC(), AC())
         configPanel.add(loadButton, CC().growY())
         configPanel.add(saveButton, CC().growY())
         configPanel.add(resetButton, CC().growY())
         configPanel.add(startSave, CC().growY())
-        add(configPanel, CC().cell(0, 2, 3, 3).grow())
+
+        add(pluginPanel, CC().cell(0, 2, 3, 0).grow())
+        add(configPanel, CC().cell(0, 3, 3, 3).grow())
     }
 
     fun updateConfigTitle(path: String) {

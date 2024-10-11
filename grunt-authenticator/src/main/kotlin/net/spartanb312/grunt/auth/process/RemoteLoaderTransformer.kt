@@ -1,5 +1,8 @@
 package net.spartanb312.grunt.auth.process
 
+import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.instructions
+import net.spartanb312.genesis.method
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.annotation.JUNKCALL_EXCLUDED
 import net.spartanb312.grunt.config.setting
@@ -89,7 +92,7 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
                         if (it is FieldInsnNode && it.opcode == Opcodes.GETSTATIC) {
                             val next = it.next
                             if (next is FieldInsnNode && next.opcode == Opcodes.PUTSTATIC) {
-                                val reflectGet = insnList {
+                                val reflectGet = instructions {
                                     DUP
                                     LDC(it.name)
                                     INVOKEVIRTUAL(
@@ -224,7 +227,7 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
                 null,
                 null
             ) {
-                InsnList {
+                INSTRUCTIONS {
                     generated.mappings.forEach { (field, ref) ->
                         field.value = null
                         generated.classNode.fields.add(field)
@@ -244,7 +247,7 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
                     RETURN
                 }
             }
-            localClinit.instructions.insert(insnList {
+            localClinit.instructions.insert(instructions {
                 LDC(remoteCompanion.name.replace("/", "."))
                 INVOKESTATIC(downloaderName, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;")
             })
@@ -259,7 +262,7 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
                 null,
                 null
             ) {
-                InsnList {
+                INSTRUCTIONS {
                     remoteFieldPair.forEach { (field, ref) ->
                         field.value = null
                         when (ref) {
