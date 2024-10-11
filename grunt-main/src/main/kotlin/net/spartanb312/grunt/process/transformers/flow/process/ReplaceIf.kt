@@ -8,6 +8,7 @@ import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
+import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.JumpInsnNode
 import org.objectweb.asm.tree.LabelNode
@@ -19,6 +20,7 @@ object ReplaceIf {
     fun generate(
         insnNode: JumpInsnNode,
         targetLabel: LabelNode,
+        classNode: ClassNode,
         methodNode: MethodNode,
         returnType: Type,
         reverse: Boolean
@@ -30,7 +32,7 @@ object ReplaceIf {
             ) {
                 val elseLabel = Label()
                 +JumpInsnNode(reversedOpcode, elseLabel.node)
-                +ReplaceGoto.generate(targetLabel, methodNode, returnType, reverse)
+                +ReplaceGoto.generate(targetLabel, classNode, methodNode, returnType, reverse)
                 LABEL(elseLabel)
             } else {
                 val delegateLabel = Label()
@@ -38,7 +40,7 @@ object ReplaceIf {
                 +JumpInsnNode(insnNode.opcode, delegateLabel.node)
                 GOTO(elseLabel)
                 LABEL(delegateLabel)
-                +ReplaceGoto.generate(targetLabel, methodNode, returnType, reverse)
+                +ReplaceGoto.generate(targetLabel, classNode, methodNode, returnType, reverse)
                 LABEL(elseLabel)
             }
         }

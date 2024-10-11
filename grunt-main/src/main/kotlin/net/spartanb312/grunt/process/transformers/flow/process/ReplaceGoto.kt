@@ -10,6 +10,7 @@ import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIXOR
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import org.objectweb.asm.Label
 import org.objectweb.asm.Type
+import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.LabelNode
 import org.objectweb.asm.tree.MethodNode
@@ -19,6 +20,7 @@ object ReplaceGoto {
 
     fun generate(
         targetLabel: LabelNode,
+        classNode: ClassNode,
         methodNode: MethodNode,
         returnType: Type,
         reverse: Boolean
@@ -29,10 +31,14 @@ object ReplaceGoto {
                 val val1 = Random.nextInt(Int.MAX_VALUE / 2)
                 val val2 = Random.nextInt(Int.MAX_VALUE / 2)
                 val val3 = action.convert.invoke(val1, val2)
-                val usage =
-                    if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
-                    else LocalVarUsages.Default
-                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                    .invoke(val1, val2, val3, classNode, action.insnList)
+                else {
+                    val usage =
+                        if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
+                        else LocalVarUsages.Default
+                    +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                }
                 if (reverse) {
                     val junkLabel = Label()
                     IF_ICMPNE(junkLabel)
@@ -55,10 +61,14 @@ object ReplaceGoto {
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) >= val3)
-                val usage =
-                    if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
-                    else LocalVarUsages.Default
-                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                    .invoke(val1, val2, val3, classNode, action.insnList)
+                else {
+                    val usage =
+                        if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
+                        else LocalVarUsages.Default
+                    +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                }
                 if (reverse) {
                     val junkLabel = Label()
                     IF_ICMPGE(junkLabel)
@@ -81,10 +91,14 @@ object ReplaceGoto {
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) < val3)
-                val usage =
-                    if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
-                    else LocalVarUsages.Default
-                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                    .invoke(val1, val2, val3, classNode, action.insnList)
+                else {
+                    val usage =
+                        if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
+                        else LocalVarUsages.Default
+                    +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                }
                 if (reverse) {
                     val junkLabel = Label()
                     IF_ICMPLT(junkLabel)
@@ -107,10 +121,14 @@ object ReplaceGoto {
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) <= val3)
-                val usage =
-                    if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
-                    else LocalVarUsages.Default
-                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                    .invoke(val1, val2, val3, classNode, action.insnList)
+                else {
+                    val usage =
+                        if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
+                        else LocalVarUsages.Default
+                    +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                }
                 if (reverse) {
                     val junkLabel = Label()
                     IF_ICMPLE(junkLabel)
@@ -133,10 +151,14 @@ object ReplaceGoto {
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) > val3)
-                val usage =
-                    if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
-                    else LocalVarUsages.Default
-                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                    .invoke(val1, val2, val3, classNode, action.insnList)
+                else {
+                    val usage =
+                        if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
+                        else LocalVarUsages.Default
+                    +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                }
                 if (reverse) {
                     val junkLabel = Label()
                     IF_ICMPGT(junkLabel)
@@ -159,9 +181,14 @@ object ReplaceGoto {
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) == val3)
-                val usage = if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
-                else LocalVarUsages.Default
-                +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                    .invoke(val1, val2, val3, classNode, action.insnList)
+                else {
+                    val usage =
+                        if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
+                        else LocalVarUsages.Default
+                    +usage.localVarUsage(val1, val2, val3, methodNode.maxLocals, action.insnList)
+                }
                 if (reverse) {
                     val junkLabel = Label()
                     IF_ICMPEQ(junkLabel)

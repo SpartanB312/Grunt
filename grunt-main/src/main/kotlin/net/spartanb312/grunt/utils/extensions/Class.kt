@@ -23,7 +23,7 @@ inline val ClassNode.isAnnotation get() = access.isAnnotation
 
 inline val ClassNode.isEnum get() = access.isEnum
 
-fun ClassNode.getOrCreateClinit(builder: MethodBuilder.() -> Unit): MethodNode =
+fun ClassNode.getOrCreateClinit(builder: (MethodBuilder.() -> Unit)? = null): MethodNode =
     methods.firstOrNull { it.name.equals("<clinit>") } ?: clinit(builder)
 
 val ClassNode.hasAnnotations: Boolean

@@ -69,39 +69,39 @@ inline fun ClassNode.modify(block: ClassBuilder.() -> Unit): ClassNode {
 }
 
 @NodeDSL
-inline fun clazz(
+fun clazz(
     access: Modifiers,
     name: String,
     superName: String = "java/lang/Object",
     interfaces: List<String>? = null,
     signature: String? = null,
     version: Int = Java7,
-    block: ClassBuilder.() -> Unit
+    block: (ClassBuilder.() -> Unit)? = null
 ): ClassNode = ClassNode().apply {
     this.access = access.modifier
     this.name = name
     this.version = version
     this.signature = signature
     this.superName = superName
-    this.interfaces = interfaces
-    modify(block)
+    this.interfaces = interfaces ?: mutableListOf()
+    if (block != null) modify(block)
 }
 
 @NodeDSL
-inline fun clazz(
+fun clazz(
     access: Int,
     name: String,
     superName: String = "java/lang/Object",
     interfaces: List<String>? = null,
     signature: String? = null,
     version: Int = Java7,
-    block: ClassBuilder.() -> Unit
+    block: (ClassBuilder.() -> Unit)? = null
 ): ClassNode = ClassNode().apply {
     this.access = access
     this.name = name
     this.version = version
     this.signature = signature
     this.superName = superName
-    this.interfaces = interfaces
-    modify(block)
+    this.interfaces = interfaces ?: mutableListOf()
+    if (block != null) modify(block)
 }

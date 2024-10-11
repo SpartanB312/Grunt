@@ -8,10 +8,8 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.hierarchy.Hierarchy
 import net.spartanb312.grunt.process.hierarchy.ReferenceSearch
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.process.transformers.flow.process.JunkCode
-import net.spartanb312.grunt.process.transformers.flow.process.ReplaceGoto
-import net.spartanb312.grunt.process.transformers.flow.process.ReplaceIf
-import net.spartanb312.grunt.process.transformers.flow.process.TableSwitch
+import net.spartanb312.grunt.process.transformers.PostProcessTransformer.transform
+import net.spartanb312.grunt.process.transformers.flow.process.*
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.logging.Logger
@@ -43,6 +41,9 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     val trapChance by setting("TrapChance", 30)
     val fakeLoop by setting("UnconditionalLoop", true)
     val loopChance by setting("LoopChance", 30)
+    val antiSimulation by setting("AntiSimulation", true)
+    val asIntensity by setting("BuilderIntensity", 1)
+    val junkParameter by setting("JunkBuilderParameter", true)
     val useLocalVar by setting("UseLocalVar", true)
     val junkCode by setting("JunkCode", true)
     val maxJunkCode by setting("MaxJunkCode", 3)
@@ -56,8 +57,9 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
         }
 
     override fun ResourceCache.transform() {
-        Logger.info(" - Replacing jumps to implicit operations")
+        Logger.info(" - Transforming controlflows...")
         JunkCode.refresh(this)
+        AntiSimulation.res = this
         val hierarchy = Hierarchy(this)
         hierarchy.build(true)
         val count = count {
@@ -67,9 +69,9 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                             && !it.missingReference(hierarchy)
                             && !it.hasAnnotation(DISABLE_CONTROLFLOW)
                 }.forEach { classNode ->
-                    classNode.methods.forEach { methodNode ->
+                    classNode.methods.toList().forEach { methodNode ->
                         if (!methodNode.hasAnnotation(DISABLE_CONTROLFLOW)) {
-                            add(processMethodNode(methodNode))
+                            add(processMethodNode(classNode, methodNode))
                         }
                     }
                 }
@@ -78,10 +80,10 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     }
 
     override fun transformMethod(owner: ClassNode, method: MethodNode) {
-        processMethodNode(method)
+        processMethodNode(owner, method)
     }
 
-    private fun processMethodNode(methodNode: MethodNode): Int {
+    private fun processMethodNode(owner: ClassNode, methodNode: MethodNode): Int {
         var count = 0
         repeat(intensity) {
             if (bogusJump) {
@@ -91,6 +93,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                         if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO) {
                             +ReplaceGoto.generate(
                                 insnNode.label,
+                                owner,
                                 methodNode,
                                 returnType,
                                 Random.nextBoolean()
@@ -111,6 +114,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                             +ReplaceIf.generate(
                                 insnNode,
                                 insnNode.label,
+                                owner,
                                 methodNode,
                                 returnType,
                                 Random.nextBoolean()
@@ -131,6 +135,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                         ) {
                             +TableSwitch.generate(
                                 insnNode.label,
+                                owner,
                                 methodNode,
                                 returnType,
                                 range.random(),

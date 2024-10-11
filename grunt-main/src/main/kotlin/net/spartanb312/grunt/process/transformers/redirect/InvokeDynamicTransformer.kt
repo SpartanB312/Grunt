@@ -18,8 +18,8 @@ import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isInterface
+import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.logging.Logger
-import org.objectweb.asm.Handle
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
@@ -53,9 +53,9 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
             }.values.forEach { classNode ->
                 val bootstrapName = if (massiveRandom) massiveBlankString else massiveString
                 val decryptName = if (massiveRandom) massiveBlankString else massiveString
-                val decryptValue = Random.nextInt(0x8, 0x800)
-                if (shouldApply(classNode, bootstrapName, decryptValue)) {
-                    val decrypt = createDecryptMethod(decryptName, decryptValue)
+                val decryptKey = Random.nextInt(0x8, 0x800)
+                if (shouldApply(classNode, bootstrapName, decryptKey)) {
+                    val decrypt = createDecryptMethod(decryptName, decryptKey)
                     val bsm = createBootstrap(classNode.name, bootstrapName, decryptName)
                     if (reobf) {
                         if (ControlflowTransformer.enabled) {
@@ -75,40 +75,37 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
         Logger.info("    Replaced $count invokes")
     }
 
-    private fun Counter.shouldApply(classNode: ClassNode, bootstrapName: String, decryptValue: Int): Boolean {
+    private fun Counter.shouldApply(classNode: ClassNode, bootstrapName: String, decryptKey: Int): Boolean {
         var shouldApply = false
         classNode.methods
-            .filter { !it.isAbstract }
+            .filter { !it.isAbstract && !it.isNative }
             .forEach { methodNode ->
                 if (!methodNode.hasAnnotation(DISABLE_INVOKEDYNAMIC)) {
                     methodNode.instructions.filter {
                         it is MethodInsnNode && it.opcode != Opcodes.INVOKESPECIAL
                     }.forEach { insnNode ->
                         if (insnNode is MethodInsnNode && (0..99).random() < rate) {
-                            val handle = Handle(
-                                Opcodes.H_INVOKESTATIC,
-                                classNode.name,
-                                bootstrapName,
-                                MethodType.methodType(
-                                    CallSite::class.java,
-                                    MethodHandles.Lookup::class.java,
-                                    String::class.java,
-                                    MethodType::class.java,
-                                    String::class.java,
-                                    String::class.java,
-                                    String::class.java,
-                                    Integer::class.java
-                                ).toMethodDescriptorString(),
-                                false
-                            )
                             val invokeDynamicInsnNode = InvokeDynamicInsnNode(
                                 bootstrapName,
                                 if (insnNode.opcode == Opcodes.INVOKESTATIC) insnNode.desc
                                 else insnNode.desc.replace("(", "(Ljava/lang/Object;"),
-                                handle,
-                                encrypt(insnNode.owner.replace("/", "."), decryptValue),
-                                encrypt(insnNode.name, decryptValue),
-                                encrypt(insnNode.desc, decryptValue),
+                                H_INVOKESTATIC(
+                                    classNode.name,
+                                    bootstrapName,
+                                    MethodType.methodType(
+                                        CallSite::class.java,
+                                        MethodHandles.Lookup::class.java,
+                                        String::class.java,
+                                        MethodType::class.java,
+                                        String::class.java,
+                                        String::class.java,
+                                        String::class.java,
+                                        Integer::class.java
+                                    ).toMethodDescriptorString(),
+                                ),
+                                encrypt(insnNode.owner.replace("/", "."), decryptKey),
+                                encrypt(insnNode.name, decryptKey),
+                                encrypt(insnNode.desc, decryptKey),
                                 if (insnNode.opcode == Opcodes.INVOKESTATIC) 0 else 1
                             )
                             methodNode.instructions.insertBefore(insnNode, invokeDynamicInsnNode)
@@ -122,7 +119,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
         return shouldApply
     }
 
-    private fun createBootstrap(className: String, methodName: String, decryptName: String) =
+    fun createBootstrap(className: String, methodName: String, decryptName: String) =
         method(
             Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC + Opcodes.ACC_SYNTHETIC + Opcodes.ACC_BRIDGE,
             methodName,

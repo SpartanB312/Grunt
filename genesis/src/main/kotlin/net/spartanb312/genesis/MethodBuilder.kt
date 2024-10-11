@@ -40,13 +40,12 @@ inline fun MethodNode.modify(block: MethodBuilder.() -> Unit): MethodNode {
 }
 
 @NodeDSL
-fun clinit(block: MethodBuilder.() -> Unit): MethodNode = method(
+fun clinit(block: (MethodBuilder.() -> Unit)? = null): MethodNode = method(
     STATIC,
     "<clinit>",
     "()V", null,
     null,
-    block
-).modify(block)
+).apply { if (block != null) modify(block) }
 
 @NodeDSL
 fun method(
