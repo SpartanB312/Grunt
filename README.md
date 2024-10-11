@@ -86,10 +86,11 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 * [ ] [4]RemoteLoader (Misc) Remote authentication and constant class loading services
 
 ### ControlFlow
-* [ ] [4]AntiSimulation™ Lite (Seed) Hide the seed of conditions
+* [X] [5]AntiSimulation (Seed) Hide the seed of conditions
 * [X] [4]BogusConditionJump (If, Goto) Generate fake jumps with random junk codes
-* [X] [4]MangledCompareJump (If, Goto) Generate random conditional jump with junk codes for direct jump
-* [X] [4]ReversedIfJump (If, Goto) Random mutation to the jump condition
+* [X] [4]MangledCompareJump (If, Goto) Generate conditional jump with junk codes to replace direct jump
+* [X] [5]ReversedIfJump (If, Goto) Random mutation to the jump condition
+* [ ] [4]ParallelBranch (If, Goto) Generate junk parallel branch to prevent inference from returns
 * [X] [4]TableSwitchJump (Switch) Generate TableSwitch to replace direct jumps
 * [X] [4]UnconditionalLoop (Switch) Random weird loops between switch labels
 * [X] [4]TrappedSwitchCase (Switch) Random trapped switch junk cases
