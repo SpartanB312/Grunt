@@ -1,5 +1,7 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import net.spartanb312.genesis.extensions.PUBLIC
+import net.spartanb312.genesis.extensions.STATIC
 import net.spartanb312.genesis.extensions.insn.*
 import net.spartanb312.genesis.method
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
@@ -23,7 +25,7 @@ import org.objectweb.asm.tree.VarInsnNode
 
 /**
  * Scramble field calls
- * Last update on 2024/07/08
+ * Last update on 2024/10/12
  */
 object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect) {
 
@@ -171,14 +173,12 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
     }
 
     private fun genMethod(field: FieldInsnNode, methodName: String, signature: String?): MethodNode {
-        val access = Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC
         return when (field.opcode) {
             Opcodes.GETFIELD -> method(
-                access,
+                PUBLIC + STATIC,
                 methodName,
                 "(L${field.owner};)${field.desc}",
-                signature,
-                null
+                signature
             ) {
                 INSTRUCTIONS {
                     ALOAD(0)
@@ -188,11 +188,10 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
             }
 
             Opcodes.PUTFIELD -> method(
-                access,
+                PUBLIC + STATIC,
                 methodName,
                 "(L${field.owner};${field.desc})V",
                 signature,
-                null,
             ) {
                 INSTRUCTIONS {
                     var stack = 0
@@ -206,11 +205,10 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
             }
 
             Opcodes.GETSTATIC -> method(
-                access,
+                PUBLIC + STATIC,
                 methodName,
                 "()${field.desc}",
-                signature,
-                null
+                signature
             ) {
                 INSTRUCTIONS {
                     GETSTATIC(field.owner, field.name, field.desc)
@@ -219,11 +217,10 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
             }
 
             Opcodes.PUTSTATIC -> method(
-                access,
+                PUBLIC + STATIC,
                 methodName,
                 "(${field.desc})V",
-                signature,
-                null,
+                signature
             ) {
                 INSTRUCTIONS {
                     var stack = 0

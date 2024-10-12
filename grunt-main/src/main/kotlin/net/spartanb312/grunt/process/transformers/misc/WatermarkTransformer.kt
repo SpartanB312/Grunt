@@ -103,9 +103,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                                 method(
                                     Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
                                     names.random(),
-                                    "()Ljava/lang/String;",
-                                    null,
-                                    null
+                                    "()Ljava/lang/String;"
                                 ) {
                                     INSTRUCTIONS {
                                         LDC(marker)
@@ -118,9 +116,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                                 method(
                                     Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
                                     names.random(),
-                                    "()Ljava/lang/String;",
-                                    null,
-                                    null
+                                    "()Ljava/lang/String;"
                                 ) {
                                     INSTRUCTIONS {
                                         LDC(marker)
@@ -133,9 +129,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                                 method(
                                     Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
                                     names.random(),
-                                    "()Ljava/lang/String;",
-                                    null,
-                                    null
+                                    "()Ljava/lang/String;"
                                 ) {
                                     INSTRUCTIONS {
                                         LDC(marker)

@@ -1,9 +1,8 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
-import net.spartanb312.genesis.extensions.insn.GETSTATIC
-import net.spartanb312.genesis.extensions.insn.LDC
-import net.spartanb312.genesis.extensions.insn.PUTSTATIC
-import net.spartanb312.genesis.extensions.insn.RETURN
+import net.spartanb312.genesis.clinit
+import net.spartanb312.genesis.extensions.STATIC
+import net.spartanb312.genesis.extensions.insn.*
 import net.spartanb312.genesis.instructions
 import net.spartanb312.genesis.method
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
@@ -117,13 +116,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                 generatedClasses.add(Generated(clazz, buildMap {
                     refList.forEach { this[it.field] = it }
                 }))
-                val clinit = method(
-                    Opcodes.ACC_STATIC,
-                    "<clinit>",
-                    "()V",
-                    null,
-                    null
-                ) {
+                val clinit = clinit {
                     INSTRUCTIONS {
                         refList.forEach {
                             it.field.value = null
@@ -140,11 +133,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                                     val decryptMethod = createDecryptMethod(methodName, key)
                                     clazz.methods.add(decryptMethod)
                                     LDC(encrypt(it.value, key))
-                                    +MethodInsnNode(
-                                        Opcodes.INVOKESTATIC, clazz.name,
-                                        methodName, "(Ljava/lang/String;)Ljava/lang/String;",
-                                        false
-                                    )
+                                    INVOKESTATIC(clazz.name, methodName, "(Ljava/lang/String;)Ljava/lang/String;")
                                     PUTSTATIC(clazz.name, it.field.name, it.field.desc)
                                 }
                             }

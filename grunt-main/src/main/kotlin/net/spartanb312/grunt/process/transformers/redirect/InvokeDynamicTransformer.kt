@@ -1,7 +1,6 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
-import net.spartanb312.genesis.extensions.FRAME
-import net.spartanb312.genesis.extensions.LABEL
+import net.spartanb312.genesis.extensions.*
 import net.spartanb312.genesis.extensions.insn.*
 import net.spartanb312.genesis.method
 import net.spartanb312.grunt.annotation.DISABLE_INVOKEDYNAMIC
@@ -32,7 +31,7 @@ import kotlin.random.Random
 
 /**
  * Replace invokes to invoke dynamic
- * Last update on 24/07/02
+ * Last update on 24/10/12
  */
 object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect) {
 
@@ -122,9 +121,9 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
         return shouldApply
     }
 
-    fun createBootstrap(className: String, methodName: String, decryptName: String) =
+    private fun createBootstrap(className: String, methodName: String, decryptName: String) =
         method(
-            Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC + Opcodes.ACC_SYNTHETIC + Opcodes.ACC_BRIDGE,
+            PUBLIC + STATIC + SYNTHETIC + BRIDGE,
             methodName,
             MethodType.methodType(
                 CallSite::class.java,
@@ -135,18 +134,11 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 String::class.java,
                 String::class.java,
                 Integer::class.java
-            ).toMethodDescriptorString(),
-            null,
-            null
+            ).toMethodDescriptorString()
         ) {
-            val labelA = Label()
-            val labelB = Label()
-            val labelC = Label()
-            val labelD = Label()
-            val labelE = Label()
-            TRYCATCH(labelA, labelB, labelC, "java/lang/Exception")
-            TRYCATCH(labelD, labelE, labelC, "java/lang/Exception")
             INSTRUCTIONS {
+                TRYCATCH(L["labelA"], L["labelB"], L["labelC"], "java/lang/Exception")
+                TRYCATCH(L["labelD"], L["labelE"], L["labelC"], "java/lang/Exception")
                 ALOAD(3)
                 CHECKCAST("java/lang/String")
                 ASTORE(7)
@@ -158,54 +150,46 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 ASTORE(9)
                 ALOAD(6)
                 CHECKCAST("java/lang/Integer")
-                INVOKEVIRTUAL("java/lang/Integer", "intValue", "()I", false)
+                INVOKEVIRTUAL("java/lang/Integer", "intValue", "()I")
                 ISTORE(10)
                 ALOAD(9)
-                INVOKESTATIC(className, decryptName, "(Ljava/lang/String;)Ljava/lang/String;", false)
+                INVOKESTATIC(className, decryptName, "(Ljava/lang/String;)Ljava/lang/String;")
                 LDC_TYPE("L$className;")
-                INVOKEVIRTUAL("java/lang/Class", "getClassLoader", "()Ljava/lang/ClassLoader;", false)
+                INVOKEVIRTUAL("java/lang/Class", "getClassLoader", "()Ljava/lang/ClassLoader;")
                 INVOKESTATIC(
                     "java/lang/invoke/MethodType",
                     "fromMethodDescriptorString",
-                    "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;",
-                    false
+                    "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;"
                 )
                 ASTORE(11)
-                LABEL(labelA)
+                LABEL(L["labelA"])
                 ILOAD(10)
                 ICONST_1
-                IF_ICMPNE(labelD)
+                IF_ICMPNE(L["labelD"])
                 NEW("java/lang/invoke/ConstantCallSite")
                 DUP
                 ALOAD(0)
                 ALOAD(7)
-                INVOKESTATIC(className, decryptName, "(Ljava/lang/String;)Ljava/lang/String;", false)
-                INVOKESTATIC("java/lang/Class", "forName", "(Ljava/lang/String;)Ljava/lang/Class;", false)
+                INVOKESTATIC(className, decryptName, "(Ljava/lang/String;)Ljava/lang/String;")
+                INVOKESTATIC("java/lang/Class", "forName", "(Ljava/lang/String;)Ljava/lang/Class;")
                 ALOAD(8)
-                INVOKESTATIC(className, decryptName, "(Ljava/lang/String;)Ljava/lang/String;", false)
+                INVOKESTATIC(className, decryptName, "(Ljava/lang/String;)Ljava/lang/String;")
                 ALOAD(11)
                 INVOKEVIRTUAL(
                     "java/lang/invoke/MethodHandles\$Lookup",
                     "findVirtual",
-                    "(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;",
-                    false
+                    "(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;"
                 )
                 ALOAD(2)
                 INVOKEVIRTUAL(
                     "java/lang/invoke/MethodHandle",
                     "asType",
-                    "(Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;",
-                    false
+                    "(Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;"
                 )
-                INVOKESPECIAL(
-                    "java/lang/invoke/ConstantCallSite",
-                    "<init>",
-                    "(Ljava/lang/invoke/MethodHandle;)V",
-                    false
-                )
-                LABEL(labelB)
+                INVOKESPECIAL("java/lang/invoke/ConstantCallSite", "<init>", "(Ljava/lang/invoke/MethodHandle;)V")
+                LABEL(L["labelB"])
                 ARETURN
-                LABEL(labelD)
+                LABEL(L["labelD"])
                 FRAME(
                     Opcodes.F_FULL, 12, arrayOf(
                         "java/lang/invoke/MethodHandles\$Lookup", "java/lang/String",
@@ -218,33 +202,26 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 DUP
                 ALOAD(0)
                 ALOAD(7)
-                INVOKESTATIC(className, decryptName, "(Ljava/lang/String;)Ljava/lang/String;", false)
-                INVOKESTATIC("java/lang/Class", "forName", "(Ljava/lang/String;)Ljava/lang/Class;", false)
+                INVOKESTATIC(className, decryptName, "(Ljava/lang/String;)Ljava/lang/String;")
+                INVOKESTATIC("java/lang/Class", "forName", "(Ljava/lang/String;)Ljava/lang/Class;")
                 ALOAD(8)
-                INVOKESTATIC(className, decryptName, "(Ljava/lang/String;)Ljava/lang/String;", false)
+                INVOKESTATIC(className, decryptName, "(Ljava/lang/String;)Ljava/lang/String;")
                 ALOAD(11)
                 INVOKEVIRTUAL(
                     "java/lang/invoke/MethodHandles\$Lookup",
                     "findStatic",
-                    "(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;",
-                    false
+                    "(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;"
                 )
                 ALOAD(2)
                 INVOKEVIRTUAL(
                     "java/lang/invoke/MethodHandle",
                     "asType",
-                    "(Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;",
-                    false
+                    "(Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;"
                 )
-                INVOKESPECIAL(
-                    "java/lang/invoke/ConstantCallSite",
-                    "<init>",
-                    "(Ljava/lang/invoke/MethodHandle;)V",
-                    false
-                )
-                LABEL(labelE)
+                INVOKESPECIAL("java/lang/invoke/ConstantCallSite", "<init>", "(Ljava/lang/invoke/MethodHandle;)V")
+                LABEL(L["labelE"])
                 ARETURN
-                LABEL(labelC)
+                LABEL(L["labelC"])
                 FRAME(Opcodes.F_SAME1, 0, null, 1, arrayOf("java/lang/Exception"))
                 ASTORE(12)
                 ACONST_NULL

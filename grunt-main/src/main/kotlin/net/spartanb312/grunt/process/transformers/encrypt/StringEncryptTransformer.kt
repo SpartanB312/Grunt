@@ -1,7 +1,6 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
-import net.spartanb312.genesis.extensions.FRAME
-import net.spartanb312.genesis.extensions.LABEL
+import net.spartanb312.genesis.extensions.*
 import net.spartanb312.genesis.extensions.insn.*
 import net.spartanb312.genesis.method
 import net.spartanb312.grunt.config.setting
@@ -89,11 +88,9 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
     }
 
     fun createDecryptMethod(methodName: String, key: Int): MethodNode = method(
-        Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC + Opcodes.ACC_SYNTHETIC + Opcodes.ACC_BRIDGE,
+        PRIVATE + STATIC + SYNTHETIC + BRIDGE,
         methodName,
-        "(Ljava/lang/String;)Ljava/lang/String;",
-        null,
-        null
+        "(Ljava/lang/String;)Ljava/lang/String;"
     ) {
         INSTRUCTIONS {
             //A:

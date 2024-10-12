@@ -1,5 +1,8 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import net.spartanb312.genesis.extensions.PRIVATE
+import net.spartanb312.genesis.extensions.PUBLIC
+import net.spartanb312.genesis.extensions.STATIC
 import net.spartanb312.genesis.extensions.insn.INVOKESTATIC
 import net.spartanb312.genesis.extensions.insn.INVOKEVIRTUAL
 import net.spartanb312.genesis.method
@@ -24,7 +27,7 @@ import kotlin.random.Random
 
 /**
  * Redirect method calls
- * Last update on 24/07/02
+ * Last update on 24/10/12
  */
 object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redirect) {
 
@@ -135,7 +138,7 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
     ): MethodNode? {
         return when (opcode) {
             Opcodes.INVOKESTATIC -> method(
-                (if (outer) Opcodes.ACC_PUBLIC else Opcodes.ACC_PRIVATE) + Opcodes.ACC_STATIC,
+                (if (outer) PUBLIC else PRIVATE) + STATIC,
                 methodName,
                 desc,
                 signature,
@@ -153,7 +156,7 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
             }
 
             Opcodes.INVOKEVIRTUAL -> method(
-                (if (outer) Opcodes.ACC_PUBLIC else Opcodes.ACC_PRIVATE) + Opcodes.ACC_STATIC,
+                (if (outer) PUBLIC else PRIVATE) + STATIC,
                 methodName,
                 "(L$owner;${desc.removePrefix("(")}",
                 signature,
