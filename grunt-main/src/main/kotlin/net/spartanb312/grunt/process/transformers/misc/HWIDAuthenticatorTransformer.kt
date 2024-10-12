@@ -1,11 +1,8 @@
 package net.spartanb312.grunt.process.transformers.misc
 
-import net.spartanb312.genesis.clazz
-import net.spartanb312.genesis.clinit
+import net.spartanb312.genesis.*
 import net.spartanb312.genesis.extensions.*
 import net.spartanb312.genesis.extensions.insn.*
-import net.spartanb312.genesis.field
-import net.spartanb312.genesis.method
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -68,8 +65,7 @@ object HWIDAuthenticatorTransformer : Transformer("HWIDAuthentication", Category
                     )
                     val clinit = +clinit {
                         INSTRUCTIONS {
-                            val label0 = Label()
-                            LABEL(label0)
+                            LABEL(L["label0"])
                             NEW("java/util/ArrayList")
                             DUP
                             INVOKESPECIAL("java/util/ArrayList", "<init>", "()V")
@@ -80,26 +76,17 @@ object HWIDAuthenticatorTransformer : Transformer("HWIDAuthentication", Category
                                     LDC(it)
                                     INVOKEINTERFACE("java/util/List", "add", "(Ljava/lang/Object;)Z")
                                     POP
-                                    RETURN
                                 }
+                                RETURN
                             } else {
-                                val label1 = Label()
-                                val label2 = Label()
-                                val label4 = Label()
-                                val label5 = Label()
-                                val label6 = Label()
-                                val label7 = Label()
-                                val label8 = Label()
-                                val label9 = Label()
-                                val label10 = Label()
-                                TRYCATCH(label0, label1, label2, "java/lang/Exception")
-                                LABEL(label4)
+                                TRYCATCH(L["label0"], L["label1"], L["label2"], "java/lang/Exception")
+                                LABEL(L["label4"])
                                 NEW("java/net/URL")
                                 DUP
                                 LDC(onlineURL)
                                 INVOKESPECIAL("java/net/URL", "<init>", "(Ljava/lang/String;)V")
                                 ASTORE(0)
-                                LABEL(label5)
+                                LABEL(L["label5"])
                                 NEW("java/io/BufferedReader")
                                 DUP
                                 NEW("java/io/InputStreamReader")
@@ -109,34 +96,34 @@ object HWIDAuthenticatorTransformer : Transformer("HWIDAuthentication", Category
                                 INVOKESPECIAL("java/io/InputStreamReader", "<init>", "(Ljava/io/InputStream;)V")
                                 INVOKESPECIAL("java/io/BufferedReader", "<init>", "(Ljava/io/Reader;)V")
                                 ASTORE(1)
-                                LABEL(label6)
+                                LABEL(L["label6"])
                                 FRAME(Opcodes.F_APPEND, 2, arrayOf("java/net/URL", "java/io/BufferedReader"), 0, null)
                                 ALOAD(1)
                                 INVOKEVIRTUAL("java/io/BufferedReader", "readLine", "()Ljava/lang/String;")
                                 DUP
                                 ASTORE(2)
-                                LABEL(label7)
-                                IFNULL(label1)
-                                LABEL(label8)
+                                LABEL(L["label7"])
+                                IFNULL(L["label1"])
+                                LABEL(L["label8"])
                                 GETSTATIC(classNode, constField)
                                 ALOAD(2)
                                 INVOKEINTERFACE("java/util/List", "add", "(Ljava/lang/Object;)Z")
                                 POP
-                                GOTO(label6)
-                                LABEL(label1)
+                                GOTO(L["label6"])
+                                LABEL(L["label1"])
                                 FRAME(Opcodes.F_CHOP, 2, null, 0, null)
-                                GOTO(label9)
-                                LABEL(label2)
+                                GOTO(L["label9"])
+                                LABEL(L["label2"])
                                 FRAME(Opcodes.F_SAME1, 0, null, 1, arrayOf("java/lang/Exception"))
                                 ASTORE(0)
-                                LABEL(label10)
-                                LABEL(label9)
+                                LABEL(L["label10"])
+                                LABEL(L["label9"])
                                 FRAME(Opcodes.F_SAME, 0, null, 0, null)
                                 RETURN
-                                LOCALVAR("url", "Ljava/net/URL;", null, label5, label1, 0)
-                                LOCALVAR("in", "Ljava/io/BufferedReader;", null, label6, label1, 1)
-                                LOCALVAR("inputLine", "Ljava/lang/String;", null, label7, label1, 2)
-                                LOCALVAR("ignored", "Ljava/lang/Exception;", null, label10, label9, 0)
+                                LOCALVAR("url", "Ljava/net/URL;", null, L["label5"], L["label1"], 0)
+                                LOCALVAR("in", "Ljava/io/BufferedReader;", null, L["label6"], L["label1"], 1)
+                                LOCALVAR("inputLine", "Ljava/lang/String;", null, L["label7"], L["label1"], 2)
+                                LOCALVAR("ignored", "Ljava/lang/Exception;", null, L["label10"], L["label9"], 0)
                             }
                         }
                         MAXS(5, 3)
@@ -202,599 +189,330 @@ object HWIDAuthenticatorTransformer : Transformer("HWIDAuthentication", Category
         fieldOwner: String,
         fieldName: String,
         frameUtil: String
-    ): MethodNode {
-        return MethodNode(
-            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
-            name,
-            "()V",
-            null,
-            null
-        ).apply {
-            val label0 = Label()
-            val label1 = Label()
-            val label2 = Label()
-            visitTryCatchBlock(label0, label1, label2, "java/lang/Exception")
-            val label3 = Label()
-            val label4 = Label()
-            val label5 = Label()
-            visitTryCatchBlock(label3, label4, label5, "java/lang/Exception")
-            visitLabel(label0)
-            visitLdcInsn(Type.getType("Lsun/misc/Unsafe;"))
-            visitVarInsn(Opcodes.ASTORE, 1)
-            val label6 = Label()
-            visitLabel(label6)
-            visitVarInsn(Opcodes.ALOAD, 1)
-            visitLdcInsn("theUnsafe")
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                "java/lang/Class",
-                "getDeclaredField",
-                "(Ljava/lang/String;)Ljava/lang/reflect/Field;",
-                false
-            )
-            visitVarInsn(Opcodes.ASTORE, 2)
-            val label7 = Label()
-            visitLabel(label7)
-            visitVarInsn(Opcodes.ALOAD, 2)
-            visitInsn(Opcodes.ICONST_1)
-            visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/reflect/Field", "setAccessible", "(Z)V", false)
-            val label8 = Label()
-            visitLabel(label8)
-            visitVarInsn(Opcodes.ALOAD, 2)
-            visitInsn(Opcodes.ACONST_NULL)
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                "java/lang/reflect/Field",
-                "get",
-                "(Ljava/lang/Object;)Ljava/lang/Object;",
-                false
-            )
-            visitTypeInsn(Opcodes.CHECKCAST, "sun/misc/Unsafe")
-            visitVarInsn(Opcodes.ASTORE, 0)
-            visitLabel(label1)
-            visitJumpInsn(Opcodes.GOTO, label3)
-            visitLabel(label2)
-            visitFrame(Opcodes.F_SAME1, 0, null, 1, arrayOf<Any>("java/lang/Exception"))
-            visitVarInsn(Opcodes.ASTORE, 1)
-            val label9 = Label()
-            visitLabel(label9)
-            visitTypeInsn(Opcodes.NEW, "java/lang/Error")
-            visitInsn(Opcodes.DUP)
-            visitLdcInsn("Can't reach Unsafe")
-            visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Error", "<init>", "(Ljava/lang/String;)V", false)
-            visitInsn(Opcodes.ATHROW)
-            visitLabel(label3)
-            visitFrame(Opcodes.F_APPEND, 1, arrayOf<Any>("sun/misc/Unsafe"), 0, null)
-            visitLdcInsn("PROCESS_IDENTIFIER")
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "java/lang/System",
-                "getenv",
-                "(Ljava/lang/String;)Ljava/lang/String;",
-                false
-            )
-            visitLdcInsn("PROCESSOR_LEVEL")
-            val label10 = Label()
-            visitLabel(label10)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "java/lang/System",
-                "getenv",
-                "(Ljava/lang/String;)Ljava/lang/String;",
-                false
-            )
-            visitLdcInsn("PROCESSOR_REVISION")
-            val label11 = Label()
-            visitLabel(label11)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "java/lang/System",
-                "getenv",
-                "(Ljava/lang/String;)Ljava/lang/String;",
-                false
-            )
-            visitLdcInsn("PROCESSOR_ARCHITECTURE")
-            val label12 = Label()
-            visitLabel(label12)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "java/lang/System",
-                "getenv",
-                "(Ljava/lang/String;)Ljava/lang/String;",
-                false
-            )
-            visitLdcInsn("PROCESSOR_ARCHITEW6432")
-            val label13 = Label()
-            visitLabel(label13)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "java/lang/System",
-                "getenv",
-                "(Ljava/lang/String;)Ljava/lang/String;",
-                false
-            )
-            visitLdcInsn("NUMBER_OF_PROCESSORS")
-            val label14 = Label()
-            visitLabel(label14)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "java/lang/System",
-                "getenv",
-                "(Ljava/lang/String;)Ljava/lang/String;",
-                false
-            )
-            visitLdcInsn("COMPUTERNAME")
-            val label15 = Label()
-            visitLabel(label15)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "java/lang/System",
-                "getenv",
-                "(Ljava/lang/String;)Ljava/lang/String;",
-                false
-            )
-            visitInvokeDynamicInsn(
+    ): MethodNode = method(
+        PUBLIC + STATIC,
+        name,
+        "()V"
+    ) {
+        INSTRUCTIONS {
+            TRYCATCH(L["label0"], L["label1"], L["label2"], "java/lang/Exception")
+            TRYCATCH(L["label3"], L["label4"], L["label5"], "java/lang/Exception")
+            LABEL(L["label0"])
+            LDC(Type.getType("Lsun/misc/Unsafe;"))
+            ASTORE(1)
+            LABEL(L["label6"])
+            ALOAD(1)
+            LDC("theUnsafe")
+            INVOKEVIRTUAL("java/lang/Class", "getDeclaredField", "(Ljava/lang/String;)Ljava/lang/reflect/Field;")
+            ASTORE(2)
+            LABEL(L["label7"])
+            ALOAD(2)
+            ICONST_1
+            INVOKEVIRTUAL("java/lang/reflect/Field", "setAccessible", "(Z)V")
+            LABEL(L["label8"])
+            ALOAD(2)
+            ACONST_NULL
+            INVOKEVIRTUAL("java/lang/reflect/Field", "get", "(Ljava/lang/Object;)Ljava/lang/Object;")
+            CHECKCAST("sun/misc/Unsafe")
+            ASTORE(0)
+            LABEL(L["label1"])
+            GOTO(L["label3"])
+            LABEL(L["label2"])
+            FRAME(Opcodes.F_SAME1, 0, null, 1, arrayOf("java/lang/Exception"))
+            ASTORE(1)
+            LABEL(L["label9"])
+            NEW("java/lang/Error")
+            DUP
+            LDC("Can't reach Unsafe")
+            INVOKESPECIAL("java/lang/Error", "<init>", "(Ljava/lang/String;)V")
+            ATHROW
+            LABEL(L["label3"])
+            FRAME(Opcodes.F_APPEND, 1, arrayOf("sun/misc/Unsafe"), 0, null)
+            LDC("PROCESS_IDENTIFIER")
+            INVOKESTATIC("java/lang/System", "getenv", "(Ljava/lang/String;)Ljava/lang/String;")
+            LDC("PROCESSOR_LEVEL")
+            LABEL(L["label10"])
+            INVOKESTATIC("java/lang/System", "getenv", "(Ljava/lang/String;)Ljava/lang/String;")
+            LDC("PROCESSOR_REVISION")
+            LABEL(L["label11"])
+            INVOKESTATIC("java/lang/System", "getenv", "(Ljava/lang/String;)Ljava/lang/String;")
+            LDC("PROCESSOR_ARCHITECTURE")
+            LABEL(L["label12"])
+            INVOKESTATIC("java/lang/System", "getenv", "(Ljava/lang/String;)Ljava/lang/String;")
+            LDC("PROCESSOR_ARCHITEW6432")
+            LABEL(L["label13"])
+            INVOKESTATIC("java/lang/System", "getenv", "(Ljava/lang/String;)Ljava/lang/String;")
+            LDC("NUMBER_OF_PROCESSORS")
+            LABEL(L["label14"])
+            INVOKESTATIC("java/lang/System", "getenv", "(Ljava/lang/String;)Ljava/lang/String;")
+            LDC("COMPUTERNAME")
+            LABEL(L["label15"])
+            INVOKESTATIC("java/lang/System", "getenv", "(Ljava/lang/String;)Ljava/lang/String;")
+            INVOKEDYNAMIC(
                 "makeConcatWithConstants",
                 "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
-                Handle(
-                    Opcodes.H_INVOKESTATIC,
+                H_INVOKESTATIC(
                     "java/lang/invoke/StringConcatFactory",
                     "makeConcatWithConstants",
-                    "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;",
-                    false
+                    "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;"
                 ),
                 "\u0001\u0001\u0001\u0001\u0001\u0001\u0001"
             )
-            visitVarInsn(Opcodes.ASTORE, 2)
-            val label16 = Label()
-            visitLabel(label16)
-            visitLdcInsn("AES")
-            visitVarInsn(Opcodes.ASTORE, 3)
-            val label17 = Label()
-            visitLabel(label17)
-            visitLdcInsn(key)
-            visitVarInsn(Opcodes.ASTORE, 4)
-            val label18 = Label()
-            visitLabel(label18)
-            visitVarInsn(Opcodes.ALOAD, 3)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "javax/crypto/Cipher",
-                "getInstance",
-                "(Ljava/lang/String;)Ljavax/crypto/Cipher;",
-                false
-            )
-            visitVarInsn(Opcodes.ASTORE, 5)
-            val label19 = Label()
-            visitLabel(label19)
-            visitTypeInsn(Opcodes.NEW, "javax/crypto/spec/SecretKeySpec")
-            visitInsn(Opcodes.DUP)
-            visitVarInsn(Opcodes.ALOAD, 4)
-            visitFieldInsn(
-                Opcodes.GETSTATIC,
-                "java/nio/charset/StandardCharsets",
-                "UTF_8",
-                "Ljava/nio/charset/Charset;"
-            )
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                "java/lang/String",
-                "getBytes",
-                "(Ljava/nio/charset/Charset;)[B",
-                false
-            )
-            visitVarInsn(Opcodes.ALOAD, 3)
-            visitMethodInsn(
-                Opcodes.INVOKESPECIAL,
-                "javax/crypto/spec/SecretKeySpec",
-                "<init>",
-                "([BLjava/lang/String;)V",
-                false
-            )
-            visitVarInsn(Opcodes.ASTORE, 6)
-            val label20 = Label()
-            visitLabel(label20)
-            visitVarInsn(Opcodes.ALOAD, 5)
-            visitInsn(Opcodes.ICONST_1)
-            visitVarInsn(Opcodes.ALOAD, 6)
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                "javax/crypto/Cipher",
-                "init",
-                "(ILjava/security/Key;)V",
-                false
-            )
-            val label21 = Label()
-            visitLabel(label21)
-            visitVarInsn(Opcodes.ALOAD, 5)
-            visitVarInsn(Opcodes.ALOAD, 2)
-            visitFieldInsn(
-                Opcodes.GETSTATIC,
-                "java/nio/charset/StandardCharsets",
-                "UTF_8",
-                "Ljava/nio/charset/Charset;"
-            )
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                "java/lang/String",
-                "getBytes",
-                "(Ljava/nio/charset/Charset;)[B",
-                false
-            )
-            visitMethodInsn(Opcodes.INVOKEVIRTUAL, "javax/crypto/Cipher", "doFinal", "([B)[B", false)
-            visitVarInsn(Opcodes.ASTORE, 7)
-            val label22 = Label()
-            visitLabel(label22)
-            visitTypeInsn(Opcodes.NEW, "java/lang/String")
-            visitInsn(Opcodes.DUP)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "java/util/Base64",
-                "getEncoder",
-                "()Ljava/util/Base64\$Encoder;",
-                false
-            )
-            visitVarInsn(Opcodes.ALOAD, 7)
-            visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/util/Base64\$Encoder", "encode", "([B)[B", false)
-            visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/String", "<init>", "([B)V", false)
-            visitLdcInsn("/")
-            visitLdcInsn("s")
-            val label23 = Label()
-            visitLabel(label23)
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
+            ASTORE(2)
+            LABEL(L["label16"])
+            LDC("AES")
+            ASTORE(3)
+            LABEL(L["label17"])
+            LDC(key)
+            ASTORE(4)
+            LABEL(L["label18"])
+            ALOAD(3)
+            INVOKESTATIC("javax/crypto/Cipher", "getInstance", "(Ljava/lang/String;)Ljavax/crypto/Cipher;")
+            ASTORE(5)
+            LABEL(L["label19"])
+            NEW("javax/crypto/spec/SecretKeySpec")
+            DUP
+            ALOAD(4)
+            GETSTATIC("java/nio/charset/StandardCharsets", "UTF_8", "Ljava/nio/charset/Charset;")
+            INVOKEVIRTUAL("java/lang/String", "getBytes", "(Ljava/nio/charset/Charset;)[B")
+            ALOAD(3)
+            INVOKESPECIAL("javax/crypto/spec/SecretKeySpec", "<init>", "([BLjava/lang/String;)V")
+            ASTORE(6)
+            LABEL(L["label20"])
+            ALOAD(5)
+            ICONST_1
+            ALOAD(6)
+            INVOKEVIRTUAL("javax/crypto/Cipher", "init", "(ILjava/security/Key;)V")
+            LABEL(L["label21"])
+            ALOAD(5)
+            ALOAD(2)
+            GETSTATIC("java/nio/charset/StandardCharsets", "UTF_8", "Ljava/nio/charset/Charset;")
+            INVOKEVIRTUAL("java/lang/String", "getBytes", "(Ljava/nio/charset/Charset;)[B")
+            INVOKEVIRTUAL("javax/crypto/Cipher", "doFinal", "([B)[B")
+            ASTORE(7)
+            LABEL(L["label22"])
+            NEW("java/lang/String")
+            DUP
+            INVOKESTATIC("java/util/Base64", "getEncoder", "()Ljava/util/Base64\$Encoder;")
+            ALOAD(7)
+            INVOKEVIRTUAL("java/util/Base64\$Encoder", "encode", "([B)[B")
+            INVOKESPECIAL("java/lang/String", "<init>", "([B)V")
+            LDC("/")
+            LDC("s")
+            LABEL(L["label23"])
+            INVOKEVIRTUAL(
                 "java/lang/String",
                 "replace",
-                "(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Ljava/lang/String;",
-                false
+                "(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Ljava/lang/String;"
             )
-            visitLdcInsn("=")
-            visitLdcInsn("e")
-            val label24 = Label()
-            visitLabel(label24)
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
+            LDC("=")
+            LDC("e")
+            LABEL(L["label24"])
+            INVOKEVIRTUAL(
                 "java/lang/String",
                 "replace",
-                "(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Ljava/lang/String;",
-                false
+                "(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Ljava/lang/String;"
             )
-            visitLdcInsn("+")
-            visitLdcInsn("p")
-            val label25 = Label()
-            visitLabel(label25)
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
+            LDC("+")
+            LDC("p")
+            LABEL(L["label25"])
+            INVOKEVIRTUAL(
                 "java/lang/String",
                 "replace",
-                "(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Ljava/lang/String;",
-                false
+                "(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Ljava/lang/String;"
             )
-            visitVarInsn(Opcodes.ASTORE, 1)
-            visitLabel(label4)
-            val label26 = Label()
-            visitJumpInsn(Opcodes.GOTO, label26)
-            visitLabel(label5)
-            visitFrame(Opcodes.F_SAME1, 0, null, 1, arrayOf<Any>("java/lang/Exception"))
-            visitVarInsn(Opcodes.ASTORE, 2)
-            val label27 = Label()
-            visitLabel(label27)
-            visitLdcInsn("Unknown HWID")
-            visitVarInsn(Opcodes.ASTORE, 1)
-            val label28 = Label()
-            visitLabel(label28)
-
+            ASTORE(1)
+            LABEL(L["label4"])
+            GOTO(L["label26"])
+            LABEL(L["label5"])
+            FRAME(Opcodes.F_SAME1, 0, null, 1, arrayOf("java/lang/Exception"))
+            ASTORE(2)
+            LABEL(L["label27"])
+            LDC("Unknown HWID")
+            ASTORE(1)
+            LABEL(L["label28"])
             if (showHWIDWhenFailed) {
-                visitTypeInsn(Opcodes.NEW, frameUtil)
-                visitInsn(Opcodes.DUP)
-                visitVarInsn(Opcodes.ALOAD, 1)
-                visitMethodInsn(
-                    Opcodes.INVOKESPECIAL,
-                    frameUtil,
-                    "<init>",
-                    "(Ljava/lang/String;)V",
-                    false
-                )
-                visitInsn(Opcodes.ICONST_0)
-                visitMethodInsn(
-                    Opcodes.INVOKEVIRTUAL,
-                    frameUtil,
-                    "setVisible",
-                    "(Z)V",
-                    false
-                )
+                NEW(frameUtil)
+                DUP
+                ALOAD(1)
+                INVOKESPECIAL(frameUtil, "<init>", "(Ljava/lang/String;)V")
+                ICONST_0
+                INVOKEVIRTUAL(frameUtil, "setVisible", "(Z)V")
             }
-
-            visitVarInsn(Opcodes.ALOAD, 0)
-            visitInsn(Opcodes.LCONST_0)
-            visitInsn(Opcodes.LCONST_0)
-            visitMethodInsn(Opcodes.INVOKEVIRTUAL, "sun/misc/Unsafe", "putAddress", "(JJ)V", false)
-            visitLabel(label26)
-
-            visitFrame(Opcodes.F_APPEND, 1, arrayOf<Any>("java/lang/String"), 0, null)
-            visitFieldInsn(
-                Opcodes.GETSTATIC,
-                fieldOwner,
-                fieldName,
-                "Ljava/util/List;"
-            )
-            visitVarInsn(Opcodes.ALOAD, 1)
-            visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List", "contains", "(Ljava/lang/Object;)Z", true)
-            val label29 = Label()
-            visitJumpInsn(Opcodes.IFEQ, label29)
-            visitInsn(Opcodes.ICONST_1)
-            val label30 = Label()
-            visitJumpInsn(Opcodes.GOTO, label30)
-            visitLabel(label29)
-            visitFrame(Opcodes.F_SAME, 0, null, 0, null)
-            visitInsn(Opcodes.ICONST_0)
-            visitLabel(label30)
-            visitFrame(Opcodes.F_SAME1, 0, null, 1, arrayOf<Any>(Opcodes.INTEGER))
-            visitVarInsn(Opcodes.ISTORE, 2)
-            val label31 = Label()
-            visitLabel(label31)
-            visitVarInsn(Opcodes.ILOAD, 2)
-            visitInsn(Opcodes.ICONST_1)
-            visitInsn(Opcodes.IADD)
-            visitInsn(Opcodes.ICONST_2)
-            val label32 = Label()
-            visitJumpInsn(Opcodes.IF_ICMPGE, label32)
-            val label33 = Label()
-            visitLabel(label33)
-
+            ALOAD(0)
+            LCONST_0
+            LCONST_0
+            INVOKEVIRTUAL("sun/misc/Unsafe", "putAddress", "(JJ)V")
+            LABEL(L["label26"])
+            FRAME(Opcodes.F_APPEND, 1, arrayOf("java/lang/String"), 0, null)
+            GETSTATIC(fieldOwner, fieldName, "Ljava/util/List;")
+            ALOAD(1)
+            INVOKEINTERFACE("java/util/List", "contains", "(Ljava/lang/Object;)Z")
+            IFEQ(L["label29"])
+            ICONST_1
+            GOTO(L["label30"])
+            LABEL(L["label29"])
+            FRAME(Opcodes.F_SAME, 0, null, 0, null)
+            ICONST_0
+            LABEL(L["label30"])
+            FRAME(Opcodes.F_SAME1, 0, null, 1, arrayOf(Opcodes.INTEGER))
+            ISTORE(2)
+            LABEL(L["label31"])
+            ILOAD(2)
+            ICONST_1
+            IADD
+            ICONST_2
+            IF_ICMPGE(L["label32"])
+            LABEL(L["label33"])
             if (showHWIDWhenFailed) {
-                visitTypeInsn(Opcodes.NEW, frameUtil)
-                visitInsn(Opcodes.DUP)
-                visitVarInsn(Opcodes.ALOAD, 1)
-                visitMethodInsn(
-                    Opcodes.INVOKESPECIAL,
-                    frameUtil,
-                    "<init>",
-                    "(Ljava/lang/String;)V",
-                    false
-                )
-                visitInsn(Opcodes.ICONST_0)
-                visitMethodInsn(
-                    Opcodes.INVOKEVIRTUAL,
-                    frameUtil,
-                    "setVisible",
-                    "(Z)V",
-                    false
-                )
+                NEW(frameUtil)
+                DUP
+                ALOAD(1)
+                INVOKESPECIAL(frameUtil, "<init>", "(Ljava/lang/String;)V")
+                ICONST_0
+                INVOKEVIRTUAL(frameUtil, "setVisible", "(Z)V")
             }
-
-            visitVarInsn(Opcodes.ALOAD, 0)
-            visitInsn(Opcodes.LCONST_0)
-            visitInsn(Opcodes.LCONST_0)
-            visitMethodInsn(Opcodes.INVOKEVIRTUAL, "sun/misc/Unsafe", "putAddress", "(JJ)V", false)
-
-            visitLabel(label32)
-            visitFrame(Opcodes.F_APPEND, 1, arrayOf<Any>(Opcodes.INTEGER), 0, null)
-            visitInsn(Opcodes.RETURN)
-            val label34 = Label()
-            visitLabel(label34)
-            visitLocalVariable(
+            ALOAD(0)
+            LCONST_0
+            LCONST_0
+            INVOKEVIRTUAL("sun/misc/Unsafe", "putAddress", "(JJ)V")
+            LABEL(L["label32"])
+            FRAME(Opcodes.F_APPEND, 1, arrayOf(Opcodes.INTEGER), 0, null)
+            RETURN
+            LABEL(L["label34"])
+            LOCALVAR(
                 "unsafeClass",
                 "Ljava/lang/Class;",
                 "Ljava/lang/Class<Lsun/misc/Unsafe;>;",
-                label6,
-                label1,
+                L["label6"],
+                L["label1"],
                 1
             )
-            visitLocalVariable("unsafeField", "Ljava/lang/reflect/Field;", null, label7, label1, 2)
-            visitLocalVariable("theUnsafe", "Lsun/misc/Unsafe;", null, label1, label2, 0)
-            visitLocalVariable("ignored", "Ljava/lang/Exception;", null, label9, label3, 1)
-            visitLocalVariable("raw", "Ljava/lang/String;", null, label16, label4, 2)
-            visitLocalVariable("aes", "Ljava/lang/String;", null, label17, label4, 3)
-            visitLocalVariable("key", "Ljava/lang/String;", null, label18, label4, 4)
-            visitLocalVariable("cipher", "Ljavax/crypto/Cipher;", null, label19, label4, 5)
-            visitLocalVariable(
-                "secretKeySpec",
-                "Ljavax/crypto/spec/SecretKeySpec;",
-                null,
-                label20,
-                label4,
-                6
-            )
-            visitLocalVariable("result", "[B", null, label22, label4, 7)
-            visitLocalVariable("hardwareID", "Ljava/lang/String;", null, label4, label5, 1)
-            visitLocalVariable("ignored", "Ljava/lang/Exception;", null, label27, label26, 2)
-            visitLocalVariable("theUnsafe", "Lsun/misc/Unsafe;", null, label3, label34, 0)
-            visitLocalVariable("hardwareID", "Ljava/lang/String;", null, label28, label34, 1)
-            visitLocalVariable("flag", "I", null, label31, label34, 2)
-            visitMaxs(7, 8)
+            LOCALVAR("unsafeField", "Ljava/lang/reflect/Field;", null, L["label7"], L["label1"], 2)
+            LOCALVAR("theUnsafe", "Lsun/misc/Unsafe;", null, L["label1"], L["label2"], 0)
+            LOCALVAR("ignored", "Ljava/lang/Exception;", null, L["label9"], L["label3"], 1)
+            LOCALVAR("raw", "Ljava/lang/String;", null, L["label16"], L["label4"], 2)
+            LOCALVAR("aes", "Ljava/lang/String;", null, L["label17"], L["label4"], 3)
+            LOCALVAR("key", "Ljava/lang/String;", null, L["label18"], L["label4"], 4)
+            LOCALVAR("cipher", "Ljavax/crypto/Cipher;", null, L["label19"], L["label4"], 5)
+            LOCALVAR("secretKeySpec", "Ljavax/crypto/spec/SecretKeySpec;", null, L["label20"], L["label4"], 6)
+            LOCALVAR("result", "[B", null, L["label22"], L["label4"], 7)
+            LOCALVAR("hardwareID", "Ljava/lang/String;", null, L["label4"], L["label5"], 1)
+            LOCALVAR("ignored", "Ljava/lang/Exception;", null, L["label27"], L["label26"], 2)
+            LOCALVAR("theUnsafe", "Lsun/misc/Unsafe;", null, L["label3"], L["label34"], 0)
+            LOCALVAR("hardwareID", "Ljava/lang/String;", null, L["label28"], L["label34"], 1)
+            LOCALVAR("flag", "I", null, L["label31"], L["label34"], 2)
         }
+        MAXS(7, 8)
     }
 
-    private fun createFrameUtil(name: String): ClassNode {
-        val classNode = ClassNode()
-        classNode.visit(
-            Opcodes.V1_8,
-            Opcodes.ACC_PUBLIC or Opcodes.ACC_SUPER,
-            name,
-            null,
-            "javax/swing/JFrame",
-            null
-        )
-        val init = MethodNode(
-            Opcodes.ACC_PUBLIC,
+    private fun createFrameUtil(name: String): ClassNode = clazz(
+        PUBLIC + SUPER,
+        name,
+        "javax/swing/JFrame",
+        null,
+        null
+    ) {
+        +method(
+            PUBLIC,
             "<init>",
-            "(Ljava/lang/String;)V",
-            null,
-            null
-        ).apply {
-            val label0 = Label()
-            visitLabel(label0)
-            visitVarInsn(Opcodes.ALOAD, 0)
-            visitMethodInsn(Opcodes.INVOKESPECIAL, "javax/swing/JFrame", "<init>", "()V", false)
-            val label1 = Label()
-            visitLabel(label1)
-            visitVarInsn(Opcodes.ALOAD, 0)
-            visitLdcInsn("Authentication failed")
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                name,
-                "setTitle",
-                "(Ljava/lang/String;)V",
-                false
-            )
-            val label2 = Label()
-            visitLabel(label2)
-            visitVarInsn(Opcodes.ALOAD, 0)
-            visitInsn(Opcodes.ICONST_2)
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                name,
-                "setDefaultCloseOperation",
-                "(I)V",
-                false
-            )
-            val label3 = Label()
-            visitLabel(label3)
-            visitVarInsn(Opcodes.ALOAD, 0)
-            visitInsn(Opcodes.ACONST_NULL)
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                name,
-                "setLocationRelativeTo",
-                "(Ljava/awt/Component;)V",
-                false
-            )
-            val label4 = Label()
-            visitLabel(label4)
-            visitVarInsn(Opcodes.ALOAD, 1)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                name,
-                "copyToClipboard",
-                "(Ljava/lang/String;)V",
-                false
-            )
-            val label5 = Label()
-            visitLabel(label5)
-            visitVarInsn(Opcodes.ALOAD, 1)
-            visitInvokeDynamicInsn(
-                "makeConcatWithConstants", "(Ljava/lang/String;)Ljava/lang/String;", Handle(
-                    Opcodes.H_INVOKESTATIC,
-                    "java/lang/invoke/StringConcatFactory",
-                    "makeConcatWithConstants",
-                    "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;",
-                    false
-                ),
-                "You are not allowed to use this application\nHWID: \u0001\n(Copied to clipboard)"
-            )
-            visitVarInsn(Opcodes.ASTORE, 2)
-            val label6 = Label()
-            visitLabel(label6)
-            visitVarInsn(Opcodes.ALOAD, 0)
-            visitVarInsn(Opcodes.ALOAD, 2)
-            visitLdcInsn("Authentication failed")
-            visitInsn(Opcodes.ICONST_M1)
-            visitLdcInsn("OptionPane.warningIcon")
-            val label7 = Label()
-            visitLabel(label7)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "javax/swing/UIManager",
-                "getIcon",
-                "(Ljava/lang/Object;)Ljavax/swing/Icon;",
-                false
-            )
-            val label8 = Label()
-            visitLabel(label8)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "javax/swing/JOptionPane",
-                "showMessageDialog",
-                "(Ljava/awt/Component;Ljava/lang/Object;Ljava/lang/String;ILjavax/swing/Icon;)V",
-                false
-            )
-            val label9 = Label()
-            visitLabel(label9)
-            visitInsn(Opcodes.RETURN)
-            val label10 = Label()
-            visitLabel(label10)
-            visitLocalVariable(
-                "this",
-                "L$name;",
-                null,
-                label0,
-                label10,
-                0
-            )
-            visitLocalVariable("hwid", "Ljava/lang/String;", null, label0, label10, 1)
-            visitLocalVariable("message", "Ljava/lang/String;", null, label6, label10, 2)
-            visitMaxs(5, 3)
+            "(Ljava/lang/String;)V"
+        ) {
+            INSTRUCTIONS {
+                LABEL(L["label0"])
+                ALOAD(0)
+                INVOKESPECIAL("javax/swing/JFrame", "<init>", "()V")
+                LABEL(L["label1"])
+                ALOAD(0)
+                LDC("Authentication failed")
+                INVOKEVIRTUAL(name, "setTitle", "(Ljava/lang/String;)V")
+                LABEL(L["label2"])
+                ALOAD(0)
+                ICONST_2
+                INVOKEVIRTUAL(name, "setDefaultCloseOperation", "(I)V")
+                LABEL(L["label3"])
+                ALOAD(0)
+                ACONST_NULL
+                INVOKEVIRTUAL(name, "setLocationRelativeTo", "(Ljava/awt/Component;)V")
+                LABEL(L["label4"])
+                ALOAD(1)
+                INVOKESTATIC(name, "copyToClipboard", "(Ljava/lang/String;)V")
+                LABEL(L["label5"])
+                ALOAD(1)
+                INVOKEDYNAMIC(
+                    "makeConcatWithConstants", "(Ljava/lang/String;)Ljava/lang/String;",
+                    H_INVOKESTATIC(
+                        "java/lang/invoke/StringConcatFactory",
+                        "makeConcatWithConstants",
+                        "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;"
+                    ),
+                    "You are not allowed to use this application\nHWID: \u0001\n(Copied to clipboard)"
+                )
+                ASTORE(2)
+                LABEL(L["label6"])
+                ALOAD(0)
+                ALOAD(2)
+                LDC("Authentication failed")
+                ICONST_M1
+                LDC("OptionPane.warningIcon")
+                LABEL(L["label7"])
+                INVOKESTATIC("javax/swing/UIManager", "getIcon", "(Ljava/lang/Object;)Ljavax/swing/Icon;")
+                LABEL(L["label8"])
+                INVOKESTATIC(
+                    "javax/swing/JOptionPane",
+                    "showMessageDialog",
+                    "(Ljava/awt/Component;Ljava/lang/Object;Ljava/lang/String;ILjavax/swing/Icon;)V"
+                )
+                LABEL(L["label9"])
+                RETURN
+                LABEL(L["label10"])
+                LOCALVAR("this", "L$name;", null, L["label0"], L["label10"], 0)
+                LOCALVAR("hwid", "Ljava/lang/String;", null, L["label0"], L["label10"], 1)
+                LOCALVAR("message", "Ljava/lang/String;", null, L["label6"], L["label10"], 2)
+            }
+            MAXS(5, 3)
         }
-        val copy = MethodNode(
-            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+        +method(
+            PUBLIC + STATIC,
             "copyToClipboard",
-            "(Ljava/lang/String;)V",
-            null,
-            null
-        ).apply {
-            val label0 = Label()
-            visitLabel(label0)
-            visitTypeInsn(Opcodes.NEW, "java/awt/datatransfer/StringSelection")
-            visitInsn(Opcodes.DUP)
-            visitVarInsn(Opcodes.ALOAD, 0)
-            visitMethodInsn(
-                Opcodes.INVOKESPECIAL,
-                "java/awt/datatransfer/StringSelection",
-                "<init>",
-                "(Ljava/lang/String;)V",
-                false
-            )
-            visitVarInsn(Opcodes.ASTORE, 1)
-            val label1 = Label()
-            visitLabel(label1)
-            visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                "java/awt/Toolkit",
-                "getDefaultToolkit",
-                "()Ljava/awt/Toolkit;",
-                false
-            )
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                "java/awt/Toolkit",
-                "getSystemClipboard",
-                "()Ljava/awt/datatransfer/Clipboard;",
-                false
-            )
-            visitVarInsn(Opcodes.ASTORE, 2)
-            val label2 = Label()
-            visitLabel(label2)
-            visitVarInsn(Opcodes.ALOAD, 2)
-            visitVarInsn(Opcodes.ALOAD, 1)
-            visitVarInsn(Opcodes.ALOAD, 1)
-            visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                "java/awt/datatransfer/Clipboard",
-                "setContents",
-                "(Ljava/awt/datatransfer/Transferable;Ljava/awt/datatransfer/ClipboardOwner;)V",
-                false
-            )
-            val label3 = Label()
-            visitLabel(label3)
-            visitInsn(Opcodes.RETURN)
-            val label4 = Label()
-            visitLabel(label4)
-            visitLocalVariable("s", "Ljava/lang/String;", null, label0, label4, 0)
-            visitLocalVariable(
-                "selection",
-                "Ljava/awt/datatransfer/StringSelection;",
-                null,
-                label1,
-                label4,
-                1
-            )
-            visitLocalVariable("clipboard", "Ljava/awt/datatransfer/Clipboard;", null, label2, label4, 2)
-            visitMaxs(3, 3)
+            "(Ljava/lang/String;)V"
+        ) {
+            INSTRUCTIONS {
+                LABEL(L["label0"])
+                NEW("java/awt/datatransfer/StringSelection")
+                DUP
+                ALOAD(0)
+                INVOKESPECIAL("java/awt/datatransfer/StringSelection", "<init>", "(Ljava/lang/String;)V")
+                ASTORE(1)
+                LABEL(L["label1"])
+                INVOKESTATIC("java/awt/Toolkit", "getDefaultToolkit", "()Ljava/awt/Toolkit;")
+                INVOKEVIRTUAL("java/awt/Toolkit", "getSystemClipboard", "()Ljava/awt/datatransfer/Clipboard;")
+                ASTORE(2)
+                LABEL(L["label2"])
+                ALOAD(2)
+                ALOAD(1)
+                ALOAD(1)
+                INVOKEVIRTUAL(
+                    "java/awt/datatransfer/Clipboard",
+                    "setContents",
+                    "(Ljava/awt/datatransfer/Transferable;Ljava/awt/datatransfer/ClipboardOwner;)V"
+                )
+                LABEL(L["label3"])
+                RETURN
+                LABEL(L["label4"])
+                LOCALVAR("s", "Ljava/lang/String;", null, L["label0"], L["label4"], 0)
+                LOCALVAR(
+                    "selection",
+                    "Ljava/awt/datatransfer/StringSelection;",
+                    null,
+                    L["label1"],
+                    L["label4"],
+                    1
+                )
+                LOCALVAR("clipboard", "Ljava/awt/datatransfer/Clipboard;", null, L["label2"], L["label4"], 2)
+            }
+            MAXS(3, 3)
         }
-        classNode.methods.add(init)
-        classNode.methods.add(copy)
-        return classNode
     }
 
     private fun String.processKey(): String = when {

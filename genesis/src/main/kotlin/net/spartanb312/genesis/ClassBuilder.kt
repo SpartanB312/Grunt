@@ -5,22 +5,11 @@ import org.objectweb.asm.tree.*
 
 @JvmInline
 value class ClassBuilder(val classNode: ClassNode) {
-
-    @BuilderDSL
     operator fun FieldNode.unaryPlus() = apply { classNode.fields.add(this) }
-
-    @BuilderDSL
     operator fun MethodNode.unaryPlus() = apply { classNode.methods.add(this) }
-
-    @BuilderDSL
     operator fun InnerClassNode.unaryPlus() = apply { classNode.innerClasses.add(this) }
-
-    @BuilderDSL
     operator fun AnnotationNode.unaryPlus() = apply { classNode.visibleAnnotations.add(this) }
-
-    @BuilderDSL
     operator fun InvisibleAnnotationNode.unaryPlus() = apply { classNode.invisibleAnnotations.add(this) }
-
 }
 
 @BuilderDSL

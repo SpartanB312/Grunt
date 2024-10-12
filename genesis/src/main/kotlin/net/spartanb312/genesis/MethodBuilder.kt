@@ -9,14 +9,9 @@ import org.objectweb.asm.tree.MethodNode
 @JvmInline
 value class MethodBuilder(val methodNode: MethodNode) {
 
-    @BuilderDSL
-    operator fun InsnList.unaryPlus() = methodNode.instructions.add(this)
-
-    @BuilderDSL
-    operator fun AnnotationNode.unaryPlus() = methodNode.visibleAnnotations.add(this)
-
-    @BuilderDSL
-    operator fun InvisibleAnnotationNode.unaryPlus() = methodNode.invisibleAnnotations.add(this)
+    operator fun InsnList.unaryPlus() = apply { methodNode.instructions.add(this) }
+    operator fun AnnotationNode.unaryPlus() = apply { methodNode.visibleAnnotations.add(this) }
+    operator fun InvisibleAnnotationNode.unaryPlus() = apply { methodNode.invisibleAnnotations.add(this) }
 
     @BuilderDSL
     fun MAXS(maxStack: Int, maxLocals: Int) = methodNode.visitMaxs(maxStack, maxLocals)

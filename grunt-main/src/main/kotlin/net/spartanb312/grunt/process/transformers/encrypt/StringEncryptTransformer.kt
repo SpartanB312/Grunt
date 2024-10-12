@@ -96,9 +96,6 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         null
     ) {
         INSTRUCTIONS {
-            val labelB = Label()
-            val labelC = Label()
-
             //A:
             NEW("java/lang/StringBuilder")
             DUP
@@ -106,10 +103,10 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             ASTORE(1)
             ICONST_0
             ISTORE(2)
-            GOTO(labelC)
+            GOTO(L["labelC"])
 
             //B:
-            LABEL(labelB)
+            LABEL(L["labelB"])
             FRAME(Opcodes.F_APPEND, 2, arrayOf("java/lang/StringBuilder", Opcodes.INTEGER), 0)
             ALOAD(1)
             ALOAD(0)
@@ -123,12 +120,12 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             IINC(2, 1)
 
             //C:
-            LABEL(labelC)
+            LABEL(L["labelC"])
             FRAME(Opcodes.F_SAME, 0, null, 0)
             ILOAD(2)
             ALOAD(0)
             INVOKEVIRTUAL("java/lang/String", "length", "()I")
-            IF_ICMPLT(labelB)
+            IF_ICMPLT(L["labelB"])
             ALOAD(1)
             INVOKEVIRTUAL("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")
             ARETURN

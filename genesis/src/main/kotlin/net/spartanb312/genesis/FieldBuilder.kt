@@ -1,6 +1,5 @@
 package net.spartanb312.genesis
 
-import net.spartanb312.genesis.extensions.BuilderDSL
 import net.spartanb312.genesis.extensions.Modifiers
 import net.spartanb312.genesis.extensions.NodeDSL
 import org.objectweb.asm.tree.AnnotationNode
@@ -8,13 +7,8 @@ import org.objectweb.asm.tree.FieldNode
 
 @JvmInline
 value class FieldBuilder(val fieldNode: FieldNode) {
-
-    @BuilderDSL
-    operator fun AnnotationNode.unaryPlus() = fieldNode.visibleAnnotations.add(this)
-
-    @BuilderDSL
-    operator fun InvisibleAnnotationNode.unaryPlus() = fieldNode.invisibleAnnotations.add(this)
-
+    operator fun AnnotationNode.unaryPlus() = apply { fieldNode.visibleAnnotations.add(this) }
+    operator fun InvisibleAnnotationNode.unaryPlus() = apply { fieldNode.invisibleAnnotations.add(this) }
 }
 
 @NodeDSL
