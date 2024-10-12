@@ -1,22 +1,22 @@
 package net.spartanb312.grunt.process.transformers.misc
 
-import net.spartanb312.genesis.extensions.PUBLIC
-import net.spartanb312.genesis.extensions.STATIC
-import net.spartanb312.genesis.extensions.insn.ALOAD
-import net.spartanb312.genesis.extensions.insn.DUP
-import net.spartanb312.genesis.extensions.insn.INVOKESPECIAL
-import net.spartanb312.genesis.extensions.insn.RETURN
-import net.spartanb312.genesis.field
-import net.spartanb312.genesis.method
-import net.spartanb312.genesis.modify
+import net.spartanb312.genesis.kotlin.clazz
+import net.spartanb312.genesis.kotlin.extensions.PUBLIC
+import net.spartanb312.genesis.kotlin.extensions.STATIC
+import net.spartanb312.genesis.kotlin.extensions.SUPER
+import net.spartanb312.genesis.kotlin.extensions.insn.ALOAD
+import net.spartanb312.genesis.kotlin.extensions.insn.DUP
+import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESPECIAL
+import net.spartanb312.genesis.kotlin.extensions.insn.RETURN
+import net.spartanb312.genesis.kotlin.field
+import net.spartanb312.genesis.kotlin.method
+import net.spartanb312.genesis.kotlin.modify
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
-import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.FieldNode
 
 /**
  * Generates trash classes
@@ -40,57 +40,44 @@ object TrashClassTransformer : Transformer("TrashClass", Category.Miscellaneous)
         Logger.info("    Generated ${trashClasses.size} trash classes")
     }
 
-    private fun generateClass(name: String, type: Int): ClassNode {
-        val classNode = ClassNode()
-        when (type) {
-            0 -> classNode.visit(
-                Opcodes.V1_8,
-                Opcodes.ACC_SUPER + Opcodes.ACC_PUBLIC,
-                name,
-                null,
-                "java/util/concurrent/ConcurrentHashMap",
-                null
-            )
+    private fun generateClass(name: String, type: Int): ClassNode = when (type) {
+        0 -> clazz(
+            PUBLIC + SUPER,
+            name,
+            "java/util/concurrent/ConcurrentHashMap"
+        )
 
-            1 -> classNode.visit(
-                Opcodes.V1_8,
-                Opcodes.ACC_SUPER + Opcodes.ACC_PUBLIC,
-                name,
-                null,
-                "java/util/concurrent/ConcurrentLinkedDeque",
-                null
-            )
+        1 -> clazz(
+            PUBLIC + SUPER,
+            name,
+            "java/util/concurrent/ConcurrentLinkedDeque"
+        )
 
-            2 -> classNode.visit(
-                Opcodes.V1_8,
-                Opcodes.ACC_SUPER + Opcodes.ACC_PUBLIC,
-                name,
-                null,
-                "java/util/concurrent/ConcurrentSkipListMap",
-                null
-            )
-        }
-        return classNode.modify {
-            +field(
-                PUBLIC + STATIC,
-                "c",
-                "I",
-                null,
-                8964
-            )
-            +method(
-                PUBLIC,
-                "<init>",
-                "()V"
-            ) {
-                INSTRUCTIONS {
-                    ALOAD(0)
-                    DUP
-                    INVOKESPECIAL("java/util/concurrent/ConcurrentHashMap", "<init>", "()V")
-                    RETURN
-                }
-                MAXS(1, 1)
+        else -> clazz(
+            PUBLIC + SUPER,
+            name,
+            "java/util/concurrent/ConcurrentSkipListMap"
+        )
+    }.modify {
+        +field(
+            PUBLIC + STATIC,
+            "c",
+            "I",
+            null,
+            8964
+        )
+        +method(
+            PUBLIC,
+            "<init>",
+            "()V"
+        ) {
+            INSTRUCTIONS {
+                ALOAD(0)
+                DUP
+                INVOKESPECIAL("java/util/concurrent/ConcurrentHashMap", "<init>", "()V")
+                RETURN
             }
+            MAXS(1, 1)
         }
     }
 

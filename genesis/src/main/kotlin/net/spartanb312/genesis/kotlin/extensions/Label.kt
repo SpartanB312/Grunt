@@ -1,7 +1,7 @@
-package net.spartanb312.genesis.extensions
+package net.spartanb312.genesis.kotlin.extensions
 
-import net.spartanb312.genesis.InsnListBuilder
-import net.spartanb312.genesis.MethodBuilder
+import net.spartanb312.genesis.kotlin.InsnListBuilder
+import net.spartanb312.genesis.kotlin.MethodBuilder
 import org.objectweb.asm.Label
 import org.objectweb.asm.tree.FrameNode
 import org.objectweb.asm.tree.LabelNode
@@ -44,6 +44,9 @@ fun InsnListBuilder.FRAME(
         numStack,
         stack?.let { getLabelNodes(it) })
 )
+
+@BuilderDSL
+fun InsnListBuilder.LINE(line: Int, label: LabelNode) = +LineNumberNode(line, label)
 
 @BuilderDSL
 fun InsnListBuilder.LINE(line: Int, label: Label) = +LineNumberNode(line, label.node)

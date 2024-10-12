@@ -1,8 +1,9 @@
 package net.spartanb312.grunt.process.transformers.misc
 
-import net.spartanb312.genesis.extensions.insn.ARETURN
-import net.spartanb312.genesis.extensions.insn.LDC
-import net.spartanb312.genesis.method
+import net.spartanb312.genesis.kotlin.annotation
+import net.spartanb312.genesis.kotlin.extensions.insn.ARETURN
+import net.spartanb312.genesis.kotlin.extensions.insn.LDC
+import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -12,7 +13,6 @@ import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 
@@ -142,11 +142,12 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                     }
                     if (annotationMark && !classNode.hasAnnotations) {
                         val annotation =
-                            AnnotationNode("Lnet/spartanb312/grunt/${annotations.randomOrNull() ?: "ProtectedByGrunt"};")
-                        annotation.visit("version", versions.random())
-                        annotation.visit("mapping", "jvav/lang/ZhangHaoYangException")
-                        annotation.visit("d1", markers.random())
-                        annotation.visit("d2", markers.random())
+                            annotation("Lnet/spartanb312/grunt/${annotations.randomOrNull() ?: "ProtectedByGrunt"};") {
+                                this["version"] = versions.random()
+                                this["mapping"] = "jvav/lang/ZhangHaoYangException"
+                                this["d1"] = markers.random()
+                                this["d2"] = markers.random()
+                            }
                         classNode.visibleAnnotations = classNode.visibleAnnotations ?: mutableListOf()
                         classNode.visibleAnnotations.add(annotation)
                         add(1)

@@ -1,6 +1,6 @@
-package net.spartanb312.genesis
+package net.spartanb312.genesis.kotlin
 
-import net.spartanb312.genesis.extensions.NodeDSL
+import net.spartanb312.genesis.kotlin.extensions.NodeDSL
 import org.objectweb.asm.Label
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.InsnList

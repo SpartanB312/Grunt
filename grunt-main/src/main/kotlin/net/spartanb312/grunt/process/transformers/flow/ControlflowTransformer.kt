@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.process.transformers.flow
 
-import net.spartanb312.genesis.instructions
+import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunt.annotation.DISABLE_CONTROLFLOW
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
@@ -8,7 +8,6 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.hierarchy.Hierarchy
 import net.spartanb312.grunt.process.hierarchy.ReferenceSearch
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.process.transformers.PostProcessTransformer.transform
 import net.spartanb312.grunt.process.transformers.flow.process.*
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.hasAnnotation

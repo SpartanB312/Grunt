@@ -1,11 +1,11 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
-import net.spartanb312.genesis.extensions.PRIVATE
-import net.spartanb312.genesis.extensions.PUBLIC
-import net.spartanb312.genesis.extensions.STATIC
-import net.spartanb312.genesis.extensions.insn.INVOKESTATIC
-import net.spartanb312.genesis.extensions.insn.INVOKEVIRTUAL
-import net.spartanb312.genesis.method
+import net.spartanb312.genesis.kotlin.extensions.PRIVATE
+import net.spartanb312.genesis.kotlin.extensions.PUBLIC
+import net.spartanb312.genesis.kotlin.extensions.STATIC
+import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESTATIC
+import net.spartanb312.genesis.kotlin.extensions.insn.INVOKEVIRTUAL
+import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer

@@ -1,7 +1,7 @@
 package net.spartanb312.grunt.process.transformers.encrypt.number
 
-import net.spartanb312.genesis.extensions.insn.*
-import net.spartanb312.genesis.instructions
+import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.instructions
 import org.objectweb.asm.tree.InsnList
 import kotlin.random.Random
 

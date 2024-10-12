@@ -1,9 +1,9 @@
 package net.spartanb312.grunt.process.transformers.flow.process
 
-import net.spartanb312.genesis.extensions.INT
-import net.spartanb312.genesis.extensions.LABEL
-import net.spartanb312.genesis.extensions.insn.*
-import net.spartanb312.genesis.instructions
+import net.spartanb312.genesis.kotlin.extensions.INT
+import net.spartanb312.genesis.kotlin.extensions.LABEL
+import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIAND
 import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIOR
 import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIXOR

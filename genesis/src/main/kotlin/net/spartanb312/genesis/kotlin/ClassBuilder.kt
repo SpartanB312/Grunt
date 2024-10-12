@@ -1,6 +1,6 @@
-package net.spartanb312.genesis
+package net.spartanb312.genesis.kotlin
 
-import net.spartanb312.genesis.extensions.*
+import net.spartanb312.genesis.kotlin.extensions.*
 import org.objectweb.asm.tree.*
 
 @JvmInline
@@ -8,8 +8,9 @@ value class ClassBuilder(val classNode: ClassNode) {
     operator fun FieldNode.unaryPlus() = apply { classNode.fields.add(this) }
     operator fun MethodNode.unaryPlus() = apply { classNode.methods.add(this) }
     operator fun InnerClassNode.unaryPlus() = apply { classNode.innerClasses.add(this) }
-    operator fun AnnotationNode.unaryPlus() = apply { classNode.visibleAnnotations.add(this) }
-    operator fun InvisibleAnnotationNode.unaryPlus() = apply { classNode.invisibleAnnotations.add(this) }
+    operator fun AnnotationNode.unaryPlus() = apply {
+        classNode.visibleAnnotations = (classNode.visibleAnnotations ?: mutableListOf()).also { it.add(this) }
+    }
 }
 
 @BuilderDSL

@@ -1,8 +1,8 @@
 package net.spartanb312.grunt.utils.extensions
 
-import net.spartanb312.genesis.MethodBuilder
-import net.spartanb312.genesis.clinit
-import net.spartanb312.genesis.extensions.*
+import net.spartanb312.genesis.kotlin.MethodBuilder
+import net.spartanb312.genesis.kotlin.clinit
+import net.spartanb312.genesis.kotlin.extensions.*
 import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode

@@ -1,10 +1,14 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
-import net.spartanb312.genesis.clinit
-import net.spartanb312.genesis.extensions.STATIC
-import net.spartanb312.genesis.extensions.insn.*
-import net.spartanb312.genesis.instructions
-import net.spartanb312.genesis.method
+import net.spartanb312.genesis.*
+import net.spartanb312.genesis.kotlin.clazz
+import net.spartanb312.genesis.kotlin.clinit
+import net.spartanb312.genesis.kotlin.extensions.FINAL
+import net.spartanb312.genesis.kotlin.extensions.PUBLIC
+import net.spartanb312.genesis.kotlin.extensions.STATIC
+import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.field
+import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
@@ -19,11 +23,9 @@ import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
-import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
 import kotlin.random.Random
 
 /**
@@ -50,15 +52,11 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
         val filtered = nonExcluded.filter { it.name.notInList(exclusion) }
         filtered.forEach {
             companions[
-                ClassNode().apply {
-                    visit(
-                        it.version,
-                        Opcodes.ACC_PUBLIC,
-                        "${it.name}\$ConstantPool",
-                        null,
-                        "java/lang/Object",
-                        null
-                    )
+                clazz(
+                    PUBLIC + FINAL,
+                    "${it.name}\$ConstantPool",
+                    "java/lang/Object"
+                ).apply {
                     if (dontScramble) appendAnnotation(DISABLE_SCRAMBLE)
                 }
             ] = mutableListOf()
@@ -158,8 +156,8 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
         interface NumberRef<T : Number> : ConstRef<T>
 
         class IntRef(override val value: Int) : NumberRef<Int> {
-            override val field = FieldNode(
-                Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            override val field = field(
+                PUBLIC + STATIC,
                 "const_${getRandomString(15)}",
                 "I",
                 null,
@@ -168,8 +166,8 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
         }
 
         class LongRef(override val value: Long) : NumberRef<Long> {
-            override val field = FieldNode(
-                Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            override val field = field(
+                PUBLIC + STATIC,
                 "const_${getRandomString(15)}",
                 "J",
                 null,
@@ -178,8 +176,8 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
         }
 
         class FloatRef(override val value: Float) : NumberRef<Float> {
-            override val field = FieldNode(
-                Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            override val field = field(
+                PUBLIC + STATIC,
                 "const_${getRandomString(15)}",
                 "F",
                 null,
@@ -188,8 +186,8 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
         }
 
         class DoubleRef(override val value: Double) : NumberRef<Double> {
-            override val field = FieldNode(
-                Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            override val field = field(
+                PUBLIC + STATIC,
                 "const_${getRandomString(15)}",
                 "D",
                 null,
@@ -198,8 +196,8 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
         }
 
         class StringRef(override val value: String) : ConstRef<String> {
-            override val field = FieldNode(
-                Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            override val field = field(
+                PUBLIC + STATIC,
                 "const_${getRandomString(15)}",
                 "Ljava/lang/String;",
                 null,

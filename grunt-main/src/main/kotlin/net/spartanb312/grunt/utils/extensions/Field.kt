@@ -1,6 +1,6 @@
 package net.spartanb312.grunt.utils.extensions
 
-import net.spartanb312.genesis.extensions.*
+import net.spartanb312.genesis.kotlin.extensions.*
 import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.FieldNode
 

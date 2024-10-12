@@ -1,8 +1,8 @@
-package net.spartanb312.genesis.extensions.insn
+package net.spartanb312.genesis.kotlin.extensions.insn
 
-import net.spartanb312.genesis.InsnListBuilder
-import net.spartanb312.genesis.extensions.BuilderDSL
-import net.spartanb312.genesis.extensions.node
+import net.spartanb312.genesis.kotlin.InsnListBuilder
+import net.spartanb312.genesis.kotlin.extensions.BuilderDSL
+import net.spartanb312.genesis.kotlin.extensions.node
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.InsnNode
@@ -20,6 +20,9 @@ fun InsnListBuilder.GOTO(target: LabelNode) = +JumpInsnNode(Opcodes.GOTO, target
 @BuilderDSL
 fun InsnListBuilder.GOTO(target: Label) = +JumpInsnNode(Opcodes.GOTO, target.node)
 
+@BuilderDSL
+fun InsnListBuilder.GOTO(target: String) = +JumpInsnNode(Opcodes.GOTO, L[target].node)
+
 /**
  * Conditional jump. Consume 1 object
  * A ->
@@ -31,10 +34,16 @@ fun InsnListBuilder.IFNULL(target: LabelNode) = +JumpInsnNode(Opcodes.IFNULL, ta
 fun InsnListBuilder.IFNULL(target: Label) = +JumpInsnNode(Opcodes.IFNULL, target.node)
 
 @BuilderDSL
+fun InsnListBuilder.IFNULL(target: String) = +JumpInsnNode(Opcodes.IFNULL, L[target].node)
+
+@BuilderDSL
 fun InsnListBuilder.IFNONNULL(target: LabelNode) = +JumpInsnNode(Opcodes.IFNONNULL, target)
 
 @BuilderDSL
 fun InsnListBuilder.IFNONNULL(target: Label) = +JumpInsnNode(Opcodes.IFNONNULL, target.node)
+
+@BuilderDSL
+fun InsnListBuilder.IFNONNULL(target: String) = +JumpInsnNode(Opcodes.IFNONNULL, L[target].node)
 
 /**
  * Conditional jump. Consume 1 integer
@@ -47,10 +56,16 @@ fun InsnListBuilder.IFEQ(target: LabelNode) = +JumpInsnNode(Opcodes.IFEQ, target
 fun InsnListBuilder.IFEQ(target: Label) = +JumpInsnNode(Opcodes.IFEQ, target.node)
 
 @BuilderDSL
+fun InsnListBuilder.IFEQ(target: String) = +JumpInsnNode(Opcodes.IFEQ, L[target].node)
+
+@BuilderDSL
 fun InsnListBuilder.IFNE(target: LabelNode) = +JumpInsnNode(Opcodes.IFNE, target)
 
 @BuilderDSL
 fun InsnListBuilder.IFNE(target: Label) = +JumpInsnNode(Opcodes.IFNE, target.node)
+
+@BuilderDSL
+fun InsnListBuilder.IFNE(target: String) = +JumpInsnNode(Opcodes.IFNE, L[target].node)
 
 @BuilderDSL
 fun InsnListBuilder.IFLT(target: LabelNode) = +JumpInsnNode(Opcodes.IFLT, target)
@@ -59,10 +74,16 @@ fun InsnListBuilder.IFLT(target: LabelNode) = +JumpInsnNode(Opcodes.IFLT, target
 fun InsnListBuilder.IFLT(target: Label) = +JumpInsnNode(Opcodes.IFLT, target.node)
 
 @BuilderDSL
+fun InsnListBuilder.IFLT(target: String) = +JumpInsnNode(Opcodes.IFLT, L[target].node)
+
+@BuilderDSL
 fun InsnListBuilder.IFGE(target: LabelNode) = +JumpInsnNode(Opcodes.IFGE, target)
 
 @BuilderDSL
 fun InsnListBuilder.IFGE(target: Label) = +JumpInsnNode(Opcodes.IFGE, target.node)
+
+@BuilderDSL
+fun InsnListBuilder.IFGE(target: String) = +JumpInsnNode(Opcodes.IFGE, L[target].node)
 
 @BuilderDSL
 fun InsnListBuilder.IFGT(target: LabelNode) = +JumpInsnNode(Opcodes.IFGT, target)
@@ -71,10 +92,16 @@ fun InsnListBuilder.IFGT(target: LabelNode) = +JumpInsnNode(Opcodes.IFGT, target
 fun InsnListBuilder.IFGT(target: Label) = +JumpInsnNode(Opcodes.IFGT, target.node)
 
 @BuilderDSL
+fun InsnListBuilder.IFGT(target: String) = +JumpInsnNode(Opcodes.IFGT, L[target].node)
+
+@BuilderDSL
 fun InsnListBuilder.IFLE(target: LabelNode) = +JumpInsnNode(Opcodes.IFLE, target)
 
 @BuilderDSL
 fun InsnListBuilder.IFLE(target: Label) = +JumpInsnNode(Opcodes.IFLE, target.node)
+
+@BuilderDSL
+fun InsnListBuilder.IFLE(target: String) = +JumpInsnNode(Opcodes.IFLE, L[target].node)
 
 /**
  * Conditional jump. Consume 2 integer
@@ -87,10 +114,16 @@ fun InsnListBuilder.IF_ICMPEQ(target: LabelNode) = +JumpInsnNode(Opcodes.IF_ICMP
 fun InsnListBuilder.IF_ICMPEQ(target: Label) = +JumpInsnNode(Opcodes.IF_ICMPEQ, target.node)
 
 @BuilderDSL
+fun InsnListBuilder.IF_ICMPEQ(target: String) = +JumpInsnNode(Opcodes.IF_ICMPEQ, L[target].node)
+
+@BuilderDSL
 fun InsnListBuilder.IF_ICMPNE(target: LabelNode) = +JumpInsnNode(Opcodes.IF_ICMPNE, target)
 
 @BuilderDSL
 fun InsnListBuilder.IF_ICMPNE(target: Label) = +JumpInsnNode(Opcodes.IF_ICMPNE, target.node)
+
+@BuilderDSL
+fun InsnListBuilder.IF_ICMPNE(target: String) = +JumpInsnNode(Opcodes.IF_ICMPNE, L[target].node)
 
 @BuilderDSL
 fun InsnListBuilder.IF_ICMPLT(target: LabelNode) = +JumpInsnNode(Opcodes.IF_ICMPLT, target)
@@ -99,10 +132,16 @@ fun InsnListBuilder.IF_ICMPLT(target: LabelNode) = +JumpInsnNode(Opcodes.IF_ICMP
 fun InsnListBuilder.IF_ICMPLT(target: Label) = +JumpInsnNode(Opcodes.IF_ICMPLT, target.node)
 
 @BuilderDSL
+fun InsnListBuilder.IF_ICMPLT(target: String) = +JumpInsnNode(Opcodes.IF_ICMPLT, L[target].node)
+
+@BuilderDSL
 fun InsnListBuilder.IF_ICMPGE(target: LabelNode) = +JumpInsnNode(Opcodes.IF_ICMPGE, target)
 
 @BuilderDSL
 fun InsnListBuilder.IF_ICMPGE(target: Label) = +JumpInsnNode(Opcodes.IF_ICMPGE, target.node)
+
+@BuilderDSL
+fun InsnListBuilder.IF_ICMPGE(target: String) = +JumpInsnNode(Opcodes.IF_ICMPGE, L[target].node)
 
 @BuilderDSL
 fun InsnListBuilder.IF_ICMPGT(target: LabelNode) = +JumpInsnNode(Opcodes.IF_ICMPGT, target)
@@ -111,10 +150,16 @@ fun InsnListBuilder.IF_ICMPGT(target: LabelNode) = +JumpInsnNode(Opcodes.IF_ICMP
 fun InsnListBuilder.IF_ICMPGT(target: Label) = +JumpInsnNode(Opcodes.IF_ICMPGT, target.node)
 
 @BuilderDSL
+fun InsnListBuilder.IF_ICMPGT(target: String) = +JumpInsnNode(Opcodes.IF_ICMPGT, L[target].node)
+
+@BuilderDSL
 fun InsnListBuilder.IF_ICMPLE(target: LabelNode) = +JumpInsnNode(Opcodes.IF_ICMPLE, target)
 
 @BuilderDSL
 fun InsnListBuilder.IF_ICMPLE(target: Label) = +JumpInsnNode(Opcodes.IF_ICMPLE, target.node)
+
+@BuilderDSL
+fun InsnListBuilder.IF_ICMPLE(target: String) = +JumpInsnNode(Opcodes.IF_ICMPLE, L[target].node)
 
 /**
  * Conditional jump. Consume 2 object
@@ -127,10 +172,16 @@ fun InsnListBuilder.IF_ACMPEQ(target: LabelNode) = +JumpInsnNode(Opcodes.IF_ACMP
 fun InsnListBuilder.IF_ACMPEQ(target: Label) = +JumpInsnNode(Opcodes.IF_ACMPEQ, target.node)
 
 @BuilderDSL
+fun InsnListBuilder.IF_ACMPEQ(target: String) = +JumpInsnNode(Opcodes.IF_ACMPEQ, L[target].node)
+
+@BuilderDSL
 fun InsnListBuilder.IF_ACMPNE(target: LabelNode) = +JumpInsnNode(Opcodes.IF_ACMPNE, target)
 
 @BuilderDSL
 fun InsnListBuilder.IF_ACMPNE(target: Label) = +JumpInsnNode(Opcodes.IF_ACMPNE, target.node)
+
+@BuilderDSL
+fun InsnListBuilder.IF_ACMPNE(target: String) = +JumpInsnNode(Opcodes.IF_ACMPNE, L[target].node)
 
 /**
  * Jump to a subroutine at specified label and produce an address to the stack
@@ -141,6 +192,9 @@ fun InsnListBuilder.JSR(target: LabelNode) = +JumpInsnNode(Opcodes.JSR, target)
 
 @BuilderDSL
 fun InsnListBuilder.JSR(target: Label) = +JumpInsnNode(Opcodes.JSR, target.node)
+
+@BuilderDSL
+fun InsnListBuilder.JSR(target: String) = +JumpInsnNode(Opcodes.JSR, L[target].node)
 
 /**
  * Return from a subroutine

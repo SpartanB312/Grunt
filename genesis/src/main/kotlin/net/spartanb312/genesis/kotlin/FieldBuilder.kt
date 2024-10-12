@@ -1,14 +1,15 @@
-package net.spartanb312.genesis
+package net.spartanb312.genesis.kotlin
 
-import net.spartanb312.genesis.extensions.Modifiers
-import net.spartanb312.genesis.extensions.NodeDSL
+import net.spartanb312.genesis.kotlin.extensions.Modifiers
+import net.spartanb312.genesis.kotlin.extensions.NodeDSL
 import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.FieldNode
 
 @JvmInline
 value class FieldBuilder(val fieldNode: FieldNode) {
-    operator fun AnnotationNode.unaryPlus() = apply { fieldNode.visibleAnnotations.add(this) }
-    operator fun InvisibleAnnotationNode.unaryPlus() = apply { fieldNode.invisibleAnnotations.add(this) }
+    operator fun AnnotationNode.unaryPlus() = apply {
+        fieldNode.visibleAnnotations = (fieldNode.visibleAnnotations ?: mutableListOf()).also { it.add(this) }
+    }
 }
 
 @NodeDSL

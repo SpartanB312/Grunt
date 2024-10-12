@@ -1,4 +1,4 @@
-package net.spartanb312.genesis.extensions
+package net.spartanb312.genesis.kotlin.extensions
 
 @DslMarker
 annotation class BuilderDSL

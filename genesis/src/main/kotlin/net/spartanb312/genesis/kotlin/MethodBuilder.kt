@@ -1,6 +1,9 @@
-package net.spartanb312.genesis
+package net.spartanb312.genesis.kotlin
 
-import net.spartanb312.genesis.extensions.*
+import net.spartanb312.genesis.kotlin.extensions.BuilderDSL
+import net.spartanb312.genesis.kotlin.extensions.Modifiers
+import net.spartanb312.genesis.kotlin.extensions.NodeDSL
+import net.spartanb312.genesis.kotlin.extensions.STATIC
 import org.objectweb.asm.Label
 import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.InsnList
@@ -10,8 +13,9 @@ import org.objectweb.asm.tree.MethodNode
 value class MethodBuilder(val methodNode: MethodNode) {
 
     operator fun InsnList.unaryPlus() = apply { methodNode.instructions.add(this) }
-    operator fun AnnotationNode.unaryPlus() = apply { methodNode.visibleAnnotations.add(this) }
-    operator fun InvisibleAnnotationNode.unaryPlus() = apply { methodNode.invisibleAnnotations.add(this) }
+    operator fun AnnotationNode.unaryPlus() = apply {
+        methodNode.visibleAnnotations = (methodNode.visibleAnnotations ?: mutableListOf()).also { it.add(this) }
+    }
 
     @BuilderDSL
     fun MAXS(maxStack: Int, maxLocals: Int) = methodNode.visitMaxs(maxStack, maxLocals)

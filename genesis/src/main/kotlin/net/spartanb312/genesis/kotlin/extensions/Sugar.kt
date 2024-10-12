@@ -1,6 +1,6 @@
-package net.spartanb312.genesis.extensions
+package net.spartanb312.genesis.kotlin.extensions
 
-import net.spartanb312.genesis.InsnListBuilder
+import net.spartanb312.genesis.kotlin.InsnListBuilder
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.InsnNode

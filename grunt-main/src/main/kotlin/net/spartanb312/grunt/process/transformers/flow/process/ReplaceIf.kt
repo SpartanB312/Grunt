@@ -1,9 +1,9 @@
 package net.spartanb312.grunt.process.transformers.flow.process
 
-import net.spartanb312.genesis.extensions.LABEL
-import net.spartanb312.genesis.extensions.insn.GOTO
-import net.spartanb312.genesis.extensions.node
-import net.spartanb312.genesis.instructions
+import net.spartanb312.genesis.kotlin.extensions.LABEL
+import net.spartanb312.genesis.kotlin.extensions.insn.GOTO
+import net.spartanb312.genesis.kotlin.extensions.node
+import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes

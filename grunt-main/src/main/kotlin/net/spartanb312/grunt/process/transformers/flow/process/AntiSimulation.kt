@@ -1,13 +1,12 @@
 package net.spartanb312.grunt.process.transformers.flow.process
 
-import net.spartanb312.genesis.clazz
-import net.spartanb312.genesis.extensions.FINAL
-import net.spartanb312.genesis.extensions.PUBLIC
-import net.spartanb312.genesis.extensions.STATIC
-import net.spartanb312.genesis.extensions.insn.*
-import net.spartanb312.genesis.instructions
-import net.spartanb312.genesis.method
-import net.spartanb312.genesis.modify
+import net.spartanb312.genesis.kotlin.clazz
+import net.spartanb312.genesis.kotlin.extensions.PUBLIC
+import net.spartanb312.genesis.kotlin.extensions.STATIC
+import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.instructions
+import net.spartanb312.genesis.kotlin.method
+import net.spartanb312.genesis.kotlin.modify
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.utils.ChainNode

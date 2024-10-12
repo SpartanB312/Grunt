@@ -1,9 +1,9 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
-import net.spartanb312.genesis.extensions.insn.INVOKESTATIC
-import net.spartanb312.genesis.extensions.insn.INVOKEVIRTUAL
-import net.spartanb312.genesis.extensions.insn.SWAP
-import net.spartanb312.genesis.instructions
+import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESTATIC
+import net.spartanb312.genesis.kotlin.extensions.insn.INVOKEVIRTUAL
+import net.spartanb312.genesis.kotlin.extensions.insn.SWAP
+import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache

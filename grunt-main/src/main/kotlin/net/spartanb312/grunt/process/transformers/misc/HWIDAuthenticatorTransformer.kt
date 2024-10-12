@@ -1,8 +1,8 @@
 package net.spartanb312.grunt.process.transformers.misc
 
-import net.spartanb312.genesis.*
-import net.spartanb312.genesis.extensions.*
-import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.kotlin.*
+import net.spartanb312.genesis.kotlin.extensions.*
+import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -13,8 +13,6 @@ import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
-import org.objectweb.asm.Handle
-import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
@@ -51,10 +49,7 @@ object HWIDAuthenticatorTransformer : Transformer("HWIDAuthentication", Category
                 clazz(
                     PUBLIC + SUPER,
                     nonExcluded.random().name + "\$${getRandomString(3)}",
-                    "java/lang/Object",
-                    null,
-                    null,
-                    Java8
+                    "java/lang/Object"
                 ) {
                     val constField = +field(
                         PUBLIC + STATIC,
