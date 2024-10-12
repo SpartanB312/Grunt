@@ -1,5 +1,11 @@
 package net.spartanb312.grunt.process.transformers.misc
 
+import net.spartanb312.genesis.clazz
+import net.spartanb312.genesis.clinit
+import net.spartanb312.genesis.extensions.*
+import net.spartanb312.genesis.extensions.insn.*
+import net.spartanb312.genesis.field
+import net.spartanb312.genesis.method
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -45,173 +51,102 @@ object HWIDAuthenticatorTransformer : Transformer("HWIDAuthentication", Category
             val frameUtil = createFrameUtil(nonExcluded.random().name + "\$${getRandomString(5)}")
             if (showHWIDWhenFailed) addTrashClass(frameUtil)
             repeat(pools) {
-                val centerClass = ClassNode()
-                centerClass.visit(
-                    Opcodes.V1_8,
-                    Opcodes.ACC_SUPER + Opcodes.ACC_PUBLIC,
+                clazz(
+                    PUBLIC + SUPER,
                     nonExcluded.random().name + "\$${getRandomString(3)}",
-                    null,
                     "java/lang/Object",
-                    null
-                )
-                val constField = FieldNode(
-                    Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
-                    getRandomString(15),
-                    "Ljava/util/List;",
-                    "Ljava/util/List<Ljava/lang/String;>;",
-                    null
-                )
-                val clinit = MethodNode(
-                    Opcodes.ACC_STATIC,
-                    "<clinit>",
-                    "()V",
                     null,
-                    null
-                ).apply {
-                    val label0 = Label()
-                    visitLabel(label0)
-                    visitTypeInsn(Opcodes.NEW, "java/util/ArrayList")
-                    visitInsn(Opcodes.DUP)
-                    visitMethodInsn(Opcodes.INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false)
-                    visitFieldInsn(
-                        Opcodes.PUTSTATIC,
-                        centerClass.name,
-                        constField.name,
-                        "Ljava/util/List;"
+                    null,
+                    Java8
+                ) {
+                    val constField = +field(
+                        PUBLIC + STATIC,
+                        getRandomString(15),
+                        "Ljava/util/List;",
+                        "Ljava/util/List<Ljava/lang/String;>;",
+                        null
                     )
-                    if (!onlineMode) {
-                        offlineHWID.forEach {
-                            visitFieldInsn(
-                                Opcodes.GETSTATIC,
-                                centerClass.name,
-                                constField.name,
-                                "Ljava/util/List;"
-                            )
-                            visitLdcInsn(it)
-                            visitMethodInsn(
-                                Opcodes.INVOKEINTERFACE,
-                                "java/util/List",
-                                "add",
-                                "(Ljava/lang/Object;)Z",
-                                true
-                            )
-                            visitInsn(Opcodes.POP)
-                            visitInsn(Opcodes.RETURN)
+                    val clinit = +clinit {
+                        INSTRUCTIONS {
+                            val label0 = Label()
+                            LABEL(label0)
+                            NEW("java/util/ArrayList")
+                            DUP
+                            INVOKESPECIAL("java/util/ArrayList", "<init>", "()V")
+                            PUTSTATIC(classNode, constField)
+                            if (!onlineMode) {
+                                offlineHWID.forEach {
+                                    GETSTATIC(classNode, constField)
+                                    LDC(it)
+                                    INVOKEINTERFACE("java/util/List", "add", "(Ljava/lang/Object;)Z")
+                                    POP
+                                    RETURN
+                                }
+                            } else {
+                                val label1 = Label()
+                                val label2 = Label()
+                                val label4 = Label()
+                                val label5 = Label()
+                                val label6 = Label()
+                                val label7 = Label()
+                                val label8 = Label()
+                                val label9 = Label()
+                                val label10 = Label()
+                                TRYCATCH(label0, label1, label2, "java/lang/Exception")
+                                LABEL(label4)
+                                NEW("java/net/URL")
+                                DUP
+                                LDC(onlineURL)
+                                INVOKESPECIAL("java/net/URL", "<init>", "(Ljava/lang/String;)V")
+                                ASTORE(0)
+                                LABEL(label5)
+                                NEW("java/io/BufferedReader")
+                                DUP
+                                NEW("java/io/InputStreamReader")
+                                DUP
+                                ALOAD(0)
+                                INVOKEVIRTUAL("java/net/URL", "openStream", "()Ljava/io/InputStream;")
+                                INVOKESPECIAL("java/io/InputStreamReader", "<init>", "(Ljava/io/InputStream;)V")
+                                INVOKESPECIAL("java/io/BufferedReader", "<init>", "(Ljava/io/Reader;)V")
+                                ASTORE(1)
+                                LABEL(label6)
+                                FRAME(Opcodes.F_APPEND, 2, arrayOf("java/net/URL", "java/io/BufferedReader"), 0, null)
+                                ALOAD(1)
+                                INVOKEVIRTUAL("java/io/BufferedReader", "readLine", "()Ljava/lang/String;")
+                                DUP
+                                ASTORE(2)
+                                LABEL(label7)
+                                IFNULL(label1)
+                                LABEL(label8)
+                                GETSTATIC(classNode, constField)
+                                ALOAD(2)
+                                INVOKEINTERFACE("java/util/List", "add", "(Ljava/lang/Object;)Z")
+                                POP
+                                GOTO(label6)
+                                LABEL(label1)
+                                FRAME(Opcodes.F_CHOP, 2, null, 0, null)
+                                GOTO(label9)
+                                LABEL(label2)
+                                FRAME(Opcodes.F_SAME1, 0, null, 1, arrayOf("java/lang/Exception"))
+                                ASTORE(0)
+                                LABEL(label10)
+                                LABEL(label9)
+                                FRAME(Opcodes.F_SAME, 0, null, 0, null)
+                                RETURN
+                                LOCALVAR("url", "Ljava/net/URL;", null, label5, label1, 0)
+                                LOCALVAR("in", "Ljava/io/BufferedReader;", null, label6, label1, 1)
+                                LOCALVAR("inputLine", "Ljava/lang/String;", null, label7, label1, 2)
+                                LOCALVAR("ignored", "Ljava/lang/Exception;", null, label10, label9, 0)
+                            }
                         }
-                    } else {
-                        val label1 = Label()
-                        val label2 = Label()
-                        val label4 = Label()
-                        visitTryCatchBlock(label0, label1, label2, "java/lang/Exception")
-                        visitLabel(label4)
-                        visitTypeInsn(Opcodes.NEW, "java/net/URL")
-                        visitInsn(Opcodes.DUP)
-                        visitLdcInsn(onlineURL)
-                        visitMethodInsn(
-                            Opcodes.INVOKESPECIAL,
-                            "java/net/URL",
-                            "<init>",
-                            "(Ljava/lang/String;)V",
-                            false
-                        )
-                        visitVarInsn(Opcodes.ASTORE, 0)
-                        val label5 = Label()
-                        visitLabel(label5)
-                        visitTypeInsn(Opcodes.NEW, "java/io/BufferedReader")
-                        visitInsn(Opcodes.DUP)
-                        visitTypeInsn(Opcodes.NEW, "java/io/InputStreamReader")
-                        visitInsn(Opcodes.DUP)
-                        visitVarInsn(Opcodes.ALOAD, 0)
-                        visitMethodInsn(
-                            Opcodes.INVOKEVIRTUAL,
-                            "java/net/URL",
-                            "openStream",
-                            "()Ljava/io/InputStream;",
-                            false
-                        )
-                        visitMethodInsn(
-                            Opcodes.INVOKESPECIAL,
-                            "java/io/InputStreamReader",
-                            "<init>",
-                            "(Ljava/io/InputStream;)V",
-                            false
-                        )
-                        visitMethodInsn(
-                            Opcodes.INVOKESPECIAL,
-                            "java/io/BufferedReader",
-                            "<init>",
-                            "(Ljava/io/Reader;)V",
-                            false
-                        )
-                        visitVarInsn(Opcodes.ASTORE, 1)
-                        val label6 = Label()
-                        visitLabel(label6)
-                        visitFrame(
-                            Opcodes.F_APPEND,
-                            2,
-                            arrayOf<Any>("java/net/URL", "java/io/BufferedReader"),
-                            0,
-                            null
-                        )
-                        visitVarInsn(Opcodes.ALOAD, 1)
-                        visitMethodInsn(
-                            Opcodes.INVOKEVIRTUAL,
-                            "java/io/BufferedReader",
-                            "readLine",
-                            "()Ljava/lang/String;",
-                            false
-                        )
-                        visitInsn(Opcodes.DUP)
-                        visitVarInsn(Opcodes.ASTORE, 2)
-                        val label7 = Label()
-                        visitLabel(label7)
-                        visitJumpInsn(Opcodes.IFNULL, label1)
-                        val label8 = Label()
-                        visitLabel(label8)
-                        visitFieldInsn(
-                            Opcodes.GETSTATIC,
-                            centerClass.name,
-                            constField.name,
-                            "Ljava/util/List;"
-                        )
-                        visitVarInsn(Opcodes.ALOAD, 2)
-                        visitMethodInsn(
-                            Opcodes.INVOKEINTERFACE,
-                            "java/util/List",
-                            "add",
-                            "(Ljava/lang/Object;)Z",
-                            true
-                        )
-                        visitInsn(Opcodes.POP)
-                        visitJumpInsn(Opcodes.GOTO, label6)
-                        visitLabel(label1)
-                        visitFrame(Opcodes.F_CHOP, 2, null, 0, null)
-                        val label9 = Label()
-                        visitJumpInsn(Opcodes.GOTO, label9)
-                        visitLabel(label2)
-                        visitFrame(Opcodes.F_SAME1, 0, null, 1, arrayOf<Any>("java/lang/Exception"))
-                        visitVarInsn(Opcodes.ASTORE, 0)
-                        val label10 = Label()
-                        visitLabel(label10)
-                        visitLabel(label9)
-                        visitFrame(Opcodes.F_SAME, 0, null, 0, null)
-                        visitInsn(Opcodes.RETURN)
-                        visitLocalVariable("url", "Ljava/net/URL;", null, label5, label1, 0)
-                        visitLocalVariable("in", "Ljava/io/BufferedReader;", null, label6, label1, 1)
-                        visitLocalVariable("inputLine", "Ljava/lang/String;", null, label7, label1, 2)
-                        visitLocalVariable("ignored", "Ljava/lang/Exception;", null, label10, label9, 0)
+                        MAXS(5, 3)
                     }
-                    visitMaxs(5, 3)
+                    if (encryptConst) {
+                        StringEncryptTransformer.transformMethod(classNode, clinit)
+                        NumberEncryptTransformer.transformMethod(classNode, clinit)
+                    }
+                    centers.add(classNode to constField)
                 }
-
-                if (encryptConst) {
-                    StringEncryptTransformer.transformMethod(centerClass, clinit)
-                    NumberEncryptTransformer.transformMethod(centerClass, clinit)
-                }
-
-                centerClass.fields.add(constField)
-                centerClass.methods.add(clinit)
-                centers.add(centerClass to constField)
             }
             nonExcluded.asSequence()
                 .filter { !it.isInterface }
