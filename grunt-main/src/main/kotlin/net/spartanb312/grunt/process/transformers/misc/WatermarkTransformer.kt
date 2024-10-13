@@ -1,8 +1,11 @@
 package net.spartanb312.grunt.process.transformers.misc
 
 import net.spartanb312.genesis.kotlin.annotation
+import net.spartanb312.genesis.kotlin.clazz
+import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.ARETURN
 import net.spartanb312.genesis.kotlin.extensions.insn.LDC
+import net.spartanb312.genesis.kotlin.field
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
@@ -12,9 +15,6 @@ import net.spartanb312.grunt.utils.extensions.hasAnnotations
 import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
-import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.FieldNode
 
 /**
  * Generates watermarks
@@ -64,8 +64,8 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                         val marker = markers.random()
                         when ((0..2).random()) {
                             0 -> classNode.fields.add(
-                                FieldNode(
-                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
+                                field(
+                                    PRIVATE + STATIC,
                                     names.random(),
                                     "Ljava/lang/String;",
                                     null,
@@ -74,8 +74,8 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                             )
 
                             1 -> classNode.fields.add(
-                                FieldNode(
-                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
+                                field(
+                                    PRIVATE + STATIC,
                                     "_$marker _",
                                     "I",
                                     null,
@@ -84,8 +84,8 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                             )
 
                             2 -> classNode.fields.add(
-                                FieldNode(
-                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
+                                field(
+                                    PRIVATE + STATIC,
                                     names.random(),
                                     "Ljava/lang/String;",
                                     null,
@@ -101,7 +101,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                         when ((0..2).random()) {
                             0 -> classNode.methods.add(
                                 method(
-                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
+                                    PRIVATE + STATIC,
                                     names.random(),
                                     "()Ljava/lang/String;"
                                 ) {
@@ -114,7 +114,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
 
                             1 -> classNode.methods.add(
                                 method(
-                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
+                                    PRIVATE + STATIC,
                                     names.random(),
                                     "()Ljava/lang/String;"
                                 ) {
@@ -127,7 +127,7 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
 
                             2 -> classNode.methods.add(
                                 method(
-                                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
+                                    PRIVATE + STATIC,
                                     names.random(),
                                     "()Ljava/lang/String;"
                                 ) {
@@ -154,18 +154,14 @@ object WatermarkTransformer : Transformer("Watermark", Category.Miscellaneous) {
                     }
                 }
         }.get()
-        if (interfaceMark) {
-            val fatherNode = ClassNode()
-            fatherNode.visit(
-                Opcodes.V1_8,
-                Opcodes.ACC_PUBLIC + Opcodes.ACC_ABSTRACT + Opcodes.ACC_INTERFACE,
+        if (interfaceMark) addTrashClass(
+            clazz(
+                PUBLIC + ABSTRACT + INTERFACE,
                 fatherOfJava,
-                null,
                 "java/lang/Object",
                 null
             )
-            addTrashClass(fatherNode)
-        }
+        )
         Logger.info("    Added $count watermarks")
     }
 

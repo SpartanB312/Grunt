@@ -1,10 +1,5 @@
 package net.spartanb312.grunt
 
-import net.spartanb312.genesis.java.Test
-import net.spartanb312.genesis.kotlin.clazz
-import net.spartanb312.genesis.kotlin.extensions.ANNOTATION
-import net.spartanb312.genesis.kotlin.extensions.INTERFACE
-import net.spartanb312.genesis.kotlin.extensions.PUBLIC
 import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.event.events.FinalizeEvent
 import net.spartanb312.grunt.event.events.GuiEvent
@@ -117,9 +112,6 @@ fun runProcess() {
                     finalize()
                     FinalizeEvent.After(this@apply).post()
                 }
-                addTrashClass(Test.test())
-                addTrashClass(clazz(PUBLIC + ANNOTATION + INTERFACE, "Mark"))
-                addTrashClass(clazz(PUBLIC + ANNOTATION + INTERFACE, "MethodMark"))
             }
             Logger.info("Took $obfTime ms to process!")
             if (Configs.Settings.timeUsage) timeUsage.forEach { (name, duration) ->

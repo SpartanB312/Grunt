@@ -1,8 +1,8 @@
 package net.spartanb312.grunt.auth
 
-import net.spartanb312.grunt.auth.process.RemoteLoaderTransformer
 import net.spartanb312.grunt.event.events.TransformerEvent
 import net.spartanb312.grunt.event.listener
+import net.spartanb312.grunt.auth.process.RemoteLoaderTransformer
 import net.spartanb312.grunt.plugin.Plugin
 import net.spartanb312.grunt.plugin.PluginManager
 import net.spartanb312.grunt.process.Transformers
@@ -15,7 +15,7 @@ import net.spartanb312.grunt.utils.logging.Logger
  */
 fun main(args: Array<String>) {
     PluginManager.addInternalPlugin(Authenticator)
-    net.spartanb312.grunt.main(arrayOf("alien.json"))
+    net.spartanb312.grunt.main(arrayOf("config.json"))
 }
 
 const val NAME = "Authenticator"

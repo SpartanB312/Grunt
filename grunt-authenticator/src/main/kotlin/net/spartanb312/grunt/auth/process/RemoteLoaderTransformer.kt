@@ -1,8 +1,8 @@
 package net.spartanb312.grunt.auth.process
 
-import net.spartanb312.genesis.extensions.insn.*
-import net.spartanb312.genesis.instructions
-import net.spartanb312.genesis.method
+import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.instructions
+import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.annotation.JUNKCALL_EXCLUDED
 import net.spartanb312.grunt.config.setting
@@ -14,14 +14,10 @@ import net.spartanb312.grunt.event.listener
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.encrypt.ConstPoolEncryptTransformer
-import net.spartanb312.grunt.process.transformers.encrypt.ConstPoolEncryptTransformer.ConstRef
 import net.spartanb312.grunt.process.transformers.encrypt.NumberEncryptTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer
-import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
-import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptorClassic
 import net.spartanb312.grunt.process.transformers.rename.ClassRenameTransformer
-import net.spartanb312.grunt.utils.builder.*
 import net.spartanb312.grunt.utils.extensions.appendAnnotation
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.extensions.removeAnnotation
@@ -219,7 +215,7 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
             }
 
             // Generate local field initializer
-            val remoteFieldPair = mutableListOf<Pair<FieldNode, ConstRef<*>>>()
+            val remoteFieldPair = mutableListOf<Pair<FieldNode, ConstPoolEncryptTransformer.ConstRef<*>>>()
             val localClinit = method(
                 Opcodes.ACC_STATIC,
                 "<clinit>",
@@ -266,17 +262,17 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
                     remoteFieldPair.forEach { (field, ref) ->
                         field.value = null
                         when (ref) {
-                            is ConstRef.NumberRef -> {
+                            is ConstPoolEncryptTransformer.ConstRef.NumberRef -> {
                                 +NumberEncryptorClassic.encrypt(ref.value as Number)
                                 PUTSTATIC(remoteCompanion.name, field.name, field.desc)
                             }
 
-                            is ConstRef.StringRef -> {
+                            is ConstPoolEncryptTransformer.ConstRef.StringRef -> {
                                 val key = Random.nextInt(0x8, 0x800)
                                 val methodName = getRandomString(10)
-                                val decryptMethod = createDecryptMethod(methodName, key)
+                                val decryptMethod = StringEncryptTransformer.createDecryptMethod(methodName, key)
                                 remoteCompanion.methods.add(decryptMethod)
-                                LDC(encrypt(ref.value, key))
+                                LDC(StringEncryptTransformer.encrypt(ref.value, key))
                                 +MethodInsnNode(
                                     Opcodes.INVOKESTATIC, remoteCompanion.name,
                                     methodName, "(Ljava/lang/String;)Ljava/lang/String;",
