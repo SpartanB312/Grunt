@@ -7,6 +7,7 @@ include(":grunt-main")
 // Plugin
 include(":grunt-plugin")
 include(":grunt-authenticator")
+include(":grunt-verp")
 
 // Subproject
 include(":grunt-annotation")
