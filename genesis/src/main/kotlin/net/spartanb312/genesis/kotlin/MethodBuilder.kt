@@ -30,6 +30,9 @@ value class MethodBuilder(val methodNode: MethodNode) {
         methodNode.visitTryCatchBlock(start, end, handler, type)
     }
 
+    @BuilderDSL
+    fun ANNOTATIONDEFAULT(builder: AnnotationBuilder.() -> Unit) = methodNode.visitAnnotationDefault().modify(builder)
+
 }
 
 @NodeDSL

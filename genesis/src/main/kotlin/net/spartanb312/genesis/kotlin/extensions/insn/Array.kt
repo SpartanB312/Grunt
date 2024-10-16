@@ -77,7 +77,7 @@ inline val InsnListBuilder.ARRAYLENGTH get() = +InsnNode(Opcodes.ARRAYLENGTH)
  */
 @BuilderDSL
 fun InsnListBuilder.NEWARRAY(type: Int) {
-    require(type in Opcodes.T_CHAR..Opcodes.T_LONG) {
+    require(type in Opcodes.T_BOOLEAN..Opcodes.T_LONG) {
         "NEWARRAY's type should be one of primitive types, but received $type"
     }
     +IntInsnNode(Opcodes.NEWARRAY, type)
