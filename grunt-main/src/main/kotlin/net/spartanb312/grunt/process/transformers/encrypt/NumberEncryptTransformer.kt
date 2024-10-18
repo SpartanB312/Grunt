@@ -47,8 +47,8 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                                 encryptNumber(classNode, methodNode, field, list)
                                 if (float) encryptFloatingPoint(classNode, methodNode, field, list)
                             }
-                        if (arrayed && list.isNotEmpty()) {
-                            val insert = NumberEncryptorArrayed.decryptMethod(classNode, field!!, list)
+                        if (arrayed && list.isNotEmpty() && field != null) {
+                            val insert = NumberEncryptorArrayed.decryptMethod(classNode, field, list)
                             val clinit = classNode.methods.find { it.name == "<clinit>" } ?: MethodNode(
                                 Opcodes.ACC_STATIC,
                                 "<clinit>",
@@ -83,13 +83,13 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
             .forEach {
                 if (methodNode.instructions.size() < maxInsnSize) {
                     if (it.opcode in Opcodes.ICONST_M1..Opcodes.ICONST_5) {
-                        if (arrayed && numList != null) {
+                        if (arrayed && numList != null && fieldNode != null) {
                             methodNode.instructions.insertBefore(
                                 it,
                                 NumberEncryptorArrayed.encrypt(
                                     it.opcode - 0x3,
                                     owner,
-                                    fieldNode!!,
+                                    fieldNode,
                                     numList
                                 )
                             )
@@ -97,13 +97,13 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                         methodNode.instructions.remove(it)
                         add()
                     } else if (it is IntInsnNode) {
-                        if (arrayed && numList != null) {
+                        if (arrayed && numList != null && fieldNode != null) {
                             methodNode.instructions.insertBefore(
                                 it,
                                 NumberEncryptorArrayed.encrypt(
                                     it.operand,
                                     owner,
-                                    fieldNode!!,
+                                    fieldNode,
                                     numList
                                 )
                             )
@@ -113,13 +113,13 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                     } else if (it is LdcInsnNode && it.cst is Int) {
                         val value = it.cst as Int
                         if (value < -(Short.MAX_VALUE * 8) + Int.MAX_VALUE) {
-                            if (arrayed && numList != null) {
+                            if (arrayed && numList != null && fieldNode != null) {
                                 methodNode.instructions.insertBefore(
                                     it,
                                     NumberEncryptorArrayed.encrypt(
                                         value,
                                         owner,
-                                        fieldNode!!,
+                                        fieldNode,
                                         numList
                                     )
                                 )
@@ -129,13 +129,13 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                         }
                     } else if (it.opcode in Opcodes.LCONST_0..Opcodes.LCONST_1) {
                         val value = (it.opcode - 0x9).toLong()
-                        if (arrayed && numList != null) {
+                        if (arrayed && numList != null && fieldNode != null) {
                             methodNode.instructions.insertBefore(
                                 it,
                                 NumberEncryptorArrayed.encrypt(
                                     value,
                                     owner,
-                                    fieldNode!!,
+                                    fieldNode,
                                     numList
                                 )
                             )
@@ -143,13 +143,13 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                         methodNode.instructions.remove(it)
                         add()
                     } else if (it is LdcInsnNode && it.cst is Long) {
-                        if (arrayed && numList != null) {
+                        if (arrayed && numList != null && fieldNode != null) {
                             methodNode.instructions.insertBefore(
                                 it,
                                 NumberEncryptorArrayed.encrypt(
                                     it.cst as Long,
                                     owner,
-                                    fieldNode!!,
+                                    fieldNode,
                                     numList
                                 )
                             )

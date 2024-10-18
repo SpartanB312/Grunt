@@ -749,5 +749,4 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
         val m2: IntArray
     )
 
-
 }
