@@ -4,12 +4,14 @@ import net.spartanb312.genesis.kotlin.clazz
 import net.spartanb312.genesis.kotlin.extensions.PUBLIC
 import net.spartanb312.genesis.kotlin.extensions.STATIC
 import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.extensions.isRecord
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.genesis.kotlin.modify
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.utils.ChainNode
+import net.spartanb312.grunt.utils.extensions.isPublic
 import net.spartanb312.grunt.utils.getRandomString
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.InsnList
@@ -26,8 +28,9 @@ object AntiSimulation {
     lateinit var res: ResourceCache
 
     fun process(caller: ClassNode, action: InsnList): InsnList {
-        val dummy1 = if (ControlflowTransformer.junkParameter) "L${res.classes.values.random().name};" else ""
-        val dummy2 = if (ControlflowTransformer.junkParameter) "L${res.classes.values.random().name};" else ""
+        val allowedRange = res.nonExcluded.filter { !it.access.isRecord && it.isPublic }
+        val dummy1 = if (ControlflowTransformer.junkParameter) "L${allowedRange.random().name};" else ""
+        val dummy2 = if (ControlflowTransformer.junkParameter) "L${allowedRange.random().name};" else ""
         val dedicateMethod = method(
             PUBLIC + STATIC,
             getRandomString(15),
