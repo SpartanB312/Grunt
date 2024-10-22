@@ -63,6 +63,7 @@ object PluginManager {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun readJar(jar: File): PluginInfo? {
         val classLoader = ExternalClassLoader()
         classLoader.loadJar(jar)
@@ -72,7 +73,9 @@ object PluginManager {
             try {
                 val provider: () -> PluginInitializer = {
                     val mainClass = classLoader.loadClass(entryPoint)
-                    classLoader.getInstanceField(mainClass) as PluginInitializer
+                    val instanceField = classLoader.getInstanceField(mainClass)
+                    if (instanceField != null) instanceField as PluginInitializer
+                    else mainClass.newInstance() as PluginInitializer
                 }
                 return PluginInfo(provider, classLoader)
             } catch (exception: Exception) {

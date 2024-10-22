@@ -19,6 +19,7 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
+import net.spartanb312.grunt.process.transformers.flow.process.ArithmeticExpr
 import net.spartanb312.grunt.process.transformers.flow.process.JunkCode
 import net.spartanb312.grunt.process.transformers.rename.LocalVariableRenameTransformer
 import net.spartanb312.grunt.utils.*
@@ -204,7 +205,8 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 }
                 if (reobf) {
                     val preState = ControlflowTransformer.arithmeticExpr
-                    if (!enhancedFlow) { ControlflowTransformer.arithmeticExpr = false }
+                    if (!enhancedFlow) ControlflowTransformer.arithmeticExpr = false
+                    if (ControlflowTransformer.enabled) ArithmeticExpr.refresh(this@transform)
                     runBlocking {
                         addedMethods.forEach { (clazz, methods) ->
                             launch(Dispatchers.Default) {

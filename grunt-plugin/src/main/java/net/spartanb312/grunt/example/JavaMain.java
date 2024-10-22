@@ -1,19 +1,70 @@
-package net.spartanb312.genesis.java;
+package net.spartanb312.grunt.example;
 
+import kotlin.Unit;
+import net.spartanb312.genesis.java.Builders;
 import net.spartanb312.genesis.java.builder.AnnotationBuilder;
 import net.spartanb312.genesis.java.builder.ClassBuilder;
 import net.spartanb312.genesis.java.builder.MethodBuilder;
+import net.spartanb312.grunt.event.Listener;
+import net.spartanb312.grunt.event.ListenerKt;
+import net.spartanb312.grunt.event.events.TransformerEvent;
+import net.spartanb312.grunt.plugin.Plugin;
+import net.spartanb312.grunt.plugin.java.JavaPlugin;
+import net.spartanb312.grunt.process.Transformer;
+import net.spartanb312.grunt.process.Transformers;
+import net.spartanb312.grunt.process.resource.ResourceCache;
+import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer;
+import net.spartanb312.grunt.utils.logging.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.tree.ClassNode;
 
 import static net.spartanb312.genesis.java.Access.PUBLIC;
 import static net.spartanb312.genesis.java.Access.STATIC;
 
-public class Test {
+public class JavaMain extends JavaPlugin {
 
-    public static ClassNode test() {
+    public static final String NAME = "JavaExample";
+    public static final String VERSION = "1.0.0";
+    public static final String AUTHOR = "SpartanB312";
+    public static final String DESCRIPTION = "Example of java plugin";
+    public static final String MIN_VERSION = "2.4.0";
+
+    public JavaMain() {
+        super(NAME, VERSION, AUTHOR, DESCRIPTION, MIN_VERSION);
+        listener(TransformerEvent.Before.class, it -> {
+            Logger.INSTANCE.info("Running: " + it.getTransformer().getName());
+            if (it.getTransformer() == ControlflowTransformer.INSTANCE) {
+                it.cancel();
+                Logger.INSTANCE.info("Disabled control flow!");
+            }
+        });
+        subscribe();
+    }
+
+    @Override
+    public void onInit() {
+        Logger.INSTANCE.info("Initializing my java plugin...");
+        Transformers.INSTANCE.register(new TestTransformer(), 1000);
+    }
+
+    public static class TestTransformer extends Transformer {
+
+        public TestTransformer() {
+            super("Test", Category.Miscellaneous, false);
+        }
+
+        @Override
+        public void transform(@NotNull ResourceCache resourceCache) {
+            Logger.INSTANCE.info("Running test transformer...");
+            resourceCache.addClass(testClass());
+        }
+
+    }
+
+    public static ClassNode testClass() {
         return Builders.clazz(new ClassBuilder(
                 PUBLIC,
-                "Main"
+                "TestClass"
         ) {
             @Override
             public void assemble() {

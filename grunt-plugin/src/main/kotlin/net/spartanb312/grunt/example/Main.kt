@@ -18,7 +18,7 @@ object Main : Plugin(
 ) {
 
     init {
-        listener<TransformerEvent> {
+        listener<TransformerEvent.Before> {
             Logger.info("Running: ${it.transformer.name}")
             if (it.transformer == ControlflowTransformer) {
                 it.cancel()
