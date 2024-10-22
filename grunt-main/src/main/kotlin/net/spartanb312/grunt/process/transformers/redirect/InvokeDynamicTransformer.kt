@@ -3,6 +3,8 @@ package net.spartanb312.grunt.process.transformers.redirect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import net.spartanb312.genesis.kotlin.annotation
 import net.spartanb312.genesis.kotlin.clazz
 import net.spartanb312.genesis.kotlin.extensions.*
@@ -48,6 +50,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
     private val metadataClass by setting("MetadataClass", "net/spartanb312/grunt/GruntMetadata")
     private val massiveRandom by setting("MassiveRandomBlank", false)
     private val reobf by setting("Reobfuscate", true)
+    private val enhancedFlow by setting("EnhancedFlowReobf", true)
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
@@ -154,6 +157,8 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 }
             })
             val count = count {
+                val mutex = Mutex()
+                val addedMethods = mutableListOf<Pair<ClassNode, List<MethodNode>>>()
                 runBlocking {
                     classes.filter {
                         val map = getMapping(it.value.name)
@@ -161,7 +166,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                                 && !map.isExcluded && map.notInList(exclusion)
                                 && !it.value.hasAnnotation(DISABLE_INVOKEDYNAMIC)
                     }.values.forEach { classNode ->
-                        fun job() {
+                        suspend fun job() {
                             val bsmName1 = if (massiveRandom) massiveBlankString else massiveString
                             val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
                             val decryptName = if (massiveRandom) massiveBlankString else massiveString
@@ -176,37 +181,43 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                                     decryptName,
                                     decryptKey
                                 ) else null
-                                if (reobf) {
-                                    if (ControlflowTransformer.enabled) {
-                                        val antiSim = ControlflowTransformer.arithmeticExpr
-                                        ControlflowTransformer.arithmeticExpr = false
-                                        ControlflowTransformer.transformMethod(classNode, decrypt)
-                                        ControlflowTransformer.transformMethod(classNode, bsm)
-                                        if (heavy) {
-                                            ControlflowTransformer.transformMethod(classNode, decrypt2!!)
-                                            ControlflowTransformer.transformMethod(classNode, bsm2!!)
-                                        }
-                                        ControlflowTransformer.arithmeticExpr = antiSim
+                                if (reobf) mutex.withLock {
+                                    val methodsAdded = mutableListOf<MethodNode>()
+                                    methodsAdded.add(decrypt)
+                                    methodsAdded.add(bsm)
+                                    if (heavy) {
+                                        methodsAdded.add(decrypt2!!)
+                                        methodsAdded.add(bsm2!!)
                                     }
-                                    if (LocalVariableRenameTransformer.enabled) {
-                                        LocalVariableRenameTransformer.transformMethod(classNode, decrypt)
-                                        LocalVariableRenameTransformer.transformMethod(classNode, bsm)
-                                        if (heavy) {
-                                            LocalVariableRenameTransformer.transformMethod(classNode, decrypt)
-                                            LocalVariableRenameTransformer.transformMethod(classNode, bsm)
-                                        }
-                                    }
+                                    addedMethods.add(classNode to methodsAdded)
                                 }
                                 classNode.methods.add(decrypt)
                                 classNode.methods.add(bsm)
                                 if (heavy) {
-                                    classNode.methods.add(decrypt2)
-                                    classNode.methods.add(bsm2)
+                                    classNode.methods.add(decrypt2!!)
+                                    classNode.methods.add(bsm2!!)
                                 }
                             }
                         }
                         if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
                     }
+                }
+                if (reobf) {
+                    val preState = ControlflowTransformer.arithmeticExpr
+                    if (!enhancedFlow) { ControlflowTransformer.arithmeticExpr = false }
+                    runBlocking {
+                        addedMethods.forEach { (clazz, methods) ->
+                            launch(Dispatchers.Default) {
+                                if (ControlflowTransformer.enabled) methods.forEach {
+                                    ControlflowTransformer.transformMethod(clazz, it, true)
+                                }
+                                if (LocalVariableRenameTransformer.enabled) methods.forEach {
+                                    LocalVariableRenameTransformer.transformMethod(clazz, it)
+                                }
+                            }
+                        }
+                    }
+                    ControlflowTransformer.arithmeticExpr = preState
                 }
             }.get()
             Logger.info("    Replaced $count invokes")

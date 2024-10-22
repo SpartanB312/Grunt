@@ -23,7 +23,8 @@ object ReplaceGoto {
         classNode: ClassNode,
         methodNode: MethodNode,
         returnType: Type,
-        reverse: Boolean
+        reverse: Boolean,
+        indyReobf: Boolean
     ): InsnList {
         return when (Random.nextInt(6)) {
             0 -> instructions {
@@ -32,7 +33,7 @@ object ReplaceGoto {
                 val val2 = Random.nextInt(Int.MAX_VALUE / 2)
                 val val3 = action.convert.invoke(val1, val2)
                 if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
-                    .invoke(val1, val2, val3, classNode, action.insnList)
+                    .invoke(indyReobf, val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =
                         if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
@@ -62,7 +63,7 @@ object ReplaceGoto {
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) >= val3)
                 if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
-                    .invoke(val1, val2, val3, classNode, action.insnList)
+                    .invoke(indyReobf, val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =
                         if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
@@ -92,7 +93,7 @@ object ReplaceGoto {
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) < val3)
                 if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
-                    .invoke(val1, val2, val3, classNode, action.insnList)
+                    .invoke(indyReobf, val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =
                         if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
@@ -122,7 +123,7 @@ object ReplaceGoto {
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) <= val3)
                 if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
-                    .invoke(val1, val2, val3, classNode, action.insnList)
+                    .invoke(indyReobf, val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =
                         if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
@@ -152,7 +153,7 @@ object ReplaceGoto {
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) > val3)
                 if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
-                    .invoke(val1, val2, val3, classNode, action.insnList)
+                    .invoke(indyReobf, val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =
                         if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()
@@ -182,7 +183,7 @@ object ReplaceGoto {
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) == val3)
                 if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
-                    .invoke(val1, val2, val3, classNode, action.insnList)
+                    .invoke(indyReobf, val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =
                         if (ControlflowTransformer.useLocalVar) LocalVarUsages.entries.random()

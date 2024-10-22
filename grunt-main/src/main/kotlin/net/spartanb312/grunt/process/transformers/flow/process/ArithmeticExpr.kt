@@ -10,6 +10,7 @@ import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.genesis.kotlin.modify
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
+import net.spartanb312.grunt.process.transformers.rename.ClassRenameTransformer
 import net.spartanb312.grunt.utils.ChainNode
 import net.spartanb312.grunt.utils.extensions.isPublic
 import net.spartanb312.grunt.utils.getRandomString
@@ -32,13 +33,16 @@ object ArithmeticExpr {
         res = resourceCache
     }
 
-    fun process(caller: ClassNode, action: InsnList): InsnList {
+    fun process(indyReobf: Boolean, caller: ClassNode, action: InsnList): InsnList {
         val allowedRange: List<ClassNode>
         val owner: ClassNode
         synchronized(cachedOwner) {
             allowedRange = res.nonExcluded.filter { !it.access.isRecord && it.isPublic }
             owner = cachedOwner.getOrPut(caller.name) {
                 val created = clazz(PUBLIC, "${caller.name}\$processor")
+                if (indyReobf && ClassRenameTransformer.enabled) {
+                    created.name = ClassRenameTransformer.nextAppendClassName(created)
+                }
                 res.addClass(created)
                 created
             }
@@ -66,12 +70,12 @@ object ArithmeticExpr {
     val actions = mutableListOf(
         // param: v1, magic
         // post: v3
-        { val1: Int, val2: Int, val3: Int, owner: ClassNode, action: InsnList ->
+        { indyReobf: Boolean, val1: Int, val2: Int, val3: Int, owner: ClassNode, action: InsnList ->
             instructions {
                 val (key, builder) = getKeyAndBuilder(ControlflowTransformer.asIntensity)
                 LDC(val1)
                 LDC(Random.nextInt())
-                +process(owner, instructions {
+                +process(indyReobf, owner, instructions {
                     ILOAD(0)
                     +builder
                     LDC(val2 xor key)
@@ -84,12 +88,12 @@ object ArithmeticExpr {
         },
         // param: v1, v2
         // post: v3
-        { val1: Int, val2: Int, val3: Int, owner: ClassNode, action: InsnList ->
+        { indyReobf: Boolean, val1: Int, val2: Int, val3: Int, owner: ClassNode, action: InsnList ->
             instructions {
                 val (key, builder) = getKeyAndBuilder(ControlflowTransformer.asIntensity)
                 LDC(val1 xor key)
                 LDC(val2)
-                +process(owner, instructions {
+                +process(indyReobf, owner, instructions {
                     ILOAD(0)
                     +builder
                     IXOR

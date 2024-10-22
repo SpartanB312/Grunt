@@ -76,7 +76,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                         fun job() {
                             classNode.methods.toList().forEach { methodNode ->
                                 if (!methodNode.hasAnnotation(DISABLE_CONTROLFLOW)) {
-                                    add(processMethodNode(classNode, methodNode))
+                                    add(processMethodNode(classNode, methodNode, false))
                                 }
                             }
                         }
@@ -87,11 +87,15 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
         Logger.info("    Replaced ${count.get()} jumps")
     }
 
-    override fun transformMethod(owner: ClassNode, method: MethodNode) {
-        processMethodNode(owner, method)
+    fun transformMethod(owner: ClassNode, method: MethodNode, indyReobf: Boolean) {
+        processMethodNode(owner, method, indyReobf)
     }
 
-    private fun processMethodNode(owner: ClassNode, methodNode: MethodNode): Int {
+    override fun transformMethod(owner: ClassNode, method: MethodNode) {
+        processMethodNode(owner, method, false)
+    }
+
+    private fun processMethodNode(owner: ClassNode, methodNode: MethodNode, indyReobf: Boolean): Int {
         var count = 0
         repeat(intensity) {
             if (bogusJump) {
@@ -104,7 +108,8 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                                 owner,
                                 methodNode,
                                 returnType,
-                                Random.nextBoolean()
+                                Random.nextBoolean(),
+                                indyReobf
                             )
                             count++
                         } else +insnNode
@@ -125,7 +130,8 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                                 owner,
                                 methodNode,
                                 returnType,
-                                Random.nextBoolean()
+                                Random.nextBoolean(),
+                                indyReobf
                             )
                             count++
                         } else +insnNode
@@ -147,7 +153,8 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                                 methodNode,
                                 returnType,
                                 range.random(),
-                                Random.nextBoolean()
+                                Random.nextBoolean(),
+                                indyReobf
                             )
                             count++
                         } else +insnNode

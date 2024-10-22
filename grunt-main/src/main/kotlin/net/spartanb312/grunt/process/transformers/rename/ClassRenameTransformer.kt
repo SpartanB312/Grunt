@@ -5,8 +5,8 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.tree.ClassNode
 
 /**
@@ -38,7 +38,11 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
             } else "\u0000"
         } else ""
 
+    private lateinit var lastDict: NameGenerator
     private val suffix get() = if (reversed) "\u200E" else ""
+    fun nextAppendClassName(classNode: ClassNode): String {
+        return parent + prefix + classNode.malNamePrefix + lastDict.nextName() + suffix
+    }
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming classes...")
@@ -46,6 +50,7 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
         val equalsExclusion = exclusion.filter { !it.endsWith("**") }
         val startWithExclusion = buildList { exclusion.forEach { if (it.endsWith("**")) add(it.removeSuffix("**")) } }
         val nameGenerator = NameGenerator.getByName(dictionary)
+        lastDict = nameGenerator
         val mappings = mutableMapOf<String, String>()
         val count = count {
             val classes = if (shuffled) nonExcluded.shuffled() else nonExcluded

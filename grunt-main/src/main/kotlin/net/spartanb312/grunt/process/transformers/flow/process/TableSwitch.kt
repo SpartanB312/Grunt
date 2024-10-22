@@ -18,7 +18,8 @@ object TableSwitch {
         methodNode: MethodNode,
         returnType: Type,
         conditions: Int,
-        reverse: Boolean
+        reverse: Boolean,
+        ariExpr: Boolean
     ): InsnList {
         return instructions {
             val endCase = Random.nextInt()
@@ -40,20 +41,28 @@ object TableSwitch {
             )
             labels.forEachIndexed { index, label ->
                 LABEL(label)
-                if (index == trueIndex) +ReplaceGoto.generate(targetLabel, classNode, methodNode, returnType, reverse)
-                else {
+                if (index == trueIndex) +ReplaceGoto.generate(
+                    targetLabel,
+                    classNode,
+                    methodNode,
+                    returnType,
+                    reverse,
+                    ariExpr
+                ) else {
                     if (ControlflowTransformer.trappedCase && Random.nextInt(100) <= ControlflowTransformer.trapChance) +ReplaceGoto.generate(
                         labels.toMutableList().apply { remove(label) }.random().node,
                         classNode,
                         methodNode,
                         returnType,
-                        reverse
+                        reverse,
+                        ariExpr
                     ) else if (ControlflowTransformer.fakeLoop && Random.nextInt(100) <= ControlflowTransformer.loopChance) +ReplaceGoto.generate(
                         startLabel.node,
                         classNode,
                         methodNode,
                         returnType,
-                        reverse
+                        reverse,
+                        ariExpr
                     ) else +JunkCode.generate(
                         methodNode,
                         returnType,
