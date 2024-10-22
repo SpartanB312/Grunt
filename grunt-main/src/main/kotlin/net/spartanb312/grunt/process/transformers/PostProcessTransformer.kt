@@ -20,9 +20,8 @@ import java.nio.charset.StandardCharsets
  * Post process for resource files
  * Last update on 2024/07/02
  */
-object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneous) {
+object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneous, true) {
 
-    override val enabled by setting("Enabled", true)
     private val manifest by setting("Manifest", true)
     private val pluginMain by setting("Plugin YML", true)
     private val bungeeMain by setting("Bungee YML", true)

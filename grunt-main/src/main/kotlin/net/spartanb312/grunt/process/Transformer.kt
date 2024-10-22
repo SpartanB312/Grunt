@@ -9,8 +9,12 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
 
-abstract class Transformer(name: String, val category: Category) : Configurable(name), IListenerOwner {
-    open val enabled by setting("Enabled", false).listen { _, input ->
+abstract class Transformer(
+    name: String,
+    val category: Category,
+    enabled: Boolean = false
+) : Configurable(name), IListenerOwner {
+    open val enabled by setting("Enabled", enabled).listen { _, input ->
         if (input) subscribe() else unsubscribe()
     }
     open var order = 0
