@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.utils.extendsFrom
+
 plugins {
     java
     kotlin("jvm")
@@ -12,12 +14,17 @@ repositories {
 val library: Configuration by configurations.creating
 val projectModule: Configuration by configurations.creating
 
+configurations {
+    implementation.extendsFrom(named("library"))
+    api.extendsFrom(named("projectModule"))
+}
+
 dependencies {
     //Kotlin
     projectModule(project(":grunt-main"))
 
-    implementation(library)
-    api(projectModule)
+//    implementation(library)
+//    api(projectModule)
 }
 
 tasks {
@@ -36,7 +43,7 @@ tasks {
 
     jar {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-        archiveBaseName.set(project.name.toLowerCase())
+        archiveBaseName.set(project.name.lowercase())
 
         manifest {
             attributes(

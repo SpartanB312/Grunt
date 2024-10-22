@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.utils.extendsFrom
+
 plugins {
     java
     kotlin("jvm")
@@ -13,6 +15,10 @@ val kotlinxCoroutineVersion = "1.7.3"
 val asmVersion = "9.7"
 
 val library: Configuration by configurations.creating
+
+configurations {
+    api.extendsFrom(named("library"))
+}
 
 dependencies {
     library(project(":genesis"))
@@ -32,7 +38,7 @@ dependencies {
     library("com.miglayout:miglayout-swing:5.3")
     library("com.github.weisj:darklaf-core:3.0.2")
 
-    api(library)
+//    api(library)
 }
 
 tasks {
@@ -51,7 +57,7 @@ tasks {
 
     jar {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-        archiveBaseName.set(project.name.toLowerCase())
+        archiveBaseName.set(project.name.lowercase())
 
         manifest {
             attributes(
