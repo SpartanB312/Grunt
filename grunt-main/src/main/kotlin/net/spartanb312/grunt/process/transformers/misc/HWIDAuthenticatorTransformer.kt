@@ -44,7 +44,7 @@ object HWIDAuthenticatorTransformer : Transformer("HWIDAuthentication", Category
             val centers = mutableListOf<Pair<ClassNode, FieldNode>>()
             val nonExcluded = nonExcluded.filter { it.name.notInList(exclusion) }
             val frameUtil = createFrameUtil(nonExcluded.random().name + "\$${getRandomString(5)}")
-            if (showHWIDWhenFailed) addTrashClass(frameUtil)
+            if (showHWIDWhenFailed) addClass(frameUtil)
             repeat(pools) {
                 clazz(
                     PUBLIC + SUPER,
@@ -173,7 +173,7 @@ object HWIDAuthenticatorTransformer : Transformer("HWIDAuthentication", Category
                     if (classNode.version < Opcodes.V1_7) classNode.version = Opcodes.V1_7
                     add()
                 }
-            centers.forEach { addTrashClass(it.first) }
+            centers.forEach { addClass(it.first) }
         }.get()
         Logger.info("    Added $count HWID verifications in $pools cache pools")
     }

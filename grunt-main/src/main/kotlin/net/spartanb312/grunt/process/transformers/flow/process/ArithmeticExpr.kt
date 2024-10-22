@@ -19,16 +19,30 @@ import org.objectweb.asm.tree.InsnNode
 import kotlin.random.Random
 
 /**
- * AntiSimulation Lite
+ * AntiSimulation
  * Lightweight prevention of seeds-simulation (like Recaf and some deobfuscator)
  */
-object AntiSimulation {
+object ArithmeticExpr {
 
     private val cachedOwner = mutableMapOf<String, ClassNode>()
-    lateinit var res: ResourceCache
+    private lateinit var res: ResourceCache
+
+    fun refresh(resourceCache: ResourceCache) {
+        cachedOwner.clear()
+        res = resourceCache
+    }
 
     fun process(caller: ClassNode, action: InsnList): InsnList {
-        val allowedRange = res.nonExcluded.filter { !it.access.isRecord && it.isPublic }
+        val allowedRange: List<ClassNode>
+        val owner: ClassNode
+        synchronized(cachedOwner) {
+            allowedRange = res.nonExcluded.filter { !it.access.isRecord && it.isPublic }
+            owner = cachedOwner.getOrPut(caller.name) {
+                val created = clazz(PUBLIC, "${caller.name}\$processor")
+                res.addClass(created)
+                created
+            }
+        }
         val dummy1 = if (ControlflowTransformer.junkParameter) "L${allowedRange.random().name};" else ""
         val dummy2 = if (ControlflowTransformer.junkParameter) "L${allowedRange.random().name};" else ""
         val dedicateMethod = method(
@@ -38,11 +52,6 @@ object AntiSimulation {
         ) {
             INSTRUCTIONS { +action }
             MAXS(2, 3)
-        }
-        val owner = cachedOwner.getOrPut(caller.name) {
-            val created = clazz(PUBLIC, "${caller.name}\$processor")
-            res.addTrashClass(created)
-            created
         }
         owner.modify { +dedicateMethod }
         return instructions {

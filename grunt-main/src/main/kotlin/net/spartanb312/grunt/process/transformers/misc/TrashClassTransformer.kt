@@ -36,7 +36,7 @@ object TrashClassTransformer : Transformer("TrashClass", Category.Miscellaneous)
             val generated = generateClass(name, (0..2).random())
             trashClasses.add(generated)
         }
-        trashClasses.forEach { addTrashClass(it) }
+        trashClasses.forEach { addClass(it) }
         Logger.info("    Generated ${trashClasses.size} trash classes")
     }
 

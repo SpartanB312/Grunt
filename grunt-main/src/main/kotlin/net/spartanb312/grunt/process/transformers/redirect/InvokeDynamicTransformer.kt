@@ -1,11 +1,15 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.spartanb312.genesis.kotlin.annotation
 import net.spartanb312.genesis.kotlin.clazz
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.annotation.DISABLE_INVOKEDYNAMIC
+import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.Configs.isExcluded
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
@@ -104,7 +108,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                     classNode.visibleAnnotations.add(annotation)
                 }
             }
-            addTrashClass(clazz(
+            addClass(clazz(
                 access = PUBLIC + ABSTRACT + INTERFACE + ANNOTATION,
                 name = metadataClass,
                 superName = "java/lang/Object",
@@ -150,53 +154,58 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 }
             })
             val count = count {
-                classes.filter {
-                    val map = getMapping(it.value.name)
-                    !it.value.isInterface && it.value.version >= Opcodes.V1_7
-                            && !map.isExcluded && map.notInList(exclusion)
-                            && !it.value.hasAnnotation(DISABLE_INVOKEDYNAMIC)
-                }.values.forEach { classNode ->
-                    val bsmName1 = if (massiveRandom) massiveBlankString else massiveString
-                    val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
-                    val decryptName = if (massiveRandom) massiveBlankString else massiveString
-                    val decryptKey = Random.nextInt(0x8, 0x800)
-                    if (shouldApply(classNode, bsmName1, bsmName2, decryptKey, metadata)) {
-                        val decrypt = StringEncryptTransformer.createDecryptMethod(decryptName, decryptKey)
-                        val decrypt2 = if (heavy) createHeavyDecryptMethod(decryptName) else null
-                        val bsm = createBootstrap(classNode.name, bsmName1, decryptName)
-                        val bsm2 = if (heavy) createHeavyBootstrap(
-                            classNode.name,
-                            bsmName2,
-                            decryptName,
-                            decryptKey
-                        ) else null
-                        if (reobf) {
-                            if (ControlflowTransformer.enabled) {
-                                val antiSim = ControlflowTransformer.antiSimulation
-                                ControlflowTransformer.antiSimulation = false
-                                ControlflowTransformer.transformMethod(classNode, decrypt)
-                                ControlflowTransformer.transformMethod(classNode, bsm)
-                                if (heavy) {
-                                    ControlflowTransformer.transformMethod(classNode, decrypt2!!)
-                                    ControlflowTransformer.transformMethod(classNode, bsm2!!)
+                runBlocking {
+                    classes.filter {
+                        val map = getMapping(it.value.name)
+                        !it.value.isInterface && it.value.version >= Opcodes.V1_7
+                                && !map.isExcluded && map.notInList(exclusion)
+                                && !it.value.hasAnnotation(DISABLE_INVOKEDYNAMIC)
+                    }.values.forEach { classNode ->
+                        fun job() {
+                            val bsmName1 = if (massiveRandom) massiveBlankString else massiveString
+                            val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
+                            val decryptName = if (massiveRandom) massiveBlankString else massiveString
+                            val decryptKey = Random.nextInt(0x8, 0x800)
+                            if (shouldApply(classNode, bsmName1, bsmName2, decryptKey, metadata)) {
+                                val decrypt = StringEncryptTransformer.createDecryptMethod(decryptName, decryptKey)
+                                val decrypt2 = if (heavy) createHeavyDecryptMethod(decryptName) else null
+                                val bsm = createBootstrap(classNode.name, bsmName1, decryptName)
+                                val bsm2 = if (heavy) createHeavyBootstrap(
+                                    classNode.name,
+                                    bsmName2,
+                                    decryptName,
+                                    decryptKey
+                                ) else null
+                                if (reobf) {
+                                    if (ControlflowTransformer.enabled) {
+                                        val antiSim = ControlflowTransformer.arithmeticExpr
+                                        ControlflowTransformer.arithmeticExpr = false
+                                        ControlflowTransformer.transformMethod(classNode, decrypt)
+                                        ControlflowTransformer.transformMethod(classNode, bsm)
+                                        if (heavy) {
+                                            ControlflowTransformer.transformMethod(classNode, decrypt2!!)
+                                            ControlflowTransformer.transformMethod(classNode, bsm2!!)
+                                        }
+                                        ControlflowTransformer.arithmeticExpr = antiSim
+                                    }
+                                    if (LocalVariableRenameTransformer.enabled) {
+                                        LocalVariableRenameTransformer.transformMethod(classNode, decrypt)
+                                        LocalVariableRenameTransformer.transformMethod(classNode, bsm)
+                                        if (heavy) {
+                                            LocalVariableRenameTransformer.transformMethod(classNode, decrypt)
+                                            LocalVariableRenameTransformer.transformMethod(classNode, bsm)
+                                        }
+                                    }
                                 }
-                                ControlflowTransformer.antiSimulation = antiSim
-                            }
-                            if (LocalVariableRenameTransformer.enabled) {
-                                LocalVariableRenameTransformer.transformMethod(classNode, decrypt)
-                                LocalVariableRenameTransformer.transformMethod(classNode, bsm)
+                                classNode.methods.add(decrypt)
+                                classNode.methods.add(bsm)
                                 if (heavy) {
-                                    LocalVariableRenameTransformer.transformMethod(classNode, decrypt)
-                                    LocalVariableRenameTransformer.transformMethod(classNode, bsm)
+                                    classNode.methods.add(decrypt2)
+                                    classNode.methods.add(bsm2)
                                 }
                             }
                         }
-                        classNode.methods.add(decrypt)
-                        classNode.methods.add(bsm)
-                        if (heavy) {
-                            classNode.methods.add(decrypt2)
-                            classNode.methods.add(bsm2)
-                        }
+                        if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
                     }
                 }
             }.get()

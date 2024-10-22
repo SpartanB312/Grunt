@@ -1,7 +1,11 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.instructions
+import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
@@ -10,7 +14,8 @@ import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIAND
 import net.spartanb312.grunt.process.transformers.encrypt.number.replaceINEG
 import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIOR
 import net.spartanb312.grunt.process.transformers.encrypt.number.replaceIXOR
-import net.spartanb312.grunt.utils.*
+import net.spartanb312.grunt.utils.Counter
+import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.logging.Logger
@@ -21,7 +26,7 @@ import kotlin.random.Random
 
 /**
  * Replace logic operations with substitutions
- * Last update on 24/08/07
+ * Last update on 24/10/23
  */
 object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.Encryption), MethodProcessor {
 
@@ -34,15 +39,20 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
         val count = count {
             repeat(times) { t ->
                 if (times > 1) Logger.info("    Encrypting integers ${t + 1} of $times times")
-                nonExcluded.asSequence()
-                    .filter { c -> exclusion.none { c.name.startsWith(it) } }
-                    .forEach { classNode ->
-                        classNode.methods.asSequence()
-                            .filter { !it.isAbstract && !it.isNative }
-                            .forEach { methodNode: MethodNode ->
-                                encryptArithmetic(methodNode)
+                runBlocking {
+                    nonExcluded.asSequence()
+                        .filter { c -> exclusion.none { c.name.startsWith(it) } }
+                        .forEach { classNode ->
+                            fun job() {
+                                classNode.methods.asSequence()
+                                    .filter { !it.isAbstract && !it.isNative }
+                                    .forEach { methodNode: MethodNode ->
+                                        encryptArithmetic(methodNode)
+                                    }
                             }
-                    }
+                            if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
+                        }
+                }
             }
         }.get()
         Logger.info("    Encrypted $count arithmetic instructions")

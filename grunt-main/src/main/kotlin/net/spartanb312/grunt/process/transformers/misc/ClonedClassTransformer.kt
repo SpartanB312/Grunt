@@ -37,7 +37,7 @@ object ClonedClassTransformer : Transformer("ClonedClass", Category.Miscellaneou
                 newNode.visibleTypeAnnotations?.clear()
                 newNode.invisibleTypeAnnotations?.clear()
             }
-            addTrashClass(newNode)
+            addClass(newNode)
         }
         Logger.info("    Generated $count cloned classes")
     }

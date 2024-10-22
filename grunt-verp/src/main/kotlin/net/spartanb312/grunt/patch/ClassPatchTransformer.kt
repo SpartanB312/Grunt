@@ -28,7 +28,7 @@ object ClassPatchTransformer : Transformer("ClassPatcher", Category.Miscellaneou
                 patchLocale(classNode, methodNode)
                 if (patchArrayCopyOf(classNode, methodNode)) addArrayUtil = true
             }
-            if (addArrayUtil) addTrashClass(generateArrayUtil())
+            if (addArrayUtil) addClass(generateArrayUtil())
         }
     }
 

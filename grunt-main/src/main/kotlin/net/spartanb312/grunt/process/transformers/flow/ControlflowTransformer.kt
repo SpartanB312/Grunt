@@ -1,7 +1,11 @@
 package net.spartanb312.grunt.process.transformers.flow
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunt.annotation.DISABLE_CONTROLFLOW
+import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
@@ -22,7 +26,7 @@ import kotlin.random.Random
 
 /**
  * Obfuscating the controlflow
- * Last update on 24/09/24
+ * Last update on 24/10/22
  */
 object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow), MethodProcessor {
 
@@ -40,7 +44,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     val trapChance by setting("TrapChance", 30)
     val fakeLoop by setting("UnconditionalLoop", true)
     val loopChance by setting("LoopChance", 30)
-    var antiSimulation by setting("AntiSimulation", true)
+    var arithmeticExpr by setting("OutlineArithmeticExpr", true)
     val asIntensity by setting("BuilderIntensity", 1)
     val junkParameter by setting("JunkBuilderParameter", true)
     val useLocalVar by setting("UseLocalVar", true)
@@ -58,22 +62,27 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     override fun ResourceCache.transform() {
         Logger.info(" - Transforming controlflows...")
         JunkCode.refresh(this)
-        AntiSimulation.res = this
+        ArithmeticExpr.refresh(this)
         val hierarchy = Hierarchy(this)
         hierarchy.build(true)
         val count = count {
-            nonExcluded.asSequence()
-                .filter {
-                    it.name.notInList(exclusion)
-                            && !it.missingReference(hierarchy)
-                            && !it.hasAnnotation(DISABLE_CONTROLFLOW)
-                }.forEach { classNode ->
-                    classNode.methods.toList().forEach { methodNode ->
-                        if (!methodNode.hasAnnotation(DISABLE_CONTROLFLOW)) {
-                            add(processMethodNode(classNode, methodNode))
+            runBlocking {
+                nonExcluded.asSequence()
+                    .filter {
+                        it.name.notInList(exclusion)
+                                && !it.missingReference(hierarchy)
+                                && !it.hasAnnotation(DISABLE_CONTROLFLOW)
+                    }.forEach { classNode ->
+                        fun job() {
+                            classNode.methods.toList().forEach { methodNode ->
+                                if (!methodNode.hasAnnotation(DISABLE_CONTROLFLOW)) {
+                                    add(processMethodNode(classNode, methodNode))
+                                }
+                            }
                         }
+                        if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
                     }
-                }
+            }
         }
         Logger.info("    Replaced ${count.get()} jumps")
     }

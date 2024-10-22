@@ -1,37 +1,13 @@
 package net.spartanb312.grunt.patch
 
-import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.plugin.Plugin
-import net.spartanb312.grunt.plugin.PluginManager
 import net.spartanb312.grunt.process.Transformers
-import net.spartanb312.grunt.runProcess
 import net.spartanb312.grunt.utils.logging.Logger
-import java.io.File
-import java.util.jar.JarFile
 
 /**
- * Remote loading and verification services
- * Working in progress
+ * Convert java 6 bytecodes to java 5
+ * For kotlin on Windows 98
  */
-fun main(args: Array<String>) {
-    PluginManager.addInternalPlugin(ClassPatcher)
-    net.spartanb312.grunt.main(arrayOf("config.json"))
-    readDirectory(File("mcLibs/"))
-}
-
-private fun readDirectory(directory: File) {
-    directory.listFiles()?.forEach { file ->
-        if (file.isDirectory) readDirectory(file)
-        else readJar(JarFile(file)) {
-            println("Obfuscating ${it.name}")
-            Configs.Settings.input = it.name
-            Configs.Settings.output = it.name
-            runProcess()
-        }
-    }
-}
-
-private fun readJar(jar: JarFile, action: (JarFile) -> Unit) = action.invoke(jar)
 
 const val NAME = "ClassPatcher"
 const val VERSION = "1.0.0"

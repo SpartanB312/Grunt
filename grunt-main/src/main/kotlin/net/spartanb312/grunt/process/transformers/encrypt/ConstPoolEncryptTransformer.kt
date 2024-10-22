@@ -1,6 +1,5 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
-import net.spartanb312.genesis.*
 import net.spartanb312.genesis.kotlin.clazz
 import net.spartanb312.genesis.kotlin.clinit
 import net.spartanb312.genesis.kotlin.extensions.FINAL
@@ -110,7 +109,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
         }.get()
         companions.forEach { (clazz, refList) ->
             if (refList.isNotEmpty()) {
-                addTrashClass(clazz)
+                addClass(clazz)
                 generatedClasses.add(Generated(clazz, buildMap {
                     refList.forEach { this[it.field] = it }
                 }))

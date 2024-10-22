@@ -31,7 +31,7 @@ object ReplaceGoto {
                 val val1 = Random.nextInt(Int.MAX_VALUE / 2)
                 val val2 = Random.nextInt(Int.MAX_VALUE / 2)
                 val val3 = action.convert.invoke(val1, val2)
-                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
                     .invoke(val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =
@@ -61,7 +61,7 @@ object ReplaceGoto {
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) >= val3)
-                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
                     .invoke(val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =
@@ -91,7 +91,7 @@ object ReplaceGoto {
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) < val3)
-                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
                     .invoke(val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =
@@ -121,7 +121,7 @@ object ReplaceGoto {
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) <= val3)
-                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
                     .invoke(val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =
@@ -151,7 +151,7 @@ object ReplaceGoto {
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) > val3)
-                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
                     .invoke(val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =
@@ -181,7 +181,7 @@ object ReplaceGoto {
                     val2 = Random.nextInt(Int.MAX_VALUE / 2)
                     val3 = Random.nextInt(Int.MAX_VALUE / 2)
                 } while (action.convert(val1, val2) == val3)
-                if (ControlflowTransformer.antiSimulation) +AntiSimulation.actions.random()
+                if (ControlflowTransformer.arithmeticExpr) +ArithmeticExpr.actions.random()
                     .invoke(val1, val2, val3, classNode, action.insnList)
                 else {
                     val usage =

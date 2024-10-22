@@ -291,13 +291,13 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
                 StringEncryptTransformer.transformMethod(remoteCompanion, remoteClinit)
             }
             remoteCompanion.methods.add(remoteClinit)
-            addTrashClass(remoteCompanion)
+            addClass(remoteCompanion)
         }
 
         classLoader.appendAnnotation(JUNKCALL_EXCLUDED)
         downloaderJar.appendAnnotation(JUNKCALL_EXCLUDED)
-        addTrashClass(classLoader)
-        addTrashClass(downloaderJar)
+        addClass(classLoader)
+        addClass(downloaderJar)
     }
 
     private fun createDownloadClass(name: String, loaderName: String): ClassNode {

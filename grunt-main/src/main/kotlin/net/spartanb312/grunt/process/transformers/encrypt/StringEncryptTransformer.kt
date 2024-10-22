@@ -1,15 +1,20 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.method
+import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.utils.*
+import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isInterface
+import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
@@ -20,7 +25,7 @@ import kotlin.random.Random
 
 /**
  * Encrypt strings
- * Last update on 2024/09/13
+ * Last update on 2024/10/23
  */
 object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encryption), MethodProcessor {
 
@@ -32,33 +37,39 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         val count = count {
             repeat(times) { t ->
                 if (times > 1) Logger.info("    Encrypting strings ${t + 1} of $times times")
-                nonExcluded.asSequence()
-                    .filter { c -> !c.isInterface && c.version > Opcodes.V1_5 && exclusion.none { c.name.startsWith(it) } }
-                    .forEach { classNode ->
-                        val decryptMethodName = getRandomString(10)
-                        val key = Random.nextInt(0x8, 0x800)
-                        var shouldAdd = false
-                        for (methodNode in classNode.methods) {
-                            if (methodNode.isAbstract) continue
-                            methodNode.instructions.asSequence()
-                                .filter { (it is LdcInsnNode && it.cst is String) }
-                                .forEach { insnNode ->
-                                    methodNode.instructions.insert(
-                                        insnNode,
-                                        MethodInsnNode(
-                                            Opcodes.INVOKESTATIC, classNode.name,
-                                            decryptMethodName, "(Ljava/lang/String;)Ljava/lang/String;",
-                                            false
-                                        )
-                                    )
-                                    (insnNode as LdcInsnNode).cst = encrypt(insnNode.cst as String, key)
-                                    if (t == 0) add()
-                                    shouldAdd = true
+                runBlocking {
+                    nonExcluded.asSequence()
+                        .filter { c ->
+                            !c.isInterface && c.version > Opcodes.V1_5
+                                    && exclusion.none { c.name.startsWith(it) }
+                        }.forEach { classNode ->
+                            fun job() {
+                                val decryptMethodName = getRandomString(10)
+                                val key = Random.nextInt(0x8, 0x800)
+                                var shouldAdd = false
+                                for (methodNode in classNode.methods) {
+                                    if (methodNode.isAbstract) continue
+                                    methodNode.instructions.asSequence()
+                                        .filter { (it is LdcInsnNode && it.cst is String) }
+                                        .forEach { insnNode ->
+                                            methodNode.instructions.insert(
+                                                insnNode,
+                                                MethodInsnNode(
+                                                    Opcodes.INVOKESTATIC, classNode.name,
+                                                    decryptMethodName, "(Ljava/lang/String;)Ljava/lang/String;",
+                                                    false
+                                                )
+                                            )
+                                            (insnNode as LdcInsnNode).cst = encrypt(insnNode.cst as String, key)
+                                            if (t == 0) add()
+                                            shouldAdd = true
+                                        }
                                 }
-
+                                if (shouldAdd) classNode.methods.add(createDecryptMethod(decryptMethodName, key))
+                            }
+                            if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
                         }
-                        if (shouldAdd) classNode.methods.add(createDecryptMethod(decryptMethodName, key))
-                    }
+                }
             }
         }.get()
         Logger.info("    Encrypted $count strings")

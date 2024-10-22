@@ -1,5 +1,8 @@
 package net.spartanb312.grunt.process.transformers.redirect
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.spartanb312.genesis.kotlin.extensions.PRIVATE
 import net.spartanb312.genesis.kotlin.extensions.PUBLIC
 import net.spartanb312.genesis.kotlin.extensions.STATIC
@@ -7,6 +10,7 @@ import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESTATIC
 import net.spartanb312.genesis.kotlin.extensions.insn.INVOKEVIRTUAL
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
+import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
@@ -18,11 +22,7 @@ import net.spartanb312.grunt.utils.extensions.isPrivate
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.InsnNode
-import org.objectweb.asm.tree.MethodInsnNode
-import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.VarInsnNode
+import org.objectweb.asm.tree.*
 import kotlin.random.Random
 
 /**
@@ -43,89 +43,100 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
         Logger.info(" - Redirecting method calls...")
         val newClasses = mutableMapOf<ClassNode, ClassNode>() // Owner Companion
         val count = count {
-            nonExcluded.asSequence()
-                .filter { it.name.notInList(excludedClasses) }
-                .forEach { classNode ->
-                    classNode.methods.toList().forEach { methodNode ->
-                        methodNode.instructions.toList().forEach {
-                            if (it is MethodInsnNode && it.name.notInList(excludedMethodName)) {
-                                val pair = it.getCallingMethodNodeAndOwner(this@transform)
-                                if (pair != null) {
-                                    val callingOwner = pair.first
-                                    val callingMethod = pair.second
-                                    val skipOwner = callingOwner.hasAnnotation(DISABLE_SCRAMBLE)
-                                    val skipMethod = callingMethod.hasAnnotation(DISABLE_SCRAMBLE)
-                                    if (nonExcluded.contains(callingOwner) && !skipOwner && !skipMethod) {
-                                        var shouldOuter = generateOuterClass
-                                        // Set accesses
-                                        if (shouldOuter) {
-                                            if (callingMethod.isPrivate || callingMethod.isPrivate) shouldOuter = false
-                                        }
-                                        val newName = "${it.name}_redirected_${getRandomString(10)}"
-                                        val newMethod = it.genMethod(
-                                            newName,
-                                            callingMethod.signature,
-                                            callingMethod.exceptions.toTypedArray(),
-                                            shouldOuter
+            runBlocking {
+                nonExcluded.asSequence()
+                    .filter { it.name.notInList(excludedClasses) }
+                    .forEach { classNode ->
+                        fun job() {
+                            classNode.methods.toList().forEach { methodNode ->
+                                methodNode.instructions.toList().forEach {
+                                    if (it is MethodInsnNode && it.name.notInList(excludedMethodName)) {
+                                        val pair = it.getCallingMethodNodeAndOwner(
+                                            this@transform,
+                                            Configs.Settings.parallel
                                         )
-                                        if (newMethod != null) {
-                                            it.name = newName
-                                            if (it.opcode == Opcodes.INVOKEVIRTUAL) {
-                                                it.desc = "(L${it.owner};${it.desc.removePrefix("(")}"
-                                                it.opcode = Opcodes.INVOKESTATIC
-                                            }
-
-                                            if (NativeCandidateTransformer.enabled) {
-                                                if (newMethod.desc.substringAfterLast(")").startsWith("V")) {
-                                                    if (nativeDownCall) {
-                                                        newMethod.visitAnnotation(
-                                                            NativeCandidateTransformer.nativeAnnotation,
-                                                            false
-                                                        )
-                                                        NativeCandidateTransformer.appendedMethods.add(newMethod)
-                                                    }
-                                                } else if (nativeUpCall) {
-                                                    newMethod.visitAnnotation(
-                                                        NativeCandidateTransformer.nativeAnnotation,
+                                        if (pair != null) {
+                                            val callingOwner = pair.first
+                                            val callingMethod = pair.second
+                                            val skipOwner = callingOwner.hasAnnotation(DISABLE_SCRAMBLE)
+                                            val skipMethod = callingMethod.hasAnnotation(DISABLE_SCRAMBLE)
+                                            if (nonExcluded.contains(callingOwner) && !skipOwner && !skipMethod) {
+                                                var shouldOuter = generateOuterClass
+                                                // Set accesses
+                                                if (shouldOuter) {
+                                                    if (callingMethod.isPrivate || callingMethod.isPrivate) shouldOuter =
                                                         false
-                                                    )
-                                                    NativeCandidateTransformer.appendedMethods.add(newMethod)
                                                 }
-                                            }
-
-                                            if (shouldOuter) {
-                                                val newOwner = newClasses.getOrPut(classNode) {
-                                                    ClassNode().apply {
-                                                        visit(
-                                                            classNode.version,
-                                                            Opcodes.ACC_PUBLIC,
-                                                            "${classNode.name}\$MethodStatic",
-                                                            null,
-                                                            "java/lang/Object",
-                                                            null
-                                                        )
+                                                val newName = "${it.name}_redirected_${getRandomString(10)}"
+                                                val newMethod = it.genMethod(
+                                                    newName,
+                                                    callingMethod.signature,
+                                                    callingMethod.exceptions.toTypedArray(),
+                                                    shouldOuter
+                                                )
+                                                if (newMethod != null) {
+                                                    it.name = newName
+                                                    if (it.opcode == Opcodes.INVOKEVIRTUAL) {
+                                                        it.desc = "(L${it.owner};${it.desc.removePrefix("(")}"
+                                                        it.opcode = Opcodes.INVOKESTATIC
                                                     }
+
+                                                    if (NativeCandidateTransformer.enabled) {
+                                                        if (newMethod.desc.substringAfterLast(")").startsWith("V")) {
+                                                            if (nativeDownCall) {
+                                                                newMethod.visitAnnotation(
+                                                                    NativeCandidateTransformer.nativeAnnotation,
+                                                                    false
+                                                                )
+                                                                NativeCandidateTransformer.appendedMethods.add(newMethod)
+                                                            }
+                                                        } else if (nativeUpCall) {
+                                                            newMethod.visitAnnotation(
+                                                                NativeCandidateTransformer.nativeAnnotation,
+                                                                false
+                                                            )
+                                                            NativeCandidateTransformer.appendedMethods.add(newMethod)
+                                                        }
+                                                    }
+
+                                                    if (shouldOuter) {
+                                                        val newOwner = synchronized(this@transform) {
+                                                            newClasses.getOrPut(classNode) {
+                                                                ClassNode().apply {
+                                                                    visit(
+                                                                        classNode.version,
+                                                                        Opcodes.ACC_PUBLIC,
+                                                                        "${classNode.name}\$MethodStatic",
+                                                                        null,
+                                                                        "java/lang/Object",
+                                                                        null
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                        // Duplicate methods
+                                                        newOwner.methods.add(newMethod)
+                                                        if (randomCall) classNode.methods.add(newMethod)
+                                                        // Random call
+                                                        it.owner = if (Random.nextBoolean() || randomCall) newOwner.name
+                                                        else classNode.name
+                                                    } else {
+                                                        it.owner = classNode.name
+                                                        classNode.methods.add(newMethod)
+                                                    }
+                                                    add(1)
                                                 }
-                                                // Duplicate methods
-                                                newOwner.methods.add(newMethod)
-                                                if (randomCall) classNode.methods.add(newMethod)
-                                                // Random call
-                                                it.owner = if (Random.nextBoolean() || randomCall) newOwner.name
-                                                else classNode.name
-                                            } else {
-                                                it.owner = classNode.name
-                                                classNode.methods.add(newMethod)
                                             }
-                                            add(1)
                                         }
                                     }
                                 }
                             }
                         }
+                        if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
                     }
-                }
+            }
         }.get()
-        newClasses.forEach { (_, new) -> addTrashClass(new) }
+        newClasses.forEach { (_, new) -> addClass(new) }
         Logger.info("    Redirected $count method calls")
         if (generateOuterClass) Logger.info("    Generated ${newClasses.size} outer classes")
     }

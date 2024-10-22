@@ -48,10 +48,19 @@ fun MethodInsnNode.getCallingMethodNode(resourceCache: ResourceCache): MethodNod
     return ownerNode.methods.find { it.name == name && it.desc == desc }
 }
 
-fun MethodInsnNode.getCallingMethodNodeAndOwner(resourceCache: ResourceCache): Pair<ClassNode, MethodNode>? {
-    val ownerNode = resourceCache.getClassNode(owner) ?: return null
-    val methodNode = ownerNode.methods.find { it.name == name && it.desc == desc } ?: return null
-    return ownerNode to methodNode
+fun MethodInsnNode.getCallingMethodNodeAndOwner(
+    resourceCache: ResourceCache,
+    parallel: Boolean
+): Pair<ClassNode, MethodNode>? {
+    if (parallel) {
+        val ownerNode = synchronized(resourceCache) { resourceCache.getClassNode(owner) ?: return null }
+        val methodNode = ownerNode.methods.toList().find { it.name == name && it.desc == desc } ?: return null
+        return ownerNode to methodNode
+    } else {
+        val ownerNode = resourceCache.getClassNode(owner) ?: return null
+        val methodNode = ownerNode.methods.find { it.name == name && it.desc == desc } ?: return null
+        return ownerNode to methodNode
+    }
 }
 
 val MethodNode.hasAnnotations: Boolean

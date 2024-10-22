@@ -20,6 +20,7 @@ object Configs {
         var exclusions by setting("Exclusions", listOf())
         var mixinPackages by setting("MixinPackage", listOf("net/spartanb312/client/mixins/"))
         var generateRemap by setting("DumpMappings", true)
+        var parallel by setting("Parallel", false)
         var timeUsage by setting("PrintTimeUsage", true)
         var forceUseComputeMax by setting("ForceUseComputeMax", false)
         var missingCheck by setting("LibsMissingCheck", true)

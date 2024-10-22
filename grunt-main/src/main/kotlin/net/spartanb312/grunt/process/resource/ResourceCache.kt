@@ -1,6 +1,11 @@
 package net.spartanb312.grunt.process.resource
 
 import com.google.gson.JsonObject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.Configs.isExcluded
 import net.spartanb312.grunt.config.Configs.isMixinClass
@@ -19,7 +24,6 @@ import org.objectweb.asm.tree.ClassNode
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.jar.JarFile
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -37,8 +41,8 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
             addAll(libraries.values)
         }
 
-    val nonExcluded get() = classes.filter { !it.key.isExcluded }.values
-    val mixinClasses get() = classes.filter { it.key.isMixinClass }.values
+    val nonExcluded get() = classes.values.filter { !it.isExcluded }
+    val mixinClasses get() = classes.values.filter { it.isMixinClass }
 
     val classMappings = mutableMapOf<String, String>()
     private val mappingObjects = mutableMapOf<String, JsonObject>()
@@ -78,16 +82,6 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                 }
             }
         }
-
-        val seed = AtomicInteger()
-        val job = {
-            seed.incrementAndGet()
-            if (seed.get() >= 123456 xor seed.get()) {
-
-            } else {
-
-            }
-        }
     }
 
     fun readJar() {
@@ -105,48 +99,54 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         }
 
         Logger.info("Writing classes...")
-        for (classNode in classes.values) {
-            if (classNode.name == "module-info" || classNode.name.shouldRemove) continue
-            val missingReference = ReferenceSearch.checkMissing(classNode, hierarchy)
-            if (missingReference.isNotEmpty() && Configs.Settings.missingCheck) {
-                Logger.error("Class ${classNode.name} missing reference:")
-                for (missing in missingReference) {
-                    Logger.error(" - ${missing.name}")
-                }
-            }
-            val classInfo = hierarchy.getClassInfo(classNode)
-            val missingAny =
-                (classInfo.missingDependencies || missingReference.isNotEmpty()) && Configs.Settings.missingCheck
-            val useComputeMax = Configs.Settings.forceUseComputeMax || missingAny || classNode.isExcluded
-            val missing = missingAny && !Configs.Settings.forceUseComputeMax && !classNode.isExcluded
+        val mutex = Mutex()
+        runBlocking {
+            for (classNode in classes.values) {
+                if (classNode.name == "module-info" || classNode.name.shouldRemove) continue
+                suspend fun job() {
+                    val missingList = ReferenceSearch.checkMissing(classNode, hierarchy)
+                    val missingRef = missingList.isNotEmpty()
+                    if (missingRef && Configs.Settings.missingCheck) {
+                        Logger.error("Class ${classNode.name} missing reference:")
+                        for (missing in missingList) {
+                            Logger.error(" - ${missing.name}")
+                        }
+                    }
+                    val classInfo = hierarchy.getClassInfo(classNode)
+                    val missingAny = (classInfo.missingDependencies || missingRef) && Configs.Settings.missingCheck
+                    val useComputeMax = Configs.Settings.forceUseComputeMax || missingAny || classNode.isExcluded
+                    val missing = missingAny && !Configs.Settings.forceUseComputeMax && !classNode.isExcluded
 
-            val entryName = classNode.name + ".class"
-            val writingClassEvent = WritingClassEvent(entryName, classNode)
-            writingClassEvent.post()
-            if (!writingClassEvent.cancelled) {
-                val byteArray = try {
-                    if (missing) Logger.warn("Using COMPUTE_MAXS due to ${classNode.name} missing dependencies or reference.")
-                    ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {
-                        classNode.accept(this)
-                    }.toByteArray()
-                } catch (ignore: Exception) {
-                    Logger.error("Failed to dump class ${classNode.name}. Trying ${if (useComputeMax) "COMPUTE_FRAMES" else "COMPUTE_MAXS"}")
-                    try {
-                        ClassDumper(this@ResourceCache, hierarchy, !useComputeMax).apply {
-                            classNode.accept(this)
-                        }.toByteArray()
-                    } catch (exception: Exception) {
-                        exception.printStackTrace()
-                        ByteArray(0)
+                    val entryName = classNode.name + ".class"
+                    val writingClassEvent = WritingClassEvent(entryName, classNode)
+                    writingClassEvent.post()
+                    if (!writingClassEvent.cancelled) {
+                        val byteArray = try {
+                            if (missing) Logger.warn("Using COMPUTE_MAXS due to ${classNode.name} missing dependencies or reference.")
+                            ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {
+                                classNode.accept(this)
+                            }.toByteArray()
+                        } catch (ignore: Exception) {
+                            Logger.error("Failed to dump class ${classNode.name}. Trying ${if (useComputeMax) "COMPUTE_FRAMES" else "COMPUTE_MAXS"}")
+                            try {
+                                ClassDumper(this@ResourceCache, hierarchy, !useComputeMax).apply {
+                                    classNode.accept(this)
+                                }.toByteArray()
+                            } catch (exception: Exception) {
+                                exception.printStackTrace()
+                                ByteArray(0)
+                            }
+                        }
+                        val event = WritingResourceEvent(entryName, byteArray)
+                        event.post()
+                        if (!event.cancelled) mutex.withLock {
+                            putNextEntry(ZipEntry(entryName))
+                            write(byteArray)
+                            closeEntry()
+                        }
                     }
                 }
-                val event = WritingResourceEvent(entryName, byteArray)
-                event.post()
-                if (!event.cancelled) {
-                    putNextEntry(ZipEntry(entryName))
-                    write(byteArray)
-                    closeEntry()
-                }
+                if (Configs.Settings.parallel) launch(Dispatchers.IO) { job() } else job()
             }
         }
         hierarchy.buildMissingMap()
@@ -233,7 +233,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         }
     }
 
-    fun addTrashClass(classNode: ClassNode) {
+    fun addClass(classNode: ClassNode) {
         classes[classNode.name] = classNode
         trashClasses[classNode.name] = classNode
     }

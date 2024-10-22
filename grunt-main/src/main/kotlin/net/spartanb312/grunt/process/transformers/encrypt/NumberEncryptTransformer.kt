@@ -1,6 +1,10 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
+import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
@@ -20,7 +24,7 @@ import org.objectweb.asm.tree.*
 
 /**
  * Encrypt integer and long numbers
- * Last update on 2024/09/23
+ * Last update on 2024/10/23
  */
 object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encryption), MethodProcessor {
 
@@ -32,36 +36,43 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
 
     override fun ResourceCache.transform() {
         Logger.info(" - Encrypting numbers...")
+        val times = if (arrayed) 1 else times
         val count = count {
-            repeat(times) { t ->
-                if (times > 1) Logger.info("    Encrypting integers ${t + 1} of $times times")
-                nonExcluded.asSequence()
-                    .filter { c -> exclusion.none { c.name.startsWith(it) } }
-                    .forEach { classNode ->
-                        val list = mutableListOf<NumberEncryptorArrayed.Value>()
-                        val field = if (arrayed && !classNode.isInterface) classNode.getOrCreateField() else null
-                        field?.appendAnnotation(DISABLE_SCRAMBLE)
-                        classNode.methods.asSequence()
-                            .filter { !it.isAbstract && !it.isNative }
-                            .forEach { methodNode: MethodNode ->
-                                encryptNumber(classNode, methodNode, field, list)
-                                if (float) encryptFloatingPoint(classNode, methodNode, field, list)
+            runBlocking {
+                repeat(times) { t ->
+                    if (times > 1) Logger.info("    Encrypting integers ${t + 1} of $times times")
+                    nonExcluded.asSequence()
+                        .filter { c -> exclusion.none { c.name.startsWith(it) } }
+                        .forEach { classNode ->
+                            fun job() {
+                                val list = mutableListOf<NumberEncryptorArrayed.Value>()
+                                val field =
+                                    if (arrayed && !classNode.isInterface) classNode.getOrCreateField() else null
+                                field?.appendAnnotation(DISABLE_SCRAMBLE)
+                                classNode.methods.asSequence()
+                                    .filter { !it.isAbstract && !it.isNative }
+                                    .forEach { methodNode: MethodNode ->
+                                        encryptNumber(classNode, methodNode, field, list)
+                                        if (float) encryptFloatingPoint(classNode, methodNode, field, list)
+                                    }
+                                if (arrayed && list.isNotEmpty() && field != null) {
+                                    val insert = NumberEncryptorArrayed.decryptMethod(classNode, field, list)
+                                    val clinit = classNode.methods.find { it.name == "<clinit>" } ?: MethodNode(
+                                        Opcodes.ACC_STATIC,
+                                        "<clinit>",
+                                        "()V",
+                                        null,
+                                        null
+                                    ).also {
+                                        it.instructions.insert(InsnNode(Opcodes.RETURN))
+                                        classNode.methods.add(it)
+                                    }
+                                    clinit.instructions.insert(insert)
+                                }
                             }
-                        if (arrayed && list.isNotEmpty() && field != null) {
-                            val insert = NumberEncryptorArrayed.decryptMethod(classNode, field, list)
-                            val clinit = classNode.methods.find { it.name == "<clinit>" } ?: MethodNode(
-                                Opcodes.ACC_STATIC,
-                                "<clinit>",
-                                "()V",
-                                null,
-                                null
-                            ).also {
-                                it.instructions.insert(InsnNode(Opcodes.RETURN))
-                                classNode.methods.add(it)
-                            }
-                            clinit.instructions.insert(insert)
+                            if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
                         }
-                    }
+                }
             }
         }.get()
         Logger.info("    Encrypted $count numbers")

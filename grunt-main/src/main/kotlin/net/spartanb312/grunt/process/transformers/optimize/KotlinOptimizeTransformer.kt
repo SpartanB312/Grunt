@@ -1,16 +1,16 @@
 package net.spartanb312.grunt.process.transformers.optimize
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.AbstractInsnNode
-import org.objectweb.asm.tree.AnnotationNode
-import org.objectweb.asm.tree.InsnNode
-import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
+import org.objectweb.asm.tree.*
 
 /**
  * Remove kotlin redundant calls
@@ -39,42 +39,47 @@ object KotlinOptimizeTransformer : Transformer("KotlinOptimizer", Category.Optim
         // Remove Intrinsics check
         if (removeIntrinsics) {
             val intrinsicsCount = count {
-                nonExcluded.asSequence()
-                    .filter { intrinsicsExclusion.none { n -> it.name.startsWith(n) } }
-                    .forEach { classNode ->
-                        classNode.methods.forEach { methodNode ->
-                            val replace = mutableListOf<AbstractInsnNode>()
-                            methodNode.instructions.forEach { insnNode ->
-                                if (
-                                    insnNode is MethodInsnNode
-                                    && insnNode.opcode == Opcodes.INVOKESTATIC
-                                    && insnNode.owner == "kotlin/jvm/internal/Intrinsics"
-                                ) {
-                                    val removeSize = intrinsicsRemoveMethods[insnNode.name + insnNode.desc] ?: 0
-                                    if (removeSize > 0 && intrinsicsRemoval.contains(insnNode.name)) {
-                                        replace.removeLast()
-                                        repeat(removeSize) {
-                                            replace.add(InsnNode(Opcodes.POP))
-                                        }
-                                        add()
-                                    } else {
-                                        if (replaceLdc && intrinsicsReplaceMethods.contains(insnNode.name + insnNode.desc)) {
-                                            val ldc = replace.last()
-                                            if (ldc is LdcInsnNode) {
-                                                ldc.cst = "REMOVED BY GRUNT"
-                                                add(1)
+                runBlocking {
+                    nonExcluded.asSequence()
+                        .filter { intrinsicsExclusion.none { n -> it.name.startsWith(n) } }
+                        .forEach { classNode ->
+                            fun job() {
+                                classNode.methods.forEach { methodNode ->
+                                    val replace = mutableListOf<AbstractInsnNode>()
+                                    methodNode.instructions.forEach { insnNode ->
+                                        if (
+                                            insnNode is MethodInsnNode
+                                            && insnNode.opcode == Opcodes.INVOKESTATIC
+                                            && insnNode.owner == "kotlin/jvm/internal/Intrinsics"
+                                        ) {
+                                            val removeSize = intrinsicsRemoveMethods[insnNode.name + insnNode.desc] ?: 0
+                                            if (removeSize > 0 && intrinsicsRemoval.contains(insnNode.name)) {
+                                                replace.removeLast()
+                                                repeat(removeSize) {
+                                                    replace.add(InsnNode(Opcodes.POP))
+                                                }
+                                                add()
+                                            } else {
+                                                if (replaceLdc && intrinsicsReplaceMethods.contains(insnNode.name + insnNode.desc)) {
+                                                    val ldc = replace.last()
+                                                    if (ldc is LdcInsnNode) {
+                                                        ldc.cst = "REMOVED BY GRUNT"
+                                                        add(1)
+                                                    }
+                                                }
+                                                replace.add(insnNode)
                                             }
+                                        } else {
+                                            replace.add(insnNode)
                                         }
-                                        replace.add(insnNode)
                                     }
-                                } else {
-                                    replace.add(insnNode)
+                                    methodNode.instructions.clear()
+                                    replace.forEach { methodNode.instructions.add(it) }
                                 }
                             }
-                            methodNode.instructions.clear()
-                            replace.forEach { methodNode.instructions.add(it) }
+                            if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
                         }
-                    }
+                }
             }.get()
             Logger.info("    Removed $intrinsicsCount Intrinsics checks")
         }
