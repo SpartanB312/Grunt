@@ -10,6 +10,7 @@ import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.genesis.kotlin.modify
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
+import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
 import net.spartanb312.grunt.process.transformers.rename.ClassRenameTransformer
 import net.spartanb312.grunt.utils.ChainNode
 import net.spartanb312.grunt.utils.extensions.isPublic
@@ -56,6 +57,10 @@ object ArithmeticExpr {
         ) {
             INSTRUCTIONS { +action }
             MAXS(2, 3)
+        }
+        if (ControlflowTransformer.annotationOnBuilder) {
+            NativeCandidateTransformer.appendedMethods.add(dedicateMethod)
+            dedicateMethod.visitAnnotation(NativeCandidateTransformer.annotation, false)
         }
         owner.modify { +dedicateMethod }
         return instructions {

@@ -30,6 +30,8 @@ class GeneralPanel : JPanel() {
     private val fileRemovePrefix = JTextArea("", 3, 50)
     private val fileRemoveSuffix = JTextArea("", 3, 50)
 
+    private val corruptOutput = JCheckBox("")
+
     init {
 
         layout = MigLayout(
@@ -118,17 +120,20 @@ class GeneralPanel : JPanel() {
         dictionary.add(customDictionary, CC().cell(1, 1).growX())
         add(dictionary, CC().span().grow())
 
-        //File Remove
-        val fileRemove = JPanel(MigLayout(LC().fillX().flowX(), AC().gap().grow()))
-        fileRemove.border = TitledBorder("FileRemove").apply {
+        // Resource processing
+        val resProcess = JPanel(MigLayout(LC().fillX().flowX(), AC().gap().grow()))
+        resProcess.border = TitledBorder("ResourceProcessing").apply {
             titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
             titleColor = Color(0x4d89c9)
         }
-        fileRemove.add(JLabel("FileRemovePrefix:"), CC().cell(0, 0))
-        fileRemove.add(fileRemovePrefix, CC().cell(1, 0).growX())
-        fileRemove.add(JLabel("FileRemoveSuffix:"), CC().cell(0, 1))
-        fileRemove.add(fileRemoveSuffix, CC().cell(1, 1).growX())
-        add(fileRemove, CC().span().grow())
+        resProcess.add(JLabel("FileRemovePrefix:"), CC().cell(0, 0))
+        resProcess.add(fileRemovePrefix, CC().cell(1, 0).growX())
+        resProcess.add(JLabel("FileRemoveSuffix:"), CC().cell(0, 1))
+        resProcess.add(fileRemoveSuffix, CC().cell(1, 1).growX())
+        resProcess.add(JLabel("CorruptOutput:"), CC().cell(0, 2))
+        resProcess.add(corruptOutput, CC().cell(1, 2))
+
+        add(resProcess, CC().span().grow())
     }
 
     /**
@@ -147,6 +152,8 @@ class GeneralPanel : JPanel() {
 
         fileRemovePrefix.text = Configs.Settings.fileRemovePrefix.joinToString("\n")
         fileRemoveSuffix.text = Configs.Settings.fileRemoveSuffix.joinToString("\n")
+
+        corruptOutput.isSelected = Configs.Settings.corruptOutput
     }
 
     fun setSetting() {
@@ -159,6 +166,8 @@ class GeneralPanel : JPanel() {
 
         Configs.Settings.fileRemovePrefix = fileRemovePrefix.text.split("\n").filter { it.isNotEmpty() }
         Configs.Settings.fileRemoveSuffix = fileRemoveSuffix.text.split("\n").filter { it.isNotEmpty() }
+
+        Configs.Settings.corruptOutput = corruptOutput.isSelected
     }
 
 }

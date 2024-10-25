@@ -34,22 +34,22 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     private var beforeEncrypt by setting("ExecuteBeforeEncrypt", false)
     private val bogusJump by setting("BogusConditionJump", true)
     private val mangledIf by setting("MangledCompareJump", true)
-    private val ifRate by setting("IfReplaceRate", 70)
+    private val ifRate by setting("IfReplaceRate", 50)
+    private val ifCompareRate by setting("IfICompareReplaceRate", 100)
     private val tableSwitch by setting("TableSwitchJump", true)
     private val switchRate by setting("SwitchReplaceRate", 30)
     private val maxSwitchCase by setting("MaxSwitchCase", 5)
     val reverseExistedIf by setting("ReverseExistedIf", true)
     val reverseChance by setting("ReverseChance", 50)
     val trappedCase by setting("TrappedSwitchCase", true)
-    val trapChance by setting("TrapChance", 30)
-    val fakeLoop by setting("UnconditionalLoop", true)
-    val loopChance by setting("LoopChance", 30)
-    var arithmeticExpr by setting("OutlineArithmeticExpr", true)
+    val trapChance by setting("TrapChance", 50)
+    var arithmeticExpr by setting("ArithmeticExprBuilder", true)
     val asIntensity by setting("BuilderIntensity", 1)
     val junkParameter by setting("JunkBuilderParameter", true)
+    val annotationOnBuilder by setting("BuilderNativeAnnotation", false)
     val useLocalVar by setting("UseLocalVar", true)
     val junkCode by setting("JunkCode", true)
-    val maxJunkCode by setting("MaxJunkCode", 3)
+    val maxJunkCode by setting("MaxJunkCode", 2)
     val expandedJunkCode by setting("ExpandedJunkCode", true)
     val exclusion by setting("Exclusion", listOf())
 
@@ -121,19 +121,23 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                 val newInsn = instructions {
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->
-                        if (insnNode is JumpInsnNode && ReplaceIf.ifComparePairs.any { it.key == insnNode.opcode }
-                            && Random.nextInt(0, 100) <= ifRate
-                        ) {
-                            +ReplaceIf.generate(
-                                insnNode,
-                                insnNode.label,
-                                owner,
-                                methodNode,
-                                returnType,
-                                Random.nextBoolean(),
-                                indyReobf
-                            )
-                            count++
+                        if (insnNode is JumpInsnNode) {
+                            val replaceIf = ReplaceIf.ifOpcodes.any { it == insnNode.opcode }
+                                    && Random.nextInt(0, 100) <= ifRate
+                            val replaceCompare = ReplaceIf.ifCompareOpcodes.any { it == insnNode.opcode }
+                                    && Random.nextInt(0, 100) <= ifCompareRate
+                            if (replaceIf || replaceCompare) {
+                                +ReplaceIf.generate(
+                                    insnNode,
+                                    insnNode.label,
+                                    owner,
+                                    methodNode,
+                                    returnType,
+                                    Random.nextBoolean(),
+                                    indyReobf
+                                )
+                                count++
+                            } else +insnNode
                         } else +insnNode
                     }
                 }
@@ -167,7 +171,6 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
         else if ((mangledIf || bogusJump) && useLocalVar) methodNode.maxLocals += 1
         return count
     }
-
 
     private fun ClassNode.missingReference(hierarchy: Hierarchy): Boolean {
         return ReferenceSearch.checkMissing(this, hierarchy).isNotEmpty()

@@ -82,18 +82,20 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 * [X] [5]PostProcess
 
 ### Plugins
+
 * [ ] [3]NoverifyHackery (Misc) Force noverify and hackery bytecodes [(reference)](https://github.com/char/noverify-hackery)
-* [ ] [4]RemoteLoader (Misc) Remote authentication and constant class loading services
+* [X] [4]RemoteLoader (Misc) Remote authentication and constant class loading services
+* [X] [2]VersionPatcher (Misc) Downgrade the class version from java6 to java5 for Windows 98
 
 ### ControlFlow
-* [X] [5]AntiSimulation (Seed) Hide the seed of conditions
+
+* [X] [5]RandomArithmeticExpr (Seed) Hide the seed operations to anti simulation
 * [X] [4]BogusConditionJump (If, Goto) Generate fake jumps with random junk codes
 * [X] [4]MangledCompareJump (If, Goto) Generate conditional jump with junk codes to replace direct jump
 * [X] [5]ReversedIfJump (If, Goto) Random mutation to the jump condition
 * [ ] [4]ParallelBranch (If, Goto) Generate junk parallel branch to prevent inference from returns
 * [X] [4]TableSwitchJump (Switch) Generate TableSwitch to replace direct jumps
-* [X] [4]UnconditionalLoop (Switch) Random weird loops between switch labels
-* [X] [4]TrappedSwitchCase (Switch) Random trapped switch junk cases
+* [X] [4]TrappedSwitchCase (Switch) Random trapped jumps or weird loops between switch cases
 * [X] [4]JunkCodeGenerator (JunkCode) Generate junk calls
 * [ ] [0] (Provide ur suggestion in Discord)
 

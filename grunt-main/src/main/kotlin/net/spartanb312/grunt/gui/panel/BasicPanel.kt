@@ -19,9 +19,9 @@ class BasicPanel : JPanel() {
     private val inputBrowse = JButton("Browse")
     private val outputBrowse = JButton("Browse")
 
+    val multithreading = JCheckBox("Multithreading")
     val useCMPTMaxIfMissing = JCheckBox("LibsMissingCheck")
-    val useComputeMax = JCheckBox("ForceUseComputeMax")
-    val corruptOutput = JCheckBox("CorruptOutput")
+    val useComputeMax = JCheckBox("ForceComputeMaxs")
     val dumpMappings = JCheckBox("DumpMappings")
 
     val pluginPanel = JPanel()
@@ -68,9 +68,9 @@ class BasicPanel : JPanel() {
         }
 
         add(obfButton, CC().cell(3, 0, 1, 2).grow())
-        add(useCMPTMaxIfMissing, CC().cell(3, 2).grow())
-        add(useComputeMax, CC().cell(3, 3).grow())
-        add(corruptOutput, CC().cell(3, 4).grow())
+        add(multithreading, CC().cell(3, 2).grow())
+        add(useCMPTMaxIfMissing, CC().cell(3, 3).grow())
+        add(useComputeMax, CC().cell(3, 4).grow())
         add(dumpMappings, CC().cell(3, 5).grow())
 
         add(JLabel("Input:"), CC().cell(0, 0).growX())
@@ -121,7 +121,7 @@ class BasicPanel : JPanel() {
 
         useComputeMax.isSelected = Settings.forceUseComputeMax
         useCMPTMaxIfMissing.isSelected = Settings.missingCheck
-        corruptOutput.isSelected = Settings.corruptOutput
+        multithreading.isSelected = Settings.parallel
         dumpMappings.isSelected = Settings.generateRemap
     }
 
@@ -131,7 +131,7 @@ class BasicPanel : JPanel() {
 
         Settings.forceUseComputeMax = this.useComputeMax.isSelected
         Settings.missingCheck = this.useCMPTMaxIfMissing.isSelected
-        Settings.corruptOutput = this.corruptOutput.isSelected
+        Settings.parallel = this.multithreading.isSelected
         Settings.generateRemap = this.dumpMappings.isSelected
     }
 

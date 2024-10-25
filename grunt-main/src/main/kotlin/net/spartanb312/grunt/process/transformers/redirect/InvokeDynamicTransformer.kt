@@ -47,11 +47,11 @@ import kotlin.random.Random
 object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect) {
 
     private val rate by setting("ReplacePercentage", 10)
-    private val heavy by setting("HeavyProtection", true)
+    private val heavy by setting("HeavyProtection", false)
     private val metadataClass by setting("MetadataClass", "net/spartanb312/grunt/GruntMetadata")
     private val massiveRandom by setting("MassiveRandomBlank", false)
     private val reobf by setting("Reobfuscate", true)
-    private val enhancedFlow by setting("EnhancedFlowReobf", true)
+    private val enhancedFlow by setting("EnhancedFlowReobf", false)
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {

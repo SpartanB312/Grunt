@@ -24,7 +24,7 @@ import org.objectweb.asm.tree.*
 
 /**
  * Scramble field calls
- * Last update on 2024/10/12
+ * Last update on 2024/10/25
  */
 object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect) {
 
@@ -34,13 +34,10 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
     private val redirectSetStatic by setting("RedirectSetStatic", true)
     private val redirectGetField by setting("RedirectGetValue", true)
     private val redirectSetField by setting("RedirectSetField", true)
-
     private val generateOuterClass by setting("GenerateOuterClass", false)
     private val excludedClasses by setting("ExcludedClasses", listOf())
     private val excludedFieldName by setting("ExcludedFieldName", listOf())
-
-    private val downCalls by setting("NativeDownCalls", true)
-    private val upCalls by setting("NativeUpCalls", false)
+    private val nativeAnnotation by setting("NativeAnnotation", false)
 
     override fun ResourceCache.transform() {
         Logger.info(" - Redirecting field calls...")
@@ -80,7 +77,7 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                                                             if (randomName) getRandomString(10)
                                                             else "get_${it.name}${getRandomString(5)}",
                                                             callingField.signature
-                                                        ).appendAnnotation(false)
+                                                        ).appendAnnotation()
 
                                                     it.opcode == Opcodes.PUTSTATIC && redirectSetStatic ->
                                                         genMethod(
@@ -88,7 +85,7 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                                                             if (randomName) getRandomString(10)
                                                             else "set_${it.name}${getRandomString(5)}",
                                                             callingField.signature
-                                                        ).appendAnnotation(true)
+                                                        ).appendAnnotation()
 
                                                     it.opcode == Opcodes.GETFIELD && redirectGetField ->
                                                         genMethod(
@@ -96,7 +93,7 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                                                             if (randomName) getRandomString(10)
                                                             else "get_${it.name}${getRandomString(5)}",
                                                             callingField.signature
-                                                        ).appendAnnotation(false)
+                                                        ).appendAnnotation()
 
                                                     it.opcode == Opcodes.PUTFIELD && redirectSetField ->
                                                         genMethod(
@@ -104,7 +101,7 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                                                             if (randomName) getRandomString(10)
                                                             else "set_${it.name}${getRandomString(5)}",
                                                             callingField.signature
-                                                        ).appendAnnotation(true)
+                                                        ).appendAnnotation()
 
                                                     else -> null
                                                 }
@@ -165,15 +162,10 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
         return count
     }
 
-    private fun MethodNode.appendAnnotation(downCall: Boolean): MethodNode {
-        if (NativeCandidateTransformer.enabled) {
-            if (downCall && downCalls) {
-                NativeCandidateTransformer.appendedMethods.add(this)
-                visitAnnotation(NativeCandidateTransformer.nativeAnnotation, false)
-            } else if (upCalls) {
-                NativeCandidateTransformer.appendedMethods.add(this)
-                visitAnnotation(NativeCandidateTransformer.nativeAnnotation, false)
-            }
+    private fun MethodNode.appendAnnotation(): MethodNode {
+        if (nativeAnnotation) {
+            NativeCandidateTransformer.appendedMethods.add(this)
+            visitAnnotation(NativeCandidateTransformer.annotation, false)
         }
         return this
     }

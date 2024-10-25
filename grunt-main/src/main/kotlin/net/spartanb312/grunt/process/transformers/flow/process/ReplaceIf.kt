@@ -23,7 +23,7 @@ object ReplaceIf {
         indyReobf: Boolean
     ): InsnList {
         return instructions {
-            val reversedOpcode = ifComparePairs[insnNode.opcode]
+            val reversedOpcode = ifPairs[insnNode.opcode]
             if (ControlflowTransformer.reverseExistedIf && reversedOpcode != null
                 && Random.nextInt(100) <= ControlflowTransformer.reverseChance
             ) {
@@ -43,7 +43,25 @@ object ReplaceIf {
         }
     }
 
-    val ifComparePairs = mutableMapOf(
+    val ifOpcodes = listOf(
+        Opcodes.IFEQ,
+        Opcodes.IFLE,
+        Opcodes.IFGE,
+        Opcodes.IFNE,
+        Opcodes.IFGT,
+        Opcodes.IFLT
+    )
+
+    val ifCompareOpcodes = listOf(
+        Opcodes.IF_ICMPEQ,
+        Opcodes.IF_ICMPLE,
+        Opcodes.IF_ICMPGE,
+        Opcodes.IF_ICMPNE,
+        Opcodes.IF_ICMPGT,
+        Opcodes.IF_ICMPLT
+    )
+
+    val ifPairs = mutableMapOf(
         Opcodes.IFEQ to Opcodes.IFNE,
         Opcodes.IFLE to Opcodes.IFGT,
         Opcodes.IFGE to Opcodes.IFLT,
@@ -55,7 +73,7 @@ object ReplaceIf {
         Opcodes.IF_ICMPGE to Opcodes.IF_ICMPLT,
         Opcodes.IF_ICMPNE to Opcodes.IF_ICMPEQ,
         Opcodes.IF_ICMPGT to Opcodes.IF_ICMPLE,
-        Opcodes.IF_ICMPLT to Opcodes.IF_ICMPGE,
+        Opcodes.IF_ICMPLT to Opcodes.IF_ICMPGE
     )
 
 }

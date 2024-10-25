@@ -1,14 +1,10 @@
 package net.spartanb312.grunt.example;
 
-import kotlin.Unit;
 import net.spartanb312.genesis.java.Builders;
 import net.spartanb312.genesis.java.builder.AnnotationBuilder;
 import net.spartanb312.genesis.java.builder.ClassBuilder;
 import net.spartanb312.genesis.java.builder.MethodBuilder;
-import net.spartanb312.grunt.event.Listener;
-import net.spartanb312.grunt.event.ListenerKt;
 import net.spartanb312.grunt.event.events.TransformerEvent;
-import net.spartanb312.grunt.plugin.Plugin;
 import net.spartanb312.grunt.plugin.java.JavaPlugin;
 import net.spartanb312.grunt.process.Transformer;
 import net.spartanb312.grunt.process.Transformers;

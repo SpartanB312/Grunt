@@ -35,9 +35,7 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
     private val randomCall by setting("RandomCall", true)
     private val excludedClasses by setting("ExcludedClasses", listOf())
     private val excludedMethodName by setting("ExcludedMethodName", listOf())
-
-    private val nativeDownCall by setting("NativeDownCall", false)
-    private val nativeUpCall by setting("NativeUpCall", false)
+    private val nativeAnnotation by setting("NativeAnnotation", false)
 
     override fun ResourceCache.transform() {
         Logger.info(" - Redirecting method calls...")
@@ -80,25 +78,10 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
                                                         it.desc = "(L${it.owner};${it.desc.removePrefix("(")}"
                                                         it.opcode = Opcodes.INVOKESTATIC
                                                     }
-
-                                                    if (NativeCandidateTransformer.enabled) {
-                                                        if (newMethod.desc.substringAfterLast(")").startsWith("V")) {
-                                                            if (nativeDownCall) {
-                                                                newMethod.visitAnnotation(
-                                                                    NativeCandidateTransformer.nativeAnnotation,
-                                                                    false
-                                                                )
-                                                                NativeCandidateTransformer.appendedMethods.add(newMethod)
-                                                            }
-                                                        } else if (nativeUpCall) {
-                                                            newMethod.visitAnnotation(
-                                                                NativeCandidateTransformer.nativeAnnotation,
-                                                                false
-                                                            )
-                                                            NativeCandidateTransformer.appendedMethods.add(newMethod)
-                                                        }
+                                                    if (nativeAnnotation) {
+                                                        newMethod.visitAnnotation(NativeCandidateTransformer.annotation, false)
+                                                        NativeCandidateTransformer.appendedMethods.add(newMethod)
                                                     }
-
                                                     if (shouldOuter) {
                                                         val newOwner = synchronized(this@transform) {
                                                             newClasses.getOrPut(classNode) {
