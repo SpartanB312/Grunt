@@ -15,6 +15,7 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptorClassic
+import net.spartanb312.grunt.process.transformers.rename.ReflectionSupportTransformer
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.appendAnnotation
 import net.spartanb312.grunt.utils.extensions.isAbstract
@@ -41,6 +42,9 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
     private val heavyEncrypt by setting("HeavyEncrypt", false)
     private val dontScramble by setting("DontScramble", true)
     private val exclusion by setting("Exclusion", listOf())
+
+    private val String.reflectionExcluded
+        get() = ReflectionSupportTransformer.enabled && ReflectionSupportTransformer.strBlacklist.contains(this)
 
     val generatedClasses = mutableListOf<Generated>()
 
@@ -91,9 +95,11 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                                             GETSTATIC(owner.name, it.field.name, it.field.desc)
                                         }
 
-                                        cst is String && string -> ConstRef.StringRef(cst).let {
-                                            list.add(it)
-                                            GETSTATIC(owner.name, it.field.name, it.field.desc)
+                                        cst is String && string -> {
+                                            if (!cst.reflectionExcluded) ConstRef.StringRef(cst).let {
+                                                list.add(it)
+                                                GETSTATIC(owner.name, it.field.name, it.field.desc)
+                                            } else +insn
                                         }
 
                                         else -> +insn

@@ -11,6 +11,7 @@ import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.MethodProcessor
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
+import net.spartanb312.grunt.process.transformers.rename.ReflectionSupportTransformer
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isInterface
@@ -32,6 +33,9 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
     private val times by setting("Intensity", 1)
     private val exclusion by setting("Exclusion", listOf())
 
+    private val String.reflectionExcluded
+        get() = ReflectionSupportTransformer.enabled && ReflectionSupportTransformer.strBlacklist.contains(this)
+
     override fun ResourceCache.transform() {
         Logger.info(" - Encrypting strings...")
         val count = count {
@@ -50,7 +54,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                                 for (methodNode in classNode.methods) {
                                     if (methodNode.isAbstract) continue
                                     methodNode.instructions.asSequence()
-                                        .filter { (it is LdcInsnNode && it.cst is String) }
+                                        .filter { (it is LdcInsnNode && it.cst is String && !(it.cst as String).reflectionExcluded) }
                                         .forEach { insnNode ->
                                             methodNode.instructions.insert(
                                                 insnNode,

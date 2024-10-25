@@ -14,10 +14,7 @@ import net.spartanb312.grunt.process.transformers.redirect.FieldScrambleTransfor
 import net.spartanb312.grunt.process.transformers.redirect.InvokeDynamicTransformer
 import net.spartanb312.grunt.process.transformers.redirect.MethodScrambleTransformer
 import net.spartanb312.grunt.process.transformers.redirect.StringEqualsRedirectTransformer
-import net.spartanb312.grunt.process.transformers.rename.ClassRenameTransformer
-import net.spartanb312.grunt.process.transformers.rename.FieldRenameTransformer
-import net.spartanb312.grunt.process.transformers.rename.LocalVariableRenameTransformer
-import net.spartanb312.grunt.process.transformers.rename.MethodRenameTransformer
+import net.spartanb312.grunt.process.transformers.rename.*
 
 /**
  * Execution order
@@ -43,6 +40,7 @@ object Transformers : MutableList<Transformer> by mutableListOf(
     ClonedClassTransformer order 100,
     TrashClassTransformer order 101,
     HWIDAuthenticatorTransformer order 102,
+    ReflectionSupportTransformer order 199,
     //ControlflowTransformer order 200,
     StringEncryptTransformer order 300,
     NumberEncryptTransformer order 301,

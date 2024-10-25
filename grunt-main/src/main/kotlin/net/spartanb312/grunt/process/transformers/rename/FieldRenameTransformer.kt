@@ -38,6 +38,9 @@ object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
     private val malPrefix = (if (randomKeywordPrefix) "$nextBadKeyword " else "") + prefix
     private val suffix get() = if (reversed) "\u200E" else ""
 
+    private val FieldNode.reflectionExcluded
+        get() = ReflectionSupportTransformer.enabled && name.inList(ReflectionSupportTransformer.fieldBlacklist)
+
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming fields...")
         Logger.info("    Generating mappings for fields...")
@@ -52,6 +55,7 @@ object FieldRenameTransformer : Transformer("FieldRename", Category.Renaming) {
             runBlocking {
                 for ((fieldNode, owner) in fields) {
                     if (fieldNode.name.inList(excludedName)) continue
+                    if (fieldNode.reflectionExcluded) continue
                     fun job() {
                         val name = malPrefix + dictionary.nextName() + suffix
                         val stack: Stack<ClassNode> = Stack()

@@ -8,9 +8,9 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.*
 import net.spartanb312.grunt.utils.inList
-import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.nextBadKeyword
+import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.InvokeDynamicInsnNode
@@ -41,6 +41,8 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
     private val excludedName by setting("ExcludedName", listOf("methodName"))
 
     private val suffix get() = if (reversed) "\u200E" else ""
+    private val MethodNode.reflectionExcluded
+        get() = ReflectionSupportTransformer.enabled && name.inList(ReflectionSupportTransformer.methodBlacklist)
 
     override fun ResourceCache.transform() {
         Logger.info(" - Renaming methods...")
@@ -75,6 +77,7 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
                             if (methodNode.isMainMethod) continue
                             if (isEnum && methodNode.name == "values") continue
                             if (methodNode.name.inList(excludedName)) continue
+                            if (methodNode.reflectionExcluded) continue
                             if (methodNode.isNative) continue
                             val combined = combine(classNode.name, methodNode.name, methodNode.desc)
                             if (combined.inList(exclusion)) continue
