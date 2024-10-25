@@ -104,3 +104,6 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 This is a free and open source software under GPLv3
 
 The previous Grunt versions under MIT license (1.5.8 and before)
+
+## Stargazers over time
+[![Stargazers over time](https://starchart.cc/SpartanB312/Grunt.svg?variant=adaptive)](https://starchart.cc/SpartanB312/Grunt)
