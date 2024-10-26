@@ -30,14 +30,14 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
 
     private val intensity by setting("Intensity", 1)
     private val randomName by setting("RandomName", false)
-    private val redirectGetStatic by setting("RedirectGetStatic", true)
-    private val redirectSetStatic by setting("RedirectSetStatic", true)
-    private val redirectGetField by setting("RedirectGetValue", true)
-    private val redirectSetField by setting("RedirectSetField", true)
+    private val redirectGetStatic by setting("GetStatic", true)
+    private val redirectSetStatic by setting("tSetStatic", true)
+    private val redirectGetField by setting("GetValue", true)
+    private val redirectSetField by setting("SetField", true)
     private val generateOuterClass by setting("GenerateOuterClass", false)
+    private val nativeAnnotation by setting("NativeAnnotation", false)
     private val excludedClasses by setting("ExcludedClasses", listOf())
     private val excludedFieldName by setting("ExcludedFieldName", listOf())
-    private val nativeAnnotation by setting("NativeAnnotation", false)
 
     override fun ResourceCache.transform() {
         Logger.info(" - Redirecting field calls...")

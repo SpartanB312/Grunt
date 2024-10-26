@@ -33,9 +33,9 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
 
     private val generateOuterClass by setting("GenerateOuterClass", false)
     private val randomCall by setting("RandomCall", true)
+    private val nativeAnnotation by setting("NativeAnnotation", false)
     private val excludedClasses by setting("ExcludedClasses", listOf())
     private val excludedMethodName by setting("ExcludedMethodName", listOf())
-    private val nativeAnnotation by setting("NativeAnnotation", false)
 
     override fun ResourceCache.transform() {
         Logger.info(" - Redirecting method calls...")

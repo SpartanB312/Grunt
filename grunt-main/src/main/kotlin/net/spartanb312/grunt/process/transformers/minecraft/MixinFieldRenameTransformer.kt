@@ -6,8 +6,8 @@ import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.inList
-import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 import java.util.*

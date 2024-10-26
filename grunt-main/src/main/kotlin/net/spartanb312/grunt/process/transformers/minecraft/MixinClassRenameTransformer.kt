@@ -7,10 +7,9 @@ import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.process.transformers.rename.ClassRenameTransformer
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.notInList
 import net.spartanb312.grunt.utils.logging.Logger
+import net.spartanb312.grunt.utils.notInList
 import java.nio.charset.StandardCharsets
 
 /**
@@ -19,7 +18,7 @@ import java.nio.charset.StandardCharsets
  */
 object MixinClassRenameTransformer : Transformer("MixinClassRename", Category.Minecraft) {
 
-    private val mixinDictionary by setting("MixinDictionary", "Alphabet")
+    private val dictionary by setting("Dictionary", "Alphabet")
     private val targetMixinPackage by setting("TargetMixinPackage", "net/spartanb312/obf/mixins/")
     private val mixinFile by setting("MixinFile", "mixins.example.json")
     private val refmapFile by setting("RefmapFile", "mixins.example.refmap.json")
@@ -42,7 +41,7 @@ object MixinClassRenameTransformer : Transformer("MixinClassRename", Category.Mi
         val equalsExclusion = exclusion.filter { !it.endsWith("**") }
         val startWithExclusion = buildList { exclusion.forEach { if (it.endsWith("**")) add(it.removeSuffix("**")) } }
         val targetMixinPackage = targetMixinPackage.removeSuffix("/") + "/"
-        val dictionary = NameGenerator.getByName(mixinDictionary)
+        val dictionary = NameGenerator.getByName(dictionary)
         val mappings: MutableMap<String, String> = HashMap()
         val count = count {
             mixinClasses.forEach {

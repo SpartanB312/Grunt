@@ -21,6 +21,7 @@ import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransform
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.process.transformers.flow.process.ArithmeticExpr
 import net.spartanb312.grunt.process.transformers.flow.process.JunkCode
+import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
 import net.spartanb312.grunt.process.transformers.rename.LocalVariableRenameTransformer
 import net.spartanb312.grunt.utils.*
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
@@ -52,6 +53,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
     private val massiveRandom by setting("MassiveRandomBlank", false)
     private val reobf by setting("Reobfuscate", true)
     private val enhancedFlow by setting("EnhancedFlowReobf", false)
+    private val nativeAnnotation by setting("BSMNativeAnnotation", false)
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
@@ -220,6 +222,14 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                         }
                     }
                     ControlflowTransformer.arithmeticExpr = preState
+                }
+                if (nativeAnnotation) {
+                    addedMethods.forEach { (_, methods) ->
+                        methods.forEach { method ->
+                            NativeCandidateTransformer.appendedMethods.add(method)
+                            method.visitAnnotation(NativeCandidateTransformer.annotation, false)
+                        }
+                    }
                 }
             }.get()
             Logger.info("    Replaced $count invokes")
