@@ -1,6 +1,7 @@
 package net.spartanb312.grunt.gui
 
 import com.github.weisj.darklaf.LafManager
+import com.github.weisj.darklaf.theme.DarculaTheme
 import net.miginfocom.layout.AC
 import net.miginfocom.layout.CC
 import net.miginfocom.layout.LC
@@ -9,12 +10,10 @@ import net.spartanb312.grunt.SUBTITLE
 import net.spartanb312.grunt.VERSION
 import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.gui.panel.BasicPanel
-import net.spartanb312.grunt.gui.panel.GeneralPanel
 import net.spartanb312.grunt.gui.panel.ConsolePanel
+import net.spartanb312.grunt.gui.panel.GeneralPanel
 import net.spartanb312.grunt.gui.panel.TransformerPanel
 import net.spartanb312.grunt.gui.util.LoggerPrinter
-import net.spartanb312.grunt.main
-import net.spartanb312.grunt.plugin.PluginManager
 import net.spartanb312.grunt.runProcess
 import net.spartanb312.grunt.utils.logging.SimpleLogger
 import java.awt.BorderLayout
@@ -26,6 +25,7 @@ import javax.swing.*
 import javax.swing.JFrame.EXIT_ON_CLOSE
 import javax.swing.border.EmptyBorder
 import kotlin.concurrent.thread
+
 
 object GuiFrame {
 
@@ -50,9 +50,6 @@ object GuiFrame {
 
     init {
         System.setOut(captureInfo)
-    }
-
-    init {
         val imageIcon = ImageIcon(GuiFrame::class.java.getResource("/logo.png"))
         mainFrame.iconImage = imageIcon.image.getScaledInstance(40, 40, Image.SCALE_DEFAULT)
 
@@ -73,6 +70,7 @@ object GuiFrame {
         mainFrame.add(basicPanel, CC().cell(0, 1))
 
         //Swing Theme
+        if (Configs.UISetting.darkTheme) LafManager.install(DarculaTheme())
         LafManager.install()
     }
 
@@ -170,7 +168,7 @@ object GuiFrame {
         mainFrame.isVisible = true
     }
 
-    fun setTitle(title:String) {
+    fun setTitle(title: String) {
         mainFrame.title = title
     }
 

@@ -7,6 +7,7 @@ import net.spartanb312.grunt.event.events.ProcessEvent
 import net.spartanb312.grunt.event.events.TransformerEvent
 import net.spartanb312.grunt.gui.GuiFrame
 import net.spartanb312.grunt.plugin.PluginManager
+import net.spartanb312.grunt.plugin.PluginManager.hasPlugins
 import net.spartanb312.grunt.process.Transformers
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.PostProcessTransformer
@@ -19,7 +20,7 @@ import kotlin.system.measureTimeMillis
  * A java bytecode obfuscator
  */
 const val VERSION = "2.4.1"
-const val SUBTITLE = "build 241028"
+const val SUBTITLE = "build 241029"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
 fun main(args: Array<String>) {
@@ -67,6 +68,7 @@ fun main(args: Array<String>) {
             Configs.saveConfig(config)
         }
         GuiFrame.loadConfig(config)
+        GuiFrame.setTitle("Gruntpocalypse${if (hasPlugins) "*" else ""} v$VERSION | $SUBTITLE")
         GuiEvent.AfterInit.post()
         GuiFrame.view()
     } else {

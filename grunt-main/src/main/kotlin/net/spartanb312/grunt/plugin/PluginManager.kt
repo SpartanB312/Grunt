@@ -1,8 +1,6 @@
 package net.spartanb312.grunt.plugin
 
-import net.spartanb312.grunt.SUBTITLE
 import net.spartanb312.grunt.VERSION
-import net.spartanb312.grunt.gui.GuiFrame
 import net.spartanb312.grunt.utils.compareVersion
 import net.spartanb312.grunt.utils.logging.Logger
 import java.io.BufferedReader
@@ -47,7 +45,6 @@ object PluginManager {
                 it.instance.onInit()
             }
         }
-        GuiFrame.setTitle("Gruntpocalypse${if (hasPlugins) "*" else ""} v$VERSION | $SUBTITLE")
     }
 
     private fun readDirectory(directory: File) {

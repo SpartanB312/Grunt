@@ -104,12 +104,16 @@ class BasicPanel : JPanel() {
         this.components.forEach { it.isEnabled = false }
         loadButton.isEnabled = false
         saveButton.isEnabled = false
+        resetButton.isEnabled = false
+        startSave.isEnabled = false
     }
 
     fun enableAll() {
         this.components.forEach { it.isEnabled = true }
         loadButton.isEnabled = true
         saveButton.isEnabled = true
+        resetButton.isEnabled = true
+        startSave.isEnabled = true
     }
 
     /**

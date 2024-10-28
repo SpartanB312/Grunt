@@ -31,8 +31,13 @@ object Configs {
         var fileRemoveSuffix by setting("FileRemoveSuffix", listOf())
     }
 
+    object UISetting : Configurable("UI") {
+        var darkTheme by setting("DarkTheme", true)
+    }
+
     init {
         configs.add(Settings)
+        configs.add(UISetting)
         Transformers.forEach {
             configs.add(it)
         }

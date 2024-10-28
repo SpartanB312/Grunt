@@ -31,6 +31,7 @@ class GeneralPanel : JPanel() {
     private val fileRemoveSuffix = JTextArea("", 3, 50)
 
     private val corruptOutput = JCheckBox("")
+    private val darkTheme = JCheckBox("")
 
     init {
 
@@ -64,12 +65,7 @@ class GeneralPanel : JPanel() {
         }
         jList.addMouseListener(object : MouseListener {
             override fun mouseClicked(e: MouseEvent) {
-                if (libs.isEmpty) {
-                    chooseFile()
-                }
-//                    else if (e.clickCount == 2) {
-//                        libs.remove(jList.selectedIndex)
-//                    }
+                if (libs.isEmpty) chooseFile()
             }
 
             override fun mousePressed(e: MouseEvent?) {}
@@ -132,8 +128,17 @@ class GeneralPanel : JPanel() {
         resProcess.add(fileRemoveSuffix, CC().cell(1, 1).growX())
         resProcess.add(JLabel("CorruptOutput:"), CC().cell(0, 2))
         resProcess.add(corruptOutput, CC().cell(1, 2))
-
         add(resProcess, CC().span().grow())
+
+        // UI
+        val uiPanel = JPanel(MigLayout(LC().fillX().flowX(), AC().gap().grow()))
+        uiPanel.border = TitledBorder("UI Options:").apply {
+            titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
+            titleColor = Color(0x4d89c9)
+        }
+        uiPanel.add(JLabel("DarkTheme:"), CC().cell(0, 0))
+        uiPanel.add(darkTheme, CC().cell(1, 0))
+        add(uiPanel, CC().span().grow())
     }
 
     /**
@@ -154,6 +159,8 @@ class GeneralPanel : JPanel() {
         fileRemoveSuffix.text = Configs.Settings.fileRemoveSuffix.joinToString("\n")
 
         corruptOutput.isSelected = Configs.Settings.corruptOutput
+
+        darkTheme.isSelected = Configs.UISetting.darkTheme
     }
 
     fun setSetting() {
@@ -168,6 +175,7 @@ class GeneralPanel : JPanel() {
         Configs.Settings.fileRemoveSuffix = fileRemoveSuffix.text.split("\n").filter { it.isNotEmpty() }
 
         Configs.Settings.corruptOutput = corruptOutput.isSelected
+        Configs.UISetting.darkTheme = darkTheme.isSelected
     }
 
 }

@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.gui.panel
 
+import net.spartanb312.grunt.config.Configs
 import java.awt.BorderLayout
 import java.awt.Color
 import javax.swing.JPanel
@@ -28,13 +29,14 @@ class ConsolePanel : JPanel() {
     private val scrollBar = scrollPane.verticalScrollBar
 
     fun info(str: String) {
-        appendToPane(loggerPanel, "$str\n", Color.BLACK)
+        appendToPane(loggerPanel, "$str\n", if (Configs.UISetting.darkTheme) Color.lightGray else Color.BLACK)
     }
 
     fun err(str: String) {
         appendToPane(loggerPanel, "$str\n", Color.RED)
     }
 
+    @Synchronized
     private fun appendToPane(text: JTextPane, msg: String, c: Color) {
         scrollBar.value = scrollBar.maximum
         text.document.insertString(
