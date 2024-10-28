@@ -19,7 +19,7 @@ import kotlin.system.measureTimeMillis
  * A java bytecode obfuscator
  */
 const val VERSION = "2.4.1"
-const val SUBTITLE = "build 241026"
+const val SUBTITLE = "build 241028"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
 fun main(args: Array<String>) {

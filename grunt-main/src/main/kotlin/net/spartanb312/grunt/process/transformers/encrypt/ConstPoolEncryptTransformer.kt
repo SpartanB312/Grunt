@@ -1,13 +1,8 @@
 package net.spartanb312.grunt.process.transformers.encrypt
 
-import net.spartanb312.genesis.kotlin.clazz
-import net.spartanb312.genesis.kotlin.clinit
-import net.spartanb312.genesis.kotlin.extensions.FINAL
-import net.spartanb312.genesis.kotlin.extensions.PUBLIC
-import net.spartanb312.genesis.kotlin.extensions.STATIC
+import net.spartanb312.genesis.kotlin.*
+import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
-import net.spartanb312.genesis.kotlin.field
-import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
@@ -15,6 +10,7 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptorClassic
+import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
 import net.spartanb312.grunt.process.transformers.rename.ReflectionSupportTransformer
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.appendAnnotation
@@ -30,7 +26,7 @@ import kotlin.random.Random
 
 /**
  * Encrypt constant pool values
- * Last update on 2024/09/13
+ * Last update on 2024/10/28
  */
 object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.Encryption) {
 
@@ -41,6 +37,7 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
     private val string by setting("String", true)
     private val heavyEncrypt by setting("HeavyEncrypt", false)
     private val dontScramble by setting("DontScramble", true)
+    private val nativeAnnotation by setting("NativeAnnotation", false)
     private val exclusion by setting("Exclusion", listOf())
 
     private val String.reflectionExcluded
@@ -119,31 +116,49 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                 generatedClasses.add(Generated(clazz, buildMap {
                     refList.forEach { this[it.field] = it }
                 }))
-                val clinit = clinit {
-                    INSTRUCTIONS {
-                        refList.forEach {
-                            it.field.value = null
-                            clazz.fields.add(it.field)
-                            when (it) {
-                                is ConstRef.NumberRef -> {
-                                    +NumberEncryptorClassic.encrypt(it.value as Number)
-                                    PUTSTATIC(clazz.name, it.field.name, it.field.desc)
-                                }
+                val insnList = instructions {
+                    refList.forEach {
+                        it.field.value = null
+                        clazz.fields.add(it.field)
+                        when (it) {
+                            is ConstRef.NumberRef -> {
+                                +NumberEncryptorClassic.encrypt(it.value as Number)
+                                PUTSTATIC(clazz.name, it.field.name, it.field.desc)
+                            }
 
-                                is ConstRef.StringRef -> {
-                                    val key = Random.nextInt(0x8, 0x800)
-                                    val methodName = getRandomString(10)
-                                    val decryptMethod = createDecryptMethod(methodName, key)
-                                    clazz.methods.add(decryptMethod)
-                                    LDC(encrypt(it.value, key))
-                                    INVOKESTATIC(clazz.name, methodName, "(Ljava/lang/String;)Ljava/lang/String;")
-                                    PUTSTATIC(clazz.name, it.field.name, it.field.desc)
-                                }
+                            is ConstRef.StringRef -> {
+                                val key = Random.nextInt(0x8, 0x800)
+                                val methodName = getRandomString(10)
+                                val decryptMethod = createDecryptMethod(methodName, key)
+                                clazz.methods.add(decryptMethod)
+                                LDC(encrypt(it.value, key))
+                                INVOKESTATIC(clazz.name, methodName, "(Ljava/lang/String;)Ljava/lang/String;")
+                                PUTSTATIC(clazz.name, it.field.name, it.field.desc)
                             }
                         }
-                        RETURN
                     }
+                    RETURN
                 }
+                val clinit = if (nativeAnnotation) {
+                    val decryptMethod = method(
+                        PRIVATE + STATIC + SYNTHETIC + BRIDGE,
+                        "decrypt",
+                        "()V"
+                    ) { INSTRUCTIONS { +insnList } }
+                    if (heavyEncrypt) {
+                        NumberEncryptTransformer.transformMethod(clazz, decryptMethod)
+                        StringEncryptTransformer.transformMethod(clazz, decryptMethod)
+                    }
+                    NativeCandidateTransformer.appendedMethods.add(decryptMethod)
+                    decryptMethod.visitAnnotation(NativeCandidateTransformer.annotation, false)
+                    clazz.methods.add(decryptMethod)
+                    clinit {
+                        INSTRUCTIONS {
+                            INVOKESTATIC(clazz, decryptMethod)
+                            RETURN
+                        }
+                    }
+                } else clinit { INSTRUCTIONS { +insnList } }
                 if (heavyEncrypt) {
                     NumberEncryptTransformer.transformMethod(clazz, clinit)
                     StringEncryptTransformer.transformMethod(clazz, clinit)
