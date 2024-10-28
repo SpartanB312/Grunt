@@ -36,16 +36,18 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 * [X] [5]FieldRename
 * [X] [5]MethodRename
 * [X] [5]LocalVarRename
+* [X] [3]ReflectionSupport 
 
   The method renamer support InterfaceOverlap, InvokeDynamic, and FunctionalInterface check.
 
-  InterfaceOverlap: A class extends/implements more than 2 class/interfaces with same method name and descriptor. (
-  Example: A implements B and C, B and C both are independent interface and have method invoke(I)J.)
+  InterfaceOverlap: A class extends/implements more than 2 class/interfaces with same method name and descriptor.
+  (Example: A implements B and C, B and C both are independent interface and have method invoke(I)J.)
 
 ### Minecraft
 
 * [X] [4]MixinClassRename
 * [X] [4]MixinFieldRename
+* [ ] [4]MixinMethodRename
 
 ### Encrypt
 
@@ -71,6 +73,7 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 
 ### Miscellaneous
 
+* [ ] [5]AntiDebug
 * [X] [5]Crasher
 * [X] [5]Watermark
 * [X] [5]NativeCandidate
@@ -89,6 +92,8 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 
 ### ControlFlow
 
+#### General
+
 * [X] [5]RandomArithmeticExpr (Seed) Hide the seed operations to anti simulation
 * [X] [4]BogusConditionJump (If, Goto) Generate fake jumps with random junk codes
 * [X] [4]MangledCompareJump (If, Goto) Generate conditional jump with junk codes to replace direct jump
@@ -97,7 +102,11 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 * [X] [4]TableSwitchJump (Switch) Generate TableSwitch to replace direct jumps
 * [X] [4]TrappedSwitchCase (Switch) Random trapped jumps or weird loops between switch cases
 * [X] [4]JunkCodeGenerator (JunkCode) Generate junk calls
-* [ ] [0] (Provide ur suggestion in Discord)
+
+#### Miscellaneous
+
+* [ ] [4] ConstantBuilder (If, Switch) Using controlflow to build constants
+* [ ] [4] SwitchProtector (Switch) Hide the real keys of switch
 
 ## License: GNU General Public License 3.0
 
@@ -106,4 +115,5 @@ This is a free and open source software under GPLv3
 The previous Grunt versions under MIT license (1.5.8 and before)
 
 ## Stargazers over time
+
 [![Stargazers over time](https://starchart.cc/SpartanB312/Grunt.svg?variant=adaptive)](https://starchart.cc/SpartanB312/Grunt)
