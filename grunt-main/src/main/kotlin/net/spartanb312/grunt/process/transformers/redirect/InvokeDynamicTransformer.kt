@@ -159,81 +159,81 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                     }
                 }
             })
-            val count = count {
-                val mutex = Mutex()
-                val addedMethods = mutableListOf<Pair<ClassNode, List<MethodNode>>>()
-                runBlocking {
-                    classes.filter {
-                        val map = getMapping(it.value.name)
-                        !it.value.isInterface && it.value.version >= Opcodes.V1_7
-                                && !map.isExcluded && map.notInList(exclusion)
-                                && !it.value.hasAnnotation(DISABLE_INVOKEDYNAMIC)
-                    }.values.forEach { classNode ->
-                        suspend fun job() {
-                            val bsmName1 = if (massiveRandom) massiveBlankString else massiveString
-                            val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
-                            val decryptName = if (massiveRandom) massiveBlankString else massiveString
-                            val decryptKey = Random.nextInt(0x8, 0x800)
-                            if (shouldApply(classNode, bsmName1, bsmName2, decryptKey, metadata)) {
-                                val decrypt = StringEncryptTransformer.createDecryptMethod(decryptName, decryptKey)
-                                val decrypt2 = if (heavy) createHeavyDecryptMethod(decryptName) else null
-                                val bsm = createBootstrap(classNode.name, bsmName1, decryptName)
-                                val bsm2 = if (heavy) createHeavyBootstrap(
-                                    classNode.name,
-                                    bsmName2,
-                                    decryptName,
-                                    decryptKey
-                                ) else null
-                                if (reobf) mutex.withLock {
-                                    val methodsAdded = mutableListOf<MethodNode>()
-                                    methodsAdded.add(decrypt)
-                                    methodsAdded.add(bsm)
-                                    if (heavy) {
-                                        methodsAdded.add(decrypt2!!)
-                                        methodsAdded.add(bsm2!!)
-                                    }
-                                    addedMethods.add(classNode to methodsAdded)
-                                }
-                                classNode.methods.add(decrypt)
-                                classNode.methods.add(bsm)
-                                if (heavy) {
-                                    classNode.methods.add(decrypt2!!)
-                                    classNode.methods.add(bsm2!!)
-                                }
-                            }
-                        }
-                        if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
-                    }
-                }
-                if (reobf) {
-                    val preState = ControlflowTransformer.arithmeticExpr
-                    if (!enhancedFlow) ControlflowTransformer.arithmeticExpr = false
-                    if (ControlflowTransformer.enabled) ArithmeticExpr.refresh(this@transform)
-                    runBlocking {
-                        addedMethods.forEach { (clazz, methods) ->
-                            launch(Dispatchers.Default) {
-                                if (ControlflowTransformer.enabled) methods.forEach {
-                                    ControlflowTransformer.transformMethod(clazz, it, true)
-                                }
-                                if (LocalVariableRenameTransformer.enabled) methods.forEach {
-                                    LocalVariableRenameTransformer.transformMethod(clazz, it)
-                                }
-                            }
-                        }
-                    }
-                    ControlflowTransformer.arithmeticExpr = preState
-                }
-                if (nativeAnnotation) {
-                    addedMethods.forEach { (_, methods) ->
-                        methods.forEach { method ->
-                            NativeCandidateTransformer.appendedMethods.add(method)
-                            method.visitAnnotation(NativeCandidateTransformer.annotation, false)
-                        }
-                    }
-                }
-            }.get()
-            Logger.info("    Replaced $count invokes")
         }
+        val count = count {
+            val mutex = Mutex()
+            val addedMethods = mutableListOf<Pair<ClassNode, List<MethodNode>>>()
+            runBlocking {
+                classes.filter {
+                    val map = getMapping(it.value.name)
+                    !it.value.isInterface && it.value.version >= Opcodes.V1_7
+                            && !map.isExcluded && map.notInList(exclusion)
+                            && !it.value.hasAnnotation(DISABLE_INVOKEDYNAMIC)
+                }.values.forEach { classNode ->
+                    suspend fun job() {
+                        val bsmName1 = if (massiveRandom) massiveBlankString else massiveString
+                        val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
+                        val decryptName = if (massiveRandom) massiveBlankString else massiveString
+                        val decryptKey = Random.nextInt(0x8, 0x800)
+                        if (shouldApply(classNode, bsmName1, bsmName2, decryptKey, metadata)) {
+                            val decrypt = StringEncryptTransformer.createDecryptMethod(decryptName, decryptKey)
+                            val decrypt2 = if (heavy) createHeavyDecryptMethod(decryptName) else null
+                            val bsm = createBootstrap(classNode.name, bsmName1, decryptName)
+                            val bsm2 = if (heavy) createHeavyBootstrap(
+                                classNode.name,
+                                bsmName2,
+                                decryptName,
+                                decryptKey
+                            ) else null
+                            if (reobf) mutex.withLock {
+                                val methodsAdded = mutableListOf<MethodNode>()
+                                methodsAdded.add(decrypt)
+                                methodsAdded.add(bsm)
+                                if (heavy) {
+                                    methodsAdded.add(decrypt2!!)
+                                    methodsAdded.add(bsm2!!)
+                                }
+                                addedMethods.add(classNode to methodsAdded)
+                            }
+                            classNode.methods.add(decrypt)
+                            classNode.methods.add(bsm)
+                            if (heavy) {
+                                classNode.methods.add(decrypt2!!)
+                                classNode.methods.add(bsm2!!)
+                            }
+                        }
+                    }
+                    if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
+                }
+            }
+            if (reobf) {
+                val preState = ControlflowTransformer.arithmeticExpr
+                if (!enhancedFlow) ControlflowTransformer.arithmeticExpr = false
+                if (ControlflowTransformer.enabled) ArithmeticExpr.refresh(this@transform)
+                runBlocking {
+                    addedMethods.forEach { (clazz, methods) ->
+                        launch(Dispatchers.Default) {
+                            if (ControlflowTransformer.enabled) methods.forEach {
+                                ControlflowTransformer.transformMethod(clazz, it, true)
+                            }
+                            if (LocalVariableRenameTransformer.enabled) methods.forEach {
+                                LocalVariableRenameTransformer.transformMethod(clazz, it)
+                            }
+                        }
+                    }
+                }
+                ControlflowTransformer.arithmeticExpr = preState
+            }
+            if (nativeAnnotation) {
+                addedMethods.forEach { (_, methods) ->
+                    methods.forEach { method ->
+                        NativeCandidateTransformer.appendedMethods.add(method)
+                        method.visitAnnotation(NativeCandidateTransformer.annotation, false)
+                    }
+                }
+            }
+        }.get()
+        Logger.info("    Replaced $count invokes")
     }
 
     private fun Counter.shouldApply(
