@@ -271,9 +271,9 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                                             String::class.java,
                                             MethodType::class.java,
                                             String::class.java,
-                                            Integer::class.java,
-                                            Integer::class.java,
-                                            Integer::class.java
+                                            Integer.TYPE,
+                                            Integer.TYPE,
+                                            Integer.TYPE
                                         ).toMethodDescriptorString(),
                                     ),
                                     encrypt(insnNode.owner.replace("/", "."), decryptKey),
@@ -296,7 +296,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                                         String::class.java,
                                         String::class.java,
                                         String::class.java,
-                                        Integer::class.java
+                                        Integer.TYPE
                                     ).toMethodDescriptorString(),
                                 ),
                                 encrypt(insnNode.owner.replace("/", "."), decryptKey),
@@ -327,7 +327,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 String::class.java,
                 String::class.java,
                 String::class.java,
-                Integer::class.java
+                Integer.TYPE
             ).toMethodDescriptorString()
         ) {
             INSTRUCTIONS {
@@ -500,9 +500,9 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
             String::class.java,
             MethodType::class.java,
             String::class.java,
-            Integer::class.java,
-            Integer::class.java,
-            Integer::class.java
+            Integer.TYPE,
+            Integer.TYPE,
+            Integer.TYPE
         ).toMethodDescriptorString()
     ) {
         val label27 = Label()
@@ -781,4 +781,17 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
         val m2: IntArray
     )
 
+    @JvmStatic
+    fun main(args: Array<String>) {
+        println(MethodType.methodType(
+            CallSite::class.java,
+            MethodHandles.Lookup::class.java,
+            String::class.java,
+            MethodType::class.java,
+            String::class.java,
+            String::class.java,
+            String::class.java,
+            Integer.TYPE
+        ).toMethodDescriptorString())
+    }
 }

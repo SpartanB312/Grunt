@@ -2,6 +2,8 @@ package net.spartanb312.grunt.utils
 
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
+import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.MethodNode
 import java.util.zip.CRC32
 import java.util.zip.ZipOutputStream
 import kotlin.random.Random
@@ -132,4 +134,14 @@ fun compareVersion(ver1: String, ver2: String): Boolean {
     if (array1[2] > array2[2]) return true
     else if (array1[2] < array2[2]) return false
     return false
+}
+
+fun ClassNode.matches(includeRegex: List<Regex>, excludeRegex: List<Regex>): Boolean {
+    val name = this.name
+    return includeRegex.all { name.matches(it) } && !excludeRegex.all { name.matches(it) }
+}
+
+fun MethodNode.matches(owner: String, includeRegex: List<Regex>, excludeRegex: List<Regex>): Boolean {
+    val name = "$owner.${this.name}${this.desc}"
+    return includeRegex.all { name.matches(it) } && !excludeRegex.all { name.matches(it) }
 }
