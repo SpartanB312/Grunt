@@ -39,6 +39,7 @@ dependencies {
     library("com.github.weisj:darklaf-core:3.0.2")
 
     library("org.apache.commons:commons-lang3:3.0")
+    library("javassist:javassist:3.12.1.GA")
 
 //    api(library)
 
