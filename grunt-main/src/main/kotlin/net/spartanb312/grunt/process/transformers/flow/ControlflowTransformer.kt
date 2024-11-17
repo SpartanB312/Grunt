@@ -19,9 +19,7 @@ import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.JumpInsnNode
-import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.*
 import kotlin.random.Random
 
 /**
@@ -30,26 +28,28 @@ import kotlin.random.Random
  */
 object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow), MethodProcessor {
 
-    private val intensity by setting("Intensity", 1)
+    private val intensity by setting("Intensity", 1)  // Range 1..3
     private var beforeEncrypt by setting("ExecuteBeforeEncrypt", false)
     private val bogusJump by setting("BogusConditionJump", true)
+    private val gotoRate by setting("GotoReplaceRate", 80) // Range 0..100
     private val mangledIf by setting("MangledCompareJump", true)
-    private val ifRate by setting("IfReplaceRate", 50)
-    private val ifCompareRate by setting("IfICompareReplaceRate", 100)
+    private val ifRate by setting("IfReplaceRate", 50) // Range 0..100
+    private val ifCompareRate by setting("IfICompareReplaceRate", 100) // Range 0..100
+    private val switchProtect by setting("SwitchProtect", true)
     private val tableSwitch by setting("TableSwitchJump", true)
-    private val switchRate by setting("SwitchReplaceRate", 30)
-    private val maxSwitchCase by setting("MaxSwitchCase", 5)
+    private val switchRate by setting("SwitchReplaceRate", 30)  // Range 0..100
+    private val maxSwitchCase by setting("MaxSwitchCase", 5) // Range 1..10
     val reverseExistedIf by setting("ReverseExistedIf", true)
-    val reverseChance by setting("ReverseChance", 50)
+    val reverseChance by setting("ReverseChance", 50) // Range 0..100
     val trappedCase by setting("TrappedSwitchCase", true)
-    val trapChance by setting("TrapChance", 50)
+    val trapChance by setting("TrapChance", 50) // Range 0..100
     var arithmeticExpr by setting("ArithmeticExprBuilder", true)
-    val asIntensity by setting("BuilderIntensity", 1)
+    val asIntensity by setting("BuilderIntensity", 1) // Range 1..3
     val junkParameter by setting("JunkBuilderParameter", true)
     val annotationOnBuilder by setting("BuilderNativeAnnotation", false)
     val useLocalVar by setting("UseLocalVar", true)
     val junkCode by setting("JunkCode", true)
-    val maxJunkCode by setting("MaxJunkCode", 2)
+    val maxJunkCode by setting("MaxJunkCode", 2)  // Range 1..5
     val expandedJunkCode by setting("ExpandedJunkCode", true)
     val exclusion by setting("Exclusion", listOf())
 
@@ -98,11 +98,23 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     private fun processMethodNode(owner: ClassNode, methodNode: MethodNode, indyReobf: Boolean): Int {
         var count = 0
         repeat(intensity) {
+            if (switchProtect) {
+                val newInsn = instructions {
+                    methodNode.instructions.forEach { insnNode ->
+                        if (insnNode is LookupSwitchInsnNode) +LookUpSwitch.generate(insnNode)
+                        else if (insnNode is TableSwitchInsnNode) +LookUpSwitch.generate(insnNode)
+                        else +insnNode
+                    }
+                }
+                methodNode.instructions = newInsn
+            }
             if (bogusJump) {
                 val newInsn = instructions {
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->
-                        if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO) {
+                        if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO
+                            && Random.nextInt(0, 100) <= gotoRate
+                        ) {
                             +ReplaceGoto.generate(
                                 insnNode.label,
                                 owner,
