@@ -16,6 +16,7 @@ import net.spartanb312.grunt.config.Configs.isExcluded
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
+import net.spartanb312.grunt.process.transformers.encrypt.ConstPoolEncryptTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
@@ -114,51 +115,52 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                     classNode.visibleAnnotations.add(annotation)
                 }
             }
-            addClass(clazz(
-                access = PUBLIC + ABSTRACT + INTERFACE + ANNOTATION,
-                name = metadataClass,
-                superName = "java/lang/Object",
-                interfaces = listOf("java/lang/annotation/Annotation"),
-                signature = null,
-                version = Java8
-            ) {
-                +annotation("Ljava/lang/annotation/Retention;") {
-                    ENUM("value", "Ljava/lang/annotation/RetentionPolicy;", "RUNTIME")
-                }
-                +method(
-                    access = PUBLIC + ABSTRACT,
-                    name = "mv",
-                    desc = "()I",
+            addClass(
+                clazz(
+                    access = PUBLIC + ABSTRACT + INTERFACE + ANNOTATION,
+                    name = metadataClass,
+                    superName = "java/lang/Object",
+                    interfaces = listOf("java/lang/annotation/Annotation"),
                     signature = null,
-                    exceptions = null
+                    version = Java8
                 ) {
-                    ANNOTATIONDEFAULT {
-                        this[null] = 0
+                    +annotation("Ljava/lang/annotation/Retention;") {
+                        ENUM("value", "Ljava/lang/annotation/RetentionPolicy;", "RUNTIME")
                     }
-                }
-                +method(
-                    access = PUBLIC + ABSTRACT,
-                    name = "d1",
-                    desc = "()[Ljava/lang/String;",
-                    signature = null,
-                    exceptions = null
-                ) {
-                    ANNOTATIONDEFAULT {
-                        ARRAY(null)
+                    +method(
+                        access = PUBLIC + ABSTRACT,
+                        name = "mv",
+                        desc = "()I",
+                        signature = null,
+                        exceptions = null
+                    ) {
+                        ANNOTATIONDEFAULT {
+                            this[null] = 0
+                        }
                     }
-                }
-                +method(
-                    access = PUBLIC + ABSTRACT,
-                    name = "d2",
-                    desc = "()[Ljava/lang/String;",
-                    signature = null,
-                    exceptions = null
-                ) {
-                    ANNOTATIONDEFAULT {
-                        ARRAY(null)
+                    +method(
+                        access = PUBLIC + ABSTRACT,
+                        name = "d1",
+                        desc = "()[Ljava/lang/String;",
+                        signature = null,
+                        exceptions = null
+                    ) {
+                        ANNOTATIONDEFAULT {
+                            ARRAY(null)
+                        }
                     }
-                }
-            })
+                    +method(
+                        access = PUBLIC + ABSTRACT,
+                        name = "d2",
+                        desc = "()[Ljava/lang/String;",
+                        signature = null,
+                        exceptions = null
+                    ) {
+                        ANNOTATIONDEFAULT {
+                            ARRAY(null)
+                        }
+                    }
+                })
         }
         val count = count {
             val mutex = Mutex()
@@ -271,9 +273,9 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                                             String::class.java,
                                             MethodType::class.java,
                                             String::class.java,
-                                            Integer.TYPE,
-                                            Integer.TYPE,
-                                            Integer.TYPE
+                                            Integer::class.java,
+                                            Integer::class.java,
+                                            Integer::class.java
                                         ).toMethodDescriptorString(),
                                     ),
                                     encrypt(insnNode.owner.replace("/", "."), decryptKey),
@@ -296,7 +298,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                                         String::class.java,
                                         String::class.java,
                                         String::class.java,
-                                        Integer.TYPE
+                                        Integer::class.java
                                     ).toMethodDescriptorString(),
                                 ),
                                 encrypt(insnNode.owner.replace("/", "."), decryptKey),
@@ -327,7 +329,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                 String::class.java,
                 String::class.java,
                 String::class.java,
-                Integer.TYPE
+                Integer::class.java
             ).toMethodDescriptorString()
         ) {
             INSTRUCTIONS {
@@ -500,9 +502,9 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
             String::class.java,
             MethodType::class.java,
             String::class.java,
-            Integer.TYPE,
-            Integer.TYPE,
-            Integer.TYPE
+            Integer::class.java,
+            Integer::class.java,
+            Integer::class.java
         ).toMethodDescriptorString()
     ) {
         val label27 = Label()
@@ -783,15 +785,17 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
 
     @JvmStatic
     fun main(args: Array<String>) {
-        println(MethodType.methodType(
-            CallSite::class.java,
-            MethodHandles.Lookup::class.java,
-            String::class.java,
-            MethodType::class.java,
-            String::class.java,
-            String::class.java,
-            String::class.java,
-            Integer.TYPE
-        ).toMethodDescriptorString())
+        println(
+            MethodType.methodType(
+                CallSite::class.java,
+                MethodHandles.Lookup::class.java,
+                String::class.java,
+                MethodType::class.java,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                Integer::class.java
+            ).toMethodDescriptorString()
+        )
     }
 }
