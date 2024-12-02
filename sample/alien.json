@@ -188,6 +188,7 @@
     "Enabled": true,
     "Dictionary": "Alphabet",
     "ThisReference": false,
+    "DeleteLocalVars": false,
     "Exclusion": []
   },
   "MethodRename": {
