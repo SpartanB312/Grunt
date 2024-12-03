@@ -30,6 +30,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
 
     private val intensity by setting("Intensity", 1)  // Range 1..3
     private var beforeEncrypt by setting("ExecuteBeforeEncrypt", false)
+    private val flattenSwitches by setting("FlattenSwitchCase", false)
     private val bogusJump by setting("BogusConditionJump", true)
     private val gotoRate by setting("GotoReplaceRate", 80) // Range 0..100
     private val mangledIf by setting("MangledCompareJump", true)
@@ -104,6 +105,20 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                         if (insnNode is LookupSwitchInsnNode) +LookUpSwitch.generate(insnNode)
                         else if (insnNode is TableSwitchInsnNode) +LookUpSwitch.generate(insnNode)
                         else +insnNode
+                    }
+                }
+                methodNode.instructions = newInsn
+            }
+            if (flattenSwitches) {
+                val newInsn = instructions {
+                    methodNode.instructions.forEach { insnNode ->
+                        if (insnNode is TableSwitchInsnNode || insnNode is LookupSwitchInsnNode) {
+                            +FlattenSwitch.generate(
+                                insnNode,
+                                methodNode.maxLocals++
+                            )
+                            count++
+                        } else +insnNode
                     }
                 }
                 methodNode.instructions = newInsn
