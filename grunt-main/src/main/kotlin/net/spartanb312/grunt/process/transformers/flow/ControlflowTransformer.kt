@@ -109,6 +109,29 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                 }
                 methodNode.instructions = newInsn
             }
+            if (tableSwitch) {
+                val newInsn = instructions {
+                    val range = 1..maxSwitchCase.coerceAtLeast(1)
+                    val returnType = Type.getReturnType(methodNode.desc)
+                    methodNode.instructions.forEach { insnNode ->
+                        if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO
+                            && Random.nextInt(0, 100) <= switchRate
+                        ) {
+                            +TableSwitch.generate(
+                                insnNode.label,
+                                owner,
+                                methodNode,
+                                returnType,
+                                range.random(),
+                                Random.nextBoolean(),
+                                indyReobf
+                            )
+                            count++
+                        } else +insnNode
+                    }
+                }
+                methodNode.instructions = newInsn
+            }
             if (flattenSwitches) {
                 val newInsn = instructions {
                     methodNode.instructions.forEach { insnNode ->
@@ -165,29 +188,6 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                                 )
                                 count++
                             } else +insnNode
-                        } else +insnNode
-                    }
-                }
-                methodNode.instructions = newInsn
-            }
-            if (tableSwitch) {
-                val newInsn = instructions {
-                    val range = 1..maxSwitchCase.coerceAtLeast(1)
-                    val returnType = Type.getReturnType(methodNode.desc)
-                    methodNode.instructions.forEach { insnNode ->
-                        if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO
-                            && Random.nextInt(0, 100) <= switchRate
-                        ) {
-                            +TableSwitch.generate(
-                                insnNode.label,
-                                owner,
-                                methodNode,
-                                returnType,
-                                range.random(),
-                                Random.nextBoolean(),
-                                indyReobf
-                            )
-                            count++
                         } else +insnNode
                     }
                 }
