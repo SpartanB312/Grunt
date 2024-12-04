@@ -31,6 +31,7 @@ import kotlin.random.Random
  */
 object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redirect) {
 
+    private val rate by setting("ReplacePercentage", 10)
     private val generateOuterClass by setting("GenerateOuterClass", false)
     private val randomCall by setting("RandomCall", true)
     private val nativeAnnotation by setting("NativeAnnotation", false)
@@ -48,7 +49,7 @@ object MethodScrambleTransformer : Transformer("MethodScramble", Category.Redire
                         fun job() {
                             classNode.methods.toList().forEach { methodNode ->
                                 methodNode.instructions.toList().forEach {
-                                    if (it is MethodInsnNode && it.name.notInList(excludedMethodName)) {
+                                    if (it is MethodInsnNode && it.name.notInList(excludedMethodName) && (0..99).random() < rate) {
                                         val pair = it.getCallingMethodNodeAndOwner(
                                             this@transform,
                                             Configs.Settings.parallel
