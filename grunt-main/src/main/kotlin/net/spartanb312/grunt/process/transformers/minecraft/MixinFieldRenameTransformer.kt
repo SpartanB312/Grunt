@@ -39,7 +39,7 @@ object MixinFieldRenameTransformer : Transformer("MixinFieldRename", Category.Mi
         val dictionary = NameGenerator.getByName(dictionary)
         val mappings = HashMap<String, String>()
         val fields: MutableList<Pair<FieldNode, ClassNode>> = ArrayList()
-        nonExcluded.forEach { fields.addAll(it.fields.map { field -> field to it }) }
+        mixinClasses.forEach { fields.addAll(it.fields.map { field -> field to it }) }
         fields.shuffle()
 
         val count = count {
