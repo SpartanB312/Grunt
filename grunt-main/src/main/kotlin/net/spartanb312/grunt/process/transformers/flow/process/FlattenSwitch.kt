@@ -22,18 +22,18 @@ object FlattenSwitch {
 
             when (insnNode) {
                 is TableSwitchInsnNode -> {
-                    for ((index, i) in (insnNode.min..insnNode.max).withIndex()) {
+                    for ((index, key) in (insnNode.min..insnNode.max).withIndex()) {
                         ILOAD(slot)
-                        INT(i)
+                        INT(key)
                         IF_ICMPEQ(insnNode.labels[index])
                     }
                     GOTO(insnNode.dflt)
                 }
                 is LookupSwitchInsnNode -> {
-                    for (i in 0 until insnNode.keys.size) {
+                    for (keyIndex in 0 until insnNode.keys.size) {
                         ILOAD(slot)
-                        INT(i)
-                        IF_ICMPEQ(insnNode.labels[i])
+                        INT(keyIndex)
+                        IF_ICMPEQ(insnNode.labels[keyIndex])
                     }
                     GOTO(insnNode.dflt)
                 }
