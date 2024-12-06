@@ -30,6 +30,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
 
     private val intensity by setting("Intensity", 1)  // Range 1..3
     private var beforeEncrypt by setting("ExecuteBeforeEncrypt", false)
+    private val flattenSwitches by setting("FlattenSwitchCase", false)
     private val bogusJump by setting("BogusConditionJump", true)
     private val gotoRate by setting("GotoReplaceRate", 80) // Range 0..100
     private val mangledIf by setting("MangledCompareJump", true)
@@ -108,6 +109,43 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                 }
                 methodNode.instructions = newInsn
             }
+            if (tableSwitch) {
+                val newInsn = instructions {
+                    val range = 1..maxSwitchCase.coerceAtLeast(1)
+                    val returnType = Type.getReturnType(methodNode.desc)
+                    methodNode.instructions.forEach { insnNode ->
+                        if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO
+                            && Random.nextInt(0, 100) <= switchRate
+                        ) {
+                            +TableSwitch.generate(
+                                insnNode.label,
+                                owner,
+                                methodNode,
+                                returnType,
+                                range.random(),
+                                Random.nextBoolean(),
+                                indyReobf
+                            )
+                            count++
+                        } else +insnNode
+                    }
+                }
+                methodNode.instructions = newInsn
+            }
+            if (flattenSwitches) {
+                val newInsn = instructions {
+                    methodNode.instructions.forEach { insnNode ->
+                        if (insnNode is TableSwitchInsnNode || insnNode is LookupSwitchInsnNode) {
+                            +FlattenSwitch.generate(
+                                insnNode,
+                                methodNode.maxLocals++
+                            )
+                            count++
+                        } else +insnNode
+                    }
+                }
+                methodNode.instructions = newInsn
+            }
             if (bogusJump) {
                 val newInsn = instructions {
                     val returnType = Type.getReturnType(methodNode.desc)
@@ -150,29 +188,6 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                                 )
                                 count++
                             } else +insnNode
-                        } else +insnNode
-                    }
-                }
-                methodNode.instructions = newInsn
-            }
-            if (tableSwitch) {
-                val newInsn = instructions {
-                    val range = 1..maxSwitchCase.coerceAtLeast(1)
-                    val returnType = Type.getReturnType(methodNode.desc)
-                    methodNode.instructions.forEach { insnNode ->
-                        if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO
-                            && Random.nextInt(0, 100) <= switchRate
-                        ) {
-                            +TableSwitch.generate(
-                                insnNode.label,
-                                owner,
-                                methodNode,
-                                returnType,
-                                range.random(),
-                                Random.nextBoolean(),
-                                indyReobf
-                            )
-                            count++
                         } else +insnNode
                     }
                 }

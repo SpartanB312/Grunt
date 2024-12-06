@@ -114,6 +114,7 @@
     "Enabled": true,
     "Intensity": 1,
     "ExecuteBeforeEncrypt": true,
+    "FlattenSwitchCase": false,
     "BogusConditionJump": true,
     "MangledCompareJump": true,
     "IfReplaceRate": 70,
