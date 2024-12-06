@@ -11,7 +11,10 @@ import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.LookupSwitchInsnNode
 import org.objectweb.asm.tree.TableSwitchInsnNode
 
-object FlattenSwitch {
+/**
+ * @author jonesdevelopment
+ */
+object SwitchExtractor {
 
     fun generate(
         insnNode: AbstractInsnNode,
