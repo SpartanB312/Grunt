@@ -51,14 +51,14 @@ object DeclareFieldsTransformer : Transformer("HideDeclaredFields", Category.Mis
                                     clinit.instructions.add(InsnNode(RETURN))
                                     classNode.methods.add(clinit)
                                 }
-                                clinit.instructions.insert(box(classNode, field, true))
+                                clinit.instructions.insert(box(classNode, field))
                             } else {
                                 if (init == null) {
                                     init = init()
                                     init.instructions.add(InsnNode(RETURN))
                                     classNode.methods.add(init)
                                 }
-                                init.instructions.insert(box(classNode, field, false))
+                                init.instructions.insert(box(classNode, field))
                             }
                             field.value = null
                             add()
@@ -69,7 +69,7 @@ object DeclareFieldsTransformer : Transformer("HideDeclaredFields", Category.Mis
         Logger.info("    Hid $count declared fields")
     }
 
-    fun box(owner: ClassNode, field: FieldNode, static: Boolean): InsnList {
+    fun box(owner: ClassNode, field: FieldNode): InsnList {
         return instructions {
             when (field.desc) {
                 "I" -> INT(field.value as Int)
@@ -78,7 +78,7 @@ object DeclareFieldsTransformer : Transformer("HideDeclaredFields", Category.Mis
                 "S" -> SIPUSH(field.value as Int)
                 else -> LDC(field.value)
             }
-            if (static) {
+            if (Modifier.isStatic(field.access)) {
                 PUTSTATIC(owner.name, field.name, field.desc)
             } else {
                 PUTFIELD(owner.name, field.name, field.desc)
