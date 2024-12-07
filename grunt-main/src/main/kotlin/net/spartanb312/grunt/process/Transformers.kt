@@ -40,6 +40,7 @@ object Transformers : MutableList<Transformer> by mutableListOf(
     ClonedClassTransformer order 100,
     TrashClassTransformer order 101,
     HWIDAuthenticatorTransformer order 102,
+    DeclareFieldsTransformer order 103,
     ReflectionSupportTransformer order 199,
     //ControlflowTransformer order 200,
     StringEncryptTransformer order 300,
