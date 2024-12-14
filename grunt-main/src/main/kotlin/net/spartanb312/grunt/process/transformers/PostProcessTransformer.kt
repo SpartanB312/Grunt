@@ -3,6 +3,7 @@ package net.spartanb312.grunt.process.transformers
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
 import net.spartanb312.grunt.annotation.DISABLE_CONTROLFLOW
 import net.spartanb312.grunt.annotation.DISABLE_INVOKEDYNAMIC
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
@@ -26,6 +27,7 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
     private val pluginMain by setting("Plugin YML", true)
     private val bungeeMain by setting("Bungee YML", true)
     private val fabricMain by setting("Fabric JSON", true)
+    private val velocityMain by setting("Velocity JSON", true)
     private val manifestReplace by setting("ManifestPrefix", listOf("Main-Class:"))
 
     override fun ResourceCache.transform() {
@@ -34,6 +36,7 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
         if (pluginMain) processPluginMain()
         if (bungeeMain) processBungeeMain()
         if (fabricMain) processFabricMain()
+        if (velocityMain) processVelocityMain()
     }
 
     fun ResourceCache.finalize() {
@@ -158,4 +161,23 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
         resources["fabric.mod.json"] = Gson().toJson(mainObject).toByteArray(Charsets.UTF_8)
     }
 
+    private fun ResourceCache.processVelocityMain() {
+        val jsonFile = resources["velocity-plugin.json"] ?: return
+        Logger.info("    Processing velocity-plugin.json...")
+        val mainObject = JsonObject()
+        Gson().fromJson(
+            String(jsonFile, StandardCharsets.UTF_8),
+            JsonObject::class.java
+        ).apply {
+            asMap().forEach { (name, value) ->
+                if (name.equals("main")) {
+                    val new = classMappings.getOrDefault(value.asString.splash, null)?.dot
+                    mainObject.add(name, JsonPrimitive(new))
+                } else {
+                    mainObject.add(name, value)
+                }
+            }
+        }
+        resources["velocity-plugin.json"] = Gson().toJson(mainObject).toByteArray(Charsets.UTF_8)
+    }
 }
