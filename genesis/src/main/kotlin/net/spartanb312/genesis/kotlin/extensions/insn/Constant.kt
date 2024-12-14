@@ -98,25 +98,10 @@ fun InsnListBuilder.SIPUSH(value: Int) {
 }
 
 /**
- * Push a constant number to the stack
- * -> I/J/F/D
+ * Push any constant object to the stack
  */
 @BuilderDSL
-fun InsnListBuilder.LDC(value: Number) = +LdcInsnNode(value)
-
-/**
- * Push a constant string to the stack
- * -> Ljava/lang/String;
- */
-@BuilderDSL
-fun InsnListBuilder.LDC(string: String) = +LdcInsnNode(string)
-
-/**
- * Push constant class to the stack
- * -> Ljava/lang/Class;
- */
-@BuilderDSL
-fun InsnListBuilder.LDC(type: Type) = +LdcInsnNode(type)
+fun InsnListBuilder.LDC(value: Any) = +LdcInsnNode(value)
 
 @BuilderDSL
 fun InsnListBuilder.LDC_TYPE(typeDesc: String, isArray: Boolean = false) {

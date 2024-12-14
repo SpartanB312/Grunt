@@ -50,6 +50,14 @@ fun clinit(block: (MethodBuilder.() -> Unit)? = null): MethodNode = method(
 ).apply { if (block != null) modify(block) }
 
 @NodeDSL
+fun init(block: (MethodBuilder.() -> Unit)? = null): MethodNode = method(
+    0,
+    "<init>",
+    "()V", null,
+    null,
+).apply { if (block != null) modify(block) }
+
+@NodeDSL
 fun method(
     access: Modifiers,
     name: String,

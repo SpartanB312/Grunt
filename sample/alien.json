@@ -262,6 +262,10 @@
     "Exceptions": true,
     "Exclusion": []
   },
+  "HideDeclaredFields": {
+    "Enabled": true,
+    "Exclusion": []
+  },
   "Crasher": {
     "Enabled": false,
     "Random": false,
