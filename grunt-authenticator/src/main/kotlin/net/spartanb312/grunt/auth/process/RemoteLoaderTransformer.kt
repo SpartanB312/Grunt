@@ -17,6 +17,7 @@ import net.spartanb312.grunt.process.transformers.encrypt.ConstPoolEncryptTransf
 import net.spartanb312.grunt.process.transformers.encrypt.NumberEncryptTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptorClassic
+import net.spartanb312.grunt.process.transformers.redirect.InvokeDynamicTransformer
 import net.spartanb312.grunt.process.transformers.rename.ClassRenameTransformer
 import net.spartanb312.grunt.utils.extensions.appendAnnotation
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
@@ -270,9 +271,9 @@ object RemoteLoaderTransformer : Transformer("RemoteLoader", Category.Miscellane
                             is ConstPoolEncryptTransformer.ConstRef.StringRef -> {
                                 val key = Random.nextInt(0x8, 0x800)
                                 val methodName = getRandomString(10)
-                                val decryptMethod = StringEncryptTransformer.createDecryptMethod(methodName, key)
+                                val decryptMethod = InvokeDynamicTransformer.createDecryptMethod(methodName, key)
                                 remoteCompanion.methods.add(decryptMethod)
-                                LDC(StringEncryptTransformer.encrypt(ref.value, key))
+                                LDC(InvokeDynamicTransformer.encrypt(ref.value, key))
                                 +MethodInsnNode(
                                     Opcodes.INVOKESTATIC, remoteCompanion.name,
                                     methodName, "(Ljava/lang/String;)Ljava/lang/String;",

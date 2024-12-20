@@ -5,6 +5,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.config.setting
@@ -19,137 +20,158 @@ import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
 import kotlin.random.Random
 
 /**
  * Encrypt strings
- * Last update on 2024/10/23
+ * Last update on 2024/12/20
  */
 object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encryption), MethodProcessor {
 
-    private val times by setting("Intensity", 1)
+    private val arrayed by setting("Arrayed", false)
     private val exclusion by setting("Exclusion", listOf())
 
     private val String.reflectionExcluded
         get() = ReflectionSupportTransformer.enabled && ReflectionSupportTransformer.strBlacklist.contains(this)
 
+    private const val DECRYPT_METHOD_DESC = "([CJI)Ljava/lang/String;"
+
     override fun ResourceCache.transform() {
         Logger.info(" - Encrypting strings...")
         val count = count {
-            repeat(times) { t ->
-                if (times > 1) Logger.info("    Encrypting strings ${t + 1} of $times times")
-                runBlocking {
-                    nonExcluded.asSequence()
-                        .filter { c ->
-                            !c.isInterface && c.version > Opcodes.V1_5
-                                    && exclusion.none { c.name.startsWith(it) }
-                        }.forEach { classNode ->
-                            fun job() {
-                                val decryptMethodName = getRandomString(10)
-                                val key = Random.nextInt(0x8, 0x800)
-                                var shouldAdd = false
-                                for (methodNode in classNode.methods) {
-                                    if (methodNode.isAbstract) continue
-                                    methodNode.instructions.asSequence()
-                                        .filter { (it is LdcInsnNode && it.cst is String && !(it.cst as String).reflectionExcluded) }
-                                        .forEach { insnNode ->
-                                            methodNode.instructions.insert(
-                                                insnNode,
-                                                MethodInsnNode(
-                                                    Opcodes.INVOKESTATIC, classNode.name,
-                                                    decryptMethodName, "(Ljava/lang/String;)Ljava/lang/String;",
-                                                    false
-                                                )
-                                            )
-                                            (insnNode as LdcInsnNode).cst = encrypt(insnNode.cst as String, key)
-                                            if (t == 0) add()
-                                            shouldAdd = true
-                                        }
+            runBlocking {
+                nonExcluded.asSequence()
+                    .filter { c ->
+                        !c.isInterface && c.version > Opcodes.V1_5
+                                && exclusion.none { c.name.startsWith(it) }
+                    }.forEach { classNode ->
+                        fun job() {
+                            var shouldAdd = false
+                            val decryptMethodName = getRandomString(10)
+                            val classKey = Random.nextInt()
+                            for (methodNode in classNode.methods) {
+                                if (methodNode.isAbstract) continue
+                                if (replaceLdcInstructions(classNode, methodNode, decryptMethodName, classKey)) {
+                                    shouldAdd = true
                                 }
-                                if (shouldAdd) classNode.methods.add(createDecryptMethod(decryptMethodName, key))
                             }
-                            if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
+                            if (shouldAdd) classNode.methods.add(createDecryptMethod(decryptMethodName, classKey))
                         }
-                }
+                        if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
+                    }
             }
         }.get()
         Logger.info("    Encrypted $count strings")
     }
 
-    override fun transformMethod(owner: ClassNode, method: MethodNode) {
+    override fun transformMethod(classNode: ClassNode, methodNode: MethodNode) {
         val decryptMethodName = getRandomString(10)
-        val key = Random.nextInt(0x8, 0x800)
-        var shouldAdd = false
-        method.instructions.asSequence()
+        val classKey = Random.nextInt()
+        if (replaceLdcInstructions(classNode, methodNode, decryptMethodName, classKey)) {
+            classNode.methods.add(createDecryptMethod(decryptMethodName, classKey))
+        }
+    }
+
+    fun replaceLdcInstructions(classNode: ClassNode, methodNode: MethodNode, decrypt: String, classKey: Int): Boolean {
+        var foundLdc = false
+        methodNode.instructions.asSequence()
             .filter { (it is LdcInsnNode && it.cst is String) }
             .forEach { insnNode ->
-                method.instructions.insert(
+                val string = (insnNode as LdcInsnNode).cst as String
+                methodNode.instructions.insert(
                     insnNode,
-                    MethodInsnNode(
-                        Opcodes.INVOKESTATIC,
-                        owner.name,
-                        decryptMethodName, "(Ljava/lang/String;)Ljava/lang/String;",
-                        false
-                    )
+                    generateDecryptInstructions(string, classNode.name, decrypt, classKey)
                 )
-                (insnNode as LdcInsnNode).cst = encrypt(insnNode.cst as String, key)
-                shouldAdd = true
+                methodNode.instructions.remove(insnNode)
+                foundLdc = true
             }
-        if (shouldAdd) owner.methods.add(createDecryptMethod(decryptMethodName, key))
+        return foundLdc
     }
 
-    fun createDecryptMethod(methodName: String, key: Int): MethodNode = method(
-        PRIVATE + STATIC + SYNTHETIC + BRIDGE,
+    fun generateDecryptInstructions(string: String, clazz: String, decrypt: String, classKey: Int): InsnList {
+        val key = Random.nextInt() and 69420
+        val seed = Random.nextLong(100000L)
+        return instructions {
+            val encrypted = encrypt(string.toCharArray(), seed, key, classKey)
+            if (arrayed) {
+                INT(string.length)
+                NEWARRAY(Opcodes.T_CHAR)
+                for (i in 0..(string.length - 1)) {
+                    DUP
+                    INT(i)
+                    INT(encrypted[i].code)
+                    CASTORE
+                }
+            } else {
+                LDC(encrypted)
+                INVOKEVIRTUAL("java/lang/String", "toCharArray", "()[C", false)
+            }
+            LONG(seed)
+            INT(key)
+            INVOKESTATIC(clazz, decrypt, DECRYPT_METHOD_DESC, false)
+        }
+    }
+
+    fun createDecryptMethod(methodName: String, classKey: Int): MethodNode = method(
+        PRIVATE + STATIC,
         methodName,
-        "(Ljava/lang/String;)Ljava/lang/String;"
+        DECRYPT_METHOD_DESC
     ) {
         INSTRUCTIONS {
-            //A:
-            NEW("java/lang/StringBuilder")
+            LABEL(L["label0"])
+            NEW("java/util/Random")
             DUP
-            INVOKESPECIAL("java/lang/StringBuilder", "<init>", "()V")
-            ASTORE(1)
+            LLOAD(1)
+            INVOKESPECIAL("java/util/Random", "<init>", "(J)V")
+            ASTORE(4)
+            LABEL(L["label1"])
             ICONST_0
-            ISTORE(2)
-            GOTO(L["labelC"])
-
-            //B:
-            LABEL(L["labelB"])
-            FRAME(Opcodes.F_APPEND, 2, arrayOf("java/lang/StringBuilder", Opcodes.INTEGER), 0)
-            ALOAD(1)
+            ISTORE(5)
+            LABEL(L["label2"])
+            FRAME(Opcodes.F_APPEND, 2, arrayOf("java/util/Random", Opcodes.INTEGER), 0, null)
+            ILOAD(5)
             ALOAD(0)
-            ILOAD(2)
-            INVOKEVIRTUAL("java/lang/String", "charAt", "(I)C")
-            LDC(key)
+            ARRAYLENGTH
+            IF_ICMPGE(L["label3"])
+            LABEL(L["label4"])
+            ALOAD(0)
+            ILOAD(5)
+            ALOAD(0)
+            ILOAD(5)
+            CALOAD
+            ALOAD(4)
+            INVOKEVIRTUAL("java/util/Random", "nextInt", "()I")
+            IXOR
+            ILOAD(3)
+            IXOR
+            INT(classKey)
             IXOR
             I2C
-            INVOKEVIRTUAL("java/lang/StringBuilder", "append", "(C)Ljava/lang/StringBuilder;")
-            POP
-            IINC(2, 1)
-
-            //C:
-            LABEL(L["labelC"])
-            FRAME(Opcodes.F_SAME, 0, null, 0)
-            ILOAD(2)
+            CASTORE
+            LABEL(L["label5"])
+            IINC(5, 1)
+            GOTO(L["label2"])
+            LABEL(L["label3"])
+            FRAME(Opcodes.F_CHOP, 1, null, 0, null)
+            NEW("java/lang/String")
+            DUP
             ALOAD(0)
-            INVOKEVIRTUAL("java/lang/String", "length", "()I")
-            IF_ICMPLT(L["labelB"])
-            ALOAD(1)
-            INVOKEVIRTUAL("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")
+            INVOKESPECIAL("java/lang/String", "<init>", "([C)V")
             ARETURN
+            LABEL(L["label6"])
         }
-        MAXS(3, 3)
+        MAXS(4, 4) // Adjusted max stack and locals
     }
 
-    fun encrypt(string: String, xor: Int): String {
-        val stringBuilder = StringBuilder()
-        for (element in string) {
-            stringBuilder.append((element.code xor xor).toChar())
+    fun encrypt(chars: CharArray, seed: Long, key: Int, classKey: Int): String {
+        val random = java.util.Random(seed)
+        for (i in 0..(chars.size - 1)) {
+            chars[i] = (chars[i].code xor random.nextInt() xor key xor classKey).toChar()
         }
-        return stringBuilder.toString()
+        return String(chars)
     }
 
 }
