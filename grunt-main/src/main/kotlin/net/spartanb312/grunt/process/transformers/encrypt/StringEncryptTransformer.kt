@@ -163,7 +163,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             ARETURN
             LABEL(L["label6"])
         }
-        MAXS(4, 4) // Adjusted max stack and locals
+        MAXS(4, 4)
     }
 
     fun encrypt(chars: CharArray, seed: Long, key: Int, classKey: Int): String {
