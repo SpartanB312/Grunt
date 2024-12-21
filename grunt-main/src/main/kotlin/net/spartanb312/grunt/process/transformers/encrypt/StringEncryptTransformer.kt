@@ -99,7 +99,6 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                             LDC(encrypted)
                             INVOKEVIRTUAL("java/lang/String", "toCharArray", "()[C", false)
                         }
-                        println(encrypted)
                         LONG(seed)
                         INT(key)
                         INVOKESTATIC(classNode.name, decrypt, DECRYPT_METHOD_DESC, false)
