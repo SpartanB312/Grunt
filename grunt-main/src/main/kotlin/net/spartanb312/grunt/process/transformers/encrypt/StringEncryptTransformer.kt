@@ -126,6 +126,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             ALOAD(4)
             INVOKEVIRTUAL("java/util/Random", "nextInt", "()I")
             ILOAD(3)
+            INEG
             IXOR
             ISTORE(5)
             LABEL(L["label2"])
@@ -163,6 +164,8 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             ILOAD(5)
             ALOAD(4)
             INVOKEVIRTUAL("java/util/Random", "nextInt", "()I")
+            ICONST_M1
+            IXOR
             IADD
             ISTORE(5)
             LABEL(L["label8"])
@@ -187,11 +190,11 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
 
     fun encrypt(chars: CharArray, seed: Long, key: Int, classKey: Int): String {
         val random = java.util.Random(seed)
-        var n = random.nextInt() xor key
+        var n = random.nextInt() xor -key
         for (i in 0..(chars.size - 1)) {
             chars[i] = (chars[i].code xor (n and 0xFF)).toChar()
             chars[i] = (chars[i].code xor key).toChar()
-            n += random.nextInt()
+            n += random.nextInt().inv()
             n = n xor classKey
         }
         return String(chars)
