@@ -20,6 +20,7 @@ object LocalVariableRenameTransformer : Transformer("LocalVariableRename", Categ
     private val dictionary by setting("Dictionary", "Alphabet")
     private val thisRef by setting("ThisReference", false)
     private val deleteLocalVars by setting("DeleteLocalVars", false)
+    private val deleteParameters by setting("DeleteParameters", false)
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
@@ -38,6 +39,9 @@ object LocalVariableRenameTransformer : Transformer("LocalVariableRename", Categ
     }
 
     override fun transformMethod(owner: ClassNode, method: MethodNode) {
+        if (deleteParameters) {
+            method.parameters?.clear()
+        }
         if (deleteLocalVars) {
             method.localVariables?.clear()
             return
@@ -50,5 +54,4 @@ object LocalVariableRenameTransformer : Transformer("LocalVariableRename", Categ
             }
         }
     }
-
 }
