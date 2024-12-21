@@ -20,7 +20,6 @@ import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodNode
 import kotlin.random.Random
@@ -44,9 +43,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         val count = count {
             runBlocking {
                 nonExcluded.asSequence()
-                    .filter { c ->
-                        !c.isInterface && c.version > Opcodes.V1_5
-                                && exclusion.none { c.name.startsWith(it) }
+                    .filter { c -> c.version > Opcodes.V1_5 && exclusion.none { c.name.startsWith(it) }
                     }.forEach { classNode ->
                         fun job() {
                             var shouldAdd = false
@@ -58,7 +55,9 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                                     shouldAdd = true
                                 }
                             }
-                            if (shouldAdd) classNode.methods.add(createDecryptMethod(decryptMethodName, classKey))
+                            if (shouldAdd) {
+                                classNode.methods.add(createDecryptMethod(classNode, decryptMethodName, classKey))
+                            }
                         }
                         if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
                     }
@@ -71,7 +70,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         val decryptMethodName = getRandomString(10)
         val classKey = Random.nextInt()
         if (replaceLdcInstructions(classNode, methodNode, decryptMethodName, classKey)) {
-            classNode.methods.add(createDecryptMethod(decryptMethodName, classKey))
+            classNode.methods.add(createDecryptMethod(classNode, decryptMethodName, classKey))
         }
     }
 
@@ -83,7 +82,27 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                 val string = (insnNode as LdcInsnNode).cst as String
                 methodNode.instructions.insert(
                     insnNode,
-                    generateDecryptInstructions(string, classNode.name, decrypt, classKey)
+                    instructions {
+                        val key = Random.nextInt() and 69420
+                        val seed = Random.nextLong(100000L)
+                        val encrypted = encrypt(string.toCharArray(), seed, key, classKey)
+                        if (arrayed) {
+                            INT(string.length)
+                            NEWARRAY(Opcodes.T_CHAR)
+                            for (i in 0..(string.length - 1)) {
+                                DUP
+                                INT(i)
+                                INT(encrypted[i].code)
+                                CASTORE
+                            }
+                        } else {
+                            LDC(encrypted)
+                            INVOKEVIRTUAL("java/lang/String", "toCharArray", "()[C", false)
+                        }
+                        LONG(seed)
+                        INT(key)
+                        INVOKESTATIC(classNode.name, decrypt, DECRYPT_METHOD_DESC, false)
+                    }
                 )
                 methodNode.instructions.remove(insnNode)
                 foundLdc = true
@@ -91,32 +110,8 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         return foundLdc
     }
 
-    fun generateDecryptInstructions(string: String, clazz: String, decrypt: String, classKey: Int): InsnList {
-        val key = Random.nextInt() and 69420
-        val seed = Random.nextLong(100000L)
-        return instructions {
-            val encrypted = encrypt(string.toCharArray(), seed, key, classKey)
-            if (arrayed) {
-                INT(string.length)
-                NEWARRAY(Opcodes.T_CHAR)
-                for (i in 0..(string.length - 1)) {
-                    DUP
-                    INT(i)
-                    INT(encrypted[i].code)
-                    CASTORE
-                }
-            } else {
-                LDC(encrypted)
-                INVOKEVIRTUAL("java/lang/String", "toCharArray", "()[C", false)
-            }
-            LONG(seed)
-            INT(key)
-            INVOKESTATIC(clazz, decrypt, DECRYPT_METHOD_DESC, false)
-        }
-    }
-
-    fun createDecryptMethod(methodName: String, classKey: Int): MethodNode = method(
-        PRIVATE + STATIC,
+    fun createDecryptMethod(classNode: ClassNode, methodName: String, classKey: Int): MethodNode = method(
+        (if (classNode.isInterface) PUBLIC else PRIVATE) + STATIC,
         methodName,
         DECRYPT_METHOD_DESC
     ) {
@@ -173,5 +168,4 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         }
         return String(chars)
     }
-
 }
