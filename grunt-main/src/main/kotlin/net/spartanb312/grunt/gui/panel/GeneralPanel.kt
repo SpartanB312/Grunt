@@ -12,11 +12,8 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseListener
 import java.io.File
 import javax.swing.*
-import javax.swing.JSpinner.DefaultEditor
-import javax.swing.JTabbedPane.CENTER
 import javax.swing.border.TitledBorder
 import javax.swing.filechooser.FileNameExtensionFilter
-
 
 class GeneralPanel : JPanel() {
 
@@ -24,8 +21,7 @@ class GeneralPanel : JPanel() {
     private val exclusions = JTextArea("", 3, 50)
     private val mixinPackages = JTextArea("", 3, 50)
 
-    private val dictionaryStartIndex = JSpinner(SpinnerNumberModel(0, 0, null, 1))
-    private val customDictionary = JTextArea("", 3, 50)
+    private val dictionaryButton = JButton("customDictionary.txt")
 
     private val fileRemovePrefix = JTextArea("", 3, 50)
     private val fileRemoveSuffix = JTextArea("", 3, 50)
@@ -62,6 +58,9 @@ class GeneralPanel : JPanel() {
             for (index in jList.selectedIndices.reversedArray()) {
                 libs.remove(index)
             }
+        }
+        dictionaryButton.addActionListener {
+            FileChooseUtils.chooseAnyFile(parent)?.let { dictionaryButton.text = it }
         }
         jList.addMouseListener(object : MouseListener {
             override fun mouseClicked(e: MouseEvent) {
@@ -109,11 +108,8 @@ class GeneralPanel : JPanel() {
             titleFont = titleFont.deriveFont(Font.BOLD).deriveFont(17f)
             titleColor = Color(0x4d89c9)
         }
-        (dictionaryStartIndex.editor as DefaultEditor).textField.horizontalAlignment = CENTER
-        dictionary.add(JLabel("DictionaryStartIndex:"), CC().cell(0, 0))
-        dictionary.add(dictionaryStartIndex, CC().wrap().minWidth("150"))
-        dictionary.add(JLabel("CustomDictionary:"), CC().cell(0, 1))
-        dictionary.add(customDictionary, CC().cell(1, 1).growX())
+        dictionary.add(JLabel("CustomDictionaryFile:"), CC().cell(0, 1))
+        dictionary.add(dictionaryButton, CC().cell(1, 1).growX())
         add(dictionary, CC().span().grow())
 
         // Resource processing
@@ -152,8 +148,7 @@ class GeneralPanel : JPanel() {
         exclusions.text = Configs.Settings.exclusions.joinToString("\n")
         mixinPackages.text = Configs.Settings.mixinPackages.joinToString("\n")
 
-        dictionaryStartIndex.value = Configs.Settings.dictionaryStartIndex
-        customDictionary.text = Configs.Settings.customDictionary
+        dictionaryButton.text = Configs.Settings.customDictionary
 
         fileRemovePrefix.text = Configs.Settings.fileRemovePrefix.joinToString("\n")
         fileRemoveSuffix.text = Configs.Settings.fileRemoveSuffix.joinToString("\n")
@@ -168,8 +163,7 @@ class GeneralPanel : JPanel() {
         Configs.Settings.exclusions = exclusions.text.split("\n").filter { it.isNotEmpty() }
         Configs.Settings.mixinPackages = mixinPackages.text.split("\n").filter { it.isNotEmpty() }
 
-        Configs.Settings.dictionaryStartIndex = dictionaryStartIndex.value as Int
-        Configs.Settings.customDictionary = customDictionary.text
+        Configs.Settings.customDictionary = dictionaryButton.text
 
         Configs.Settings.fileRemovePrefix = fileRemovePrefix.text.split("\n").filter { it.isNotEmpty() }
         Configs.Settings.fileRemoveSuffix = fileRemoveSuffix.text.split("\n").filter { it.isNotEmpty() }
