@@ -89,9 +89,9 @@ sealed class NameGenerator(val name: String) {
             when (name.lowercase()) {
                 "default", "alphabet" -> Alphabet()
                 "numbers" -> Numbers()
-                "confuseIL" -> ConfuseIL()
-                "confuse0O" -> Confuse0O()
-                "confuseS5" -> ConfuseS5()
+                "confuseil" -> ConfuseIL()
+                "confuse0o" -> Confuse0O()
+                "confuses5" -> ConfuseS5()
                 "custom" -> Custom()
                 else -> Alphabet()
             }
