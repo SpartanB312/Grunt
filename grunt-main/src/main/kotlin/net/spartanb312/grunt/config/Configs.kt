@@ -24,7 +24,7 @@ object Configs {
         var timeUsage by setting("PrintTimeUsage", true)
         var forceUseComputeMax by setting("ForceUseComputeMax", false)
         var missingCheck by setting("LibsMissingCheck", true)
-        var customDictionary by setting("CustomDictionary", listOf())
+        var customDictionary by setting("CustomDictionaryFile", File("customDictionary.txt"))
         var dictionaryStartIndex by setting("DictionaryStartIndex", 0)
         var corruptOutput by setting("CorruptOutput", false)
         var fileRemovePrefix by setting("FileRemovePrefix", listOf())

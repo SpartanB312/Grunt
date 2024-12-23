@@ -169,13 +169,14 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
             String(jsonFile, StandardCharsets.UTF_8),
             JsonObject::class.java
         ).apply {
-            asMap().forEach { (name, value) ->
-                if (name.equals("main")) {
-                    val new = classMappings.getOrDefault(value.asString.splash, null)?.dot
-                    mainObject.add(name, JsonPrimitive(new))
+            asMap()?.forEach { (name, value) ->
+                val newValue = if (name == "main") {
+                    val mapping = classMappings[value.asString.splash]?.dot ?: return
+                    JsonPrimitive(mapping)
                 } else {
-                    mainObject.add(name, value)
+                    value
                 }
+                mainObject.add(name, newValue)
             }
         }
         resources["velocity-plugin.json"] = Gson().toJson(mainObject).toByteArray(Charsets.UTF_8)
