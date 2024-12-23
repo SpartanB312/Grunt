@@ -16,6 +16,7 @@ import net.spartanb312.grunt.utils.extensions.removeAnnotation
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.splash
 import java.nio.charset.StandardCharsets
+import java.util.Optional
 
 /**
  * Post process for resource files
@@ -169,9 +170,11 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
             String(jsonFile, StandardCharsets.UTF_8),
             JsonObject::class.java
         ).apply {
-            asMap().forEach { (name, value) ->
-                if (name.equals("main")) {
-                    val new = classMappings.getOrDefault(value.asString.splash, null)?.dot
+            asMap()?.forEach { (name, value) ->
+                val new = if (name.equals("main")) {
+                    classMappings.getOrDefault(value.asString.splash, null)?.dot
+                } else null
+                if (new != null) {
                     mainObject.add(name, JsonPrimitive(new))
                 } else {
                     mainObject.add(name, value)
