@@ -1,5 +1,7 @@
 package net.spartanb312.grunt.utils.extensions
 
+import net.spartanb312.genesis.kotlin.InsnListBuilder
+import net.spartanb312.genesis.kotlin.extensions.BuilderDSL
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
 
@@ -76,3 +78,8 @@ fun AbstractInsnNode.getDoubleValue(): Double? {
         else -> null
     }
 }
+
+val AbstractInsnNode?.isDummy: Boolean get() = this?.opcode == 1919810
+
+@BuilderDSL
+val InsnListBuilder.DUMMY get() = +InsnNode(1919810)
