@@ -153,7 +153,7 @@ class GeneralPanel : JPanel() {
         mixinPackages.text = Configs.Settings.mixinPackages.joinToString("\n")
 
         dictionaryStartIndex.value = Configs.Settings.dictionaryStartIndex
-        customDictionary.text = Configs.Settings.customDictionary.joinToString("\n")
+        customDictionary.text = Configs.Settings.customDictionary
 
         fileRemovePrefix.text = Configs.Settings.fileRemovePrefix.joinToString("\n")
         fileRemoveSuffix.text = Configs.Settings.fileRemoveSuffix.joinToString("\n")
@@ -169,7 +169,7 @@ class GeneralPanel : JPanel() {
         Configs.Settings.mixinPackages = mixinPackages.text.split("\n").filter { it.isNotEmpty() }
 
         Configs.Settings.dictionaryStartIndex = dictionaryStartIndex.value as Int
-        Configs.Settings.customDictionary = customDictionary.text.split("\n").filter { it.isNotEmpty() }
+        Configs.Settings.customDictionary = customDictionary.text
 
         Configs.Settings.fileRemovePrefix = fileRemovePrefix.text.split("\n").filter { it.isNotEmpty() }
         Configs.Settings.fileRemoveSuffix = fileRemoveSuffix.text.split("\n").filter { it.isNotEmpty() }
