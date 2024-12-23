@@ -7,10 +7,9 @@ import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
-import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptorClassic
 import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
+import net.spartanb312.grunt.process.transformers.redirect.InvokeDynamicTransformer
 import net.spartanb312.grunt.process.transformers.rename.ReflectionSupportTransformer
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.appendAnnotation
@@ -129,9 +128,9 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                             is ConstRef.StringRef -> {
                                 val key = Random.nextInt(0x8, 0x800)
                                 val methodName = getRandomString(10)
-                                val decryptMethod = createDecryptMethod(methodName, key)
+                                val decryptMethod = InvokeDynamicTransformer.createDecryptMethod(methodName, key)
                                 clazz.methods.add(decryptMethod)
-                                LDC(encrypt(it.value, key))
+                                LDC(InvokeDynamicTransformer.encrypt(it.value, key))
                                 INVOKESTATIC(clazz.name, methodName, "(Ljava/lang/String;)Ljava/lang/String;")
                                 PUTSTATIC(clazz.name, it.field.name, it.field.desc)
                             }
