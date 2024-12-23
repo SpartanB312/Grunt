@@ -16,7 +16,6 @@ import net.spartanb312.grunt.utils.extensions.removeAnnotation
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.splash
 import java.nio.charset.StandardCharsets
-import java.util.Optional
 
 /**
  * Post process for resource files
@@ -171,14 +170,13 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
             JsonObject::class.java
         ).apply {
             asMap()?.forEach { (name, value) ->
-                val new = if (name.equals("main")) {
-                    classMappings.getOrDefault(value.asString.splash, null)?.dot
-                } else null
-                if (new != null) {
-                    mainObject.add(name, JsonPrimitive(new))
+                val newValue = if (name == "main") {
+                    val mapping = classMappings[value.asString.splash]?.dot ?: return
+                    JsonPrimitive(mapping)
                 } else {
-                    mainObject.add(name, value)
+                    value
                 }
+                mainObject.add(name, newValue)
             }
         }
         resources["velocity-plugin.json"] = Gson().toJson(mainObject).toByteArray(Charsets.UTF_8)
