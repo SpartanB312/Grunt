@@ -25,7 +25,7 @@ import kotlin.random.Random
 
 /**
  * Obfuscating the controlflow
- * Last update on 24/10/22
+ * Last update on 24/12/24
  */
 object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow), MethodProcessor {
 
@@ -103,11 +103,11 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
             if (switchProtect) {
                 val newInsn = instructions { // step1: replace switches { switch: m }
                     methodNode.instructions.forEach { insnNode ->
-                        when (insnNode) {
+                        if (!insnNode.previous.isDummy) when (insnNode) {
                             is LookupSwitchInsnNode -> +LookUpSwitch.generate(insnNode)
                             is TableSwitchInsnNode -> +LookUpSwitch.generate(insnNode)
                             else -> +insnNode
-                        }
+                        } else +insnNode
                     }
                 }
                 methodNode.instructions = newInsn
@@ -115,7 +115,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
             if (switchExtractor) { // step2: extract switches { switch: m, if: n2 = n + Σ(0->m) cases }
                 val newInsn = instructions {
                     methodNode.instructions.forEach { insnNode ->
-                        if (insnNode is TableSwitchInsnNode || insnNode is LookupSwitchInsnNode) {
+                        if ((insnNode is TableSwitchInsnNode || insnNode is LookupSwitchInsnNode) && !insnNode.previous.isDummy) {
                             +SwitchExtractor.generate(
                                 insnNode,
                                 methodNode.maxLocals++

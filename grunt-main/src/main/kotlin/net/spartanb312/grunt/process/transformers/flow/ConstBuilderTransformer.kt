@@ -42,6 +42,7 @@ object ConstBuilderTransformer : Transformer("ConstBuilder", Category.Controlflo
     private val dataClasses = mutableMapOf<ClassNode, ClassNode>()
 
     override fun ResourceCache.transform() {
+        dataClasses.clear()
         if (number) {
             Logger.info(" - Generating number builders...")
             if (replaceRate * maxCases > 100) Logger.warn("Excessive replacement ratio will seriously affect performance. Please make sure ReplacePercentage * MaxCases <= 100")
@@ -160,6 +161,7 @@ object ConstBuilderTransformer : Transformer("ConstBuilder", Category.Controlflo
 
                 // Insn
                 +xor(this@insertSwitch, key, true)
+                +DUMMY // Skip control flow obf
                 +LookupSwitchInsnNode(
                     getLabelNode(defaultPair.first),
                     seeds.toIntArray(),
