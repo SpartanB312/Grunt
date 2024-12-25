@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
+import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunt.annotation.DISABLE_CONTROLFLOW
 import net.spartanb312.grunt.annotation.DISABLE_INVOKEDYNAMIC
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
@@ -53,6 +54,17 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
             }
             clazz.fields.forEach { field ->
                 annotationRemoval.forEach { field.removeAnnotation(it) }
+            }
+            annotationRemoval.forEach { clazz.removeAnnotation(it) }
+        }
+        // Remove dummy insn
+        nonExcluded.forEach { clazz ->
+            clazz.methods.forEach { method ->
+                annotationRemoval.forEach { method.removeAnnotation(it) }
+                val newInsn = instructions {
+                    method.instructions.forEach { if (it.opcode != 1919810) +it }
+                }
+                method.instructions = newInsn
             }
             annotationRemoval.forEach { clazz.removeAnnotation(it) }
         }

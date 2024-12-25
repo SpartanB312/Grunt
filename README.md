@@ -107,7 +107,7 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 
 #### Miscellaneous
 
-* [ ] [4] ConstantBuilder (If, Switch) Using controlflow to build constants
+* [X] [4] ConstantBuilder (If, Switch) Using controlflow to build constants
 * [X] [4] SwitchProtector (Switch) Hide the real keys of switch
 
 ## License: GNU General Public License 3.0

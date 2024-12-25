@@ -15,6 +15,7 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.flow.process.*
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.hasAnnotation
+import net.spartanb312.grunt.utils.extensions.isDummy
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
 import org.objectweb.asm.Opcodes
@@ -102,9 +103,11 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
             if (switchProtect) {
                 val newInsn = instructions { // step1: replace switches { switch: m }
                     methodNode.instructions.forEach { insnNode ->
-                        if (insnNode is LookupSwitchInsnNode) +LookUpSwitch.generate(insnNode)
-                        else if (insnNode is TableSwitchInsnNode) +LookUpSwitch.generate(insnNode)
-                        else +insnNode
+                        when (insnNode) {
+                            is LookupSwitchInsnNode -> +LookUpSwitch.generate(insnNode)
+                            is TableSwitchInsnNode -> +LookUpSwitch.generate(insnNode)
+                            else -> +insnNode
+                        }
                     }
                 }
                 methodNode.instructions = newInsn
@@ -127,7 +130,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                 val newInsn = instructions {
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->
-                        if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO
+                        if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO && !insnNode.previous.isDummy
                             && Random.nextInt(0, 100) <= gotoRate
                         ) {
                             +ReplaceGoto.generate(
@@ -175,7 +178,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                     val range = 1..maxSwitchCase.coerceAtLeast(1)
                     val returnType = Type.getReturnType(methodNode.desc)
                     methodNode.instructions.forEach { insnNode ->
-                        if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO
+                        if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO && !insnNode.previous.isDummy
                             && Random.nextInt(0, 100) <= switchRate
                         ) {
                             +TableSwitch.generate(
