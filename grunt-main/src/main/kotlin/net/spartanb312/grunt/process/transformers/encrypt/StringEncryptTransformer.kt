@@ -31,6 +31,8 @@ import kotlin.random.Random
 object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encryption), MethodProcessor {
 
     private val arrayed by setting("Arrayed", false)
+    private val modifyLdc by setting("ModifyLdc", true)
+    private val modifyInvokeDynamic by setting("ModifyInvokeDynamic", true)
     private val exclusion by setting("Exclusion", listOf())
 
     private val String.reflectionExcluded
@@ -49,9 +51,10 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                             var shouldAdd = false
                             val decryptMethodName = getRandomString(10)
                             val classKey = Random.nextInt()
-                            for (methodNode in classNode.methods) {
+                            val classes = ArrayList(classNode.methods)
+                            for (methodNode in classes) {
                                 if (methodNode.isAbstract) continue
-                                if (replaceLdcInstructions(classNode, methodNode, decryptMethodName, classKey)) {
+                                if (replaceStrings(classNode, methodNode, decryptMethodName, classKey)) {
                                     shouldAdd = true
                                 }
                             }
@@ -69,27 +72,39 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
     override fun transformMethod(classNode: ClassNode, methodNode: MethodNode) {
         val decryptMethodName = getRandomString(10)
         val classKey = Random.nextInt()
-        if (replaceLdcInstructions(classNode, methodNode, decryptMethodName, classKey)) {
+        if (replaceStrings(classNode, methodNode, decryptMethodName, classKey)) {
             classNode.methods.add(createDecryptMethod(classNode, decryptMethodName, classKey))
         }
     }
 
-    fun replaceLdcInstructions(classNode: ClassNode, methodNode: MethodNode, decrypt: String, classKey: Int): Boolean {
-        var foundLdc = false
+    fun replaceStrings(classNode: ClassNode, methodNode: MethodNode, decrypt: String, classKey: Int): Boolean {
+        var foundStrings = false
+        if (modifyInvokeDynamic && replaceInvokeDynamicStrings(classNode, methodNode, decrypt, classKey)) {
+            foundStrings = true
+        }
+        if (modifyLdc && replaceLdcStrings(classNode, methodNode, decrypt, classKey)) {
+            foundStrings = true
+        }
+        return foundStrings
+    }
+
+    fun replaceLdcStrings(classNode: ClassNode, methodNode: MethodNode, decrypt: String, classKey: Int): Boolean {
+        var modified = false
+
         methodNode.instructions.asSequence()
             .filter { (it is LdcInsnNode && it.cst is String) }
-            .forEach { insnNode ->
-                val string = (insnNode as LdcInsnNode).cst as String
-                methodNode.instructions.insert(
-                    insnNode,
+            .forEach { instruction ->
+                val originalString = (instruction as LdcInsnNode).cst as String
+
+                methodNode.instructions.insert(instruction,
                     instructions {
                         val key = (Random.nextInt() and 0xFF) + 1
                         val seed = Random.nextLong(100000L)
-                        val encrypted = encrypt(string.toCharArray(), seed, key, classKey)
+                        val encrypted = encrypt(originalString.toCharArray(), seed, key, classKey)
                         if (arrayed) {
-                            INT(string.length)
+                            INT(encrypted.length)
                             NEWARRAY(Opcodes.T_CHAR)
-                            for (i in 0..(string.length - 1)) {
+                            for (i in 0..(encrypted.length - 1)) {
                                 DUP
                                 INT(i)
                                 INT(encrypted[i].code)
@@ -104,10 +119,49 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                         INVOKESTATIC(classNode.name, decrypt, DECRYPT_METHOD_DESC, false)
                     }
                 )
-                methodNode.instructions.remove(insnNode)
-                foundLdc = true
+                methodNode.instructions.remove(instruction)
+                modified = true
             }
-        return foundLdc
+        return modified
+    }
+
+    fun replaceInvokeDynamicStrings(classNode: ClassNode, methodNode: MethodNode, decrypt: String, classKey: Int): Boolean {
+        var modified = false
+
+        /*methodNode.instructions.asSequence()
+            .filter { (it is InvokeDynamicInsnNode) }
+            .forEach { instruction ->
+                if (instruction is InvokeDynamicInsnNode) {
+                    val bsmArgs = instruction.bsmArgs
+                    val key = (Random.nextInt() and 0xFF) + 1
+                    val seed = Random.nextLong(100000L)
+                    var modifiedBsm = false
+
+                    for (i in bsmArgs.indices) {
+                        if (bsmArgs[i] is String) {
+                            val originalString = bsmArgs[i] as String
+                            val encrypted = encrypt(originalString.toCharArray(), seed, key, classKey)
+
+                            bsmArgs[i] = encrypted
+                            modified = true
+                            modifiedBsm = true
+                        }
+                    }
+
+                    if (modifiedBsm) {
+                        println(classNode.name + "#" + methodNode.name + " -> " + instruction.name + " | " + instruction.previous + "/" + instruction.next)
+                        methodNode.instructions.insertBefore(instruction,
+                            instructions {
+                                INVOKEVIRTUAL("java/lang/String", "toCharArray", "()[C", false)
+                                LONG(seed)
+                                INT(key)
+                                INVOKESTATIC(classNode.name, decrypt, DECRYPT_METHOD_DESC, false)
+                            }
+                        )
+                    }
+                }
+            }*/
+        return modified
     }
 
     fun createDecryptMethod(classNode: ClassNode, methodName: String, classKey: Int): MethodNode = method(
