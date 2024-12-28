@@ -20,6 +20,7 @@ import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.InvokeDynamicInsnNode
 import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodNode
 import kotlin.random.Random
@@ -128,7 +129,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
     fun replaceInvokeDynamicStrings(classNode: ClassNode, methodNode: MethodNode, decrypt: String, classKey: Int): Boolean {
         var modified = false
 
-        /*methodNode.instructions.asSequence()
+        methodNode.instructions.asSequence()
             .filter { it is InvokeDynamicInsnNode }
             .forEach { instruction ->
                 if (instruction is InvokeDynamicInsnNode) {
@@ -155,10 +156,10 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
 
                             strings.forEachIndexed { index, _ ->
                                 ALOAD(localIndices[index])
-                                INVOKEVIRTUAL("java/lang/String", "toCharArray", "()[C", false)
+                                /*INVOKEVIRTUAL("java/lang/String", "toCharArray", "()[C", false)
                                 LONG(seed)
                                 INT(key)
-                                INVOKESTATIC(classNode.name, decrypt, DECRYPT_METHOD_DESC, false)
+                                INVOKESTATIC(classNode.name, decrypt, DECRYPT_METHOD_DESC, false)*/
 
                                 if (index < strings.size -1) {
                                     ALOAD(localIndices[index + 1])
@@ -171,7 +172,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                         })
                     }
                 }
-            }*/
+            }
         return modified
     }
 
