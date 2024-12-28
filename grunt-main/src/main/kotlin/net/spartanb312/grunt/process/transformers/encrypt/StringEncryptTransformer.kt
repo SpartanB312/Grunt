@@ -79,13 +79,8 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
     }
 
     fun replaceStrings(classNode: ClassNode, methodNode: MethodNode, decrypt: String, classKey: Int): Boolean {
-        var foundStrings = false
-        if (modifyInvokeDynamic && replaceInvokeDynamicStrings(classNode, methodNode, decrypt, classKey)) {
-            foundStrings = true
-        }
-        if (modifyLdc && replaceLdcStrings(classNode, methodNode, decrypt, classKey)) {
-            foundStrings = true
-        }
+        var foundStrings = modifyInvokeDynamic && replaceInvokeDynamicStrings(classNode, methodNode, decrypt, classKey)
+        foundStrings = foundStrings or (modifyLdc && replaceLdcStrings(classNode, methodNode, decrypt, classKey))
         return foundStrings
     }
 
