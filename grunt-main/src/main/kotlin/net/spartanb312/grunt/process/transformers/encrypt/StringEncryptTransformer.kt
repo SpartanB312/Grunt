@@ -198,7 +198,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             ICONST_0
             ISTORE(6)
             LABEL(L["label3"])
-            FRAME(Opcodes.F_APPEND, 2, arrayOf("java/util/Random", Opcodes.INTEGER), 0, null)
+            FRAME(Opcodes.F_APPEND, 3, arrayOf("java/util/Random", Opcodes.INTEGER, Opcodes.INTEGER), 0, null)
             ILOAD(6)
             ALOAD(0)
             ARRAYLENGTH
@@ -210,35 +210,25 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             ILOAD(6)
             CALOAD
             ILOAD(5)
-            SIPUSH(255)
-            IAND
             IXOR
             I2C
             CASTORE
             LABEL(L["label6"])
-            ALOAD(0)
-            ILOAD(6)
-            ALOAD(0)
-            ILOAD(6)
-            CALOAD
-            ILOAD(3)
-            IXOR
-            I2C
-            CASTORE
-            LABEL(L["label7"])
             ILOAD(5)
             ALOAD(4)
             INVOKEVIRTUAL("java/util/Random", "nextInt", "()I")
+            ILOAD(3)
             ICONST_M1
             IXOR
+            IAND
+            IADD
+            ISTORE(5)
+            LABEL(L["label7"])
+            ILOAD(5)
+            LDC(classKey)
             IADD
             ISTORE(5)
             LABEL(L["label8"])
-            ILOAD(5)
-            INT(classKey)
-            IXOR
-            ISTORE(5)
-            LABEL(L["label9"])
             IINC(6, 1)
             GOTO(L["label3"])
             LABEL(L["label4"])
@@ -248,20 +238,19 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             ALOAD(0)
             INVOKESPECIAL("java/lang/String", "<init>", "([C)V")
             ARETURN
-            LABEL(L["label10"])
+            LABEL(L["label9"])
         }
-        MAXS(5, 7)
+        MAXS(4, 7)
     }
 
-    fun encrypt(chars: CharArray, seed: Long, key: Int, classKey: Int): String {
-        val random = java.util.Random(seed)
-        var n = random.nextInt() xor -key
-        for (i in 0..(chars.size - 1)) {
-            chars[i] = (chars[i].code xor (n and 0xFF)).toChar()
-            chars[i] = (chars[i].code xor key).toChar()
-            n += random.nextInt().inv()
-            n = n xor classKey
+    fun encrypt(cArray: CharArray, l: Long, n: Int, classKey: Int): String {
+        val random = java.util.Random(l)
+        var n2 = random.nextInt() xor -n
+        for (i in cArray.indices) {
+            cArray[i] = (cArray[i].code xor n2).toChar()
+            n2 += random.nextInt() and n.inv()
+            n2 += classKey
         }
-        return String(chars)
+        return String(cArray)
     }
 }
