@@ -129,35 +129,46 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         var modified = false
 
         /*methodNode.instructions.asSequence()
-            .filter { (it is InvokeDynamicInsnNode) }
+            .filter { it is InvokeDynamicInsnNode }
             .forEach { instruction ->
                 if (instruction is InvokeDynamicInsnNode) {
                     val bsmArgs = instruction.bsmArgs
                     val key = (Random.nextInt() and 0xFF) + 1
                     val seed = Random.nextLong(100000L)
-                    var modifiedBsm = false
+                    val strings = mutableListOf<Int>()
 
                     for (i in bsmArgs.indices) {
                         if (bsmArgs[i] is String) {
-                            val originalString = bsmArgs[i] as String
-                            val encrypted = encrypt(originalString.toCharArray(), seed, key, classKey)
-
-                            bsmArgs[i] = encrypted
+                            strings.add(i)
+                            //bsmArgs[i] = encrypt((bsmArgs[i] as String).toCharArray(), seed, key, classKey)
                             modified = true
-                            modifiedBsm = true
                         }
                     }
 
-                    if (modifiedBsm) {
-                        println(classNode.name + "#" + methodNode.name + " -> " + instruction.name + " | " + instruction.previous + "/" + instruction.next)
-                        methodNode.instructions.insertBefore(instruction,
-                            instructions {
+                    if (strings.isNotEmpty()) {
+                        methodNode.instructions.insert(instruction, instructions {
+                            val localIndices = IntArray(strings.size) { methodNode.maxLocals + it }
+                            strings.forEachIndexed { index, _ ->
+                                ASTORE(localIndices[index])
+                                methodNode.maxLocals++
+                            }
+
+                            strings.forEachIndexed { index, _ ->
+                                ALOAD(localIndices[index])
                                 INVOKEVIRTUAL("java/lang/String", "toCharArray", "()[C", false)
                                 LONG(seed)
                                 INT(key)
                                 INVOKESTATIC(classNode.name, decrypt, DECRYPT_METHOD_DESC, false)
+
+                                if (index < strings.size -1) {
+                                    ALOAD(localIndices[index + 1])
+                                }
                             }
-                        )
+
+                            for (i in strings.size - 2 downTo 0) {
+                                ALOAD(localIndices[i])
+                            }
+                        })
                     }
                 }
             }*/
