@@ -3,8 +3,10 @@ package net.spartanb312.grunt.process.transformers.encrypt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import net.spartanb312.genesis.kotlin.clinit
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.field
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.config.Configs
@@ -14,26 +16,20 @@ import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.rename.ReflectionSupportTransformer
 import net.spartanb312.grunt.utils.count
-import net.spartanb312.grunt.utils.extensions.isAbstract
 import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.InvokeDynamicInsnNode
-import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.*
 import kotlin.random.Random
 
 /**
  * Encrypt strings
- * Last update on 2024/12/20
+ * Last update on 2024/12/28
  */
 object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encryption), MethodProcessor {
 
     private val arrayed by setting("Arrayed", false)
-    private val modifyLdc by setting("ModifyLdc", true)
-    private val modifyInvokeDynamic by setting("ModifyInvokeDynamic", true)
     private val exclusion by setting("Exclusion", listOf())
 
     private val String.reflectionExcluded
@@ -49,19 +45,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                     .filter { c -> c.version > Opcodes.V1_5 && exclusion.none { c.name.startsWith(it) }
                     }.forEach { classNode ->
                         fun job() {
-                            var shouldAdd = false
-                            val decryptMethodName = getRandomString(10)
-                            val classKey = Random.nextInt()
-                            val classes = ArrayList(classNode.methods)
-                            for (methodNode in classes) {
-                                if (methodNode.isAbstract) continue
-                                if (replaceStrings(classNode, methodNode, decryptMethodName, classKey)) {
-                                    shouldAdd = true
-                                }
-                            }
-                            if (shouldAdd) {
-                                classNode.methods.add(createDecryptMethod(classNode, decryptMethodName, classKey))
-                            }
+                            transformClass(classNode, null)
                         }
                         if (Configs.Settings.parallel) launch(Dispatchers.Default) { job() } else job()
                     }
@@ -71,32 +55,45 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
     }
 
     override fun transformMethod(classNode: ClassNode, methodNode: MethodNode) {
-        val decryptMethodName = getRandomString(10)
+        transformClass(classNode, methodNode)
+    }
+
+    private fun transformClass(classNode: ClassNode, onlyObfuscate: MethodNode?) {
+        val stringsToEncrypt = mutableMapOf<String, Int>()
         val classKey = Random.nextInt()
-        if (replaceStrings(classNode, methodNode, decryptMethodName, classKey)) {
-            classNode.methods.add(createDecryptMethod(classNode, decryptMethodName, classKey))
+
+        classNode.methods.forEach { methodNode ->
+            if (onlyObfuscate != null && onlyObfuscate != methodNode) return@forEach
+            replaceInvokeDynamicsWithStrings(classNode, methodNode)
+            methodNode.instructions.asSequence()
+                .filter { it is LdcInsnNode && it.cst is String }
+                .shuffled() // randomize
+                .forEach { instruction ->
+                    val originalString = (instruction as LdcInsnNode).cst as String
+                    // Skip duplicate strings
+                    val existingIndex = stringsToEncrypt[originalString]
+                    stringsToEncrypt.putIfAbsent(originalString, existingIndex ?: stringsToEncrypt.size)
+                }
         }
-    }
 
-    fun replaceStrings(classNode: ClassNode, methodNode: MethodNode, decrypt: String, classKey: Int): Boolean {
-        var foundStrings = modifyInvokeDynamic && replaceInvokeDynamicStrings(classNode, methodNode, decrypt, classKey)
-        foundStrings = foundStrings or (modifyLdc && replaceLdcStrings(classNode, methodNode, decrypt, classKey))
-        return foundStrings
-    }
-
-    fun replaceLdcStrings(classNode: ClassNode, methodNode: MethodNode, decrypt: String, classKey: Int): Boolean {
-        var modified = false
-
-        methodNode.instructions.asSequence()
-            .filter { (it is LdcInsnNode && it.cst is String) }
-            .forEach { instruction ->
-                val originalString = (instruction as LdcInsnNode).cst as String
-
-                methodNode.instructions.insert(instruction,
-                    instructions {
+        if (stringsToEncrypt.isNotEmpty()) {
+            val poolField = field(
+                (if (classNode.isInterface) PUBLIC else PRIVATE) + STATIC,
+                getRandomString(16),
+                "[Ljava/lang/String;",
+                null, null)
+            val decryptMethod = createDecryptMethod(classNode, getRandomString(16), classKey)
+            val encryptedStrings = stringsToEncrypt.keys.map { it }.toTypedArray()
+            val arrayInitMethod = method(Opcodes.ACC_STATIC, getRandomString(16), "()V") {
+                INSTRUCTIONS {
+                    INT(encryptedStrings.size)
+                    ANEWARRAY("java/lang/String")
+                    encryptedStrings.forEachIndexed { index, string ->
                         val key = (Random.nextInt() and 0xFF) + 1
                         val seed = Random.nextLong(100000L)
-                        val encrypted = encrypt(originalString.toCharArray(), seed, key, classKey)
+                        val encrypted = encrypt(string.toCharArray(), seed, key, classKey)
+                        DUP
+                        INT(index)
                         if (arrayed) {
                             INT(encrypted.length)
                             NEWARRAY(Opcodes.T_CHAR)
@@ -112,63 +109,64 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                         }
                         LONG(seed)
                         INT(key)
-                        INVOKESTATIC(classNode.name, decrypt, DECRYPT_METHOD_DESC, false)
+                        INVOKESTATIC(classNode.name, decryptMethod.name, decryptMethod.desc, false)
+                        AASTORE
                     }
-                )
-                methodNode.instructions.remove(instruction)
-                modified = true
+                    PUTSTATIC(classNode.name, poolField.name, poolField.desc)
+                    RETURN
+                }
+                MAXS(3, 0)
             }
-        return modified
+
+            (classNode.methods.find { it.name == "<clinit>" } ?: clinit().also {
+                it.instructions.insert(InsnNode(Opcodes.RETURN))
+                classNode.methods.add(it)
+            }).instructions.insert(instructions {
+                INVOKESTATIC(classNode.name, arrayInitMethod.name, arrayInitMethod.desc)
+            })
+
+            classNode.methods.forEach { methodNode ->
+                if (onlyObfuscate != null && onlyObfuscate != methodNode) return@forEach
+                methodNode.instructions.asSequence()
+                    .filter { it is LdcInsnNode && it.cst is String }
+                    .forEach { instruction ->
+                        val originalString = (instruction as LdcInsnNode).cst as String
+                        val index = stringsToEncrypt[originalString]!!
+                        methodNode.instructions.insert(instruction, instructions {
+                            GETSTATIC(classNode.name, poolField.name, poolField.desc)
+                            INT(index)
+                            AALOAD
+                        })
+                        methodNode.instructions.remove(instruction)
+                    }
+            }
+
+            classNode.fields.add(poolField)
+            classNode.methods.add(decryptMethod)
+            classNode.methods.add(arrayInitMethod)
+        }
     }
 
-    fun replaceInvokeDynamicStrings(classNode: ClassNode, methodNode: MethodNode, decrypt: String, classKey: Int): Boolean {
-        var modified = false
-
+    // TODO: implement
+    // Replace invoke dynamic bsm arguments with ldc calls in local variables
+    fun replaceInvokeDynamicsWithStrings(classNode: ClassNode, methodNode: MethodNode) {
         methodNode.instructions.asSequence()
             .filter { it is InvokeDynamicInsnNode }
             .forEach { instruction ->
                 if (instruction is InvokeDynamicInsnNode) {
                     val bsmArgs = instruction.bsmArgs
-                    val key = (Random.nextInt() and 0xFF) + 1
-                    val seed = Random.nextLong(100000L)
                     val strings = mutableListOf<Int>()
 
                     for (i in bsmArgs.indices) {
                         if (bsmArgs[i] is String) {
                             strings.add(i)
-                            //bsmArgs[i] = encrypt((bsmArgs[i] as String).toCharArray(), seed, key, classKey)
-                            modified = true
                         }
                     }
 
                     if (strings.isNotEmpty()) {
-                        methodNode.instructions.insert(instruction, instructions {
-                            val localIndices = IntArray(strings.size) { methodNode.maxLocals + it }
-                            strings.forEachIndexed { index, _ ->
-                                ASTORE(localIndices[index])
-                                methodNode.maxLocals++
-                            }
-
-                            strings.forEachIndexed { index, _ ->
-                                ALOAD(localIndices[index])
-                                /*INVOKEVIRTUAL("java/lang/String", "toCharArray", "()[C", false)
-                                LONG(seed)
-                                INT(key)
-                                INVOKESTATIC(classNode.name, decrypt, DECRYPT_METHOD_DESC, false)*/
-
-                                if (index < strings.size -1) {
-                                    ALOAD(localIndices[index + 1])
-                                }
-                            }
-
-                            for (i in strings.size - 2 downTo 0) {
-                                ALOAD(localIndices[i])
-                            }
-                        })
                     }
                 }
             }
-        return modified
     }
 
     fun createDecryptMethod(classNode: ClassNode, methodName: String, classKey: Int): MethodNode = method(
