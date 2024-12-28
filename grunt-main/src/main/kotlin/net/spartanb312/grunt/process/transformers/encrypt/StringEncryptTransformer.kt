@@ -35,8 +35,6 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
     private val String.reflectionExcluded
         get() = ReflectionSupportTransformer.enabled && ReflectionSupportTransformer.strBlacklist.contains(this)
 
-    private const val DECRYPT_METHOD_DESC = "([CJI)Ljava/lang/String;"
-
     override fun ResourceCache.transform() {
         Logger.info(" - Encrypting strings...")
         val count = count {
@@ -155,15 +153,10 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             .forEach { instruction ->
                 if (instruction is InvokeDynamicInsnNode) {
                     val bsmArgs = instruction.bsmArgs
-                    val strings = mutableListOf<Int>()
 
                     for (i in bsmArgs.indices) {
                         if (bsmArgs[i] is String) {
-                            strings.add(i)
                         }
-                    }
-
-                    if (strings.isNotEmpty()) {
                     }
                 }
             }
@@ -172,7 +165,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
     fun createDecryptMethod(classNode: ClassNode, methodName: String, classKey: Int): MethodNode = method(
         (if (classNode.isInterface) PUBLIC else PRIVATE) + STATIC,
         methodName,
-        DECRYPT_METHOD_DESC
+        "([CJI)Ljava/lang/String;"
     ) {
         INSTRUCTIONS {
             LABEL(L["label0"])
