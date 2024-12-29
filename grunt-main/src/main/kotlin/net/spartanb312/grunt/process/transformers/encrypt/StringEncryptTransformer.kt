@@ -222,7 +222,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             throw IllegalStateException()
         }
 
-        val bootstrap = createConcatBootstrap(bootstrapName, constants)
+        val bootstrap = createConcatBootstrap(classNode, bootstrapName, constants)
 
         methodNode.instructions.insert(instruction, instructions {
             INVOKEDYNAMIC(
@@ -242,10 +242,10 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         return bootstrap
     }
 
-    private fun createConcatBootstrap(name: String, constants: ArrayList<String>): MethodNode {
+    private fun createConcatBootstrap(classNode: ClassNode, methodName: String, constants: ArrayList<String>): MethodNode {
         val boostrapMethod = method(
-            PUBLIC + STATIC,
-            name,
+            (if (classNode.isInterface) PUBLIC else PRIVATE) + STATIC,
+            methodName,
             "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;)Ljava/lang/invoke/CallSite;") {}
 
         boostrapMethod.instructions.insert(instructions {
