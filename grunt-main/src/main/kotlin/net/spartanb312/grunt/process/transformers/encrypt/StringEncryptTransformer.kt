@@ -32,6 +32,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
 
     private val arrayed by setting("Arrayed", false)
     private val replaceInvokeDynamics by setting("ReplaceInvokeDynamics", true)
+    private val obfuscateIndex by setting("ObfuscateIndex", false)
     private val exclusion by setting("Exclusion", listOf())
 
     private val String.reflectionExcluded
@@ -140,7 +141,20 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                         val index = stringsToEncrypt[originalString]!!
                         methodNode.instructions.insert(instruction, instructions {
                             GETSTATIC(classNode.name, poolField.name, poolField.desc)
-                            INT(index)
+                            if (obfuscateIndex && index > 0) {
+                                val shouldInverse = Random.nextBoolean()
+                                val key = Random.nextInt() and 31
+                                val obfuscated = index shl if (shouldInverse) key.inv() else key
+                                INT(obfuscated)
+                                INT(key)
+                                if (shouldInverse) {
+                                    ICONST_M1
+                                    IXOR
+                                }
+                                ISHR
+                            } else {
+                                INT(index)
+                            }
                             AALOAD
                         })
                         methodNode.instructions.remove(instruction)
