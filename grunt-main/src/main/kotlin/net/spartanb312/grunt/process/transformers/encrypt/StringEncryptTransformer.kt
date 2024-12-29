@@ -94,7 +94,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                     INT(encryptedStrings.size)
                     ANEWARRAY("java/lang/String")
                     encryptedStrings.forEachIndexed { index, string ->
-                        val key = (Random.nextInt() and 0xFF) + 1
+                        val key = Random.nextInt()
                         val seed = Random.nextLong(100000L)
                         val encrypted = encrypt(string.toCharArray(), seed, key, classKey)
                         DUP
