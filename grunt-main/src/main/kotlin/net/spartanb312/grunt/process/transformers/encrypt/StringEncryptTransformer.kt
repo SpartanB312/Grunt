@@ -266,9 +266,8 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                 LDC(cst)
                 AASTORE
                 if (i != constants.lastIndex) {
-                    continue
+                    DUP
                 }
-                DUP
             }
 
             INVOKESTATIC(
