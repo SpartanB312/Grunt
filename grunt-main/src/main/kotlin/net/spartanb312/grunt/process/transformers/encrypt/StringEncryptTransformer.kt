@@ -145,19 +145,31 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         }
     }
 
-    // TODO: implement
-    // Replace invoke dynamic bsm arguments with ldc calls in local variables
+    // "Hello, world" <-- LDC
+    // "Hello, " + getName() <- INVOKEDYNAMIC
     fun replaceInvokeDynamicsWithStrings(classNode: ClassNode, methodNode: MethodNode) {
         methodNode.instructions.asSequence()
             .filter { it is InvokeDynamicInsnNode }
             .forEach { instruction ->
-                if (instruction is InvokeDynamicInsnNode) {
-                    val bsmArgs = instruction.bsmArgs
-
-                    for (i in bsmArgs.indices) {
-                        if (bsmArgs[i] is String) {
+                if (instruction is InvokeDynamicInsnNode && instruction.name.equals("makeConcatWithConstants")) {
+                    val stringBuilderVar = methodNode.maxLocals++
+                    val before = instructions {
+                        NEW("java/lang/StringBuilder")
+                        DUP
+                        INVOKESPECIAL("java/lang/StringBuilder", "<init>", "()V")
+                        ASTORE(stringBuilderVar)
+                        for (i in instruction.bsmArgs.indices) {
+                            ALOAD(stringBuilderVar)
+                            LDC(instruction.bsmArgs[i])
+                            //INVOKESTATIC("java/lang/String", "valueOf", "(Ljava/lang/Object;)Ljava/lang/String;")
+                            INVOKEVIRTUAL("java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;")
+                            POP
                         }
+                        ALOAD(stringBuilderVar)
+                        INVOKEVIRTUAL("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")
                     }
+                    methodNode.instructions.insert(instruction, before)
+                    methodNode.instructions.remove(instruction)
                 }
             }
     }
