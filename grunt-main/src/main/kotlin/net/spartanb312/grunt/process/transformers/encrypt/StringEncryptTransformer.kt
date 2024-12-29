@@ -279,75 +279,80 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         "([CJI)Ljava/lang/String;"
     ) {
         INSTRUCTIONS {
-            LABEL(L["label0"])
-            NEW("java/util/Random")
-            DUP
-            LLOAD(1)
-            INVOKESPECIAL("java/util/Random", "<init>", "(J)V")
-            ASTORE(4)
-            LABEL(L["label1"])
-            ALOAD(4)
-            INVOKEVIRTUAL("java/util/Random", "nextInt", "()I")
+            LABEL(L["L0"])
+            LDC(classKey)
             ILOAD(3)
-            INEG
             IXOR
-            ISTORE(5)
-            LABEL(L["label2"])
+            ISTORE(4)
+            LABEL(L["L1"])
             ICONST_0
-            ISTORE(6)
-            LABEL(L["label3"])
-            FRAME(Opcodes.F_APPEND, 3, arrayOf("java/util/Random", Opcodes.INTEGER, Opcodes.INTEGER), 0, null)
-            ILOAD(6)
+            ISTORE(5)
+            LABEL(L["L2"])
+            FRAME(Opcodes.F_APPEND, 2, arrayOf(Opcodes.INTEGER, Opcodes.INTEGER), 0, null)
+            ILOAD(5)
             ALOAD(0)
             ARRAYLENGTH
-            IF_ICMPGE(L["label4"])
-            LABEL(L["label5"])
-            ALOAD(0)
-            ILOAD(6)
-            ALOAD(0)
-            ILOAD(6)
-            CALOAD
+            IF_ICMPGE(L["L3"])
+            LABEL(L["L4"])
+            ILOAD(4)
+            LLOAD(1)
+            L2I
+            IXOR
             ILOAD(5)
+            ICONST_M1
+            IXOR
+            IXOR
+            ISTORE(4)
+            LABEL(L["L5"])
+            ILOAD(4)
+            ILOAD(3)
+            ILOAD(5)
+            ALOAD(0)
+            ARRAYLENGTH
+            IMUL
+            ISUB
+            IXOR
+            ISTORE(4)
+            LABEL(L["L6"])
+            ILOAD(4)
+            INEG
+            ILOAD(3)
+            IMUL
+            ILOAD(5)
+            IOR
+            ISTORE(4)
+            LABEL(L["L7"])
+            ALOAD(0)
+            ILOAD(5)
+            ALOAD(0)
+            ILOAD(5)
+            CALOAD
+            ILOAD(4)
             IXOR
             I2C
             CASTORE
-            LABEL(L["label6"])
-            ILOAD(5)
-            ALOAD(4)
-            INVOKEVIRTUAL("java/util/Random", "nextInt", "()I")
-            ILOAD(3)
-            ICONST_M1
-            IXOR
-            IAND
-            IADD
-            ISTORE(5)
-            LABEL(L["label7"])
-            ILOAD(5)
-            LDC(classKey)
-            IADD
-            ISTORE(5)
-            LABEL(L["label8"])
-            IINC(6, 1)
-            GOTO(L["label3"])
-            LABEL(L["label4"])
+            LABEL(L["L8"])
+            IINC(5, 1)
+            GOTO(L["L2"])
+            LABEL(L["L3"])
             FRAME(Opcodes.F_CHOP, 1, null, 0, null)
             NEW("java/lang/String")
             DUP
             ALOAD(0)
             INVOKESPECIAL("java/lang/String", "<init>", "([C)V")
             ARETURN
-            LABEL(L["label9"])
+            LABEL(L["L9"])
         }
-        MAXS(4, 7)
+        MAXS(4, 6)
     }
 
     fun encrypt(cArray: CharArray, l: Long, n: Int, classKey: Int): String {
-        val random = java.util.Random(l)
-        var n2 = random.nextInt() xor -n
+        var n2 = classKey xor n
         for (i in cArray.indices) {
+            n2 = n2 xor l.toInt() xor i.inv()
+            n2 = n2 xor (n - i * cArray.size)
+            n2 = -n2 * n or i
             cArray[i] = (cArray[i].code xor n2).toChar()
-            n2 += random.nextInt() and n.inv()
-            n2 += classKey
         }
         return String(cArray)
     }
