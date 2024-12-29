@@ -242,22 +242,15 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         return bootstrap
     }
 
-    private fun createConcatBootstrap(classNode: ClassNode, methodName: String, constants: ArrayList<String>): MethodNode {
-        val boostrapMethod = method(
+    private fun createConcatBootstrap(classNode: ClassNode, methodName: String, constants: ArrayList<String>) = method(
             (if (classNode.isInterface) PUBLIC else PRIVATE) + STATIC,
             methodName,
-            "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;)Ljava/lang/invoke/CallSite;") {}
-
-        boostrapMethod.instructions.insert(instructions {
-            val callerVar = boostrapMethod.maxLocals++
-            val nameVar = boostrapMethod.maxLocals++
-            val typeVar = boostrapMethod.maxLocals++
-            val argVar = boostrapMethod.maxLocals++
-
-            ALOAD(callerVar)
-            ALOAD(nameVar)
-            ALOAD(typeVar)
-            ALOAD(argVar)
+            "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;)Ljava/lang/invoke/CallSite;") {
+        INSTRUCTIONS {
+            ALOAD(0)
+            ALOAD(1)
+            ALOAD(2)
+            ALOAD(3)
             INT(constants.size)
             ANEWARRAY("java/lang/Object")
             DUP
@@ -276,9 +269,8 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                 "makeConcatWithConstants",
                 "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;")
             ARETURN
-        })
-
-        return boostrapMethod
+        }
+        MAXS(8, 4)
     }
 
     fun createDecryptMethod(classNode: ClassNode, methodName: String, classKey: Int): MethodNode = method(
