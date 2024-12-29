@@ -64,7 +64,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
 
         // First, replace all INVOKEDYNAMIC instructions with LDC instructions.
         if (replaceInvokeDynamics) {
-            replaceInvokeDynamics(classNode)
+            replaceInvokeDynamics(classNode, onlyObfuscate)
         }
 
         // Then, go over all LDC instructions and collect them.
@@ -153,10 +153,11 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
     }
 
     // https://github.com/yaskylan/GotoObfuscator/blob/master/src/main/java/org/g0to/transformer/features/stringencryption/
-    fun replaceInvokeDynamics(classNode: ClassNode) {
+    fun replaceInvokeDynamics(classNode: ClassNode, onlyObfuscate: MethodNode?) {
         val invokeDynamicConcatMethods = ArrayList<MethodNode>()
 
         classNode.methods.forEach { methodNode ->
+            if (onlyObfuscate != null && onlyObfuscate != methodNode) return@forEach
             methodNode.instructions.asSequence()
                 .filter { it is InvokeDynamicInsnNode && isStringConcatenation(it) }
                 .shuffled()
