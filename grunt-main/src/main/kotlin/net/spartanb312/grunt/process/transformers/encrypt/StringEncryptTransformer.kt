@@ -280,7 +280,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
     ) {
         INSTRUCTIONS {
             LABEL(L["L0"])
-            LDC(classKey)
+            INT(classKey)
             ILOAD(3)
             IXOR
             ISTORE(4)
@@ -332,6 +332,27 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             I2C
             CASTORE
             LABEL(L["L8"])
+            ILOAD(5)
+            SIPUSH(255)
+            IAND
+            ISTORE(6)
+            LABEL(L["L9"])
+            ILOAD(3)
+            ILOAD(6)
+            ISHL
+            ILOAD(3)
+            ILOAD(6)
+            INEG
+            IUSHR
+            IOR
+            ISTORE(3)
+            LABEL(L["L10"])
+            LLOAD(1)
+            ILOAD(6)
+            I2L
+            LXOR
+            LSTORE(1)
+            LABEL(L["L11"])
             IINC(5, 1)
             GOTO(L["L2"])
             LABEL(L["L3"])
@@ -341,18 +362,24 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             ALOAD(0)
             INVOKESPECIAL("java/lang/String", "<init>", "([C)V")
             ARETURN
-            LABEL(L["L9"])
+            LABEL(L["L12"])
         }
-        MAXS(4, 6)
+        MAXS(4, 7)
     }
 
-    fun encrypt(cArray: CharArray, l: Long, n: Int, classKey: Int): String {
+    fun encrypt(cArray: CharArray, seed: Long, key: Int, classKey: Int): String {
+        var n = key
+        var l = seed
         var n2 = classKey xor n
+
         for (i in cArray.indices) {
             n2 = n2 xor l.toInt() xor i.inv()
             n2 = n2 xor (n - i * cArray.size)
-            n2 = -n2 * n or i
+            n2 = (-n2 * n) or i
             cArray[i] = (cArray[i].code xor n2).toChar()
+            val n3 = i and 0xFF
+            n = (n shl n3) or (n ushr -n3)
+            l = l xor n3.toLong()
         }
         return String(cArray)
     }
