@@ -19,6 +19,7 @@ import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
+import org.objectweb.asm.Handle
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
 import kotlin.random.Random
@@ -30,6 +31,7 @@ import kotlin.random.Random
 object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encryption), MethodProcessor {
 
     private val arrayed by setting("Arrayed", false)
+    private val replaceInvokeDynamics by setting("ReplaceInvokeDynamics", true)
     private val exclusion by setting("Exclusion", listOf())
 
     private val String.reflectionExcluded
@@ -60,9 +62,14 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         val stringsToEncrypt = mutableMapOf<String, Int>()
         val classKey = Random.nextInt()
 
-        classNode.methods.forEach { methodNode ->
+        // First, replace all INVOKEDYNAMIC instructions with LDC instructions.
+        if (replaceInvokeDynamics) {
+            replaceInvokeDynamics(classNode)
+        }
+
+        // Then, go over all LDC instructions and collect them.
+        classNode.methods.shuffled().forEach { methodNode ->
             if (onlyObfuscate != null && onlyObfuscate != methodNode) return@forEach
-            replaceInvokeDynamicsWithStrings(classNode, methodNode)
             methodNode.instructions.asSequence()
                 .filter { it is LdcInsnNode && it.cst is String }
                 .shuffled() // randomize
@@ -145,33 +152,132 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         }
     }
 
-    // "Hello, world" <-- LDC
-    // "Hello, " + getName() <- INVOKEDYNAMIC
-    fun replaceInvokeDynamicsWithStrings(classNode: ClassNode, methodNode: MethodNode) {
-        methodNode.instructions.asSequence()
-            .filter { it is InvokeDynamicInsnNode }
-            .forEach { instruction ->
-                if (instruction is InvokeDynamicInsnNode && instruction.name.equals("makeConcatWithConstants")) {
-                    val stringBuilderVar = methodNode.maxLocals++
-                    val before = instructions {
-                        NEW("java/lang/StringBuilder")
-                        DUP
-                        INVOKESPECIAL("java/lang/StringBuilder", "<init>", "()V")
-                        ASTORE(stringBuilderVar)
-                        for (i in instruction.bsmArgs.indices) {
-                            ALOAD(stringBuilderVar)
-                            LDC(instruction.bsmArgs[i])
-                            //INVOKESTATIC("java/lang/String", "valueOf", "(Ljava/lang/Object;)Ljava/lang/String;")
-                            INVOKEVIRTUAL("java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;")
-                            POP
-                        }
-                        ALOAD(stringBuilderVar)
-                        INVOKEVIRTUAL("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")
-                    }
-                    methodNode.instructions.insert(instruction, before)
-                    methodNode.instructions.remove(instruction)
+    // https://github.com/yaskylan/GotoObfuscator/blob/master/src/main/java/org/g0to/transformer/features/stringencryption/
+    fun replaceInvokeDynamics(classNode: ClassNode) {
+        val invokeDynamicConcatMethods = ArrayList<MethodNode>()
+
+        classNode.methods.forEach { methodNode ->
+            methodNode.instructions.asSequence()
+                .filter { it is InvokeDynamicInsnNode && isStringConcatenation(it) }
+                .shuffled()
+                .forEach { instruction ->
+                    invokeDynamicConcatMethods.add(processStringConcatenation(
+                        classNode,
+                        methodNode,
+                        instruction as InvokeDynamicInsnNode,
+                        getRandomString(16)
+                    ))
+                }
+        }
+
+        invokeDynamicConcatMethods.forEach {
+            classNode.methods.add(it)
+        }
+    }
+
+    fun isStringConcatenation(instruction: InvokeDynamicInsnNode): Boolean {
+        return instruction.name.equals("makeConcatWithConstants")
+                && instruction.bsmArgs[0].toString().find { it != '\u0001' } != null
+    }
+
+    fun processStringConcatenation(classNode: ClassNode, methodNode: MethodNode,
+                                   instruction: InvokeDynamicInsnNode, bootstrapName: String): MethodNode {
+        val arg = instruction.bsmArgs[0].toString()
+        val argString = StringBuilder()
+        val newArg = StringBuilder()
+        val constants = ArrayList<String>()
+
+        fun flushArgs() {
+            if (argString.isNotEmpty()) {
+                constants.add(argString.toString())
+                argString.setLength(0)
+                newArg.append('\u0002')
+            }
+        }
+
+        var bsmArgIndex = 1
+
+        for (c in arg) {
+            when (c) {
+                '\u0001' -> {
+                    flushArgs()
+                    newArg.append('\u0001')
+                }
+                '\u0002' -> {
+                    flushArgs()
+                    constants.add(instruction.bsmArgs[bsmArgIndex++].toString())
+                    newArg.append('\u0002')
+                }
+                else -> {
+                    argString.append(c)
                 }
             }
+        }
+
+        flushArgs()
+
+        if (constants.isEmpty()) {
+            throw IllegalStateException()
+        }
+
+        val bootstrap = createConcatBootstrap(bootstrapName, constants)
+
+        methodNode.instructions.insert(instruction, instructions {
+            INVOKEDYNAMIC(
+                instruction.name,
+                instruction.desc,
+                Handle(
+                    Opcodes.H_INVOKESTATIC,
+                    classNode.name,
+                    bootstrap.name,
+                    bootstrap.desc,
+                    classNode.isInterface
+                ),
+                newArg.toString()
+            )
+        })
+        methodNode.instructions.remove(instruction)
+        return bootstrap
+    }
+
+    private fun createConcatBootstrap(name: String, constants: ArrayList<String>): MethodNode {
+        val boostrapMethod = method(
+            PUBLIC + STATIC,
+            name,
+            "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;)Ljava/lang/invoke/CallSite;") {}
+
+        boostrapMethod.instructions.insert(instructions {
+            val callerVar = boostrapMethod.maxLocals++
+            val nameVar = boostrapMethod.maxLocals++
+            val typeVar = boostrapMethod.maxLocals++
+            val argVar = boostrapMethod.maxLocals++
+
+            ALOAD(callerVar)
+            ALOAD(nameVar)
+            ALOAD(typeVar)
+            ALOAD(argVar)
+            INT(constants.size)
+            ANEWARRAY("java/lang/Object")
+            DUP
+
+            for ((i, cst) in constants.withIndex()) {
+                INT(i)
+                LDC(cst)
+                AASTORE
+                if (i != constants.lastIndex) {
+                    continue
+                }
+                DUP
+            }
+
+            INVOKESTATIC(
+                "java/lang/invoke/StringConcatFactory",
+                "makeConcatWithConstants",
+                "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;")
+            ARETURN
+        })
+
+        return boostrapMethod
     }
 
     fun createDecryptMethod(classNode: ClassNode, methodName: String, classKey: Int): MethodNode = method(
