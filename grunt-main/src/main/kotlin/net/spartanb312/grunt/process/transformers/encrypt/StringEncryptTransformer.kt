@@ -83,21 +83,22 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
 
         if (stringsToEncrypt.isNotEmpty()) {
             val poolField = field(
-                (if (classNode.isInterface) PUBLIC else PRIVATE) + STATIC,
+                (if (classNode.isInterface) PUBLIC + FINAL else PRIVATE) + STATIC,
                 getRandomString(16),
                 "[Ljava/lang/String;",
                 null, null)
             val decryptMethod = createDecryptMethod(classNode, getRandomString(16), classKey)
             val encryptedStrings = stringsToEncrypt.keys.map { it }.toTypedArray()
-            val arrayInitMethod = method(Opcodes.ACC_STATIC, getRandomString(16), "()V") {
+            val arrayInitMethod = method(
+                (if (classNode.isInterface) PUBLIC else PRIVATE) + STATIC,
+                getRandomString(16),
+                "()V") {
                 INSTRUCTIONS {
-                    INT(encryptedStrings.size)
-                    ANEWARRAY("java/lang/String")
                     encryptedStrings.forEachIndexed { index, string ->
                         val key = Random.nextInt()
                         val seed = Random.nextLong(100000L)
                         val encrypted = encrypt(string.toCharArray(), seed, key, classKey)
-                        DUP
+                        GETSTATIC(classNode.name, poolField.name, poolField.desc)
                         INT(index)
                         if (arrayed) {
                             INT(encrypted.length)
@@ -114,10 +115,9 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                         }
                         LONG(seed)
                         INT(key)
-                        INVOKESTATIC(classNode.name, decryptMethod.name, decryptMethod.desc, false)
+                        INVOKESTATIC(classNode.name, decryptMethod.name, decryptMethod.desc, classNode.isInterface)
                         AASTORE
                     }
-                    PUTSTATIC(classNode.name, poolField.name, poolField.desc)
                     RETURN
                 }
                 MAXS(3, 0)
@@ -127,7 +127,10 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                 it.instructions.insert(InsnNode(Opcodes.RETURN))
                 classNode.methods.add(it)
             }).instructions.insert(instructions {
-                INVOKESTATIC(classNode.name, arrayInitMethod.name, arrayInitMethod.desc)
+                INT(encryptedStrings.size)
+                ANEWARRAY("java/lang/String")
+                PUTSTATIC(classNode.name, poolField.name, poolField.desc)
+                INVOKESTATIC(classNode.name, arrayInitMethod.name, arrayInitMethod.desc, classNode.isInterface)
             })
 
             classNode.methods.forEach { methodNode ->
