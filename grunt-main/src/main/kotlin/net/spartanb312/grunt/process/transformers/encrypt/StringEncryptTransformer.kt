@@ -54,8 +54,8 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         Logger.info("    Encrypted $count strings")
     }
 
-    override fun transformMethod(classNode: ClassNode, methodNode: MethodNode) {
-        transformClass(classNode, methodNode)
+    override fun transformMethod(owner: ClassNode, methodNode: MethodNode) {
+        transformClass(owner, methodNode)
     }
 
     private fun transformClass(classNode: ClassNode, onlyObfuscate: MethodNode?) {
