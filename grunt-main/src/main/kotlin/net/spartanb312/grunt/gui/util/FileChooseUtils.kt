@@ -10,6 +10,13 @@ object FileChooseUtils {
 
     val CURRENT_PATH = Paths.get("").toAbsolutePath().toString() + File.separatorChar
 
+    fun chooseAnyFile(parent: Component): String? {
+        val chooser = JFileChooser(File(CURRENT_PATH))
+        return if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
+            chooser.selectedFile.absolutePath.removePrefix(CURRENT_PATH)
+        } else null
+    }
+
     fun chooseJsonFile(parent: Component): String? {
         val chooser = JFileChooser(File(CURRENT_PATH))
         chooser.fileFilter = FileNameExtensionFilter("Json File", "json")

@@ -32,87 +32,89 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 
 ### Renamer
 
-* [X] [5]ClassRename
-* [X] [5]FieldRename
-* [X] [5]MethodRename
-* [X] [5]LocalVarRename
-* [X] [3]ReflectionSupport 
+* [X] [5] ClassRename
+* [X] [5] FieldRename
+* [X] [5] MethodRename
+* [X] [5] LocalVarRename
+* [X] [3] ReflectionSupport 
 
-  The method renamer support InterfaceOverlap, InvokeDynamic, and FunctionalInterface check.
+  The method renamer supports InterfaceOverlap, InvokeDynamic, and FunctionalInterface check.
 
   InterfaceOverlap: A class extends/implements more than 2 class/interfaces with same method name and descriptor.
   (Example: A implements B and C, B and C both are independent interface and have method invoke(I)J.)
 
 ### Minecraft
 
-* [X] [4]MixinClassRename
-* [X] [4]MixinFieldRename
-* [ ] [4]MixinMethodRename
+* [X] [4] MixinClassRename
+* [X] [4] MixinFieldRename
+* [ ] [4] MixinMethodRename
 
 ### Encrypt
 
-* [X] [4]ArithmeticEncrypt
-* [X] [5]ConstPoolEncrypt
-* [X] [5]NumberEncrypt
-* [X] [5]StringEncrypt
+* [X] [4] ArithmeticEncrypt
+* [X] [5] ConstPoolEncrypt
+* [X] [5] NumberEncrypt
+* [X] [5] StringEncrypt
 
 ### Redirect
 
-* [X] [4]MethodScramble
-* [X] [5]FieldScramble
-* [X] [5]StringEqualsRedirect
-* [X] [5]InvokeDynamic
+* [X] [4] MethodScramble
+* [X] [5] FieldScramble
+* [X] [5] StringEqualsRedirect
+* [X] [5] InvokeDynamic
 
 ### Optimization
 
-* [X] [5]SourceDebugRemove
-* [X] [5]EnumOptimization
-* [X] [5]DeadCodeRemove
-* [X] [5]KotlinOptimize
-* [X] [4]Shrinking
+* [X] [5] SourceDebugRemove
+* [X] [5] EnumOptimization
+* [X] [5] DeadCodeRemove
+* [X] [5] KotlinOptimize
+* [X] [4] Shrinking
 
 ### Miscellaneous
 
-* [ ] [5]AntiDebug
-* [X] [5]Crasher
-* [X] [5]Watermark
-* [X] [5]NativeCandidate
-* [X] [5]ShuffleMembers
-* [X] [5]TrashClass
-* [X] [5]ClonedClass
-* [X] [5]SyntheticBridge
-* [X] [5]HWIDAuthentication
-* [X] [5]PostProcess
+* [ ] [5] AntiDebug
+* [X] [5] Crasher
+* [X] [5] Watermark
+* [X] [5] NativeCandidate
+* [X] [5] ShuffleMembers
+* [X] [5] TrashClass
+* [X] [5] ClonedClass
+* [X] [5] SyntheticBridge
+* [X] [5] HWIDAuthentication
+* [X] [5] PostProcess
+* [X] [5] DeclareFields
 
 ### Plugins
 
-* [ ] [3]NoverifyHackery (Misc) Force noverify and hackery bytecodes [(reference)](https://github.com/char/noverify-hackery)
-* [X] [4]RemoteLoader (Misc) Remote authentication and constant class loading services
-* [X] [2]VersionPatcher (Misc) Downgrade the class version from java6 to java5 for Windows 98
+* [ ] [3] NoverifyHackery (Misc) Force noverify and hackery bytecodes [(reference)](https://github.com/char/noverify-hackery)
+* [X] [4] RemoteLoader (Misc) Remote authentication and constant class loading services
+* [X] [2] VersionPatcher (Misc) Downgrade the class version from java6 to java5 for Windows 98
 
 ### ControlFlow
 
 #### General
 
-* [X] [5]RandomArithmeticExpr (Seed) Hide the seed operations to anti simulation
-* [X] [4]BogusConditionJump (If, Goto) Generate fake jumps with random junk codes
-* [X] [4]MangledCompareJump (If, Goto) Generate conditional jump with junk codes to replace direct jump
-* [X] [5]ReversedIfJump (If, Goto) Random mutation to the jump condition
-* [ ] [4]ParallelBranch (If, Goto) Generate junk parallel branch to prevent inference from returns
-* [X] [4]TableSwitchJump (Switch) Generate TableSwitch to replace direct jumps
-* [X] [4]TrappedSwitchCase (Switch) Random trapped jumps or weird loops between switch cases
-* [X] [4]JunkCodeGenerator (JunkCode) Generate junk calls
+* [X] [5] RandomArithmeticExpr (Seed) Hide the seed operations to anti-simulation
+* [X] [4] BogusConditionJump (If, Goto) Generate fake jumps with random junk codes
+* [X] [4] MangledCompareJump (If, Goto) Generate conditional jump with junk codes to replace direct jump
+* [X] [5] ReversedIfJump (If, Goto) Random mutation to the jump condition
+* [ ] [4] ParallelBranch (If, Goto) Generate junk parallel branch to prevent inference from returns
+* [X] [4] TableSwitchJump (Switch) Generate TableSwitch to replace direct jumps
+* [X] [4] TrappedSwitchCase (Switch) Random trapped jumps or weird loops between switch cases
+* [X] [4] JunkCodeGenerator (JunkCode) Generate junk calls
+* [X] [5] SwitchExtractor (Switch) Replace switches with blocks
 
 #### Miscellaneous
 
-* [ ] [4] ConstantBuilder (If, Switch) Using controlflow to build constants
-* [ ] [4] SwitchProtector (Switch) Hide the real keys of switch
+* [X] [4] ConstantBuilder (If, Switch) Using controlflow to build constants
+* [X] [4] SwitchProtector (Switch) Hide the real keys of switch
 
 ## License: GNU General Public License 3.0
 
-This is a free and open source software under GPLv3
+This is a free and open source software, licensed under GPLv3.
 
-The previous Grunt versions under MIT license (1.5.8 and before)
+The previous Grunt versions are licensed under the MIT license (1.5.8 and before).
 
 ## Stargazers over time
 

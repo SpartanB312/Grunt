@@ -114,6 +114,7 @@
     "Enabled": true,
     "Intensity": 1,
     "ExecuteBeforeEncrypt": true,
+    "FlattenSwitchCase": false,
     "BogusConditionJump": true,
     "MangledCompareJump": true,
     "IfReplaceRate": 70,
@@ -188,6 +189,7 @@
     "Enabled": true,
     "Dictionary": "Alphabet",
     "ThisReference": false,
+    "DeleteLocalVars": false,
     "Exclusion": []
   },
   "MethodRename": {
@@ -258,6 +260,10 @@
     "Fields": true,
     "Annotations": true,
     "Exceptions": true,
+    "Exclusion": []
+  },
+  "HideDeclaredFields": {
+    "Enabled": true,
     "Exclusion": []
   },
   "Crasher": {

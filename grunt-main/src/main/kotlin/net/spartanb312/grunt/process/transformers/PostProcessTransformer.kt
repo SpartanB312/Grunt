@@ -3,6 +3,8 @@ package net.spartanb312.grunt.process.transformers
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
+import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunt.annotation.DISABLE_CONTROLFLOW
 import net.spartanb312.grunt.annotation.DISABLE_INVOKEDYNAMIC
 import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
@@ -26,6 +28,7 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
     private val pluginMain by setting("Plugin YML", true)
     private val bungeeMain by setting("Bungee YML", true)
     private val fabricMain by setting("Fabric JSON", true)
+    private val velocityMain by setting("Velocity JSON", true)
     private val manifestReplace by setting("ManifestPrefix", listOf("Main-Class:"))
 
     override fun ResourceCache.transform() {
@@ -34,6 +37,7 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
         if (pluginMain) processPluginMain()
         if (bungeeMain) processBungeeMain()
         if (fabricMain) processFabricMain()
+        if (velocityMain) processVelocityMain()
     }
 
     fun ResourceCache.finalize() {
@@ -50,6 +54,17 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
             }
             clazz.fields.forEach { field ->
                 annotationRemoval.forEach { field.removeAnnotation(it) }
+            }
+            annotationRemoval.forEach { clazz.removeAnnotation(it) }
+        }
+        // Remove dummy insn
+        nonExcluded.forEach { clazz ->
+            clazz.methods.forEach { method ->
+                annotationRemoval.forEach { method.removeAnnotation(it) }
+                val newInsn = instructions {
+                    method.instructions.forEach { if (it.opcode != 1919810) +it }
+                }
+                method.instructions = newInsn
             }
             annotationRemoval.forEach { clazz.removeAnnotation(it) }
         }
@@ -158,4 +173,24 @@ object PostProcessTransformer : Transformer("PostProcess", Category.Miscellaneou
         resources["fabric.mod.json"] = Gson().toJson(mainObject).toByteArray(Charsets.UTF_8)
     }
 
+    private fun ResourceCache.processVelocityMain() {
+        val jsonFile = resources["velocity-plugin.json"] ?: return
+        Logger.info("    Processing velocity-plugin.json...")
+        val mainObject = JsonObject()
+        Gson().fromJson(
+            String(jsonFile, StandardCharsets.UTF_8),
+            JsonObject::class.java
+        ).apply {
+            asMap()?.forEach { (name, value) ->
+                val newValue = if (name == "main") {
+                    val mapping = classMappings[value.asString.splash]?.dot ?: return
+                    JsonPrimitive(mapping)
+                } else {
+                    value
+                }
+                mainObject.add(name, newValue)
+            }
+        }
+        resources["velocity-plugin.json"] = Gson().toJson(mainObject).toByteArray(Charsets.UTF_8)
+    }
 }

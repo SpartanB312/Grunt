@@ -29,6 +29,7 @@ import org.objectweb.asm.tree.*
 object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect) {
 
     private val intensity by setting("Intensity", 1)
+    private val rate by setting("ReplacePercentage", 10)
     private val randomName by setting("RandomName", false)
     private val redirectGetStatic by setting("GetStatic", true)
     private val redirectSetStatic by setting("tSetStatic", true)
@@ -60,7 +61,7 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
                                 .filter { !it.isInitializer }
                                 .forEach { methodNode ->
                                     methodNode.instructions.toList().forEach {
-                                        if (it is FieldInsnNode && it.name.notInList(excludedFieldName)) {
+                                        if (it is FieldInsnNode && it.name.notInList(excludedFieldName) && (0..99).random() < rate) {
                                             val callingOwner = synchronized(this@process) { getClassNode(it.owner) }
                                             val callingField = callingOwner?.fields?.find { field ->
                                                 field.name == it.name && field.desc == it.desc

@@ -19,10 +19,12 @@ object LocalVariableRenameTransformer : Transformer("LocalVariableRename", Categ
 
     private val dictionary by setting("Dictionary", "Alphabet")
     private val thisRef by setting("ThisReference", false)
+    private val deleteLocalVars by setting("DeleteLocalVars", false)
+    private val deleteParameters by setting("DeleteParameters", false)
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
-        Logger.info(" - Renaming local variables...")
+        Logger.info(" - Transforming local variables...")
         val count = count {
             nonExcluded.asSequence()
                 .filter { it.name.notInList(exclusion) }
@@ -33,10 +35,17 @@ object LocalVariableRenameTransformer : Transformer("LocalVariableRename", Categ
                     }
                 }
         }.get()
-        Logger.info("    Renamed $count local variables")
+        Logger.info("    Transformed $count local variables")
     }
 
     override fun transformMethod(owner: ClassNode, method: MethodNode) {
+        if (deleteParameters) {
+            method.parameters?.clear()
+        }
+        if (deleteLocalVars) {
+            method.localVariables?.clear()
+            return
+        }
         val dic = NameGenerator.getByName(dictionary)
         method.localVariables?.forEach {
             if (thisRef || it.name != "this") {
@@ -45,5 +54,4 @@ object LocalVariableRenameTransformer : Transformer("LocalVariableRename", Categ
             }
         }
     }
-
 }

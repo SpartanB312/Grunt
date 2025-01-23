@@ -5,6 +5,7 @@ import net.spartanb312.grunt.process.transformers.encrypt.ArithmeticEncryptTrans
 import net.spartanb312.grunt.process.transformers.encrypt.ConstPoolEncryptTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.NumberEncryptTransformer
 import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer
+import net.spartanb312.grunt.process.transformers.flow.ConstBuilderTransformer
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.process.transformers.minecraft.MixinClassRenameTransformer
 import net.spartanb312.grunt.process.transformers.minecraft.MixinFieldRenameTransformer
@@ -40,12 +41,14 @@ object Transformers : MutableList<Transformer> by mutableListOf(
     ClonedClassTransformer order 100,
     TrashClassTransformer order 101,
     HWIDAuthenticatorTransformer order 102,
+    DeclareFieldsTransformer order 103,
     ReflectionSupportTransformer order 199,
     //ControlflowTransformer order 200,
     StringEncryptTransformer order 300,
     NumberEncryptTransformer order 301,
     ArithmeticEncryptTransformer order 302,
     ControlflowTransformer order 400,
+    ConstBuilderTransformer order 500,
     ConstPoolEncryptTransformer order 501,
     StringEqualsRedirectTransformer order 600,
     FieldScrambleTransformer order 601,
