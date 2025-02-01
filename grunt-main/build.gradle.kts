@@ -30,6 +30,7 @@ dependencies {
     library("org.ow2.asm:asm:$asmVersion")
     library("org.ow2.asm:asm-tree:$asmVersion")
     library("org.ow2.asm:asm-commons:$asmVersion")
+    library("org.ow2.asm:asm-analysis:$asmVersion")
 
     //GSON
     library("com.google.code.gson:gson:2.10")
