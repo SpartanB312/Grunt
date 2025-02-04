@@ -8,6 +8,8 @@ This project aims for stability and versatility. Some ideas are from other obfus
 
 Join our Discord server and provide your suggestions: https://discord.gg/ysB2fMfeYW
 
+#### Grunt 2.5 will be the last version of Grunt 2, which coming in 2025 Apr. Grunt 3 project will be launched later in 2025
+
 ## Compatibility
 
 100% passed [JVM Obfuscation Test](https://github.com/sim0n/jvm-obfuscation-tester)
