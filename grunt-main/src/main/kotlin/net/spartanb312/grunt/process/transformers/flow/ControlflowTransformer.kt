@@ -39,6 +39,7 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     private val ifCompareRate by setting("IfICompareReplaceRate", 100) // Range 0..100
     private val switchProtect by setting("SwitchProtect", true)
     private val tableSwitch by setting("TableSwitchJump", true)
+    private val rearrangeJumps by setting("RearrangeJumps", true)
     private val switchRate by setting("SwitchReplaceRate", 30)  // Range 0..100
     private val maxSwitchCase by setting("MaxSwitchCase", 5) // Range 1..10
     val reverseExistedIf by setting("ReverseExistedIf", true)
@@ -111,6 +112,18 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                     }
                 }
                 methodNode.instructions = newInsn
+            }
+            if (rearrangeJumps) { // step3: replace jumps with table switches
+                methodNode.instructions = instructions {
+                    methodNode.instructions.forEach { instruction ->
+                        if (instruction is JumpInsnNode
+                            && instruction.opcode != Opcodes.GOTO
+                            && !instruction.previous.isDummy) {
+                            +RearrangeJumps.generate(instruction)
+                            count++
+                        } else +instruction
+                    }
+                }
             }
             if (switchExtractor) { // step2: extract switches { switch: m, if: n2 = n + Σ(0->m) cases }
                 val newInsn = instructions {
