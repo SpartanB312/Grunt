@@ -14,7 +14,7 @@ import kotlin.random.Random
  *
  * @author jonesdevelopment
  */
-object RearrangeJumps {
+object MutateJumps {
 
     fun generate(
         jump: JumpInsnNode
@@ -25,35 +25,56 @@ object RearrangeJumps {
             val switchLabel = LabelNode()
             val falseGoto = LabelNode()
 
-            val random = Random.nextInt() and 0xFFFF
+            val random = Random.nextInt(0xF, 0xFFFF)
 
             +JumpInsnNode(jump.opcode, trueLabel)
-            +obfuscate(random - 1)
+            +obfuscateBasic(random - 1)
             GOTO(switchLabel)
             LABEL(trueLabel)
-            +obfuscate(random)
+            +obfuscateBasic(random)
             GOTO(switchLabel)
             LABEL(proxyTrue)
-            NOP
-            +obfuscate(random - 2)
+            +insertTrap()
+            +obfuscateBasic(random - 2)
             LABEL(switchLabel)
             TABLESWITCH(random - 1, random, jump.label, falseGoto, proxyTrue)
             LABEL(falseGoto)
         }
     }
 
-    fun obfuscate(v: Int): InsnList {
+    fun insertTrap(): InsnList {
         return instructions {
-            val add = Random.nextBoolean()
-            val key = Random.nextInt(v)
-            if (add) {
-                INT(v - key)
-                INT(key)
-                IADD
-            } else {
-                INT(v + key)
-                INT(key)
-                ISUB
+            NOP
+            // TODO: make something cool
+        }
+    }
+
+    fun obfuscateBasic(value: Int): InsnList {
+        return instructions {
+            val key = Random.nextInt(value)
+            when (Random.nextInt(4)) {
+                0 -> {
+                    INT(value - key)
+                    INT(key)
+                    IADD
+                }
+                1 -> {
+                    INT(value + key)
+                    INT(key)
+                    ISUB
+                }
+                2 -> {
+                    INT(value xor key)
+                    INT(key)
+                    IXOR
+                }
+                3 -> {
+                    val a = Random.nextInt() and key or value
+                    val b = Random.nextInt() and key.inv() or value
+                    INT(a)
+                    INT(b)
+                    IAND
+                }
             }
         }
     }
