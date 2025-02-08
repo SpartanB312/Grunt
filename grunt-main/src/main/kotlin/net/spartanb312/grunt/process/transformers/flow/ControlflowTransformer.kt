@@ -107,10 +107,12 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
             if (switchProtect) {
                 val newInsn = instructions { // step1: replace switches { switch: m }
                     methodNode.instructions.forEach { insnNode ->
-                        if (Random.nextInt(0, 100) <= protectRate) if (!insnNode.previous.isDummy) when (insnNode) {
-                            is LookupSwitchInsnNode -> +LookUpSwitch.generate(insnNode)
-                            is TableSwitchInsnNode -> +LookUpSwitch.generate(insnNode)
-                            else -> +insnNode
+                        if (Random.nextInt(0, 100) <= protectRate) {
+                            if (!insnNode.previous.isDummy) when (insnNode) {
+                                is LookupSwitchInsnNode -> +LookUpSwitch.generate(insnNode)
+                                is TableSwitchInsnNode -> +LookUpSwitch.generate(insnNode)
+                                else -> +insnNode
+                            } else +insnNode
                         } else +insnNode
                     }
                 }
