@@ -94,18 +94,17 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
             .forEach {
                 if (methodNode.instructions.size() < maxInsnSize) {
                     if (it.opcode in Opcodes.ICONST_M1..Opcodes.ICONST_5) {
-                        val value = it.opcode - Opcodes.ICONST_0
                         if (arrayed && numList != null && fieldNode != null) {
                             methodNode.instructions.insertBefore(
                                 it,
                                 NumberEncryptorArrayed.encrypt(
-                                    value,
+                                    it.opcode - 0x3,
                                     owner,
                                     fieldNode,
                                     numList
                                 )
                             )
-                        } else methodNode.instructions.insertBefore(it, NumberEncryptorClassic.encrypt(value))
+                        } else methodNode.instructions.insertBefore(it, NumberEncryptorClassic.encrypt(it.opcode - 0x3))
                         methodNode.instructions.remove(it)
                         add()
                     } else if (it is IntInsnNode) {
@@ -140,7 +139,7 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                             add()
                         }
                     } else if (it.opcode in Opcodes.LCONST_0..Opcodes.LCONST_1) {
-                        val value = (it.opcode - Opcodes.LCONST_0).toLong()
+                        val value = (it.opcode - 0x9).toLong()
                         if (arrayed && numList != null && fieldNode != null) {
                             methodNode.instructions.insertBefore(
                                 it,

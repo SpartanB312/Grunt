@@ -41,7 +41,7 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
     private lateinit var lastDict: NameGenerator
     private val suffix get() = if (reversed) "\u200E" else ""
     fun nextAppendClassName(classNode: ClassNode): String {
-        return parent  + classNode.malNamePrefix + prefix + lastDict.nextName() + suffix
+        return parent + prefix + classNode.malNamePrefix + lastDict.nextName() + suffix
     }
 
     override fun ResourceCache.transform() {
@@ -56,7 +56,7 @@ object ClassRenameTransformer : Transformer("ClassRename", Category.Renaming) {
             val classes = if (shuffled) nonExcluded.shuffled() else nonExcluded
             classes.forEach {
                 if (it.name.notInList(equalsExclusion, false) && it.name.notInList(startWithExclusion)) {
-                    mappings[it.name] = parent + it.malNamePrefix + prefix + nameGenerator.nextName() + suffix
+                    mappings[it.name] = parent + prefix + it.malNamePrefix + nameGenerator.nextName() + suffix
                     add()
                 }
             }

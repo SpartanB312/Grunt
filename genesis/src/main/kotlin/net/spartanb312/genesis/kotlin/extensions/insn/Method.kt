@@ -14,7 +14,10 @@ import org.objectweb.asm.tree.MethodNode
  */
 @BuilderDSL
 fun InsnListBuilder.INVOKESTATIC(owner: String, name: String, desc: String, isInterface: Boolean = false) {
-    +MethodInsnNode(Opcodes.INVOKESTATIC, owner, name, desc, isInterface)
+    require(!isInterface) {
+        "INVOKESTATIC isInterface should always be false"
+    }
+    +MethodInsnNode(Opcodes.INVOKESTATIC, owner, name, desc, false)
 }
 
 @BuilderDSL

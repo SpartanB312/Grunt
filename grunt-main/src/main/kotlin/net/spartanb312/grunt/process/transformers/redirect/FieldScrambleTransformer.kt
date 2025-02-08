@@ -32,7 +32,7 @@ object FieldScrambleTransformer : Transformer("FieldScramble", Category.Redirect
     private val rate by setting("ReplacePercentage", 10)
     private val randomName by setting("RandomName", false)
     private val redirectGetStatic by setting("GetStatic", true)
-    private val redirectSetStatic by setting("SetStatic", true)
+    private val redirectSetStatic by setting("tSetStatic", true)
     private val redirectGetField by setting("GetValue", true)
     private val redirectSetField by setting("SetField", true)
     private val generateOuterClass by setting("GenerateOuterClass", false)

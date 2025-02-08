@@ -18,7 +18,6 @@ object ShrinkingTransformer : Transformer("Shrinking", Category.Optimization) {
     private val removeInnerClass by setting("RemoveInnerClass", true)
     private val removeUnusedLabel by setting("RemoveUnusedLabel", true)
     private val removeNOP by setting("RemoveNOP", false) // May cause some bugs in Minecraft Forge Mod
-    private val annotations by setting("AnnotationRemovals", listOf("Ljava/lang/Override;"))
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
@@ -91,20 +90,6 @@ object ShrinkingTransformer : Transformer("Shrinking", Category.Optimization) {
                 }
             }.get()
             Logger.info("    Removed $labelCount unused labels")
-        }
-        if (annotations.isNotEmpty()) {
-            val annotationCount = count {
-                nonExcluded.forEach { classNode ->
-                    run visible@{
-                        classNode.visibleAnnotations = (classNode.visibleAnnotations ?: return@visible).filter { it.desc !in annotations }
-                    }
-
-                    run invisible@{
-                        classNode.invisibleAnnotations = (classNode.invisibleAnnotations ?: return@invisible).filter { it.desc !in annotations }
-                    }
-                }
-            }.get()
-            Logger.info("    Removed $annotationCount annotations")
         }
     }
 

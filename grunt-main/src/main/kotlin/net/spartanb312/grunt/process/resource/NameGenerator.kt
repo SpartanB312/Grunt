@@ -71,10 +71,6 @@ sealed class NameGenerator(val name: String) {
         override val elements = listOf("S", "s", "5", "$")
     }
 
-    class Arabic : NameGenerator("Arabic") {
-        override val elements = ('\u0600'..'\u06ff').asSequence().map { it.toString() }.toList()
-    }
-
     class Custom : NameGenerator("custom") {
         override val elements: List<String> = kotlin.run {
             val file = File(Configs.Settings.customDictionary)
@@ -96,7 +92,6 @@ sealed class NameGenerator(val name: String) {
                 "confuseil" -> ConfuseIL()
                 "confuse0o" -> Confuse0O()
                 "confuses5" -> ConfuseS5()
-                "arabic" -> Arabic()
                 "custom" -> Custom()
                 else -> Alphabet()
             }
