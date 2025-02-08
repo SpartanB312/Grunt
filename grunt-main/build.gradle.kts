@@ -30,6 +30,7 @@ dependencies {
     library("org.ow2.asm:asm:$asmVersion")
     library("org.ow2.asm:asm-tree:$asmVersion")
     library("org.ow2.asm:asm-commons:$asmVersion")
+    library("org.ow2.asm:asm-analysis:$asmVersion")
 
     //GSON
     library("com.google.code.gson:gson:2.10")
@@ -39,6 +40,7 @@ dependencies {
     library("com.github.weisj:darklaf-core:3.0.2")
 
     library("org.apache.commons:commons-lang3:3.0")
+    library("javassist:javassist:3.12.1.GA")
 
 //    api(library)
 

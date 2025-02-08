@@ -16,9 +16,6 @@ import net.spartanb312.grunt.config.Configs.isExcluded
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.process.transformers.encrypt.ConstPoolEncryptTransformer
-import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer
-import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.flow.ControlflowTransformer
 import net.spartanb312.grunt.process.transformers.flow.process.ArithmeticExpr
 import net.spartanb312.grunt.process.transformers.flow.process.JunkCode
@@ -178,7 +175,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                         val decryptName = if (massiveRandom) massiveBlankString else massiveString
                         val decryptKey = Random.nextInt(0x8, 0x800)
                         if (shouldApply(classNode, bsmName1, bsmName2, decryptKey, metadata)) {
-                            val decrypt = StringEncryptTransformer.createDecryptMethod(decryptName, decryptKey)
+                            val decrypt = createDecryptMethod(decryptName, decryptKey)
                             val decrypt2 = if (heavy) createHeavyDecryptMethod(decryptName) else null
                             val bsm = createBootstrap(classNode.name, bsmName1, decryptName)
                             val bsm2 = if (heavy) createHeavyBootstrap(
@@ -772,6 +769,57 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
             LOCALVAR("handle", "Ljava/lang/invoke/MethodHandle;", null, label26, label27, 14)
             MAXS(5, 17)
         }
+    }
+
+    fun createDecryptMethod(methodName: String, key: Int): MethodNode = method(
+        PRIVATE + STATIC + SYNTHETIC + BRIDGE,
+        methodName,
+        "(Ljava/lang/String;)Ljava/lang/String;"
+    ) {
+        INSTRUCTIONS {
+            //A:
+            NEW("java/lang/StringBuilder")
+            DUP
+            INVOKESPECIAL("java/lang/StringBuilder", "<init>", "()V")
+            ASTORE(1)
+            ICONST_0
+            ISTORE(2)
+            GOTO(L["labelC"])
+
+            //B:
+            LABEL(L["labelB"])
+            FRAME(Opcodes.F_APPEND, 2, arrayOf("java/lang/StringBuilder", Opcodes.INTEGER), 0)
+            ALOAD(1)
+            ALOAD(0)
+            ILOAD(2)
+            INVOKEVIRTUAL("java/lang/String", "charAt", "(I)C")
+            LDC(key)
+            IXOR
+            I2C
+            INVOKEVIRTUAL("java/lang/StringBuilder", "append", "(C)Ljava/lang/StringBuilder;")
+            POP
+            IINC(2, 1)
+
+            //C:
+            LABEL(L["labelC"])
+            FRAME(Opcodes.F_SAME, 0, null, 0)
+            ILOAD(2)
+            ALOAD(0)
+            INVOKEVIRTUAL("java/lang/String", "length", "()I")
+            IF_ICMPLT(L["labelB"])
+            ALOAD(1)
+            INVOKEVIRTUAL("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")
+            ARETURN
+        }
+        MAXS(3, 3)
+    }
+
+    fun encrypt(string: String, xor: Int): String {
+        val stringBuilder = StringBuilder()
+        for (element in string) {
+            stringBuilder.append((element.code xor xor).toChar())
+        }
+        return stringBuilder.toString()
     }
 
     class MetaData(
