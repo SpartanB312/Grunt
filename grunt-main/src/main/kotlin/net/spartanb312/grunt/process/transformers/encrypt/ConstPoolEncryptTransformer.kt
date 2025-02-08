@@ -7,10 +7,9 @@ import net.spartanb312.grunt.annotation.DISABLE_SCRAMBLE
 import net.spartanb312.grunt.config.setting
 import net.spartanb312.grunt.process.Transformer
 import net.spartanb312.grunt.process.resource.ResourceCache
-import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.createDecryptMethod
-import net.spartanb312.grunt.process.transformers.encrypt.StringEncryptTransformer.encrypt
 import net.spartanb312.grunt.process.transformers.encrypt.number.NumberEncryptorClassic
 import net.spartanb312.grunt.process.transformers.misc.NativeCandidateTransformer
+import net.spartanb312.grunt.process.transformers.redirect.InvokeDynamicTransformer
 import net.spartanb312.grunt.process.transformers.rename.ReflectionSupportTransformer
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.appendAnnotation
@@ -19,6 +18,7 @@ import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.getRandomString
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 import org.objectweb.asm.tree.LdcInsnNode
@@ -67,7 +67,31 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                     if (!methodNode.isAbstract && !methodNode.isNative) {
                         val insnList = instructions {
                             methodNode.instructions.forEach { insn ->
-                                if (insn is LdcInsnNode) {
+                                if (insn.opcode in Opcodes.ICONST_M1..Opcodes.ICONST_5) {
+                                    if (integer) {
+                                        val owner = companions.keys.random()
+                                        val list = companions[owner]!!
+                                        val value = insn.opcode - Opcodes.ICONST_0
+                                        ConstRef.IntRef(value).let {
+                                            list.add(it)
+                                            GETSTATIC(owner.name, it.field.name, it.field.desc)
+                                        }
+                                        add()
+                                    }
+                                }
+                                else if (insn.opcode in Opcodes.LCONST_0..Opcodes.LCONST_1) {
+                                    if (long) {
+                                        val owner = companions.keys.random()
+                                        val list = companions[owner]!!
+                                        val value = insn.opcode - Opcodes.LCONST_0
+                                        ConstRef.LongRef(value.toLong()).let {
+                                            list.add(it)
+                                            GETSTATIC(owner.name, it.field.name, it.field.desc)
+                                        }
+                                        add()
+                                    }
+                                }
+                                else if (insn is LdcInsnNode) {
                                     val owner = companions.keys.random()
                                     val list = companions[owner]!!
                                     val cst = insn.cst
@@ -129,9 +153,9 @@ object ConstPoolEncryptTransformer : Transformer("ConstPollEncrypt", Category.En
                             is ConstRef.StringRef -> {
                                 val key = Random.nextInt(0x8, 0x800)
                                 val methodName = getRandomString(10)
-                                val decryptMethod = createDecryptMethod(methodName, key)
+                                val decryptMethod = InvokeDynamicTransformer.createDecryptMethod(methodName, key)
                                 clazz.methods.add(decryptMethod)
-                                LDC(encrypt(it.value, key))
+                                LDC(InvokeDynamicTransformer.encrypt(it.value, key))
                                 INVOKESTATIC(clazz.name, methodName, "(Ljava/lang/String;)Ljava/lang/String;")
                                 PUTSTATIC(clazz.name, it.field.name, it.field.desc)
                             }

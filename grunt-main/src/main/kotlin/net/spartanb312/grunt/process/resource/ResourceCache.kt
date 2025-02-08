@@ -18,9 +18,15 @@ import net.spartanb312.grunt.process.hierarchy.ReferenceSearch
 import net.spartanb312.grunt.utils.corruptCRC32
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.commons.ClassRemapper
 import org.objectweb.asm.commons.SimpleRemapper
 import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.LabelNode
+import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.analysis.Analyzer
+import org.objectweb.asm.tree.analysis.BasicInterpreter
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -124,13 +130,13 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                         val byteArray = try {
                             if (missing) Logger.warn("Using COMPUTE_MAXS due to ${classNode.name} missing dependencies or reference.")
                             ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {
-                                classNode.accept(this)
+                                classNode.accept(CustomClassNode(Opcodes.ASM9, this))
                             }.toByteArray()
                         } catch (ignore: Exception) {
                             Logger.error("Failed to dump class ${classNode.name}. Trying ${if (useComputeMax) "COMPUTE_FRAMES" else "COMPUTE_MAXS"}")
                             try {
                                 ClassDumper(this@ResourceCache, hierarchy, !useComputeMax).apply {
-                                    classNode.accept(this)
+                                    classNode.accept(CustomClassNode(Opcodes.ASM9, this))
                                 }.toByteArray()
                             } catch (exception: Exception) {
                                 exception.printStackTrace()
@@ -260,4 +266,35 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         }
     }
 
+    //credit https://blog.51cto.com/lsieun/4594350
+    class CustomClassNode(api: Int, cv: ClassVisitor) : ClassNode(api) {
+        init {
+            this.cv = cv
+        }
+        override fun visitEnd() {
+            methods.forEach { mn ->
+                transform(name, mn)
+            }
+            super.visitEnd()
+            if (cv != null) {
+                accept(cv)
+            }
+        }
+        fun transform(owner: String, mn: MethodNode) {
+            mn.maxStack = -1
+            val ana = Analyzer(BasicInterpreter())
+            runCatching {
+                ana.analyze(owner, mn)
+                val frames = ana.frames
+                val insnNodes = mn.instructions.toArray()
+                for (i in frames.indices) {
+                    if (frames[i] == null && insnNodes[i] !is LabelNode) {
+                        mn.instructions.remove(insnNodes[i])
+                    }
+                }
+            }.onFailure {
+                //it.printStackTrace()
+            }
+        }
+    }
 }
