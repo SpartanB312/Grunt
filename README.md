@@ -107,6 +107,7 @@ recommended to only enable computeMaxs and disable controlflow obfuscation when 
 * [X] [4] TrappedSwitchCase (Switch) Random trapped jumps or weird loops between switch cases
 * [X] [4] JunkCodeGenerator (JunkCode) Generate junk calls
 * [X] [5] SwitchExtractor (Switch) Replace switches with blocks
+* [X] [5] MutateJumps (Switch) Generate TableSwitch to replace compare statements
 
 #### Miscellaneous
 
