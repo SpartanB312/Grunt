@@ -1,12 +1,13 @@
 # Gruntpocalypse
 
+[![Version](https://img.shields.io/github/v/release/SpartanB312/Grunt)](https://github.com/SpartanB312/Grunt/releases)
 [![CodeFactor](https://www.codefactor.io/repository/github/spartanb312/grunt/badge)](https://www.codefactor.io/repository/github/spartanb312/grunt)
 
 Gruntpocalypse is a JVM bytecode obfuscator written in kotlin with 40+ features.
 
 This project aims for stability and versatility. Some ideas are taken from other obfuscators.
 
-Join our Discord server and provide your suggestions: https://discord.gg/ysB2fMfeYW
+Feel free to koin our Discord server for suggestions: https://discord.gg/ysB2fMfeYW
 
 #### Grunt 2.5 will be the last version of Grunt 2, which comes in April 2025.
 #### Grunt 3 project will be launched later in 2025.
@@ -38,7 +39,7 @@ Stability level: 1 = Unstable; 5 = Stable
 |                                 | ReflectionSupport    | 3     | InterfaceOverlap, InvokeDynamic, FunctionalInterface                                       |
 | **Minecraft**                   | MixinClassRename     | 4     |                                                                                            |
 |                                 | MixinFieldRename     | 4     |                                                                                            |
-|                                 | *MixinMethodRename   | 4     |                                                                                            |
+|                                 | *MixinMethodRename   | -     |                                                                                            |
 | **Encrypt**                     | ArithmeticEncrypt    | 4     |                                                                                            |
 |                                 | ConstPoolEncrypt     | 5     |                                                                                            |
 |                                 | NumberEncrypt        | 5     |                                                                                            |
@@ -52,7 +53,7 @@ Stability level: 1 = Unstable; 5 = Stable
 |                                 | DeadCodeRemove       | 5     |                                                                                            |
 |                                 | KotlinOptimize       | 5     |                                                                                            |
 |                                 | Shrinking            | 4     |                                                                                            |
-| **Miscellaneous**               | *AntiDebug           | 5     |                                                                                            |
+| **Miscellaneous**               | *AntiDebug           | -     |                                                                                            |
 |                                 | Crasher              | 5     |                                                                                            |
 |                                 | Watermark            | 5     |                                                                                            |
 |                                 | NativeCandidate      | 5     |                                                                                            |
@@ -63,14 +64,14 @@ Stability level: 1 = Unstable; 5 = Stable
 |                                 | HWIDAuthentication   | 5     |                                                                                            |
 |                                 | PostProcess          | 5     |                                                                                            |
 |                                 | DeclareFields        | 5     | Move field declarations into the init/clinit of classes.                                   |
-| **Plugins**                     | *NoverifyHackery     | 3     | Force noverify and hackery bytecodes. [Reference](https://github.com/char/noverify-hackery) |
+| **Plugins**                     | *NoverifyHackery     | -     | Force noverify and hackery bytecodes. [Reference](https://github.com/char/noverify-hackery) |
 |                                 | RemoteLoader         | 4     | Remote authentication and constant class loading services.                                 |
 |                                 | VersionPatcher       | 2     | Downgrade class version (Java 6 to Java 5) for Windows 98.                                 |
 | **ControlFlow - General**       | RandomArithmeticExpr | 5     | (Seed) Hide seed operations to anti-simulation.                                            |
 |                                 | BogusConditionJump   | 4     | (If, Goto) Generate fake jumps with random junk codes.                                     |
 |                                 | MangledCompareJump   | 4     | (If, Goto) Generate conditional jumps with junk codes.                                     |
 |                                 | ReversedIfJump       | 5     | (If, Goto) Random mutation to jump conditions.                                             |
-|                                 | *ParallelBranch      | 4     | (If, Goto) Generate junk parallel branches.                                                |
+|                                 | *ParallelBranch      | -     | (If, Goto) Generate junk parallel branches.                                                |
 |                                 | TableSwitchJump      | 4     | (Switch) Generate TableSwitch to replace direct jumps.                                     |
 |                                 | TrappedSwitchCase    | 4     | (Switch) Random trapped jumps or weird loops between switch cases.                         |
 |                                 | JunkCodeGenerator    | 4     | (JunkCode) Generate junk calls.                                                            |
