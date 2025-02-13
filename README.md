@@ -2,119 +2,86 @@
 
 [![CodeFactor](https://www.codefactor.io/repository/github/spartanb312/grunt/badge)](https://www.codefactor.io/repository/github/spartanb312/grunt)
 
-Gruntpocalypse is a jvm bytecode obfuscator written in kotlin with 30+ features.
+Gruntpocalypse is a JVM bytecode obfuscator written in kotlin with 40+ features.
 
-This project aims for stability and versatility. Some ideas are from other obfuscators.
+This project aims for stability and versatility. Some ideas are taken from other obfuscators.
 
 Join our Discord server and provide your suggestions: https://discord.gg/ysB2fMfeYW
 
-#### Grunt 2.5 will be the last version of Grunt 2, which coming in 2025 Apr
-#### Grunt 3 project will be launched later in 2025
+#### Grunt 2.5 will be the last version of Grunt 2, which comes in April 2025.
+#### Grunt 3 project will be launched later in 2025.
 
 ## Compatibility
 
 100% passed [JVM Obfuscation Test](https://github.com/sim0n/jvm-obfuscation-tester)
 
-If you encounter any compatibility issues, please raise an issue on GitHub to help us improve Grunt.
+If you encounter any compatibility issues, please open a GitHub Issue or join the Discord to help us improve Grunt.
 
-By the way, I appended the stability level on each feature. If you encountered unstable situation. You can turn off the
-low stability-level features.
+## Important
 
-Stability level: [1]=Unstable [5]=Stable
-
-## Notice
-
-Controlflow requires ComputeMaxs disabled. Please ensure your included classes with full dependencies.
-
-The dependencies of your project is highly required to ensure stability and intensity. If most of the project
-dependencies are unavailable for some reasons. I suggest you to enable useComputeMaxs in Global setting to ensure
-stability as much as possible. (If you encountered VerifyError, You should first try to complete the dependencies. It is
-recommended to only enable computeMaxs and disable controlflow obfuscation when most dependencies cannot be completed)
+Controlflow requires ComputeMaxs disabled.
+Ensure all project dependencies are included for stability and intensity.
+If dependencies are unavailable, enable <code>useComputeMaxs</code> in Global settings as a last resort.
+Address <code>VerifyError</code> by completing dependencies first.
+Only enable <code>computeMaxs</code> and disable controlflow obfuscation when dependencies are mostly unresolvable.
 
 ## Features
 
-### Renamer
+Stability level: 1 = Unstable; 5 = Stable
 
-* [X] [5] ClassRename
-* [X] [5] FieldRename
-* [X] [5] MethodRename
-* [X] [5] LocalVarRename
-* [X] [3] ReflectionSupport 
+| Category                        | Feature              | Level | Description                                                                                |
+|---------------------------------|----------------------|-------|--------------------------------------------------------------------------------------------|
+| **Renamer**                     | ClassRename          | 5     |                                                                                            |
+|                                 | FieldRename          | 5     |                                                                                            |
+|                                 | MethodRename         | 5     |                                                                                            |
+|                                 | LocalVarRename       | 5     |                                                                                            |
+|                                 | ReflectionSupport    | 3     | InterfaceOverlap, InvokeDynamic, FunctionalInterface                                       |
+| **Minecraft**                   | MixinClassRename     | 4     |                                                                                            |
+|                                 | MixinFieldRename     | 4     |                                                                                            |
+|                                 | *MixinMethodRename   | 4     |                                                                                            |
+| **Encrypt**                     | ArithmeticEncrypt    | 4     |                                                                                            |
+|                                 | ConstPoolEncrypt     | 5     |                                                                                            |
+|                                 | NumberEncrypt        | 5     |                                                                                            |
+|                                 | StringEncrypt        | 5     |                                                                                            |
+| **Redirect**                    | MethodScramble       | 4     |                                                                                            |
+|                                 | FieldScramble        | 5     |                                                                                            |
+|                                 | StringEqualsRedirect | 5     |                                                                                            |
+|                                 | InvokeDynamic        | 5     |                                                                                            |
+| **Optimization**                | SourceDebugRemove    | 5     |                                                                                            |
+|                                 | EnumOptimization     | 5     |                                                                                            |
+|                                 | DeadCodeRemove       | 5     |                                                                                            |
+|                                 | KotlinOptimize       | 5     |                                                                                            |
+|                                 | Shrinking            | 4     |                                                                                            |
+| **Miscellaneous**               | *AntiDebug           | 5     |                                                                                            |
+|                                 | Crasher              | 5     |                                                                                            |
+|                                 | Watermark            | 5     |                                                                                            |
+|                                 | NativeCandidate      | 5     |                                                                                            |
+|                                 | ShuffleMembers       | 5     |                                                                                            |
+|                                 | TrashClass           | 5     |                                                                                            |
+|                                 | ClonedClass          | 5     |                                                                                            |
+|                                 | SyntheticBridge      | 5     |                                                                                            |
+|                                 | HWIDAuthentication   | 5     |                                                                                            |
+|                                 | PostProcess          | 5     |                                                                                            |
+|                                 | DeclareFields        | 5     | Move field declarations into the init/clinit of classes.                                   |
+| **Plugins**                     | *NoverifyHackery     | 3     | Force noverify and hackery bytecodes. [Reference](https://github.com/char/noverify-hackery) |
+|                                 | RemoteLoader         | 4     | Remote authentication and constant class loading services.                                 |
+|                                 | VersionPatcher       | 2     | Downgrade class version (Java 6 to Java 5) for Windows 98.                                 |
+| **ControlFlow - General**       | RandomArithmeticExpr | 5     | (Seed) Hide seed operations to anti-simulation.                                            |
+|                                 | BogusConditionJump   | 4     | (If, Goto) Generate fake jumps with random junk codes.                                     |
+|                                 | MangledCompareJump   | 4     | (If, Goto) Generate conditional jumps with junk codes.                                     |
+|                                 | ReversedIfJump       | 5     | (If, Goto) Random mutation to jump conditions.                                             |
+|                                 | *ParallelBranch      | 4     | (If, Goto) Generate junk parallel branches.                                                |
+|                                 | TableSwitchJump      | 4     | (Switch) Generate TableSwitch to replace direct jumps.                                     |
+|                                 | TrappedSwitchCase    | 4     | (Switch) Random trapped jumps or weird loops between switch cases.                         |
+|                                 | JunkCodeGenerator    | 4     | (JunkCode) Generate junk calls.                                                            |
+|                                 | SwitchExtractor      | 5     | (Switch) Replace switches with blocks.                                                     |
+|                                 | MutateJumps          | 5     | (Switch) Generate TableSwitch for compare statements.                                      |
+| **ControlFlow - Miscellaneous** | ConstantBuilder      | 4     | (If, Switch) Use controlflow to build constants.                                           |
+|                                 | SwitchProtector      | 4     | (Switch) Hide real keys of switches.                                                       |
 
-  The method renamer supports InterfaceOverlap, InvokeDynamic, and FunctionalInterface check.
+#### * Not implemented yet.
 
-  InterfaceOverlap: A class extends/implements more than 2 class/interfaces with same method name and descriptor.
-  (Example: A implements B and C, B and C both are independent interface and have method invoke(I)J.)
-
-### Minecraft
-
-* [X] [4] MixinClassRename
-* [X] [4] MixinFieldRename
-* [ ] [4] MixinMethodRename
-
-### Encrypt
-
-* [X] [4] ArithmeticEncrypt
-* [X] [5] ConstPoolEncrypt
-* [X] [5] NumberEncrypt
-* [X] [5] StringEncrypt
-
-### Redirect
-
-* [X] [4] MethodScramble
-* [X] [5] FieldScramble
-* [X] [5] StringEqualsRedirect
-* [X] [5] InvokeDynamic
-
-### Optimization
-
-* [X] [5] SourceDebugRemove
-* [X] [5] EnumOptimization
-* [X] [5] DeadCodeRemove
-* [X] [5] KotlinOptimize
-* [X] [4] Shrinking
-
-### Miscellaneous
-
-* [ ] [5] AntiDebug
-* [X] [5] Crasher
-* [X] [5] Watermark
-* [X] [5] NativeCandidate
-* [X] [5] ShuffleMembers
-* [X] [5] TrashClass
-* [X] [5] ClonedClass
-* [X] [5] SyntheticBridge
-* [X] [5] HWIDAuthentication
-* [X] [5] PostProcess
-* [X] [5] DeclareFields
-
-### Plugins
-
-* [ ] [3] NoverifyHackery (Misc) Force noverify and hackery bytecodes [(reference)](https://github.com/char/noverify-hackery)
-* [X] [4] RemoteLoader (Misc) Remote authentication and constant class loading services
-* [X] [2] VersionPatcher (Misc) Downgrade the class version from java6 to java5 for Windows 98
-
-### ControlFlow
-
-#### General
-
-* [X] [5] RandomArithmeticExpr (Seed) Hide the seed operations to anti-simulation
-* [X] [4] BogusConditionJump (If, Goto) Generate fake jumps with random junk codes
-* [X] [4] MangledCompareJump (If, Goto) Generate conditional jump with junk codes to replace direct jump
-* [X] [5] ReversedIfJump (If, Goto) Random mutation to the jump condition
-* [ ] [4] ParallelBranch (If, Goto) Generate junk parallel branch to prevent inference from returns
-* [X] [4] TableSwitchJump (Switch) Generate TableSwitch to replace direct jumps
-* [X] [4] TrappedSwitchCase (Switch) Random trapped jumps or weird loops between switch cases
-* [X] [4] JunkCodeGenerator (JunkCode) Generate junk calls
-* [X] [5] SwitchExtractor (Switch) Replace switches with blocks
-* [X] [5] MutateJumps (Switch) Generate TableSwitch to replace compare statements
-
-#### Miscellaneous
-
-* [X] [4] ConstantBuilder (If, Switch) Using controlflow to build constants
-* [X] [4] SwitchProtector (Switch) Hide the real keys of switch
-
-## License: GNU General Public License 3.0
+## License
 
 This is a free and open source software, licensed under GPLv3.
 
