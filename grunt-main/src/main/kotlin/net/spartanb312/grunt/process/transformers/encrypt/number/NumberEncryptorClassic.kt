@@ -1,9 +1,6 @@
 package net.spartanb312.grunt.process.transformers.encrypt.number
 
-import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESTATIC
-import net.spartanb312.genesis.kotlin.extensions.insn.L2I
-import net.spartanb312.genesis.kotlin.extensions.insn.LAND
-import net.spartanb312.genesis.kotlin.extensions.insn.LXOR
+import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.extensions.toInsnNode
 import net.spartanb312.genesis.kotlin.instructions
 import org.objectweb.asm.tree.InsnList
@@ -46,13 +43,27 @@ object NumberEncryptorClassic : NumberEncryptor {
         val maxRandom = Int.MAX_VALUE.toLong()
         val key = Random.nextLong() and maxRandom
         return instructions {
-            when (Random.nextInt(2)) {
+            when (Random.nextInt(3)) {
                 0 -> {
                     val temp0 = Random.nextLong(maxRandom) and key or value
                     val temp1 = Random.nextLong(maxRandom) and key.inv() or value
                     +temp0.toInsnNode()
                     +temp1.toInsnNode()
                     LAND
+                }
+                1 -> {
+                    val temp0 = Random.nextLong(maxRandom)
+                    val temp1 = Random.nextLong(maxRandom)
+                    val obfuscated = (key and temp0) xor value xor (key or temp1)
+                    +key.toInsnNode()
+                    +temp0.toInsnNode()
+                    LAND
+                    +obfuscated.toInsnNode()
+                    LXOR
+                    +key.toInsnNode()
+                    +temp1.toInsnNode()
+                    LOR
+                    LXOR
                 }
                 else -> {
                     +(value xor key).toInsnNode()
