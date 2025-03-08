@@ -170,10 +170,10 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
                             && !it.value.hasAnnotation(DISABLE_INVOKEDYNAMIC)
                 }.values.forEach { classNode ->
                     suspend fun job() {
-                        val bsmName1 = if (massiveRandom) massiveBlankString else massiveString
+                        val bsmName1 = if (massiveRandom) massiveBlankString else getRandomString(16)
                         val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
-                        val decryptName = if (massiveRandom) massiveBlankString else massiveString
-                        val decryptKey = Random.nextInt(0x8, 0x800)
+                        val decryptName = if (massiveRandom) massiveBlankString else getRandomString(16)
+                        val decryptKey = Random.nextInt()
                         if (shouldApply(classNode, bsmName1, bsmName2, decryptKey, metadata)) {
                             val decrypt = createDecryptMethod(decryptName, decryptKey)
                             val decrypt2 = if (heavy) createHeavyDecryptMethod(decryptName) else null
