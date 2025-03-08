@@ -2,6 +2,7 @@ package net.spartanb312.grunt.process.transformers.encrypt.number
 
 import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESTATIC
 import net.spartanb312.genesis.kotlin.extensions.insn.L2I
+import net.spartanb312.genesis.kotlin.extensions.insn.LAND
 import net.spartanb312.genesis.kotlin.extensions.insn.LXOR
 import net.spartanb312.genesis.kotlin.extensions.toInsnNode
 import net.spartanb312.genesis.kotlin.instructions
@@ -45,9 +46,20 @@ object NumberEncryptorClassic : NumberEncryptor {
         val maxRandom = Int.MAX_VALUE.toLong()
         val key = Random.nextLong() and maxRandom
         return instructions {
-            +(value xor key).toInsnNode()
-            +key.toInsnNode()
-            LXOR
+            when (Random.nextInt(2)) {
+                0 -> {
+                    val temp0 = Random.nextLong(maxRandom) and key or value
+                    val temp1 = Random.nextLong(maxRandom) and key.inv() or value
+                    +temp0.toInsnNode()
+                    +temp1.toInsnNode()
+                    LAND
+                }
+                else -> {
+                    +(value xor key).toInsnNode()
+                    +key.toInsnNode()
+                    LXOR
+                }
+            }
         }
     }
 
