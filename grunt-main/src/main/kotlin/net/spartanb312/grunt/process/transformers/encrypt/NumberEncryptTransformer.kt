@@ -91,6 +91,7 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
     ) {
         methodNode.instructions
             .filter { it.opcode != Opcodes.NEWARRAY }
+            .shuffled()
             .forEach {
                 if (methodNode.instructions.size() < maxInsnSize) {
                     if (it.opcode in Opcodes.ICONST_M1..Opcodes.ICONST_5) {
@@ -179,39 +180,41 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
         fieldNode: FieldNode?,
         numList: MutableList<NumberEncryptorArrayed.Value>?
     ) {
-        methodNode.instructions.toList().forEach {
-            fun encryptFloatingPoint(cst: Number) {
-                // Fall back to classic encryptor if the given fieldNode is null.
-                if (arrayed && numList != null && fieldNode != null) {
-                    methodNode.instructions.insertBefore(
-                        it,
-                        NumberEncryptorArrayed.encrypt(
-                            cst,
-                            owner,
-                            fieldNode,
-                            numList
+        methodNode.instructions
+            .shuffled()
+            .forEach {
+                fun encryptFloatingPoint(cst: Number) {
+                    // Fall back to classic encryptor if the given fieldNode is null.
+                    if (arrayed && numList != null && fieldNode != null) {
+                        methodNode.instructions.insertBefore(
+                            it,
+                            NumberEncryptorArrayed.encrypt(
+                                cst,
+                                owner,
+                                fieldNode,
+                                numList
+                            )
                         )
-                    )
-                } else methodNode.instructions.insertBefore(it, NumberEncryptorClassic.encrypt(cst))
-                methodNode.instructions.remove(it)
-                add()
-            }
+                    } else methodNode.instructions.insertBefore(it, NumberEncryptorClassic.encrypt(cst))
+                    methodNode.instructions.remove(it)
+                    add()
+                }
 
-            if (methodNode.instructions.size() + 3 < maxInsnSize) {
-                when {
-                    it is LdcInsnNode -> when (val cst = it.cst) {
-                        is Float -> encryptFloatingPoint(cst)
-                        is Double -> encryptFloatingPoint(cst)
+                if (methodNode.instructions.size() + 3 < maxInsnSize) {
+                    when {
+                        it is LdcInsnNode -> when (val cst = it.cst) {
+                            is Float -> encryptFloatingPoint(cst)
+                            is Double -> encryptFloatingPoint(cst)
+                        }
+
+                        it.opcode == Opcodes.FCONST_0 -> encryptFloatingPoint(0.0f)
+                        it.opcode == Opcodes.FCONST_1 -> encryptFloatingPoint(1.0f)
+                        it.opcode == Opcodes.FCONST_2 -> encryptFloatingPoint(2.0f)
+                        it.opcode == Opcodes.DCONST_0 -> encryptFloatingPoint(0.0)
+                        it.opcode == Opcodes.DCONST_1 -> encryptFloatingPoint(1.0)
                     }
-
-                    it.opcode == Opcodes.FCONST_0 -> encryptFloatingPoint(0.0f)
-                    it.opcode == Opcodes.FCONST_1 -> encryptFloatingPoint(1.0f)
-                    it.opcode == Opcodes.FCONST_2 -> encryptFloatingPoint(2.0f)
-                    it.opcode == Opcodes.DCONST_0 -> encryptFloatingPoint(0.0)
-                    it.opcode == Opcodes.DCONST_1 -> encryptFloatingPoint(1.0)
                 }
             }
-        }
     }
 
 }
