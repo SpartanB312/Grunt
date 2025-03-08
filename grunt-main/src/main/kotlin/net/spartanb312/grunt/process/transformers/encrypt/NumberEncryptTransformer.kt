@@ -16,7 +16,6 @@ import net.spartanb312.grunt.utils.Counter
 import net.spartanb312.grunt.utils.count
 import net.spartanb312.grunt.utils.extensions.appendAnnotation
 import net.spartanb312.grunt.utils.extensions.isAbstract
-import net.spartanb312.grunt.utils.extensions.isInterface
 import net.spartanb312.grunt.utils.extensions.isNative
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.Opcodes
@@ -46,8 +45,7 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                         .forEach { classNode ->
                             fun job() {
                                 val list = mutableListOf<NumberEncryptorArrayed.Value>()
-                                val field =
-                                    if (arrayed && !classNode.isInterface) classNode.getOrCreateField() else null
+                                val field = if (arrayed) classNode.getOrCreateField() else null
                                 field?.appendAnnotation(DISABLE_SCRAMBLE)
                                 classNode.methods.asSequence()
                                     .filter { !it.isAbstract && !it.isNative }
