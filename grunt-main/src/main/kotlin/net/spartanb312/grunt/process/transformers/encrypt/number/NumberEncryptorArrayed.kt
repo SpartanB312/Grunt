@@ -1,9 +1,14 @@
 package net.spartanb312.grunt.process.transformers.encrypt.number
 
+import net.spartanb312.genesis.kotlin.extensions.PRIVATE
+import net.spartanb312.genesis.kotlin.extensions.PUBLIC
+import net.spartanb312.genesis.kotlin.extensions.STATIC
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.extensions.toInsnNode
 import net.spartanb312.genesis.kotlin.instructions
+import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.utils.extensions.isInterface
+import net.spartanb312.grunt.utils.getRandomString
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
@@ -56,13 +61,23 @@ object NumberEncryptorArrayed : NumberEncryptor {
         +values.size.toInsnNode()
         NEWARRAY(Opcodes.T_LONG)
         PUTSTATIC(owner.name, field.name, field.desc)
-        // Decrypt values
-        values.forEachIndexed { index, value ->
-            GETSTATIC(owner.name, field.name, field.desc)
-            +index.toInsnNode()
-            +value.decrypt
-            LASTORE
-        }
+        val arrayInitMethod = method(
+            (if (owner.isInterface) PUBLIC else PRIVATE) + STATIC,
+            getRandomString(16),
+            "()V") {
+            INSTRUCTIONS {
+                // Decrypt values
+                values.forEachIndexed { index, value ->
+                    GETSTATIC(owner.name, field.name, field.desc)
+                    +index.toInsnNode()
+                    +value.decrypt
+                    LASTORE
+                }
+                RETURN
+            }
+            MAXS(3, 0)
+        }.also { owner.methods.add(it) }
+        INVOKESTATIC(owner.name, arrayInitMethod.name, arrayInitMethod.desc, owner.isInterface)
     }
 
     fun ClassNode.getOrCreateField(): FieldNode {
