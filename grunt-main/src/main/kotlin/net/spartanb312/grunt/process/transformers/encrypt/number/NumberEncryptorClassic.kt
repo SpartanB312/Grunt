@@ -1,8 +1,8 @@
 package net.spartanb312.grunt.process.transformers.encrypt.number
 
-import net.spartanb312.genesis.kotlin.extensions.INT
-import net.spartanb312.genesis.kotlin.extensions.LONG
-import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESTATIC
+import net.spartanb312.genesis.kotlin.extensions.insn.L2I
+import net.spartanb312.genesis.kotlin.extensions.insn.LXOR
 import net.spartanb312.genesis.kotlin.extensions.toInsnNode
 import net.spartanb312.genesis.kotlin.instructions
 import org.objectweb.asm.tree.InsnList
@@ -21,56 +21,32 @@ object NumberEncryptorClassic : NumberEncryptor {
     }
 
     fun encrypt(value: Float): InsnList {
-        val intBits = value.asInt()
-        val key = Random.nextInt()
-        val encryptedIntBits = intBits xor key
         return instructions {
-            INT(encryptedIntBits)
-            INT(key)
-            IXOR
+            +encrypt(value.asInt())
             INVOKESTATIC("java/lang/Float", "intBitsToFloat", "(I)F")
         }
     }
 
     fun encrypt(value: Double): InsnList {
-        val longBits = value.asLong()
-        val key = Random.nextLong()
-        val encryptedLongBits = longBits xor key
         return instructions {
-            LONG(encryptedLongBits)
-            LONG(key)
-            LXOR
+            +encrypt(value.asLong())
             INVOKESTATIC("java/lang/Double", "longBitsToDouble", "(J)D")
         }
     }
 
     fun encrypt(value: Int): InsnList {
-        val random = Random.nextInt(Int.MAX_VALUE)
-        val negative = (if (Random.nextBoolean()) random else -random) + value
-        val obfuscated = value xor negative
         return instructions {
-            if (Random.nextBoolean()) {
-                +negative.toInsnNode()
-                I2L
-                +obfuscated.toInsnNode()
-                I2L
-                LXOR
-                L2I
-            } else {
-                LDC(negative.toLong())
-                L2I
-                +obfuscated.toInsnNode()
-                IXOR
-            }
+            +encrypt(value.toLong())
+            L2I
         }
     }
 
     fun encrypt(value: Long): InsnList {
-        val random = Random.nextLong()
-        val obfuscated = value xor random
+        val maxRandom = Int.MAX_VALUE.toLong()
+        val key = Random.nextLong() and maxRandom
         return instructions {
-            +obfuscated.toInsnNode()
-            +random.toInsnNode()
+            +(value xor key).toInsnNode()
+            +key.toInsnNode()
             LXOR
         }
     }
