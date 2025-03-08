@@ -67,6 +67,9 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                                         it.instructions.insert(InsnNode(Opcodes.RETURN))
                                         classNode.methods.add(it)
                                     }
+                                    if (!classNode.fields.contains(field)) {
+                                        classNode.fields.add(field)
+                                    }
                                     clinit.instructions.insert(insert)
                                 }
                             }

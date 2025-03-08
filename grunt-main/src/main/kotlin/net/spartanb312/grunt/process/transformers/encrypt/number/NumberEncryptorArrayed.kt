@@ -73,7 +73,7 @@ object NumberEncryptorArrayed : NumberEncryptor {
                 "[J",
                 null,
                 null
-            ).also { fields.add(it) }
+            )
     }
 
     class Value(val value: Long) {
