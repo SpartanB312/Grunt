@@ -180,14 +180,15 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
         numList: MutableList<NumberEncryptorArrayed.Value>?
     ) {
         methodNode.instructions.toList().forEach {
-            fun encryptFloat(cst: Float) {
-                if (arrayed && numList != null) {
+            fun encryptFloatingPoint(cst: Number) {
+                // Fall back to classic encryptor if the given fieldNode is null.
+                if (arrayed && numList != null && fieldNode != null) {
                     methodNode.instructions.insertBefore(
                         it,
                         NumberEncryptorArrayed.encrypt(
                             cst,
                             owner,
-                            fieldNode!!,
+                            fieldNode,
                             numList
                         )
                     )
@@ -196,33 +197,18 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                 add()
             }
 
-            fun encryptDouble(cst: Double) {
-                if (arrayed && numList != null) {
-                    methodNode.instructions.insertBefore(
-                        it,
-                        NumberEncryptorArrayed.encrypt(
-                            cst,
-                            owner,
-                            fieldNode!!,
-                            numList
-                        )
-                    )
-                } else methodNode.instructions.insertBefore(it, NumberEncryptorClassic.encrypt(cst))
-                methodNode.instructions.remove(it)
-                add()
-            }
             if (methodNode.instructions.size() + 3 < maxInsnSize) {
                 when {
                     it is LdcInsnNode -> when (val cst = it.cst) {
-                        is Float -> encryptFloat(cst)
-                        is Double -> encryptDouble(cst)
+                        is Float -> encryptFloatingPoint(cst)
+                        is Double -> encryptFloatingPoint(cst)
                     }
 
-                    it.opcode == Opcodes.FCONST_0 -> encryptFloat(0.0f)
-                    it.opcode == Opcodes.FCONST_1 -> encryptFloat(1.0f)
-                    it.opcode == Opcodes.FCONST_2 -> encryptFloat(2.0f)
-                    it.opcode == Opcodes.DCONST_0 -> encryptDouble(0.0)
-                    it.opcode == Opcodes.DCONST_1 -> encryptDouble(1.0)
+                    it.opcode == Opcodes.FCONST_0 -> encryptFloatingPoint(0.0f)
+                    it.opcode == Opcodes.FCONST_1 -> encryptFloatingPoint(1.0f)
+                    it.opcode == Opcodes.FCONST_2 -> encryptFloatingPoint(2.0f)
+                    it.opcode == Opcodes.DCONST_0 -> encryptFloatingPoint(0.0)
+                    it.opcode == Opcodes.DCONST_1 -> encryptFloatingPoint(1.0)
                 }
             }
         }
