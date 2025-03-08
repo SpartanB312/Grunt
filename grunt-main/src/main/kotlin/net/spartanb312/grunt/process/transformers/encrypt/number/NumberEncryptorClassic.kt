@@ -3,7 +3,7 @@ package net.spartanb312.grunt.process.transformers.encrypt.number
 import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESTATIC
 import net.spartanb312.genesis.kotlin.extensions.insn.L2I
 import net.spartanb312.genesis.kotlin.extensions.insn.LAND
-import net.spartanb312.genesis.kotlin.extensions.insn.LNEG
+import net.spartanb312.genesis.kotlin.extensions.insn.LXOR
 import net.spartanb312.genesis.kotlin.extensions.toInsnNode
 import net.spartanb312.genesis.kotlin.instructions
 import org.objectweb.asm.tree.InsnList
@@ -43,15 +43,17 @@ object NumberEncryptorClassic : NumberEncryptor {
     }
 
     fun encrypt(value: Long): InsnList {
-        val maxRandom = Int.MAX_VALUE.toLong()
-        val key = Random.nextLong() and maxRandom
         return instructions {
-            val temp0 = Random.nextLong(maxRandom) and key or -value
-            val temp1 = Random.nextLong(maxRandom) and key.inv() or -value
+            val key = Random.nextLong()
+            val obfuscated = value xor key
+            val mask = Random.nextLong()
+            val temp0 = Random.nextLong() and mask or obfuscated
+            val temp1 = Random.nextLong() and mask.inv() or obfuscated
             +temp0.toInsnNode()
             +temp1.toInsnNode()
             LAND
-            LNEG
+            +key.toInsnNode()
+            LXOR
         }
     }
 
