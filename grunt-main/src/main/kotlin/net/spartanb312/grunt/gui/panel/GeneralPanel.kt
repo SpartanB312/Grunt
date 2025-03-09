@@ -28,6 +28,9 @@ class GeneralPanel : JPanel() {
 
     private val corruptCRC32 = JCheckBox("")
     private val corruptJarHeader = JCheckBox("")
+
+    private val compressionLevel = JTextArea("", 1, 10)
+
     private val darkTheme = JCheckBox("")
 
     init {
@@ -159,6 +162,8 @@ class GeneralPanel : JPanel() {
         corruptCRC32.isSelected = Configs.Settings.corruptCRC32
         corruptJarHeader.isSelected = Configs.Settings.corruptJarHeader
 
+        compressionLevel.text = Configs.Settings.compressionLevel.toString()
+
         darkTheme.isSelected = Configs.UISetting.darkTheme
     }
 
@@ -174,6 +179,9 @@ class GeneralPanel : JPanel() {
 
         Configs.Settings.corruptCRC32 = corruptCRC32.isSelected
         Configs.Settings.corruptJarHeader = corruptJarHeader.isSelected
+
+        Configs.Settings.compressionLevel = compressionLevel.text.toInt()
+
         Configs.UISetting.darkTheme = darkTheme.isSelected
     }
 

@@ -97,6 +97,8 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
     }
 
     fun dumpJar(targetFile: String) = ZipOutputStream(File(targetFile).outputStream()).apply {
+        setLevel(Configs.Settings.compressionLevel)
+
         if (Configs.Settings.corruptCRC32) {
             Logger.info("Corrupting CRC32...")
             corruptCRC32()
