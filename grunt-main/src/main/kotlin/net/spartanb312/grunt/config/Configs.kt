@@ -26,7 +26,8 @@ object Configs {
         var missingCheck by setting("LibsMissingCheck", true)
         var customDictionary by setting("CustomDictionaryFile", File("customDictionary.txt"))
         var dictionaryStartIndex by setting("DictionaryStartIndex", 0)
-        var corruptOutput by setting("CorruptOutput", false)
+        var corruptCRC32 by setting("CorruptCRC32", false)
+        var corruptJarHeader by setting("CorruptJarHeader", false)
         var fileRemovePrefix by setting("FileRemovePrefix", listOf())
         var fileRemoveSuffix by setting("FileRemoveSuffix", listOf())
     }

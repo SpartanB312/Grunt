@@ -4,6 +4,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
+import java.security.SecureRandom
 import java.util.zip.CRC32
 import java.util.zip.ZipOutputStream
 import kotlin.random.Random
@@ -34,6 +35,19 @@ fun ZipOutputStream.corruptCRC32() {
             return Random.nextInt(0, Int.MAX_VALUE).toLong()
         }
     }
+}
+
+fun ZipOutputStream.corruptJarHeader() {
+    // Write default jar header to stream.
+    write(0x50)
+    write(0x4B)
+    write(0x03)
+    write(0x04)
+    // Write random bytes to stream.
+    val random = SecureRandom()
+    val bytes = ByteArray(random.nextInt(1, 25))
+    random.nextBytes(bytes)
+    write(bytes)
 }
 
 inline val String.splash get() = replace(".", "/")

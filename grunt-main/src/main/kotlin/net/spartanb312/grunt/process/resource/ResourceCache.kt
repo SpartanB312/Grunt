@@ -16,6 +16,7 @@ import net.spartanb312.grunt.event.events.WritingResourceEvent
 import net.spartanb312.grunt.process.hierarchy.Hierarchy
 import net.spartanb312.grunt.process.hierarchy.ReferenceSearch
 import net.spartanb312.grunt.utils.corruptCRC32
+import net.spartanb312.grunt.utils.corruptJarHeader
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
@@ -96,13 +97,18 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
     }
 
     fun dumpJar(targetFile: String) = ZipOutputStream(File(targetFile).outputStream()).apply {
+        if (Configs.Settings.corruptCRC32) {
+            Logger.info("Corrupting CRC32...")
+            corruptCRC32()
+        }
+        if (Configs.Settings.corruptJarHeader) {
+            Logger.info("Corrupting jar header...")
+            corruptJarHeader()
+        }
+
         Logger.info("Building hierarchies...")
         val hierarchy = Hierarchy(this@ResourceCache)
         hierarchy.build(true)
-        if (Configs.Settings.corruptOutput) {
-            Logger.info("Corrupting output...")
-            corruptCRC32()
-        }
 
         Logger.info("Writing classes...")
         val mutex = Mutex()
