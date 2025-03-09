@@ -22,33 +22,33 @@ object NumberEncryptorArrayed : NumberEncryptor {
                 is Int -> {
                     GETSTATIC(owner.name, field.name, field.desc)
                     +list.size.toInsnNode()
+                    list.add(Value(value.toLong()))
                     LALOAD
                     L2I
-                    list.add(Value(value.toLong()))
                 }
 
                 is Long -> {
                     GETSTATIC(owner.name, field.name, field.desc)
                     +list.size.toInsnNode()
-                    LALOAD
                     list.add(Value(value))
+                    LALOAD
                 }
 
                 is Float -> {
                     GETSTATIC(owner.name, field.name, field.desc)
                     +list.size.toInsnNode()
+                    list.add(Value(value.asInt().toLong()))
                     LALOAD
                     L2I
                     INVOKESTATIC("java/lang/Float", "intBitsToFloat", "(I)F")
-                    list.add(Value(value.asInt().toLong()))
                 }
 
                 is Double -> {
                     GETSTATIC(owner.name, field.name, field.desc)
                     +list.size.toInsnNode()
+                    list.add(Value(value.asLong()))
                     LALOAD
                     INVOKESTATIC("java/lang/Double", "longBitsToDouble", "(J)D")
-                    list.add(Value(value.asLong()))
                 }
 
                 else -> throw IllegalArgumentException("Unsupported value type")
@@ -75,7 +75,6 @@ object NumberEncryptorArrayed : NumberEncryptor {
                 }
                 RETURN
             }
-            MAXS(3, 0)
         }.also { owner.methods.add(it) }
         INVOKESTATIC(owner.name, arrayInitMethod.name, arrayInitMethod.desc, owner.isInterface)
     }

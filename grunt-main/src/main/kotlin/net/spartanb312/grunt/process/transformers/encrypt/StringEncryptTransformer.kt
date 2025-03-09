@@ -120,7 +120,6 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                     }
                     RETURN
                 }
-                MAXS(3, 0)
             }
 
             (classNode.methods.find { it.name == "<clinit>" } ?: clinit().also {
