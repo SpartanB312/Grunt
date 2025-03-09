@@ -33,7 +33,7 @@ dependencies {
     library("org.ow2.asm:asm-analysis:$asmVersion")
 
     //GSON
-    library("com.google.code.gson:gson:2.10")
+    library("com.google.code.gson:gson:2.12.1")
 
     //GUI
     library("com.miglayout:miglayout-swing:5.3")
