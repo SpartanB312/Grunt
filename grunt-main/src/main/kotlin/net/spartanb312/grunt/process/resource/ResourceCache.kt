@@ -101,17 +101,19 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         if (outputFile.exists()) {
             Logger.warn("Existing output file will be overridden!")
         }
-        val fileOutputStream = outputFile.outputStream()
-        JarOutputStream(fileOutputStream).apply {
+        val outputStream = outputFile.outputStream()
+
+        if (Configs.Settings.corruptJarHeader) {
+            Logger.info("Corrupting jar header...")
+            corruptJarHeader(outputStream)
+        }
+
+        JarOutputStream(outputStream).apply {
             setLevel(Configs.Settings.compressionLevel)
 
             if (Configs.Settings.corruptCRC32) {
                 Logger.info("Corrupting CRC32...")
                 corruptCRC32()
-            }
-            if (Configs.Settings.corruptJarHeader) {
-                Logger.info("Corrupting jar header...")
-                corruptJarHeader(fileOutputStream)
             }
 
             Logger.info("Building hierarchies...")
