@@ -7,6 +7,7 @@ import net.spartanb312.grunt.event.events.ConfigEvent
 import net.spartanb312.grunt.process.Transformers
 import org.objectweb.asm.tree.ClassNode
 import java.io.*
+import java.util.zip.Deflater
 
 object Configs {
 
@@ -26,7 +27,9 @@ object Configs {
         var missingCheck by setting("LibsMissingCheck", true)
         var customDictionary by setting("CustomDictionaryFile", File("customDictionary.txt"))
         var dictionaryStartIndex by setting("DictionaryStartIndex", 0)
-        var corruptOutput by setting("CorruptOutput", false)
+        var corruptCRC32 by setting("CorruptCRC32", false)
+        var corruptJarHeader by setting("CorruptJarHeader", false)
+        var compressionLevel by setting("CompressionLevel", Deflater.BEST_COMPRESSION)
         var fileRemovePrefix by setting("FileRemovePrefix", listOf())
         var fileRemoveSuffix by setting("FileRemoveSuffix", listOf())
     }

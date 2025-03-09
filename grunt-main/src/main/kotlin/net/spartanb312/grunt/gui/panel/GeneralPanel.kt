@@ -26,7 +26,11 @@ class GeneralPanel : JPanel() {
     private val fileRemovePrefix = JTextArea("", 3, 50)
     private val fileRemoveSuffix = JTextArea("", 3, 50)
 
-    private val corruptOutput = JCheckBox("")
+    private val corruptCRC32 = JCheckBox("")
+    private val corruptJarHeader = JCheckBox("")
+
+    private val compressionLevel = JTextArea("", 1, 10)
+
     private val darkTheme = JCheckBox("")
 
     init {
@@ -122,8 +126,10 @@ class GeneralPanel : JPanel() {
         resProcess.add(fileRemovePrefix, CC().cell(1, 0).growX())
         resProcess.add(JLabel("FileRemoveSuffix:"), CC().cell(0, 1))
         resProcess.add(fileRemoveSuffix, CC().cell(1, 1).growX())
-        resProcess.add(JLabel("CorruptOutput:"), CC().cell(0, 2))
-        resProcess.add(corruptOutput, CC().cell(1, 2))
+        resProcess.add(JLabel("CorruptCRC32:"), CC().cell(0, 2))
+        resProcess.add(corruptCRC32, CC().cell(1, 2))
+        resProcess.add(JLabel("CorruptJarHeader:"), CC().cell(0, 2))
+        resProcess.add(corruptJarHeader, CC().cell(1, 2))
         add(resProcess, CC().span().grow())
 
         // UI
@@ -153,7 +159,10 @@ class GeneralPanel : JPanel() {
         fileRemovePrefix.text = Configs.Settings.fileRemovePrefix.joinToString("\n")
         fileRemoveSuffix.text = Configs.Settings.fileRemoveSuffix.joinToString("\n")
 
-        corruptOutput.isSelected = Configs.Settings.corruptOutput
+        corruptCRC32.isSelected = Configs.Settings.corruptCRC32
+        corruptJarHeader.isSelected = Configs.Settings.corruptJarHeader
+
+        compressionLevel.text = Configs.Settings.compressionLevel.toString()
 
         darkTheme.isSelected = Configs.UISetting.darkTheme
     }
@@ -168,7 +177,11 @@ class GeneralPanel : JPanel() {
         Configs.Settings.fileRemovePrefix = fileRemovePrefix.text.split("\n").filter { it.isNotEmpty() }
         Configs.Settings.fileRemoveSuffix = fileRemoveSuffix.text.split("\n").filter { it.isNotEmpty() }
 
-        Configs.Settings.corruptOutput = corruptOutput.isSelected
+        Configs.Settings.corruptCRC32 = corruptCRC32.isSelected
+        Configs.Settings.corruptJarHeader = corruptJarHeader.isSelected
+
+        Configs.Settings.compressionLevel = compressionLevel.text.toInt()
+
         Configs.UISetting.darkTheme = darkTheme.isSelected
     }
 

@@ -16,6 +16,7 @@ import net.spartanb312.grunt.event.events.WritingResourceEvent
 import net.spartanb312.grunt.process.hierarchy.Hierarchy
 import net.spartanb312.grunt.process.hierarchy.ReferenceSearch
 import net.spartanb312.grunt.utils.corruptCRC32
+import net.spartanb312.grunt.utils.corruptJarHeader
 import net.spartanb312.grunt.utils.logging.Logger
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
@@ -30,9 +31,9 @@ import org.objectweb.asm.tree.analysis.BasicInterpreter
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.jar.JarEntry
 import java.util.jar.JarFile
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
+import java.util.jar.JarOutputStream
 
 class ResourceCache(private val input: String, private val libs: List<String>) {
 
@@ -95,90 +96,106 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         readLibs()
     }
 
-    fun dumpJar(targetFile: String) = ZipOutputStream(File(targetFile).outputStream()).apply {
-        Logger.info("Building hierarchies...")
-        val hierarchy = Hierarchy(this@ResourceCache)
-        hierarchy.build(true)
-        if (Configs.Settings.corruptOutput) {
-            Logger.info("Corrupting output...")
-            corruptCRC32()
+    fun dumpJar(targetFile: String) {
+        val outputFile = File(targetFile)
+        if (outputFile.exists()) {
+            Logger.warn("Existing output file will be overridden!")
+        }
+        val outputStream = outputFile.outputStream()
+
+        if (Configs.Settings.corruptJarHeader) {
+            Logger.info("Corrupting jar header...")
+            corruptJarHeader(outputStream)
         }
 
-        Logger.info("Writing classes...")
-        val mutex = Mutex()
-        runBlocking {
-            for (classNode in classes.values) {
-                if (classNode.name == "module-info" || classNode.name.shouldRemove) continue
-                suspend fun job() {
-                    val missingList = ReferenceSearch.checkMissing(classNode, hierarchy)
-                    val missingRef = missingList.isNotEmpty()
-                    if (missingRef && Configs.Settings.missingCheck) {
-                        Logger.error("Class ${classNode.name} missing reference:")
-                        for (missing in missingList) {
-                            Logger.error(" - ${missing.name}")
-                        }
-                    }
-                    val classInfo = hierarchy.getClassInfo(classNode)
-                    val missingAny = (classInfo.missingDependencies || missingRef) && Configs.Settings.missingCheck
-                    val useComputeMax = Configs.Settings.forceUseComputeMax || missingAny || classNode.isExcluded
-                    val missing = missingAny && !Configs.Settings.forceUseComputeMax && !classNode.isExcluded
+        JarOutputStream(outputStream).apply {
+            setLevel(Configs.Settings.compressionLevel)
 
-                    val entryName = classNode.name + ".class"
-                    val writingClassEvent = WritingClassEvent(entryName, classNode)
-                    writingClassEvent.post()
-                    if (!writingClassEvent.cancelled) {
-                        val byteArray = try {
-                            if (missing) Logger.warn("Using COMPUTE_MAXS due to ${classNode.name} missing dependencies or reference.")
-                            ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {
-                                classNode.accept(CustomClassNode(Opcodes.ASM9, this))
-                            }.toByteArray()
-                        } catch (ignore: Exception) {
-                            Logger.error("Failed to dump class ${classNode.name}. Trying ${if (useComputeMax) "COMPUTE_FRAMES" else "COMPUTE_MAXS"}")
-                            try {
-                                ClassDumper(this@ResourceCache, hierarchy, !useComputeMax).apply {
-                                    classNode.accept(CustomClassNode(Opcodes.ASM9, this))
-                                }.toByteArray()
-                            } catch (exception: Exception) {
-                                exception.printStackTrace()
-                                ByteArray(0)
+            if (Configs.Settings.corruptCRC32) {
+                Logger.info("Corrupting CRC32...")
+                corruptCRC32()
+            }
+
+            Logger.info("Building hierarchies...")
+            val hierarchy = Hierarchy(this@ResourceCache)
+            hierarchy.build(true)
+
+            Logger.info("Writing classes...")
+            val mutex = Mutex()
+            runBlocking {
+                for (classNode in classes.values) {
+                    if (classNode.name == "module-info" || classNode.name.shouldRemove) continue
+                    suspend fun job() {
+                        val missingList = ReferenceSearch.checkMissing(classNode, hierarchy)
+                        val missingRef = missingList.isNotEmpty()
+                        if (missingRef && Configs.Settings.missingCheck) {
+                            Logger.error("Class ${classNode.name} missing reference:")
+                            for (missing in missingList) {
+                                Logger.error(" - ${missing.name}")
                             }
                         }
-                        val event = WritingResourceEvent(entryName, byteArray)
-                        event.post()
-                        if (!event.cancelled) mutex.withLock {
-                            putNextEntry(ZipEntry(entryName))
-                            write(byteArray)
-                            closeEntry()
+                        val classInfo = hierarchy.getClassInfo(classNode)
+                        val missingAny = (classInfo.missingDependencies || missingRef) && Configs.Settings.missingCheck
+                        val useComputeMax = Configs.Settings.forceUseComputeMax || missingAny || classNode.isExcluded
+                        val missing = missingAny && !Configs.Settings.forceUseComputeMax && !classNode.isExcluded
+
+                        val entryName = classNode.name + ".class"
+                        val writingClassEvent = WritingClassEvent(entryName, classNode)
+                        writingClassEvent.post()
+                        if (!writingClassEvent.cancelled) {
+                            val byteArray = try {
+                                if (missing) Logger.warn("Using COMPUTE_MAXS due to ${classNode.name} missing dependencies or reference.")
+                                ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {
+                                    classNode.accept(CustomClassNode(Opcodes.ASM9, this))
+                                }.toByteArray()
+                            } catch (ignore: Exception) {
+                                Logger.error("Failed to dump class ${classNode.name}. Trying ${if (useComputeMax) "COMPUTE_FRAMES" else "COMPUTE_MAXS"}")
+                                try {
+                                    ClassDumper(this@ResourceCache, hierarchy, !useComputeMax).apply {
+                                        classNode.accept(CustomClassNode(Opcodes.ASM9, this))
+                                    }.toByteArray()
+                                } catch (exception: Exception) {
+                                    exception.printStackTrace()
+                                    ByteArray(0)
+                                }
+                            }
+                            val event = WritingResourceEvent(entryName, byteArray)
+                            event.post()
+                            if (!event.cancelled) mutex.withLock {
+                                putNextEntry(JarEntry(entryName))
+                                write(byteArray)
+                                closeEntry()
+                            }
                         }
                     }
+                    if (Configs.Settings.parallel) launch(Dispatchers.IO) { job() } else job()
                 }
-                if (Configs.Settings.parallel) launch(Dispatchers.IO) { job() } else job()
             }
-        }
-        hierarchy.buildMissingMap()
-        if (Configs.Settings.missingCheck) hierarchy.printMissing()
+            hierarchy.buildMissingMap()
+            if (Configs.Settings.missingCheck) hierarchy.printMissing()
 
-        Logger.info("Writing resources...")
-        for ((name, bytes) in resources) {
-            if (name.shouldRemove) continue
-            val event = WritingResourceEvent(name, bytes)
-            event.post()
-            if (!event.cancelled) {
-                putNextEntry(ZipEntry(name))
-                write(bytes)
-                closeEntry()
+            Logger.info("Writing resources...")
+            for ((name, bytes) in resources) {
+                if (name.shouldRemove) continue
+                val event = WritingResourceEvent(name, bytes)
+                event.post()
+                if (!event.cancelled) {
+                    putNextEntry(JarEntry(name))
+                    write(bytes)
+                    closeEntry()
+                }
             }
-        }
-        close()
+            close()
 
-        if (Configs.Settings.generateRemap) {
-            Logger.info("Writing mappings...")
-            if (mappingObjects.isNotEmpty()) {
-                val dir =
-                    "mappings/${SimpleDateFormat("yyyy-MM-dd HH-mm-ss").format(Date())}" +
-                            " ${File(Configs.Settings.input).name}/"
-                mappingObjects.forEach { (name, obj) ->
-                    obj.saveToFile(File("$dir$name.json"))
+            if (Configs.Settings.generateRemap) {
+                Logger.info("Writing mappings...")
+                if (mappingObjects.isNotEmpty()) {
+                    val dir =
+                        "mappings/${SimpleDateFormat("yyyy-MM-dd HH-mm-ss").format(Date())}" +
+                                " ${File(Configs.Settings.input).name}/"
+                    mappingObjects.forEach { (name, obj) ->
+                        obj.saveToFile(File("$dir$name.json"))
+                    }
                 }
             }
         }
