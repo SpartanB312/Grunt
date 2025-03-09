@@ -31,9 +31,9 @@ import org.objectweb.asm.tree.analysis.BasicInterpreter
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.jar.JarEntry
 import java.util.jar.JarFile
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
+import java.util.jar.JarOutputStream
 
 class ResourceCache(private val input: String, private val libs: List<String>) {
 
@@ -96,7 +96,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         readLibs()
     }
 
-    fun dumpJar(targetFile: String) = ZipOutputStream(File(targetFile).outputStream()).apply {
+    fun dumpJar(targetFile: String) = JarOutputStream(File(targetFile).outputStream()).apply {
         setLevel(Configs.Settings.compressionLevel)
 
         if (Configs.Settings.corruptCRC32) {
@@ -154,7 +154,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                         val event = WritingResourceEvent(entryName, byteArray)
                         event.post()
                         if (!event.cancelled) mutex.withLock {
-                            putNextEntry(ZipEntry(entryName))
+                            putNextEntry(JarEntry(entryName))
                             write(byteArray)
                             closeEntry()
                         }
@@ -172,7 +172,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
             val event = WritingResourceEvent(name, bytes)
             event.post()
             if (!event.cancelled) {
-                putNextEntry(ZipEntry(name))
+                putNextEntry(JarEntry(name))
                 write(bytes)
                 closeEntry()
             }
