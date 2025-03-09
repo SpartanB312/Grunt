@@ -4,6 +4,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
+import java.io.FileOutputStream
 import java.security.SecureRandom
 import java.util.jar.JarOutputStream
 import java.util.zip.CRC32
@@ -37,17 +38,17 @@ fun JarOutputStream.corruptCRC32() {
     }
 }
 
-fun JarOutputStream.corruptJarHeader() {
+fun corruptJarHeader(outputStream: FileOutputStream) {
     // Write default jar header to stream.
-    write(0x50)
-    write(0x4B)
-    write(0x03)
-    write(0x04)
+    outputStream.write(0x50)
+    outputStream.write(0x4B)
+    outputStream.write(0x03)
+    outputStream.write(0x04)
     // Write random bytes to stream.
     val random = SecureRandom()
     val bytes = ByteArray(random.nextInt(1, 25))
     random.nextBytes(bytes)
-    write(bytes)
+    outputStream.write(bytes)
 }
 
 inline val String.splash get() = replace(".", "/")
