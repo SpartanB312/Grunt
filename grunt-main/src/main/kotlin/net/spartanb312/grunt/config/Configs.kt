@@ -30,6 +30,7 @@ object Configs {
         var corruptCRC32 by setting("CorruptCRC32", false)
         var corruptJarHeader by setting("CorruptJarHeader", false)
         var compressionLevel by setting("CompressionLevel", Deflater.BEST_COMPRESSION)
+        var archiveComment by setting("ArchiveComment", "")
         var fileRemovePrefix by setting("FileRemovePrefix", listOf())
         var fileRemoveSuffix by setting("FileRemoveSuffix", listOf())
     }

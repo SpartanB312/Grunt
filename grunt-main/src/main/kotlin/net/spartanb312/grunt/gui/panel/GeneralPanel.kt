@@ -31,6 +31,8 @@ class GeneralPanel : JPanel() {
 
     private val compressionLevel = JTextArea("", 1, 10)
 
+    private val archiveComment = JTextArea("", 3, 50)
+
     private val darkTheme = JCheckBox("")
 
     init {
@@ -164,6 +166,8 @@ class GeneralPanel : JPanel() {
 
         compressionLevel.text = Configs.Settings.compressionLevel.toString()
 
+        archiveComment.text = Configs.Settings.archiveComment.toString()
+
         darkTheme.isSelected = Configs.UISetting.darkTheme
     }
 
@@ -181,6 +185,8 @@ class GeneralPanel : JPanel() {
         Configs.Settings.corruptJarHeader = corruptJarHeader.isSelected
 
         Configs.Settings.compressionLevel = compressionLevel.text.toInt()
+
+        Configs.Settings.archiveComment = archiveComment.text
 
         Configs.UISetting.darkTheme = darkTheme.isSelected
     }
