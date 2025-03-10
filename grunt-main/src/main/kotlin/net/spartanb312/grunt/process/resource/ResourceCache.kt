@@ -111,6 +111,10 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         JarOutputStream(outputStream).apply {
             setLevel(Configs.Settings.compressionLevel)
 
+            if (Configs.Settings.archiveComment.isNotEmpty()) {
+                setComment(Configs.Settings.archiveComment)
+            }
+
             if (Configs.Settings.corruptCRC32) {
                 Logger.info("Corrupting CRC32...")
                 corruptCRC32()
