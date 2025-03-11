@@ -10,6 +10,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 import org.objectweb.asm.tree.InsnList
+import kotlin.random.Random
 
 object NumberEncryptorArrayed : NumberEncryptor {
 
@@ -78,21 +79,27 @@ object NumberEncryptorArrayed : NumberEncryptor {
         +values.size.toInsnNode()
         NEWARRAY(Opcodes.T_LONG)
         PUTSTATIC(owner.name, field.name, field.desc)
+        var localKey = Random.nextLong()
         val arrayInitMethod = method(
             (if (owner.isInterface) PUBLIC else PRIVATE) + STATIC,
             getRandomString(16),
-            "()V") {
+            "(J)V") {
             INSTRUCTIONS {
+                val localKeySlot = 0
                 // Decrypt values
                 values.forEachIndexed { index, value ->
                     GETSTATIC(owner.name, field.name, field.desc)
                     +index.toInsnNode()
-                    +NumberEncryptorClassic.encrypt(value)
+                    LLOAD(localKeySlot)
+                    +NumberEncryptorClassic.encrypt(value xor localKey)
+                    LXOR
+                    // TODO: modify local key?
                     LASTORE
                 }
                 RETURN
             }
         }.also { owner.methods.add(it) }
+        +NumberEncryptorClassic.encrypt(localKey)
         INVOKESTATIC(owner.name, arrayInitMethod.name, arrayInitMethod.desc, owner.isInterface)
     }
 
