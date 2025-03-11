@@ -44,7 +44,7 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
                         .filter { c -> exclusion.none { c.name.startsWith(it) } }
                         .forEach { classNode ->
                             fun job() {
-                                val list = mutableListOf<NumberEncryptorArrayed.Value>()
+                                val list = mutableListOf<Long>()
                                 val field = if (arrayed) classNode.getOrCreateField() else null
                                 field?.appendAnnotation(DISABLE_SCRAMBLE)
                                 classNode.methods.asSequence()
@@ -88,7 +88,7 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
         owner: ClassNode,
         methodNode: MethodNode,
         fieldNode: FieldNode?,
-        numList: MutableList<NumberEncryptorArrayed.Value>?
+        numList: MutableList<Long>?
     ) {
         methodNode.instructions
             .filter { it.opcode != Opcodes.NEWARRAY }
@@ -179,7 +179,7 @@ object NumberEncryptTransformer : Transformer("NumberEncrypt", Category.Encrypti
         owner: ClassNode,
         methodNode: MethodNode,
         fieldNode: FieldNode?,
-        numList: MutableList<NumberEncryptorArrayed.Value>?
+        numList: MutableList<Long>?
     ) {
         methodNode.instructions
             .shuffled()

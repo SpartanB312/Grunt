@@ -1,10 +1,7 @@
 package net.spartanb312.grunt.process.transformers.encrypt.number
 
-import net.spartanb312.genesis.kotlin.extensions.PRIVATE
-import net.spartanb312.genesis.kotlin.extensions.PUBLIC
-import net.spartanb312.genesis.kotlin.extensions.STATIC
+import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
-import net.spartanb312.genesis.kotlin.extensions.toInsnNode
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.utils.extensions.isInterface
@@ -16,28 +13,43 @@ import org.objectweb.asm.tree.InsnList
 
 object NumberEncryptorArrayed : NumberEncryptor {
 
-    fun <T : Number> encrypt(value: T, owner: ClassNode, field: FieldNode, list: MutableList<Value>): InsnList {
+    fun <T : Number> encrypt(value: T, owner: ClassNode, field: FieldNode, list: MutableList<Long>): InsnList {
         return instructions {
             when (value) {
                 is Int -> {
                     GETSTATIC(owner.name, field.name, field.desc)
-                    +list.size.toInsnNode()
-                    list.add(Value(value.toLong()))
+                    val index = list.indexOf(value.toLong())
+                    if (index != -1) {
+                        INT(index)
+                    } else {
+                        +list.size.toInsnNode()
+                        list.add(value.toLong())
+                    }
                     LALOAD
                     L2I
                 }
 
                 is Long -> {
                     GETSTATIC(owner.name, field.name, field.desc)
-                    +list.size.toInsnNode()
-                    list.add(Value(value))
+                    val index = list.indexOf(value)
+                    if (index != -1) {
+                        INT(index)
+                    } else {
+                        +list.size.toInsnNode()
+                        list.add(value)
+                    }
                     LALOAD
                 }
 
                 is Float -> {
                     GETSTATIC(owner.name, field.name, field.desc)
-                    +list.size.toInsnNode()
-                    list.add(Value(value.asInt().toLong()))
+                    val index = list.indexOf(value.asInt().toLong())
+                    if (index != -1) {
+                        INT(index)
+                    } else {
+                        +list.size.toInsnNode()
+                        list.add(value.asInt().toLong())
+                    }
                     LALOAD
                     L2I
                     INVOKESTATIC("java/lang/Float", "intBitsToFloat", "(I)F")
@@ -45,8 +57,13 @@ object NumberEncryptorArrayed : NumberEncryptor {
 
                 is Double -> {
                     GETSTATIC(owner.name, field.name, field.desc)
-                    +list.size.toInsnNode()
-                    list.add(Value(value.asLong()))
+                    val index = list.indexOf(value.asLong())
+                    if (index != -1) {
+                        INT(index)
+                    } else {
+                        +list.size.toInsnNode()
+                        list.add(value.asLong())
+                    }
                     LALOAD
                     INVOKESTATIC("java/lang/Double", "longBitsToDouble", "(J)D")
                 }
@@ -56,7 +73,7 @@ object NumberEncryptorArrayed : NumberEncryptor {
         }
     }
 
-    fun decryptMethod(owner: ClassNode, field: FieldNode, values: List<Value>): InsnList = instructions {
+    fun decryptMethod(owner: ClassNode, field: FieldNode, values: List<Long>): InsnList = instructions {
         // Create array
         +values.size.toInsnNode()
         NEWARRAY(Opcodes.T_LONG)
@@ -70,7 +87,7 @@ object NumberEncryptorArrayed : NumberEncryptor {
                 values.forEachIndexed { index, value ->
                     GETSTATIC(owner.name, field.name, field.desc)
                     +index.toInsnNode()
-                    +value.decrypt
+                    +NumberEncryptorClassic.encrypt(value)
                     LASTORE
                 }
                 RETURN
@@ -88,10 +105,6 @@ object NumberEncryptorArrayed : NumberEncryptor {
                 null,
                 null
             )
-    }
-
-    class Value(val value: Long) {
-        val decrypt: InsnList get() = NumberEncryptorClassic.encrypt(value)
     }
 
 }
