@@ -33,3 +33,10 @@ jobs:
         uses: gradle/gradle-build-action@v3
         with:
           arguments: build
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Grunt
+          path: grunt-main/build/libs/grunt-main.jar
+          if-no-files-found: error
