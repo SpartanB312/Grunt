@@ -5,9 +5,8 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
 import java.io.FileOutputStream
-import java.security.SecureRandom
-import java.util.jar.JarOutputStream
 import java.util.zip.CRC32
+import java.util.zip.ZipOutputStream
 import kotlin.random.Random
 
 val blanks = listOf(
@@ -27,8 +26,8 @@ private val BLANK_STRINGS = arrayOf(
 val massiveString = buildString { repeat(Short.MAX_VALUE.toInt() - 1) { append(" ") } }
 val massiveBlankString: String get() = BLANK_STRINGS.random()
 
-fun JarOutputStream.corruptCRC32() {
-    val field = JarOutputStream::class.java.getDeclaredField("crc")
+fun ZipOutputStream.corruptCRC32() {
+    val field = ZipOutputStream::class.java.getDeclaredField("crc")
     field.isAccessible = true
     field[this] = object : CRC32() {
         override fun update(bytes: ByteArray, i: Int, length: Int) {}
@@ -45,9 +44,8 @@ fun corruptJarHeader(outputStream: FileOutputStream) {
     outputStream.write(0x03)
     outputStream.write(0x04)
     // Write random bytes to stream.
-    val random = SecureRandom()
-    val bytes = ByteArray(random.nextInt(1, 25))
-    random.nextBytes(bytes)
+    val bytes = ByteArray(Random.nextInt(1, 25))
+    Random.nextBytes(bytes)
     outputStream.write(bytes)
 }
 
