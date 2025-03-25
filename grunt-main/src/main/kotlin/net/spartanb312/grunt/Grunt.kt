@@ -13,6 +13,7 @@ import net.spartanb312.grunt.process.resource.ResourceCache
 import net.spartanb312.grunt.process.transformers.PostProcessTransformer
 import net.spartanb312.grunt.utils.logging.Logger
 import java.awt.GraphicsEnvironment
+import java.io.File
 import kotlin.system.measureTimeMillis
 
 /**
@@ -65,6 +66,14 @@ fun main(args: Array<String>) {
             Configs.saveConfig(config) // Clean up the config
         } catch (ignore: Exception) {
             Logger.info("Failed to read config $config! But we generated a new one.")
+            // Сохраняем сломанный конфиг перед созданием нового
+            try {
+                val brokenConfig = File(config).readText()
+                File("config-breaked.json").writeText(brokenConfig)
+                Logger.info("Broken config saved to config-breaked.json")
+            } catch (e: Exception) {
+                Logger.error("Failed to save broken config: ${e.message}")
+            }
             Configs.saveConfig(config)
         }
         GuiFrame.loadConfig(config)
@@ -78,6 +87,14 @@ fun main(args: Array<String>) {
             Configs.saveConfig(config) // Clean up the config
         } catch (ignore: Exception) {
             Logger.info("Failed to read config $config! But we generated a new one.")
+            // Сохраняем сломанный конфиг перед созданием нового
+            try {
+                val brokenConfig = File(config).readText()
+                File("config-breaked.json").writeText(brokenConfig)
+                Logger.info("Broken config saved to config-breaked.json")
+            } catch (e: Exception) {
+                Logger.error("Failed to save broken config: ${e.message}")
+            }
             Configs.saveConfig(config)
             Logger.info("Type (Y/N) if you want to continue")
             if (readlnOrNull()?.lowercase() == "n") return
