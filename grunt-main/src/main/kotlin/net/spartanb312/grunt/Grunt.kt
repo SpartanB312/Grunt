@@ -66,6 +66,7 @@ fun main(args: Array<String>) {
             Configs.saveConfig(config) // Clean up the config
         } catch (ignore: Exception) {
             Logger.info("Failed to read config $config! But we generated a new one.")
+            // Сохраняем сломанный конфиг перед созданием нового
             try {
                 val brokenConfig = File(config).readText()
                 File("config-breaked.json").writeText(brokenConfig)
@@ -86,6 +87,7 @@ fun main(args: Array<String>) {
             Configs.saveConfig(config) // Clean up the config
         } catch (ignore: Exception) {
             Logger.info("Failed to read config $config! But we generated a new one.")
+            // Сохраняем сломанный конфиг перед созданием нового
             try {
                 val brokenConfig = File(config).readText()
                 File("config-breaked.json").writeText(brokenConfig)
