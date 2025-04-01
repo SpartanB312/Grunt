@@ -7,7 +7,7 @@ Gruntpocalypse is a JVM bytecode obfuscator written in kotlin with 40+ features.
 
 This project aims for stability and versatility. Some ideas are taken from other obfuscators.
 
-Feel free to koin our Discord server for suggestions: https://discord.gg/ysB2fMfeYW
+Feel free to join our Discord server for suggestions: https://discord.gg/ysB2fMfeYW
 
 #### Grunt 2.5 will be the last version of Grunt 2, which comes in April 2025.
 #### Grunt 3 project will be launched later in 2025.
