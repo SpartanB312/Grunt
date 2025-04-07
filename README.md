@@ -77,6 +77,7 @@ Stability level: 1 = Unstable; 5 = Stable
 |                                 | JunkCodeGenerator    | 4     | (JunkCode) Generate junk calls.                                                            |
 |                                 | SwitchExtractor      | 5     | (Switch) Replace switches with blocks.                                                     |
 |                                 | MutateJumps          | 5     | (Switch) Generate TableSwitch for compare statements.                                      |
+|                                 | ChaosSwitchJump      | 4     | (Switch) Generate illegal loop jumps to replace direct jumps                               |
 | **ControlFlow - Miscellaneous** | ConstantBuilder      | 4     | (If, Switch) Use controlflow to build constants.                                           |
 |                                 | SwitchProtector      | 4     | (Switch) Hide real keys of switches.                                                       |
 
