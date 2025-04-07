@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.utils.extendsFrom
 plugins {
     java
     kotlin("jvm")
+    id("dev.luna5ama.jar-optimizer")
 }
 
 repositories {
@@ -48,37 +49,46 @@ dependencies {
 }
 
 tasks {
-
     compileJava {
         options.encoding = "UTF-8"
         sourceCompatibility = "1.8"
         targetCompatibility = "1.8"
     }
-
     compileKotlin {
         kotlinOptions {
             jvmTarget = "1.8"
         }
     }
-
     jar {
-        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-        archiveBaseName.set(project.name.lowercase())
-
         manifest {
             attributes(
                 "Main-Class" to "net.spartanb312.grunt.GruntKt"
             )
         }
-
+    }
+    val fatJar by creating(Jar::class) {
+        group = "build"
+        manifest {
+            attributes(
+                "Main-Class" to "net.spartanb312.grunt.GruntKt"
+            )
+        }
+        from(jar.get().archiveFile.map { zipTree(it) })
         from(
             library.map {
                 if (it.isDirectory) it
                 else zipTree(it)
             }
         )
-
         exclude("META-INF/versions/**", "module-info.class", "**/**.RSA")
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        archiveClassifier.set("full")
     }
-
+    val optimizeFatJar = jarOptimizer.register(
+        fatJar,
+        "net", "org", "com"
+    )
+    artifacts {
+        archives(optimizeFatJar)
+    }
 }

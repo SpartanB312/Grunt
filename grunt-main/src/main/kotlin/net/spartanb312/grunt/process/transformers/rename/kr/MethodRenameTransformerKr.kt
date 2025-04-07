@@ -110,7 +110,7 @@ object MethodRenameTransformerKr : Transformer("MethodRenameKr", Category.Renami
                                 var keepThisName = true
                                 check@ for (check in checkList) {
                                     val nameSet = existedNameMap.getOrPut(check) { mutableSetOf() }
-                                    if (nameSet.contains(newName)) {
+                                    if (nameSet.contains(newName + methodInfo.desc)) {
                                         keepThisName = false
                                         break@check
                                     }
@@ -119,7 +119,7 @@ object MethodRenameTransformerKr : Transformer("MethodRenameKr", Category.Renami
                             }
                             checkList.forEach { check ->
                                 val nameSet = existedNameMap.getOrPut(check) { mutableSetOf() }
-                                nameSet.add(newName)
+                                nameSet.add(newName + methodInfo.desc)
                             }
                             affectedMembers["${classNode.name}.${methodNode.name}${methodNode.desc}"] = newName
                             infoMappings[methodInfo] = newName
@@ -262,7 +262,7 @@ object MethodRenameTransformerKr : Transformer("MethodRenameKr", Category.Renami
                 var keepThisName = true
                 check@ for (check in checkList) {
                     val nameSet = existedNameMap.getOrPut(check.owner) { mutableSetOf() }
-                    if (nameSet.contains(newName)) {
+                    if (nameSet.contains(newName + present.desc)) {
                         keepThisName = false
                         break@check
                     }
@@ -271,7 +271,7 @@ object MethodRenameTransformerKr : Transformer("MethodRenameKr", Category.Renami
             }
             checkList.forEach { check ->
                 val nameSet = existedNameMap.getOrPut(check.owner) { mutableSetOf() }
-                nameSet.add(newName)
+                nameSet.add(newName + present.desc)
             }
 
             // Apply to all affected
