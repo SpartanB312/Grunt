@@ -41,6 +41,7 @@ dependencies {
 
     library("org.apache.commons:commons-lang3:3.0")
     library("javassist:javassist:3.12.1.GA")
+    library("it.unimi.dsi:fastutil:8.5.9")
 
 //    api(library)
 
