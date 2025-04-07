@@ -84,7 +84,7 @@ Stability level: 1 = Unstable; 5 = Stable
 
 ## License
 
-This is a free and open source software, licensed under GPLv3.
+This is a free and open source software, licensed under LGPL 3.0
 
 The previous Grunt versions are licensed under the MIT license (1.5.8 and before).
 
