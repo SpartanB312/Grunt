@@ -18,6 +18,7 @@ import net.spartanb312.grunt.utils.extensions.hasAnnotation
 import net.spartanb312.grunt.utils.extensions.isDummy
 import net.spartanb312.grunt.utils.logging.Logger
 import net.spartanb312.grunt.utils.notInList
+import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
@@ -40,11 +41,12 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
     private val ifCompareRate by setting("IfICompareReplaceRate", 100) // Range 0..100
     private val switchProtect by setting("SwitchProtect", true)
     private val protectRate by setting("ProtectRate", 30) // Range 0..100
-    private val tableSwitch by setting("TableSwitchJump", true)
     private val mutateJumps by setting("MutateJumps", true)
     private val mutateRate by setting("MutateRate", 10) // Range 0..100
+    private val tableSwitch by setting("TableSwitchJump", true)
     private val switchRate by setting("SwitchReplaceRate", 30)  // Range 0..100
     private val maxSwitchCase by setting("MaxSwitchCase", 5) // Range 1..10
+    private val chaosSwitch by setting("ChaosSwitch", true)
     val reverseExistedIf by setting("ReverseExistedIf", true)
     val reverseChance by setting("ReverseChance", 50) // Range 0..100
     val trappedCase by setting("TrappedSwitchCase", true)
@@ -203,7 +205,14 @@ object ControlflowTransformer : Transformer("Controlflow", Category.Controlflow)
                         if (insnNode is JumpInsnNode && insnNode.opcode == Opcodes.GOTO && !insnNode.previous.isDummy
                             && Random.nextInt(0, 100) <= switchRate
                         ) {
-                            +TableSwitch.generate(
+                            if (chaosSwitch) +ChaosSwitch.generate(
+                                insnNode.label,
+                                owner,
+                                methodNode,
+                                returnType,
+                                range.random(),
+                                indyReobf
+                            ) else +TableSwitch.generate(
                                 insnNode.label,
                                 owner,
                                 methodNode,

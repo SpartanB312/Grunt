@@ -24,7 +24,9 @@ object ReplaceGoto {
         methodNode: MethodNode,
         returnType: Type,
         reverse: Boolean,
-        indyReobf: Boolean
+        indyReobf: Boolean,
+        safeLands: MutableSet<Label> = mutableSetOf(),
+        illegalJump: Int = 0,
     ): InsnList {
         return when (Random.nextInt(6)) {
             0 -> instructions {
@@ -45,7 +47,16 @@ object ReplaceGoto {
                     IF_ICMPNE(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
+                    if (illegalJump > 0 && safeLands.isNotEmpty() && Random.nextInt(100) <= illegalJump) {
+                        GOTO(safeLands.random())
+                    } else {
+                        safeLands.add(junkLabel)
+                        +JunkCode.generate(
+                            methodNode,
+                            returnType,
+                            Random.nextInt(ControlflowTransformer.maxJunkCode)
+                        )
+                    }
                 } else {
                     IF_ICMPEQ(targetLabel)
                     +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
@@ -75,7 +86,16 @@ object ReplaceGoto {
                     IF_ICMPGE(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
+                    if (illegalJump > 0 && safeLands.isNotEmpty() && Random.nextInt(100) <= illegalJump) {
+                        GOTO(safeLands.random())
+                    } else {
+                        safeLands.add(junkLabel)
+                        +JunkCode.generate(
+                            methodNode,
+                            returnType,
+                            Random.nextInt(ControlflowTransformer.maxJunkCode)
+                        )
+                    }
                 } else {
                     IF_ICMPLT(targetLabel)
                     +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
@@ -105,7 +125,16 @@ object ReplaceGoto {
                     IF_ICMPLT(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
+                    if (illegalJump > 0 && safeLands.isNotEmpty() && Random.nextInt(100) <= illegalJump) {
+                        GOTO(safeLands.random())
+                    } else {
+                        safeLands.add(junkLabel)
+                        +JunkCode.generate(
+                            methodNode,
+                            returnType,
+                            Random.nextInt(ControlflowTransformer.maxJunkCode)
+                        )
+                    }
                 } else {
                     IF_ICMPGE(targetLabel)
                     +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
@@ -135,7 +164,16 @@ object ReplaceGoto {
                     IF_ICMPLE(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
+                    if (illegalJump > 0 && safeLands.isNotEmpty() && Random.nextInt(100) <= illegalJump) {
+                        GOTO(safeLands.random())
+                    } else {
+                        safeLands.add(junkLabel)
+                        +JunkCode.generate(
+                            methodNode,
+                            returnType,
+                            Random.nextInt(ControlflowTransformer.maxJunkCode)
+                        )
+                    }
                 } else {
                     IF_ICMPGT(targetLabel)
                     +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
@@ -165,7 +203,16 @@ object ReplaceGoto {
                     IF_ICMPGT(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
+                    if (illegalJump > 0 && safeLands.isNotEmpty() && Random.nextInt(100) <= illegalJump) {
+                        GOTO(safeLands.random())
+                    } else {
+                        safeLands.add(junkLabel)
+                        +JunkCode.generate(
+                            methodNode,
+                            returnType,
+                            Random.nextInt(ControlflowTransformer.maxJunkCode)
+                        )
+                    }
                 } else {
                     IF_ICMPLE(targetLabel)
                     +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
@@ -195,7 +242,16 @@ object ReplaceGoto {
                     IF_ICMPEQ(junkLabel)
                     GOTO(targetLabel)
                     LABEL(junkLabel)
-                    +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))
+                    if (illegalJump > 0 && safeLands.isNotEmpty() && Random.nextInt(100) <= illegalJump) {
+                        GOTO(safeLands.random())
+                    } else {
+                        safeLands.add(junkLabel)
+                        +JunkCode.generate(
+                            methodNode,
+                            returnType,
+                            Random.nextInt(ControlflowTransformer.maxJunkCode)
+                        )
+                    }
                 } else {
                     IF_ICMPNE(targetLabel)
                     +JunkCode.generate(methodNode, returnType, Random.nextInt(ControlflowTransformer.maxJunkCode))

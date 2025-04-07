@@ -152,8 +152,9 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                                 ClassDumper(this@ResourceCache, hierarchy, useComputeMax).apply {
                                     classNode.accept(CustomClassNode(Opcodes.ASM9, this))
                                 }.toByteArray()
-                            } catch (ignore: Exception) {
+                            } catch (exception: Exception) {
                                 Logger.error("Failed to dump class ${classNode.name}. Trying ${if (useComputeMax) "COMPUTE_FRAMES" else "COMPUTE_MAXS"}")
+                                exception.printStackTrace()
                                 try {
                                     ClassDumper(this@ResourceCache, hierarchy, !useComputeMax).apply {
                                         classNode.accept(CustomClassNode(Opcodes.ASM9, this))
