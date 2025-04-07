@@ -7,6 +7,7 @@ import net.spartanb312.grunt.process.hierarchy.krypton.info.ClassInfo
 import net.spartanb312.grunt.process.hierarchy.krypton.info.MethodInfo
 import net.spartanb312.grunt.process.resource.NameGenerator
 import net.spartanb312.grunt.process.resource.ResourceCache
+import net.spartanb312.grunt.process.transformers.rename.MethodRenameTransformer
 import net.spartanb312.grunt.process.transformers.rename.ReflectionSupportTransformer
 import net.spartanb312.grunt.utils.IndyChecker
 import net.spartanb312.grunt.utils.extensions.*
@@ -24,9 +25,9 @@ import kotlin.system.measureTimeMillis
  * Last update on 2025/04/08
  * Feature from Krypton obfuscator
  */
-object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) {
+object MethodRenameTransformerKr : Transformer("MethodRenameKr", Category.Renaming) {
 
-    private val mode by setting("Mode", "Fast") // Fast, Heavy
+    private val mode by setting("Mode", "Fast") // Fast, Full
     private val enums by setting("Enums", true)
     private val interfaces by setting("Interfaces", false) // Make sure you've loaded all the dependencies
     private val dictionary by setting("Dictionary", "Alphabet")
@@ -48,13 +49,16 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
         get() = ReflectionSupportTransformer.enabled && name.inList(ReflectionSupportTransformer.methodBlacklist)
 
     override fun ResourceCache.transform() {
-        if (mode.lowercase() == "fast") fastRename()
-        else fullRename()
+        if (MethodRenameTransformer.enabled) {
+            Logger.error(" Grunt method renamer enabled, skip krypton method renamer")
+            return
+        }
+        val fast = mode.lowercase() == "fast"
+        Logger.info(" - Renaming methods[${if (fast) "FastMode" else "FullMode"}]...")
+        if (fast) fastRename() else fullRename()
     }
 
     private fun ResourceCache.fastRename() {
-        Logger.info(" - Renaming methods...")
-
         Logger.info("    Building method hierarchies...")
         val hierarchy = HeavyHierarchy(this)
         val time = measureTimeMillis {
@@ -186,8 +190,6 @@ object MethodRenameTransformer : Transformer("MethodRename", Category.Renaming) 
     }
 
     private fun ResourceCache.fullRename() {
-        Logger.info(" - Renaming methods...")
-
         Logger.info("    Building method hierarchies...")
         val hierarchy = HeavyHierarchy(this)
         hierarchy.buildClass()

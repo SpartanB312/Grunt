@@ -16,6 +16,8 @@ import net.spartanb312.grunt.process.transformers.redirect.InvokeDynamicTransfor
 import net.spartanb312.grunt.process.transformers.redirect.MethodScrambleTransformer
 import net.spartanb312.grunt.process.transformers.redirect.StringEqualsRedirectTransformer
 import net.spartanb312.grunt.process.transformers.rename.*
+import net.spartanb312.grunt.process.transformers.rename.kr.FieldRenameTransformerKr
+import net.spartanb312.grunt.process.transformers.rename.kr.MethodRenameTransformerKr
 
 /**
  * Execution order
@@ -57,8 +59,10 @@ object Transformers : MutableList<Transformer> by mutableListOf(
     SyntheticBridgeTransformer order 701,
     LocalVariableRenameTransformer order 800,
     MethodRenameTransformer order 801,
-    FieldRenameTransformer order 802,
-    ClassRenameTransformer order 803,
+    MethodRenameTransformerKr order 802,
+    FieldRenameTransformer order 811,
+    FieldRenameTransformerKr order 812,
+    ClassRenameTransformer order 821,
     MixinFieldRenameTransformer order 900,
     MixinClassRenameTransformer order 901,
     InvokeDynamicTransformer order 1000,
