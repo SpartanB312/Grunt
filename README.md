@@ -15,6 +15,7 @@ Feel free to join our Discord server for suggestions: https://discord.gg/ysB2fMf
 ## Compatibility
 
 100% passed [JVM Obfuscation Test](https://github.com/sim0n/jvm-obfuscation-tester)
+PPPPPPP FPFPEPPE 102ms [JavaObfuscatorTest](https://github.com/huzpsb/JavaObfuscatorTest)
 
 If you encounter any compatibility issues, please open a GitHub Issue or join the Discord to help us improve Grunt.
 
