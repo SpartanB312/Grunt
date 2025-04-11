@@ -1,0 +1,412 @@
+{
+  "Settings": {
+    "Input": "TEST.jar",
+    "Output": "TEST-obf.jar",
+    "Libraries": [],
+    "Exclusions": [],
+    "MixinPackage": [
+      "net/spartanb312/client/mixins/"
+    ],
+    "DumpMappings": true,
+    "Multithreading": false,
+    "PrintTimeUsage": true,
+    "ForceUseComputeMax": false,
+    "LibsMissingCheck": true,
+    "CustomDictionaryFile": "customDictionary.txt",
+    "DictionaryStartIndex": 0,
+    "CorruptCRC32": false,
+    "CorruptJarHeader": false,
+    "CompressionLevel": 9,
+    "ArchiveComment": "",
+    "FileRemovePrefix": [],
+    "FileRemoveSuffix": []
+  },
+  "UI": {
+    "DarkTheme": true
+  },
+  "SourceDebugRemove": {
+    "Enabled": true,
+    "SourceDebug": true,
+    "LineDebug": true,
+    "RenameSourceDebug": false,
+    "SourceNames": [
+      "114514.java",
+      "1919810.kt",
+      "69420.java",
+      "你妈死了.kt"
+    ],
+    "Exclusion": []
+  },
+  "Shrinking": {
+    "Enabled": true,
+    "RemoveInnerClass": true,
+    "RemoveUnusedLabel": true,
+    "RemoveNOP": false,
+    "AnnotationRemovals": [
+      "Ljava/lang/Override;"
+    ],
+    "Exclusion": []
+  },
+  "KotlinOptimizer": {
+    "Enabled": true,
+    "Annotations": true,
+    "Intrinsics": true,
+    "IntrinsicsRemoval": [
+      "checkExpressionValueIsNotNull",
+      "checkNotNullExpressionValue",
+      "checkReturnedValueIsNotNull",
+      "checkFieldIsNotNull",
+      "checkParameterIsNotNull",
+      "checkNotNullParameter"
+    ],
+    "ReplaceLdc": true,
+    "IntrinsicsExclusion": [],
+    "MetadataExclusion": []
+  },
+  "EnumOptimize": {
+    "Enabled": true,
+    "Exclusion": []
+  },
+  "DeadCodeRemove": {
+    "Enabled": true,
+    "Exclusion": []
+  },
+  "ClonedClass": {
+    "Enabled": true,
+    "Count": 0,
+    "Suffix": "-cloned",
+    "RemoveAnnotations": true,
+    "Exclusion": []
+  },
+  "TrashClass": {
+    "Enabled": true,
+    "Package": "net/spartanb312/obf/",
+    "Prefix": "Trash",
+    "Count": 0
+  },
+  "HWIDAuthentication": {
+    "Enabled": false,
+    "OnlineMode": true,
+    "OfflineHWID": [
+      "Put HWID here (For offline mode only)"
+    ],
+    "OnlineURL": "https://pastebin.com/XXXXX",
+    "EncryptKey": "1186118611861186",
+    "CachePools": 5,
+    "ShowHWIDWhenFailed": true,
+    "EncryptConst": true,
+    "Exclusion": []
+  },
+  "HideDeclaredFields": {
+    "Enabled": true,
+    "Exclusion": []
+  },
+  "ReflectionSupport": {
+    "Enabled": true,
+    "PrintLog": true,
+    "Class": true,
+    "Method": true,
+    "Field": true
+  },
+  "StringEncrypt": {
+    "Enabled": true,
+    "Arrayed": false,
+    "ReplaceInvokeDynamics": true,
+    "Exclusion": []
+  },
+  "NumberEncrypt": {
+    "Enabled": true,
+    "Intensity": 1,
+    "FloatingPoint": true,
+    "Arrayed": false,
+    "MaxInsnSize": 16384,
+    "Exclusion": []
+  },
+  "ArithmeticEncrypt": {
+    "Enabled": true,
+    "Intensity": 1,
+    "MaxInsnSize": 16384,
+    "Exclusion": []
+  },
+  "Controlflow": {
+    "Enabled": true,
+    "Intensity": 1,
+    "ExecuteBeforeEncrypt": false,
+    "SwitchExtractor": true,
+    "ExtractRate": 30,
+    "BogusConditionJump": true,
+    "GotoReplaceRate": 80,
+    "MangledCompareJump": true,
+    "IfReplaceRate": 50,
+    "IfICompareReplaceRate": 100,
+    "SwitchProtect": true,
+    "ProtectRate": 30,
+    "MutateJumps": true,
+    "MutateRate": 10,
+    "TableSwitchJump": true,
+    "SwitchReplaceRate": 30,
+    "MaxSwitchCase": 5,
+    "ChaosSwitch": true,
+    "ReverseExistedIf": true,
+    "ReverseChance": 50,
+    "TrappedSwitchCase": true,
+    "TrapChance": 50,
+    "ArithmeticExprBuilder": true,
+    "BuilderIntensity": 1,
+    "JunkBuilderParameter": true,
+    "BuilderNativeAnnotation": false,
+    "UseLocalVar": true,
+    "JunkCode": true,
+    "MaxJunkCode": 2,
+    "ExpandedJunkCode": true,
+    "Exclusion": []
+  },
+  "ConstBuilder": {
+    "Enabled": true,
+    "NumberSwitchBuilder": true,
+    "SplitLong": true,
+    "HeavyEncrypt": false,
+    "SkipControlFlow": true,
+    "ReplacePercentage": 10,
+    "MaxCases": 5,
+    "Exclusion": []
+  },
+  "ConstPollEncrypt": {
+    "Enabled": true,
+    "Integer": true,
+    "Long": true,
+    "Float": true,
+    "Double": true,
+    "String": true,
+    "HeavyEncrypt": false,
+    "DontScramble": true,
+    "NativeAnnotation": false,
+    "Exclusion": []
+  },
+  "RedirectStringEquals": {
+    "Enabled": true,
+    "IgnoreCase": true,
+    "Exclusion": []
+  },
+  "FieldScramble": {
+    "Enabled": true,
+    "Intensity": 1,
+    "ReplacePercentage": 10,
+    "RandomName": false,
+    "GetStatic": true,
+    "SetStatic": true,
+    "GetValue": true,
+    "SetField": true,
+    "GenerateOuterClass": false,
+    "NativeAnnotation": false,
+    "ExcludedClasses": [],
+    "ExcludedFieldName": []
+  },
+  "MethodScramble": {
+    "Enabled": true,
+    "ReplacePercentage": 10,
+    "GenerateOuterClass": false,
+    "RandomCall": true,
+    "NativeAnnotation": false,
+    "ExcludedClasses": [],
+    "ExcludedMethodName": []
+  },
+  "NativeCandidate": {
+    "Enabled": true,
+    "NativeAnnotation": "Lnet/spartanb312/example/Native;",
+    "SearchCandidate": true,
+    "UpCallLimit": 0,
+    "Exclusion": [],
+    "AnnotationGroups": [
+      "{ \"annotation\": \"Lnet/spartanb312/grunt/Native;\", \"includeRegexes\": [\"^(?:[^./\\\\[;]+/)*[^./\\\\[;]+$\"], \"excludeRegexes\": [] }",
+      "{ \"annotation\": \"Lnet/spartanb312/grunt/VMProtect;\", \"includeRegexes\": [\"^(?:[^./\\\\[;]+\\\\/)*(?:[^./\\\\[;])+\\\\.(?:[^./\\\\[;()\\\\/])+(?:\\\\(((\\\\[*L[^./\\\\[;]([^./\\\\[;]*[^.\\\\[;][^./\\\\[;])*;)|(\\\\[*[ZBCSIJFD]+))*\\\\))((\\\\[*L[^./\\\\[;]([^./\\\\[;]*[^.\\\\[;][^./\\\\[;])*;)|V|(\\\\[*[ZBCSIJFD]))$\"], \"excludeRegexes\": [] }"
+    ]
+  },
+  "SyntheticBridge": {
+    "Enabled": true,
+    "Exclusion": []
+  },
+  "LocalVariableRename": {
+    "Enabled": true,
+    "Dictionary": "Alphabet",
+    "ThisReference": false,
+    "DeleteLocalVars": false,
+    "DeleteParameters": false,
+    "Exclusion": []
+  },
+  "MethodRename": {
+    "Enabled": false,
+    "Enums": true,
+    "Interfaces": false,
+    "Dictionary": "Alphabet",
+    "HeavyOverloads": false,
+    "RandomKeywordPrefix": false,
+    "Prefix": "",
+    "Reversed": false,
+    "Exclusion": [
+      "net/spartanb312/Example1",
+      "net/spartanb312/Example2.method",
+      "net/spartanb312/Example3.method()V"
+    ],
+    "ExcludedName": [
+      "methodName"
+    ]
+  },
+  "MethodRenameKr": {
+    "Enabled": true,
+    "Mode": "Fast",
+    "Enums": true,
+    "Interfaces": false,
+    "Dictionary": "Alphabet",
+    "HeavyOverloads": false,
+    "RandomKeywordPrefix": false,
+    "Prefix": "",
+    "Reversed": false,
+    "Exclusion": [
+      "net/spartanb312/Example1",
+      "net/spartanb312/Example2.method",
+      "net/spartanb312/Example3.method()V"
+    ],
+    "ExcludedName": [
+      "methodName"
+    ]
+  },
+  "FieldRename": {
+    "Enabled": false,
+    "Dictionary": "Alphabet",
+    "RandomKeywordPrefix": false,
+    "Prefix": "",
+    "Reversed": false,
+    "Exclusion": [
+      "net/spartanb312/Example1",
+      "net/spartanb312/Example2.field"
+    ],
+    "ExcludedName": [
+      "INSTANCE",
+      "Companion"
+    ]
+  },
+  "FieldRenameKr": {
+    "Enabled": true,
+    "Dictionary": "Alphabet",
+    "RandomKeywordPrefix": false,
+    "Prefix": "",
+    "Reversed": false,
+    "Shuffled": false,
+    "Exclusion": [
+      "net/spartanb312/Example1",
+      "net/spartanb312/Example2.field"
+    ],
+    "ExcludedName": [
+      "INSTANCE",
+      "Companion"
+    ]
+  },
+  "ClassRename": {
+    "Enabled": true,
+    "Dictionary": "Alphabet",
+    "Parent": "net/spartanb312/obf/",
+    "Prefix": "",
+    "Reversed": false,
+    "Shuffled": false,
+    "CorruptedName": false,
+    "CorruptedNameExclusion": [],
+    "Exclusion": [
+      "net/spartanb312/Example",
+      "net/spartanb312/component/Component**",
+      "net/spartanb312/package/**"
+    ]
+  },
+  "MixinFieldRename": {
+    "Enabled": false,
+    "Dictionary": "Alphabet",
+    "Prefix": "",
+    "Exclusion": [
+      "net/spartanb312/Example1",
+      "net/spartanb312/Example2.field"
+    ],
+    "ExcludedName": [
+      "INSTANCE",
+      "Companion"
+    ]
+  },
+  "MixinClassRename": {
+    "Enabled": false,
+    "Dictionary": "Alphabet",
+    "TargetMixinPackage": "net/spartanb312/obf/mixins/",
+    "MixinFile": "mixins.example.json",
+    "RefmapFile": "mixins.example.refmap.json",
+    "Exclusion": [
+      "net/spartanb312/Example",
+      "net/spartanb312/component/Component**",
+      "net/spartanb312/package/**"
+    ]
+  },
+  "InvokeDynamic": {
+    "Enabled": true,
+    "ReplacePercentage": 10,
+    "HeavyProtection": false,
+    "MetadataClass": "net/spartanb312/grunt/GruntMetadata",
+    "MassiveRandomBlank": false,
+    "Reobfuscate": true,
+    "EnhancedFlowReobf": false,
+    "BSMNativeAnnotation": false,
+    "Exclusion": []
+  },
+  "ShuffleMembers": {
+    "Enabled": true,
+    "Methods": true,
+    "Fields": true,
+    "Annotations": true,
+    "Exceptions": true,
+    "Exclusion": []
+  },
+  "Crasher": {
+    "Enabled": true,
+    "Random": false,
+    "Exclusion": []
+  },
+  "Watermark": {
+    "Enabled": true,
+    "Names": [
+      "I AM WATERMARK",
+      "CYKA BLYAT",
+      "NAME"
+    ],
+    "Messages": [
+      "PROTECTED BY GRUNT KLASS MASTER",
+      "PROTECTED BY SPARTAN EVERETT",
+      "PROTECTED BY SPARTAN 1186",
+      "PROTECTED BY NOBLE SIX"
+    ],
+    "FieldMark": true,
+    "MethodMark": true,
+    "AnnotationMark": false,
+    "Annotations": [
+      "ProtectedByGrunt",
+      "JvavMetadata"
+    ],
+    "Versions": [
+      "114514",
+      "1919810",
+      "69420"
+    ],
+    "InterfaceMark": false,
+    "FatherOfJava": "jvav/lang/YuShengJun",
+    "CustomTrashMethod": false,
+    "CustomMethodName": "protected by YuShengJun",
+    "CustomMethodCode": "public static String method() {\n    return \"Protected by YuShengJun\";\n}",
+    "Exclusion": []
+  },
+  "PostProcess": {
+    "Enabled": true,
+    "Manifest": true,
+    "Plugin YML": true,
+    "Bungee YML": true,
+    "Fabric JSON": true,
+    "Velocity JSON": true,
+    "ManifestPrefix": [
+      "Main-Class:"
+    ]
+  }
+}
