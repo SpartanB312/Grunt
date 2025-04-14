@@ -71,7 +71,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         classNode.methods.shuffled().forEach { methodNode ->
             if (onlyObfuscate != null && onlyObfuscate != methodNode) return@forEach
             methodNode.instructions.asSequence()
-                .filter { it is LdcInsnNode && it.cst is String }
+                .filter { it is LdcInsnNode && it.cst is String && !(it.cst as String).isEmpty() }
                 .shuffled()
                 .forEach { instruction ->
                     val originalString = (instruction as LdcInsnNode).cst as String
@@ -135,7 +135,7 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             classNode.methods.forEach { methodNode ->
                 if (onlyObfuscate != null && onlyObfuscate != methodNode) return@forEach
                 methodNode.instructions.asSequence()
-                    .filter { it is LdcInsnNode && it.cst is String }
+                    .filter { it is LdcInsnNode && it.cst is String && !(it.cst as String).isEmpty() }
                     .shuffled()
                     .forEach { instruction ->
                         val originalString = (instruction as LdcInsnNode).cst as String
