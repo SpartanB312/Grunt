@@ -12,6 +12,9 @@ import org.objectweb.asm.tree.FieldNode
 import org.objectweb.asm.tree.InsnList
 import kotlin.random.Random
 
+/**
+ * It will only decrypt once. We can use more complex encryption methods without worrying about performance overhead
+ */
 object NumberEncryptorArrayed : NumberEncryptor {
 
     fun <T : Number> encrypt(value: T, owner: ClassNode, field: FieldNode, list: MutableList<Long>): InsnList {
@@ -95,7 +98,7 @@ object NumberEncryptorArrayed : NumberEncryptor {
                     GETSTATIC(owner.name, field.name, field.desc)
                     +index.toInsnNode()
                     LLOAD(localKeySlot)
-                    +NumberEncryptorClassic.encrypt(value xor localKey)
+                    +encryptViaParseString(value xor localKey)
                     LXOR
                     // TODO: modify local key?
                     LASTORE
@@ -103,7 +106,7 @@ object NumberEncryptorArrayed : NumberEncryptor {
                 RETURN
             }
         }.also { owner.methods.add(it) }
-        +NumberEncryptorClassic.encrypt(localKey)
+        +encryptViaParseString(localKey)
         INVOKESTATIC(owner.name, arrayInitMethod.name, arrayInitMethod.desc, owner.isInterface)
     }
 
@@ -116,6 +119,19 @@ object NumberEncryptorArrayed : NumberEncryptor {
                 null,
                 null
             )
+    }
+
+    fun encryptViaParseString(value: Long): InsnList {
+        return instructions {
+            val key = Random.nextLong()
+            val unsignedString = java.lang.Long.toUnsignedString(key, 32)
+            LDC(unsignedString)
+            INT(32)
+            INVOKESTATIC("java/lang/Long", "parseUnsignedLong", "(Ljava/lang/String;I)J")
+            val obfuscated = key xor value
+            +obfuscated.toInsnNode()
+            LXOR
+        }
     }
 
 }

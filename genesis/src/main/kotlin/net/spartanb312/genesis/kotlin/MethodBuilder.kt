@@ -1,9 +1,6 @@
 package net.spartanb312.genesis.kotlin
 
-import net.spartanb312.genesis.kotlin.extensions.BuilderDSL
-import net.spartanb312.genesis.kotlin.extensions.Modifiers
-import net.spartanb312.genesis.kotlin.extensions.NodeDSL
-import net.spartanb312.genesis.kotlin.extensions.STATIC
+import net.spartanb312.genesis.kotlin.extensions.*
 import org.objectweb.asm.Label
 import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.InsnList
@@ -51,7 +48,7 @@ fun clinit(block: (MethodBuilder.() -> Unit)? = null): MethodNode = method(
 
 @NodeDSL
 fun init(block: (MethodBuilder.() -> Unit)? = null): MethodNode = method(
-    0,
+    PUBLIC,
     "<init>",
     "()V", null,
     null,

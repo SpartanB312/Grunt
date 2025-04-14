@@ -39,6 +39,8 @@ inline val MethodNode.isNative get() = access.isNative
 
 inline val MethodNode.isAbstract get() = access.isAbstract
 
+inline val MethodNode.isSynthetic get() = access.isSynthetic
+
 inline val MethodNode.isMainMethod get() = name == "main" && desc == "([Ljava/lang/String;)V"
 
 inline val MethodNode.isInitializer get() = name == "<init>" || name == "<clinit>"

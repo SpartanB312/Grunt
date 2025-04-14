@@ -11,10 +11,7 @@ import net.spartanb312.grunt.process.transformers.minecraft.MixinClassRenameTran
 import net.spartanb312.grunt.process.transformers.minecraft.MixinFieldRenameTransformer
 import net.spartanb312.grunt.process.transformers.misc.*
 import net.spartanb312.grunt.process.transformers.optimize.*
-import net.spartanb312.grunt.process.transformers.redirect.FieldScrambleTransformer
-import net.spartanb312.grunt.process.transformers.redirect.InvokeDynamicTransformer
-import net.spartanb312.grunt.process.transformers.redirect.MethodScrambleTransformer
-import net.spartanb312.grunt.process.transformers.redirect.StringEqualsRedirectTransformer
+import net.spartanb312.grunt.process.transformers.redirect.*
 import net.spartanb312.grunt.process.transformers.rename.*
 import net.spartanb312.grunt.process.transformers.rename.kr.FieldRenameTransformerKr
 import net.spartanb312.grunt.process.transformers.rename.kr.MethodRenameTransformerKr
@@ -40,6 +37,7 @@ object Transformers : MutableList<Transformer> by mutableListOf(
     KotlinOptimizeTransformer order 2,
     EnumOptimizeTransformer order 3,
     DeadCodeRemoveTransformer order 4,
+    //ClassSplitterTransformer order 5,
     ClonedClassTransformer order 100,
     TrashClassTransformer order 101,
     HWIDAuthenticatorTransformer order 102,
