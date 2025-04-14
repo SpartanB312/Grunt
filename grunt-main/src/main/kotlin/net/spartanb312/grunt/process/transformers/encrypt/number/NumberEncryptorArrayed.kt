@@ -87,7 +87,11 @@ object NumberEncryptorArrayed : NumberEncryptor {
             INSTRUCTIONS {
                 val localKeySlot = 0
                 // Decrypt values
+                val map = mutableListOf<Pair<Int, Long>>()
                 values.forEachIndexed { index, value ->
+                    map.add(Pair(index, value))
+                }
+                map.shuffled().forEach { (index, value) ->
                     GETSTATIC(owner.name, field.name, field.desc)
                     +index.toInsnNode()
                     LLOAD(localKeySlot)
