@@ -42,7 +42,8 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         val count = count {
             runBlocking {
                 nonExcluded.asSequence()
-                    .filter { c -> c.version > Opcodes.V1_5 && exclusion.none { c.name.startsWith(it) }
+                    .filter { c ->
+                        c.version > Opcodes.V1_5 && exclusion.none { c.name.startsWith(it) }
                     }.forEach { classNode ->
                         fun job() {
                             transformClass(classNode, null)
@@ -71,8 +72,11 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
         classNode.methods.shuffled().forEach { methodNode ->
             if (onlyObfuscate != null && onlyObfuscate != methodNode) return@forEach
             methodNode.instructions.asSequence()
-                .filter { it is LdcInsnNode && it.cst is String && !(it.cst as String).isEmpty() }
-                .shuffled()
+                .filter {
+                    it is LdcInsnNode && it.cst is String
+                            && (it.cst as String).isNotEmpty()
+                            && !(it.cst as String).reflectionExcluded
+                }.shuffled()
                 .forEach { instruction ->
                     val originalString = (instruction as LdcInsnNode).cst as String
                     // Skip duplicate strings
@@ -86,13 +90,15 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                 (if (classNode.isInterface) PUBLIC + FINAL else PRIVATE) + STATIC,
                 getRandomString(16),
                 "[Ljava/lang/String;",
-                null, null)
+                null, null
+            )
             val decryptMethod = createDecryptMethod(classNode, getRandomString(16), classKey)
             val encryptedStrings = stringsToEncrypt.keys.map { it }.toTypedArray()
             val arrayInitMethod = method(
                 (if (classNode.isInterface) PUBLIC else PRIVATE) + STATIC,
                 getRandomString(16),
-                "()V") {
+                "()V"
+            ) {
                 INSTRUCTIONS {
                     encryptedStrings.forEachIndexed { index, string ->
                         val key = Random.nextInt()
@@ -135,8 +141,11 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             classNode.methods.forEach { methodNode ->
                 if (onlyObfuscate != null && onlyObfuscate != methodNode) return@forEach
                 methodNode.instructions.asSequence()
-                    .filter { it is LdcInsnNode && it.cst is String && !(it.cst as String).isEmpty() }
-                    .shuffled()
+                    .filter {
+                        it is LdcInsnNode && it.cst is String
+                                && (it.cst as String).isNotEmpty()
+                                && !(it.cst as String).reflectionExcluded
+                    }.shuffled()
                     .forEach { instruction ->
                         val originalString = (instruction as LdcInsnNode).cst as String
                         val index = stringsToEncrypt[originalString]!!
@@ -165,12 +174,14 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                 .filter { it is InvokeDynamicInsnNode && isStringConcatenation(it) }
                 .shuffled()
                 .forEach { instruction ->
-                    invokeDynamicConcatMethods.add(processStringConcatenation(
-                        classNode,
-                        methodNode,
-                        instruction as InvokeDynamicInsnNode,
-                        getRandomString(16)
-                    ))
+                    invokeDynamicConcatMethods.add(
+                        processStringConcatenation(
+                            classNode,
+                            methodNode,
+                            instruction as InvokeDynamicInsnNode,
+                            getRandomString(16)
+                        )
+                    )
                 }
         }
 
@@ -184,8 +195,10 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                 && instruction.bsmArgs[0].toString().find { it != '\u0001' } != null
     }
 
-    fun processStringConcatenation(classNode: ClassNode, methodNode: MethodNode,
-                                   instruction: InvokeDynamicInsnNode, bootstrapName: String): MethodNode {
+    fun processStringConcatenation(
+        classNode: ClassNode, methodNode: MethodNode,
+        instruction: InvokeDynamicInsnNode, bootstrapName: String
+    ): MethodNode {
         val arg = instruction.bsmArgs[0].toString()
         val argString = StringBuilder()
         val newArg = StringBuilder()
@@ -207,11 +220,13 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
                     flushArgs()
                     newArg.append('\u0001')
                 }
+
                 '\u0002' -> {
                     flushArgs()
                     constants.add(instruction.bsmArgs[bsmArgIndex++].toString())
                     newArg.append('\u0002')
                 }
+
                 else -> {
                     argString.append(c)
                 }
@@ -245,9 +260,10 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
     }
 
     private fun createConcatBootstrap(classNode: ClassNode, methodName: String, constants: ArrayList<String>) = method(
-            (if (classNode.isInterface) PUBLIC else PRIVATE) + STATIC,
-            methodName,
-            "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;)Ljava/lang/invoke/CallSite;") {
+        (if (classNode.isInterface) PUBLIC else PRIVATE) + STATIC,
+        methodName,
+        "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;)Ljava/lang/invoke/CallSite;"
+    ) {
         INSTRUCTIONS {
             ALOAD(0)
             ALOAD(1)
@@ -269,7 +285,8 @@ object StringEncryptTransformer : Transformer("StringEncrypt", Category.Encrypti
             INVOKESTATIC(
                 "java/lang/invoke/StringConcatFactory",
                 "makeConcatWithConstants",
-                "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;")
+                "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;"
+            )
             ARETURN
         }
         MAXS(8, 4)
