@@ -31,6 +31,7 @@ import kotlin.random.Random
 object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.Encryption), MethodProcessor {
 
     private val times by setting("Intensity", 1)
+    private val rate by setting("Percentage", 50)
     private val maxInsnSize by setting("MaxInsnSize", 16384)
     private val exclusion by setting("Exclusion", listOf())
 
@@ -76,6 +77,7 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
                     +insn
                     continue
                 } // Avoid method too large
+                if (Random.nextInt(0, 100) > rate) continue // skip
                 if (index < methodNode.instructions.size() - 2) {
                     val next = methodNode.instructions[index + 1]
                     val nextNext = methodNode.instructions[index + 2]
