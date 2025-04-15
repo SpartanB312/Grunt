@@ -160,6 +160,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                                         classNode.accept(CustomClassNode(Opcodes.ASM9, this))
                                     }.toByteArray()
                                 } catch (exception: Exception) {
+                                    Logger.error("Failed to dump class ${classNode.name}!")
                                     exception.printStackTrace()
                                     ByteArray(0)
                                 }
@@ -293,6 +294,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
         init {
             this.cv = cv
         }
+
         override fun visitEnd() {
             methods.forEach { mn ->
                 transform(name, mn)
@@ -302,6 +304,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                 accept(cv)
             }
         }
+
         fun transform(owner: String, mn: MethodNode) {
             mn.maxStack = -1
             val ana = Analyzer(BasicInterpreter())

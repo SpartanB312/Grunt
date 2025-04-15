@@ -5,7 +5,7 @@ import org.objectweb.asm.Label
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.InsnList
 
-class InsnListBuilder(val insnList: InsnList) {
+class InsnListBuilder(val insnList: InsnList = InsnList()) {
     private var labels = mutableMapOf<Any, Label>()
     val L = this
     operator fun AbstractInsnNode.unaryPlus() = apply { insnList.add(this) }
