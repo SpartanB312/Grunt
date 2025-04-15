@@ -1,6 +1,7 @@
 package net.spartanb312.grunt.process.resource
 
 import com.google.gson.JsonObject
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -37,10 +38,10 @@ import java.util.zip.ZipOutputStream
 
 class ResourceCache(private val input: String, private val libs: List<String>) {
 
-    val classes = mutableMapOf<String, ClassNode>()
-    val libraries = mutableMapOf<String, ClassNode>()
-    val resources = mutableMapOf<String, ByteArray>()
-    val trashClasses = mutableMapOf<String, ClassNode>()
+    val classes = Object2ObjectOpenHashMap<String, ClassNode>()
+    val libraries = Object2ObjectOpenHashMap<String, ClassNode>()
+    val resources = Object2ObjectOpenHashMap<String, ByteArray>()
+    val trashClasses = Object2ObjectOpenHashMap<String, ClassNode>()
 
     val allClasses
         get() = mutableListOf<ClassNode>().apply {
@@ -51,10 +52,13 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
     val nonExcluded get() = classes.values.filter { !it.isExcluded }
     val mixinClasses get() = classes.values.filter { it.isMixinClass }
 
-    val classMappings = mutableMapOf<String, String>()
-    private val mappingObjects = mutableMapOf<String, JsonObject>()
+    val classMappings = Object2ObjectOpenHashMap<String, String>()
+    val revMappings = Object2ObjectOpenHashMap<String, String>()
+    private val mappingObjects = Object2ObjectOpenHashMap<String, JsonObject>()
 
     fun getMapping(name: String): String = classMappings.getOrElse(name) { name }
+
+    fun getPrevName(name: String):String = revMappings.getOrElse(name) { name }
 
     fun applyRemap(type: String, mappings: Map<String, String>, remapClassNames: Boolean = false) {
         if (Configs.Settings.generateRemap) {
@@ -62,6 +66,7 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
             mappings.forEach { (prev, new) ->
                 obj.addProperty(prev, new)
                 classMappings[prev] = new
+                revMappings[new] = prev
             }
             mappingObjects[type] = JsonObject().apply { add(type, obj) }
         }

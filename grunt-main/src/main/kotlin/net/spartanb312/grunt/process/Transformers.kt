@@ -37,7 +37,7 @@ object Transformers : MutableList<Transformer> by mutableListOf(
     KotlinOptimizeTransformer order 2,
     EnumOptimizeTransformer order 3,
     DeadCodeRemoveTransformer order 4,
-    MethodExtractor order 5,
+    MethodExtractorTransformer order 5,
     ClonedClassTransformer order 100,
     TrashClassTransformer order 101,
     HWIDAuthenticatorTransformer order 102,

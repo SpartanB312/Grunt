@@ -164,7 +164,7 @@ object InvokeDynamicTransformer : Transformer("InvokeDynamic", Category.Redirect
             val addedMethods = mutableListOf<Pair<ClassNode, List<MethodNode>>>()
             runBlocking {
                 classes.filter {
-                    val map = getMapping(it.value.name)
+                    val map = getPrevName(it.value.name)
                     !it.value.isInterface && it.value.version >= Opcodes.V1_7
                             && !map.isExcluded && map.notInList(exclusion)
                             && !it.value.hasAnnotation(DISABLE_INVOKEDYNAMIC)

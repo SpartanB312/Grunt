@@ -22,7 +22,7 @@ import org.objectweb.asm.tree.*
  * Unstable feature. If you encounter any bugs, please submit them to me
  * TODO : private constructor invoke special
  */
-object MethodExtractor : Transformer("MethodExtractor", Category.Redirect) {
+object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redirect) {
 
     private val exclusion by setting("Exclusion", listOf())
 
