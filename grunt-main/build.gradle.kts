@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.utils.extendsFrom
 
 plugins {
@@ -55,8 +56,9 @@ tasks {
         targetCompatibility = "1.8"
     }
     compileKotlin {
-        kotlinOptions {
-            jvmTarget = "1.8"
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_1_8
+            freeCompilerArgs = listOf("-Xwhen-guards")
         }
     }
     jar {

@@ -16,6 +16,7 @@ import org.objectweb.asm.Handle
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
+import java.util.Stack
 
 /**
  * Redirect non-static methods to companion class
@@ -73,6 +74,11 @@ object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redi
                         ) {
                             addClass = true
                             val tryCatches = mutableListOf<TryCatchBlockNode>()
+
+                            val invalidNewBlocks = mutableListOf<Pair<TypeInsnNode, MethodInsnNode>>()
+                            val invalidDups = mutableListOf<InsnNode>()
+                            val newInsnStack = Stack<TypeInsnNode>()
+
                             val newInsnList = instructions {
                                 val clonedLabels = mutableMapOf<LabelNode, LabelNode>()
                                 methodNode.instructions.forEach { if (it is LabelNode) clonedLabels[it] = LabelNode() }
@@ -87,8 +93,12 @@ object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redi
                                     cloned.invisibleTypeAnnotations = it.invisibleTypeAnnotations
                                     tryCatches.add(cloned)
                                 }
+
                                 methodNode.instructions.forEach {
-                                    when (val insnNode = it.clone(clonedLabels)) {
+                                    when (val insnNode = it) {
+                                        is TypeInsnNode if insnNode.opcode == Opcodes.NEW -> {
+                                            newInsnStack.add(insnNode)
+                                        }
                                         is FieldInsnNode -> solveFieldInsnNode(
                                             classNode,
                                             insnNode,
@@ -96,11 +106,25 @@ object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redi
                                             accessSetField
                                         )
 
-                                        is MethodInsnNode -> solveMethodInsnNode(
-                                            classNode,
-                                            insnNode,
-                                            accessMethod
-                                        )
+                                        is MethodInsnNode -> {
+                                            var needPop = false
+                                            if (insnNode.opcode == Opcodes.INVOKESPECIAL
+                                                && insnNode.name == "<init>") {
+                                                val newInsn = newInsnStack.pop()
+                                                invalidNewBlocks.add(newInsn to insnNode)
+                                                needPop = newInsn.next.opcode != Opcodes.DUP
+                                                println(insnNode.name + insnNode.desc + " " + needPop)
+                                                if (!needPop) invalidDups.add(newInsn.next as InsnNode)
+                                            }
+                                            solveMethodInsnNode(
+                                                classNode,
+                                                insnNode,
+                                                accessMethod
+                                            )
+                                            if (needPop) {
+                                                +POP
+                                            }
+                                        }
 
                                         is InvokeDynamicInsnNode -> solveInvokeDynamic(
                                             classNode,
@@ -129,6 +153,7 @@ object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redi
                                 methodNode.tryCatchBlocks.clear()
                                 methodNode.localVariables.clear()
                             }
+
                             companionNode.methods.add(
                                 method(
                                     PUBLIC + STATIC,
@@ -148,7 +173,13 @@ object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redi
                                     it.visibleParameterAnnotations = methodNode.visibleParameterAnnotations
                                     it.invisibleAnnotableParameterCount = methodNode.invisibleAnnotableParameterCount
                                     it.invisibleParameterAnnotations = methodNode.invisibleParameterAnnotations
-                                    it.instructions = newInsnList
+                                    it.instructions = instructions {
+                                        val news = invalidNewBlocks.map { it.first }
+                                        val insps = invalidNewBlocks.map { it.second }
+                                        newInsnList.forEach {
+                                            if (it !in insps && it !in news && it !in invalidDups) +it
+                                        }
+                                    }
                                     it.tryCatchBlocks = tryCatches
                                 }
                             )
@@ -313,7 +344,36 @@ object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redi
             }
 
             Opcodes.INVOKESPECIAL -> {
-                if (insnNode.name == "<init>") +insnNode
+                if (insnNode.name == "<init>") {
+                    accessor = accessMethod.getOrPut(AccessInfo(insnNode)) {
+                        method(
+                            PUBLIC + STATIC + FINAL,
+                            "accessor-special-new-${insnNode.owner.replace("/", "_")}-${getRandomString(5)}",
+                            insnNode.desc.removeSuffix("V") + "L${insnNode.owner};" // hacky
+                        ) {
+                            INSTRUCTIONS {
+                                NEW(insnNode.owner)
+                                DUP
+                                val parameters = Type.getArgumentTypes(insnNode.desc)
+                                parameters.forEachIndexed { i, argType ->
+                                    when (argType) {
+                                        Type.INT_TYPE, Type.BOOLEAN_TYPE, Type.BYTE_TYPE, Type.SHORT_TYPE, Type.CHAR_TYPE -> ILOAD(
+                                            i
+                                        )
+
+                                        Type.LONG_TYPE -> LLOAD(i)
+                                        Type.FLOAT_TYPE -> FLOAD(i)
+                                        Type.DOUBLE_TYPE -> DLOAD(i)
+                                        else -> ALOAD(i)
+                                    }
+                                }
+                                +insnNode
+                                ARETURN
+                            }
+                        }
+                    }
+                    INVOKESTATIC(classNode.name, accessor.name, accessor.desc)
+                }
                 else {
                     accessor = accessMethod.getOrPut(AccessInfo(insnNode)) {
                         method(
