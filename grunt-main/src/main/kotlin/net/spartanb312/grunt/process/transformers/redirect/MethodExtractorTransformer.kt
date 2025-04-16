@@ -73,26 +73,26 @@ object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redi
                             && !methodNode.isInitializer
                         ) {
                             addClass = true
-                            val tryCatches = mutableListOf<TryCatchBlockNode>()
+//                            val tryCatches = mutableListOf<TryCatchBlockNode>()
 
                             val invalidNewBlocks = mutableListOf<Pair<TypeInsnNode, MethodInsnNode>>()
                             val invalidDups = mutableListOf<InsnNode>()
                             val newInsnStack = Stack<TypeInsnNode>()
 
                             val newInsnList = instructions {
-                                val clonedLabels = mutableMapOf<LabelNode, LabelNode>()
-                                methodNode.instructions.forEach { if (it is LabelNode) clonedLabels[it] = LabelNode() }
-                                methodNode.tryCatchBlocks.forEach {
-                                    val cloned = TryCatchBlockNode(
-                                        clonedLabels[it.start]!!,
-                                        clonedLabels[it.end]!!,
-                                        clonedLabels[it.handler]!!,
-                                        it.type,
-                                    )
-                                    cloned.visibleTypeAnnotations = it.visibleTypeAnnotations
-                                    cloned.invisibleTypeAnnotations = it.invisibleTypeAnnotations
-                                    tryCatches.add(cloned)
-                                }
+//                                val clonedLabels = mutableMapOf<LabelNode, LabelNode>()
+//                                methodNode.instructions.forEach { if (it is LabelNode) clonedLabels[it] = LabelNode() }
+//                                methodNode.tryCatchBlocks.forEach {
+//                                    val cloned = TryCatchBlockNode(
+//                                        clonedLabels[it.start]!!,
+//                                        clonedLabels[it.end]!!,
+//                                        clonedLabels[it.handler]!!,
+//                                        it.type,
+//                                    )
+//                                    cloned.visibleTypeAnnotations = it.visibleTypeAnnotations
+//                                    cloned.invisibleTypeAnnotations = it.invisibleTypeAnnotations
+//                                    tryCatches.add(cloned)
+//                                }
 
                                 methodNode.instructions.forEach {
                                     when (val insnNode = it) {
@@ -113,7 +113,6 @@ object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redi
                                                 val newInsn = newInsnStack.pop()
                                                 invalidNewBlocks.add(newInsn to insnNode)
                                                 needPop = newInsn.next.opcode != Opcodes.DUP
-                                                println(insnNode.name + insnNode.desc + " " + needPop)
                                                 if (!needPop) invalidDups.add(newInsn.next as InsnNode)
                                             }
                                             solveMethodInsnNode(
@@ -121,9 +120,7 @@ object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redi
                                                 insnNode,
                                                 accessMethod
                                             )
-                                            if (needPop) {
-                                                +POP
-                                            }
+                                            if (needPop) POP
                                         }
 
                                         is InvokeDynamicInsnNode -> solveInvokeDynamic(
@@ -180,7 +177,9 @@ object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redi
                                             if (it !in insps && it !in news && it !in invalidDups) +it
                                         }
                                     }
-                                    it.tryCatchBlocks = tryCatches
+                                    it.tryCatchBlocks = methodNode.tryCatchBlocks
+                                    it.maxStack = -1
+                                    it.maxLocals = -1
                                 }
                             )
                             add()
