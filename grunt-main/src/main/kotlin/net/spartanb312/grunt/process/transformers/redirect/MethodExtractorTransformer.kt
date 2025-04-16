@@ -361,17 +361,10 @@ object MethodExtractorTransformer : Transformer("MethodExtractor", Category.Redi
                                 NEW(insnNode.owner)
                                 DUP
                                 val parameters = Type.getArgumentTypes(insnNode.desc)
-                                parameters.forEachIndexed { i, argType ->
-                                    when (argType) {
-                                        Type.INT_TYPE, Type.BOOLEAN_TYPE, Type.BYTE_TYPE, Type.SHORT_TYPE, Type.CHAR_TYPE -> ILOAD(
-                                            i
-                                        )
-
-                                        Type.LONG_TYPE -> LLOAD(i)
-                                        Type.FLOAT_TYPE -> FLOAD(i)
-                                        Type.DOUBLE_TYPE -> DLOAD(i)
-                                        else -> ALOAD(i)
-                                    }
+                                var stack = 0
+                                parameters.forEach { argType ->
+                                    +VarInsnNode(argType.getLoadType(), stack)
+                                    stack += argType.size
                                 }
                                 +insnNode
                                 ARETURN
