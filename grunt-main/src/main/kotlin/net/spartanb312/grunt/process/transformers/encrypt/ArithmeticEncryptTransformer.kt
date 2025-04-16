@@ -72,12 +72,14 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
                     skipInsn--
                     continue
                 }
+                // Avoid "method too large"
                 val currentSize = insnList.size() + methodNode.instructions.size() - index
-                if (currentSize >= maxInsnSize) {
+                if (currentSize >= maxInsnSize
+                    // Obfuscation rate/percentage
+                    || Random.nextInt(0, 100) > rate) {
                     +insn
                     continue
-                } // Avoid method too large
-                if (Random.nextInt(0, 100) > rate) continue // skip
+                }
                 if (index < methodNode.instructions.size() - 2) {
                     val next = methodNode.instructions[index + 1]
                     val nextNext = methodNode.instructions[index + 2]
