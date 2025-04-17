@@ -33,7 +33,6 @@ import net.spartanb312.grunt.process.transformers.rename.kr.MethodRenameTransfor
  */
 object Transformers : MutableList<Transformer> by mutableListOf(
     SourceDebugRemoveTransformer order 0,
-    ShrinkingTransformer order 1,
     KotlinOptimizeTransformer order 2,
     EnumOptimizeTransformer order 3,
     DeadCodeRemoveTransformer order 4,
@@ -67,6 +66,7 @@ object Transformers : MutableList<Transformer> by mutableListOf(
     ShuffleMembersTransformer order 1001,
     CrasherTransformer order 1002,
     WatermarkTransformer order 1003,
+    ShrinkingTransformer order 1004,
     PostProcessTransformer order Int.MAX_VALUE
 ) {
     fun register(transformer: Transformer, order: Int) {
