@@ -18,6 +18,7 @@ object ShrinkingTransformer : Transformer("Shrinking", Category.Optimization) {
     private val removeInnerClass by setting("RemoveInnerClass", true)
     private val removeUnusedLabel by setting("RemoveUnusedLabel", true)
     private val removeNOP by setting("RemoveNOP", false) // May cause some bugs in Minecraft Forge Mod
+    private val removeMethodSignature by setting("RemoveMethodSignature", false) // Should work fine
     private val annotations by setting("AnnotationRemovals", listOf("Ljava/lang/Override;"))
     private val exclusion by setting("Exclusion", listOf())
 
@@ -91,6 +92,17 @@ object ShrinkingTransformer : Transformer("Shrinking", Category.Optimization) {
                 }
             }.get()
             Logger.info("    Removed $labelCount unused labels")
+        }
+        if (removeMethodSignature) {
+            val signatureCount = count {
+                nonExcluded.forEach { classNode ->
+                    classNode.methods.filter { it.signature != null }.forEach { methodNode ->
+                        methodNode.signature = null
+                        add(1)
+                    }
+                }
+            }.get()
+            Logger.info("    Removed $signatureCount unused labels")
         }
         if (annotations.isNotEmpty()) {
             val annotationCount = count {
