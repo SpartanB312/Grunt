@@ -173,7 +173,11 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                             val event = WritingResourceEvent(entryName, byteArray)
                             event.post()
                             if (!event.cancelled) mutex.withLock {
-                                putNextEntry(ZipEntry(entryName))
+                                val zipEntry = ZipEntry(entryName)
+                                if (Configs.Settings.removeTimestamps) {
+                                    zipEntry.time = 0
+                                }
+                                putNextEntry(zipEntry)
                                 write(byteArray)
                                 closeEntry()
                             }
@@ -191,7 +195,11 @@ class ResourceCache(private val input: String, private val libs: List<String>) {
                 val event = WritingResourceEvent(name, bytes)
                 event.post()
                 if (!event.cancelled) {
-                    putNextEntry(ZipEntry(name))
+                    val zipEntry = ZipEntry(name)
+                    if (Configs.Settings.removeTimestamps) {
+                        zipEntry.time = 0
+                    }
+                    putNextEntry(zipEntry)
                     write(bytes)
                     closeEntry()
                 }
