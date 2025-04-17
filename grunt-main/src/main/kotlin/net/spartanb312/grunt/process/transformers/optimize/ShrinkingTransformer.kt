@@ -102,7 +102,7 @@ object ShrinkingTransformer : Transformer("Shrinking", Category.Optimization) {
                     }
                 }
             }.get()
-            Logger.info("    Removed $signatureCount unused labels")
+            Logger.info("    Removed $signatureCount method signatures")
         }
         if (annotations.isNotEmpty()) {
             val annotationCount = count {
