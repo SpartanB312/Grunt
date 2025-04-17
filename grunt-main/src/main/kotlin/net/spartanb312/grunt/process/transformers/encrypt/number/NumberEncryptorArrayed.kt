@@ -98,7 +98,7 @@ object NumberEncryptorArrayed : NumberEncryptor {
                     GETSTATIC(owner.name, field.name, field.desc)
                     +index.toInsnNode()
                     LLOAD(localKeySlot)
-                    +encryptViaParseString(value xor localKey)
+                    +NumberEncryptorClassic.encrypt(value xor localKey)
                     LXOR
                     // TODO: modify local key?
                     LASTORE
@@ -106,7 +106,7 @@ object NumberEncryptorArrayed : NumberEncryptor {
                 RETURN
             }
         }.also { owner.methods.add(it) }
-        +encryptViaParseString(localKey)
+        +NumberEncryptorClassic.encrypt(localKey)
         INVOKESTATIC(owner.name, arrayInitMethod.name, arrayInitMethod.desc, owner.isInterface)
     }
 
@@ -119,19 +119,6 @@ object NumberEncryptorArrayed : NumberEncryptor {
                 null,
                 null
             )
-    }
-
-    fun encryptViaParseString(value: Long): InsnList {
-        return instructions {
-            val key = Random.nextLong()
-            val unsignedString = java.lang.Long.toUnsignedString(key, 32)
-            LDC(unsignedString)
-            INT(32)
-            INVOKESTATIC("java/lang/Long", "parseUnsignedLong", "(Ljava/lang/String;I)J")
-            val obfuscated = key xor value
-            +obfuscated.toInsnNode()
-            LXOR
-        }
     }
 
 }
