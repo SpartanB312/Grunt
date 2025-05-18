@@ -3,7 +3,7 @@
 [![Version](https://img.shields.io/github/v/release/SpartanB312/Grunt)](https://github.com/SpartanB312/Grunt/releases)
 [![CodeFactor](https://www.codefactor.io/repository/github/spartanb312/grunt/badge)](https://www.codefactor.io/repository/github/spartanb312/grunt)
 
-Gruntpocalypse is a JVM bytecode obfuscator written in kotlin with 40+ features.
+Gruntpocalypse is a JVM bytecode obfuscator written in Kotlin with 40+ features.
 
 This project aims for stability and versatility. Some ideas are taken from other obfuscators.
 
@@ -22,9 +22,9 @@ If you encounter any compatibility issues, please open a GitHub Issue or join th
 
 ## Important
 
-Controlflow requires ComputeMaxs disabled.
-Ensure all project dependencies are included for stability and intensity.
-If dependencies are unavailable, enable <code>useComputeMaxs</code> in Global settings as a last resort.
+Controlflow requires computeMaxs disabled.
+Ensure all project dependencies are included for stability and performance.
+If dependencies are unavailable, enable `useComputeMaxs` in Global settings as a last resort.
 Address <code>VerifyError</code> by completing dependencies first.
 Only enable <code>computeMaxs</code> and disable controlflow obfuscation when dependencies are mostly unresolvable.
 
@@ -36,7 +36,7 @@ Stability level: 1 = Unstable; 5 = Stable
 |---------------------------------|----------------------|-------|--------------------------------------------------------------------------------------------|
 | **Renamer**                     | ClassRename          | 5     | Class renaming                                                                             |
 |                                 | FieldRename          | 5     | Field renaming                                                                             |
-|                                 | MethodRename         | 5     | Method renaming. Support InterfaceOverlap, InvokeDynamic, FunctionalInterface              |
+|                                 | MethodRename         | 5     | Method renaming. Supports InterfaceOverlap, InvokeDynamic and FunctionalInterface.         |
 |                                 | LocalVarRename       | 5     | Local variable renaming                                                                    |
 |                                 | ReflectionSupport    | 3     | Reflection remapping after renaming                                                        |
 | **Minecraft**                   | MixinClassRename     | 4     | Class renaming for Mixin class                                                             |
@@ -48,12 +48,12 @@ Stability level: 1 = Unstable; 5 = Stable
 |                                 | StringEncrypt        | 5     | Encrypt strings in different ways                                                          |
 | **Redirect**                    | MethodScramble       | 4     | Generate method call proxy                                                                 |
 |                                 | FieldScramble        | 5     | Generate field call proxy                                                                  |
-|                                 | StringEqualsRedirect | 5     | Replace string eqauls                                                                      |
+|                                 | StringEqualsRedirect | 5     | Replace string equals                                                                      |
 |                                 | InvokeDynamic        | 5     | Encrypt method call via invoke dynamic                                                     |
 | **Optimization**                | SourceDebugRemove    | 5     | Remove source debug information                                                            |
 |                                 | EnumOptimization     | 5     | Optimize enum classes                                                                      |
 |                                 | DeadCodeRemove       | 5     | Remove redundant dead codes                                                                |
-|                                 | KotlinOptimize       | 5     | Kotlin intrinsincs/metadata optimizer                                                      |
+|                                 | KotlinOptimize       | 5     | Kotlin intrinsics/metadata optimizer                                                      |
 |                                 | Shrinking            | 4     | Code shrinking                                                                             |
 | **Miscellaneous**               | *AntiDebug           | -     | Insert anti debug checker                                                                  |
 |                                 | Crasher              | 5     | Crash the decompiler                                                                       |
