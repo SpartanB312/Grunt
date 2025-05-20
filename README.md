@@ -9,8 +9,11 @@ This project aims for stability and versatility. Some ideas are taken from other
 
 Feel free to join our Discord server for suggestions: https://discord.gg/ysB2fMfeYW
 
-#### Grunt 2.5 will be the last version of Grunt 2, which comes in April 2025.
-#### Grunt 3 project will be launched later in 2025.
+#### Grunt 2.5 will be the last version of Grunt. 
+
+**As you can see, Grunt will be archived because the project initiator nooblesix believes it's time to end the project.**
+
+**Because he believes that open source is not profitable, Grunt will continue to exist in a "semi open source" manner and will open up the rename code.**
 
 ## Compatibility
 
