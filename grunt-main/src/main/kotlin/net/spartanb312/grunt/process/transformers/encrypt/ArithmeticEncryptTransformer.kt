@@ -84,7 +84,7 @@ object ArithmeticEncryptTransformer : Transformer("ArithmeticEncrypt", Category.
                     val next = methodNode.instructions[index + 1]
                     val nextNext = methodNode.instructions[index + 2]
                     when {
-                        insn.opcode == Opcodes.ICONST_M1 && next.opcode == Opcodes.IXOR && nextNext.opcode == Opcodes.IADD -> {
+                        insn.opcode == Opcodes.ICONST_M1 && next.opcode == Opcodes.IXOR && nextNext.opcode == Opcodes.IAND -> {
                             if (Random.nextBoolean()) {
                                 DUP_X1
                                 IOR
