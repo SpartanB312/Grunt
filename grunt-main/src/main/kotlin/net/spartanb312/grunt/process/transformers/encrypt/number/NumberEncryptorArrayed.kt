@@ -82,7 +82,7 @@ object NumberEncryptorArrayed : NumberEncryptor {
         +values.size.toInsnNode()
         NEWARRAY(Opcodes.T_LONG)
         PUTSTATIC(owner.name, field.name, field.desc)
-        var localKey = Random.nextLong()
+        val localKey = Random.nextLong()
         val arrayInitMethod = method(
             (if (owner.isInterface) PUBLIC else PRIVATE) + STATIC,
             getRandomString(16),

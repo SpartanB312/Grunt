@@ -59,16 +59,13 @@ object NumberEncryptorClassic : NumberEncryptor {
         }
     }
 
-    // TODO: VERY SLOW via parse string, using 2 int with bit operation instead
     fun encrypt(value: Long): InsnList = instructions {
-        val key = Random.nextLong()
-        val unsignedString = java.lang.Long.toUnsignedString(key, 32)
-        LDC(unsignedString)
-        INT(32)
-        INVOKESTATIC("java/lang/Long", "parseUnsignedLong", "(Ljava/lang/String;I)J")
-        val obfuscated = key xor value
-        +obfuscated.toInsnNode()
-        LXOR
+        val mask = Random.nextLong()
+        val first = Random.nextLong() and mask or value
+        val second = Random.nextLong() and mask.inv() or value
+        LDC(first)
+        LDC(second)
+        LAND
     }
 
 }
