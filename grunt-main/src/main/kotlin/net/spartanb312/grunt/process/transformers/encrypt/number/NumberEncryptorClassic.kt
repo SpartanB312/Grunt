@@ -1,11 +1,11 @@
 package net.spartanb312.grunt.process.transformers.encrypt.number
 
-import net.spartanb312.genesis.kotlin.extensions.INT
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.extensions.toInsnNode
 import net.spartanb312.genesis.kotlin.instructions
 import org.objectweb.asm.tree.InsnList
 import kotlin.random.Random
+import kotlin.random.nextInt
 
 /**
  * Replace const load instructions with equivalent instruction set
@@ -43,18 +43,28 @@ object NumberEncryptorClassic : NumberEncryptor {
         val negative = (if (Random.nextBoolean()) random else -random) + value
         val obfuscated = value xor negative
         return instructions {
-            if (Random.nextBoolean()) {
-                +negative.toInsnNode()
-                I2L
-                +obfuscated.toInsnNode()
-                I2L
-                LXOR
-                L2I
-            } else {
-                LDC(negative.toLong())
-                L2I
-                +obfuscated.toInsnNode()
-                IXOR
+            when (Random.nextInt(3)) {
+                0 -> {
+                    +negative.toInsnNode()
+                    I2L
+                    +obfuscated.toInsnNode()
+                    I2L
+                    LXOR
+                    L2I
+                }
+                1 -> {
+                    val first = Random.nextInt() and random or value
+                    val second = Random.nextInt() and random.inv() or value
+                    +first.toInsnNode()
+                    +second.toInsnNode()
+                    IAND
+                }
+                else -> {
+                    +negative.toLong().toInsnNode()
+                    L2I
+                    +obfuscated.toInsnNode()
+                    IXOR
+                }
             }
         }
     }
@@ -63,8 +73,8 @@ object NumberEncryptorClassic : NumberEncryptor {
         val mask = Random.nextLong()
         val first = Random.nextLong() and mask or value
         val second = Random.nextLong() and mask.inv() or value
-        LDC(first)
-        LDC(second)
+        +first.toInsnNode()
+        +second.toInsnNode()
         LAND
     }
 
