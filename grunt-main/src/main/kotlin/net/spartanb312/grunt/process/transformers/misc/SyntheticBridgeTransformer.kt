@@ -17,10 +17,11 @@ import org.objectweb.asm.tree.FieldNode
 
 /**
  * Insert synthetic and bridge to hide members
- * Last update on 2024/06/26
+ * Last update on 2025/05/31
  */
 object SyntheticBridgeTransformer : Transformer("SyntheticBridge", Category.Miscellaneous) {
 
+    private val removeSynthetics by setting("FlattenMethods", false)
     private val exclusion by setting("Exclusion", listOf())
 
     override fun ResourceCache.transform() {
@@ -30,10 +31,24 @@ object SyntheticBridgeTransformer : Transformer("SyntheticBridge", Category.Misc
                 .filter { !it.isAnnotation && it.name.notInList(exclusion) }
                 .forEach { classNode ->
                     pushSynthetic(classNode)
-                    pushBridge(classNode)
+                    // Removing synthetic access from methods makes some lambda methods visible to the decompiler.
+                    if (removeSynthetics) {
+                        removeSynthetic(classNode);
+                    } else {
+                        pushBridge(classNode)
+                    }
                 }
         }.get()
         Logger.info("    Inserted $count synthetic/bridge")
+    }
+
+    private fun Counter.removeSynthetic(classNode: ClassNode) {
+        classNode.methods.asSequence()
+            .filter { Opcodes.ACC_SYNTHETIC and it.access != 0 }
+            .forEach {
+                it.access = it.access and Opcodes.ACC_SYNTHETIC.inv()
+                add(1)
+            }
     }
 
     private fun Counter.pushSynthetic(classNode: ClassNode) {
