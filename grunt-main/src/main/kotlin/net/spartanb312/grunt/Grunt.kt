@@ -1,5 +1,6 @@
 package net.spartanb312.grunt
 
+import com.google.gson.JsonParseException
 import net.spartanb312.grunt.config.Configs
 import net.spartanb312.grunt.event.events.FinalizeEvent
 import net.spartanb312.grunt.event.events.GuiEvent
@@ -14,6 +15,14 @@ import net.spartanb312.grunt.process.transformers.PostProcessTransformer
 import net.spartanb312.grunt.utils.logging.Logger
 import java.awt.GraphicsEnvironment
 import java.io.File
+import java.io.FileNotFoundException
+import java.nio.file.Path
+import kotlin.io.path.absolute
+import kotlin.io.path.exists
+import kotlin.io.path.name
+import kotlin.io.path.readBytes
+import kotlin.io.path.writeBytes
+import kotlin.io.path.writeText
 import kotlin.system.measureTimeMillis
 
 /**
@@ -60,47 +69,56 @@ fun main(args: Array<String>) {
         guiMode = false
     }
 
-    if (guiMode) {
-        try {
-            Configs.loadConfig(config)
-            Configs.saveConfig(config) // Clean up the config
-        } catch (ignore: Exception) {
-            Logger.info("Failed to read config $config! But we generated a new one.")
-            // Сохраняем сломанный конфиг перед созданием нового
-            try {
-                val brokenConfig = File(config).readText()
-                File("config-breaked.json").writeText(brokenConfig)
-                Logger.info("Broken config saved to config-breaked.json")
-            } catch (e: Exception) {
-                Logger.error("Failed to save broken config: ${e.message}")
-            }
-            Configs.saveConfig(config)
+    fun writeFileWithBackup(source: ByteArray, target: Path) {
+        if (target.exists()) {
+            val backupFile = target.parent.resolve(target.name + ".bak")
+            writeFileWithBackup(target.readBytes(), backupFile)
         }
+        target.writeBytes(source)
+    }
+
+    fun handleCorruptedConfig(exception: JsonParseException) {
+        exception.printStackTrace()
+
+        // Saving a broken config before creating a new one
+        try {
+            val brokenConfig = File(config).readBytes()
+            writeFileWithBackup(brokenConfig, File("config-broken.json").toPath().absolute())
+            Logger.info("Broken config saved to config-breaked.json")
+        } catch (e: Exception) {
+            Logger.error("Failed to save broken config: ${e.message}")
+        }
+
+        Configs.saveConfig(config)
+        Logger.info("Failed to read config $config! But we generated a new one.")
+    }
+
+    Configs.resetConfig()
+    try {
+        Configs.loadConfig(config)
+        Configs.saveConfig(config) // Clean up the config
+    } catch (_: FileNotFoundException) {
+        Logger.info("Config file $config not found, creating new config...")
+        Configs.saveConfig(config)
+        if (!guiMode) {
+            Logger.info("Type (Y/N) if you want to continue")
+            if (readlnOrNull()?.lowercase() == "n") return
+        }
+    } catch (exception: JsonParseException) {
+        handleCorruptedConfig(exception)
+
+        if (!guiMode) {
+            Logger.info("Type (Y/N) if you want to continue")
+            if (readlnOrNull()?.lowercase() == "n") return
+        }
+    } // Fail off for other exceptions
+
+    if (guiMode) {
         GuiFrame.loadConfig(config)
         GuiFrame.setTitle("Gruntpocalypse${if (hasPlugins) "*" else ""} v$VERSION | $SUBTITLE")
         GuiEvent.AfterInit.post()
         GuiFrame.view()
-    } else {
-        try {
-            Configs.resetConfig()
-            Configs.loadConfig(config)
-            Configs.saveConfig(config) // Clean up the config
-        } catch (ignore: Exception) {
-            Logger.info("Failed to read config $config! But we generated a new one.")
-            // Сохраняем сломанный конфиг перед созданием нового
-            try {
-                val brokenConfig = File(config).readText()
-                File("config-breaked.json").writeText(brokenConfig)
-                Logger.info("Broken config saved to config-breaked.json")
-            } catch (e: Exception) {
-                Logger.error("Failed to save broken config: ${e.message}")
-            }
-            Configs.saveConfig(config)
-            Logger.info("Type (Y/N) if you want to continue")
-            if (readlnOrNull()?.lowercase() == "n") return
-        }
-        runProcess()
-    }
+    } else runProcess()
 }
 
 fun runProcess() {
