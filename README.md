@@ -24,11 +24,11 @@ Grunteon is a free and open source software licensed under PolyForm Strict Licen
 
 The license of each Grunt version：
 
-| Generation     | Versions    | License | Commercial Use |
-|----------------|-------------|---------|----------------|
-| Grunt          | 1.0.0-1.5.x | MIT     | Allowed        |
-| Gruntpocalypse | 2.0.0-2.5.x | LGPL3   | Not allowed    |
-| Grunteon       | 3.0.0-      | PFSL1   | Not allowed    |
+| Generation     | Versions    | Aim of obfuscation            | License | Commercial Use |
+|----------------|-------------|-------------------------------|---------|----------------|
+| Grunt          | 1.0.0-1.5.x | Lightweight and stability     | MIT     | Allowed        |
+| Gruntpocalypse | 2.0.0-2.5.x | Diversity and intensity       | LGPL3   | Restricted     |
+| Grunteon       | 3.0.0-      | Programmable and controllable | PFSL1   | Prohibited     |
 
 ## Stargazers over time
 

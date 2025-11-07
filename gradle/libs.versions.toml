@@ -1,0 +1,15 @@
+[versions]
+kotlin = "2.1.21"
+gson = "2.12.1"
+asm = "9.7.1"
+
+[libraries]
+# Objectweb
+asm = { group = "org.ow2.asm", name = "asm", version.ref = "asm" }
+asm-tree = { group = "org.ow2.asm", name = "asm-tree", version.ref = "asm" }
+asm-util = { group = "org.ow2.asm", name = "asm-util", version.ref = "asm" }
+asm-commons = { group = "org.ow2.asm", name = "asm-commons", version.ref = "asm" }
+asm-analysis = { group = "org.ow2.asm", name = "asm-analysis", version.ref = "asm" }
+
+[bundles]
+asm = ["asm", "asm-tree", "asm-util", "asm-commons", "asm-analysis"]

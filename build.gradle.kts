@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.1.20" apply false
+    kotlin("jvm") version libs.versions.kotlin apply false
 }
 
 group = "net.spartanb312"

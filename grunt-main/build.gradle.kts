@@ -19,18 +19,13 @@ val projectLib: Configuration by configurations.creating {
     configurations.api.get().extendsFrom(this)
 }
 
-
-val asmVersion = "9.7"
-
 dependencies {
     projectLib(project(":grunt-bootstrap"))
     //projectLib(project(":grunt-ir"))
     projectLib("net.spartanb312:genesis-kotlin:1.0")
-    //ASM
-    library("org.ow2.asm:asm:$asmVersion")
-    library("org.ow2.asm:asm-tree:$asmVersion")
-    library("org.ow2.asm:asm-analysis:$asmVersion")
-    library("org.ow2.asm:asm-commons:$asmVersion")
+    // libraries
+    library(libs.bundles.asm)
+    library("com.google.code.gson:gson:${libs.versions.gson.get()}")
 }
 
 tasks {
