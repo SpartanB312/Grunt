@@ -41,13 +41,13 @@ interface AnnotationVisitor {
      * Visits a primitive value of the annotation.
      *
      * @param name the value name.
-     * @param value the actual value, whose type must be [Byte], [Boolean], [     ], [Short], [Integer] , [Long], [Float], [Double],
+     * @param value the actual value, whose type must be [Byte], [Boolean], [Char], [Short], [Integer] , [Long], [Float], [Double],
      * [String] or [Type] of [Type.OBJECT] or [Type.ARRAY] sort. This
      * value can also be an array of byte, boolean, short, char, int, long, float or double values
      * (this is equivalent to using [.visitArray] and visiting each array element in turn,
      * but is more convenient).
      */
-    fun visit(name: String, value: Any)
+    fun visit(name: String?, value: Any) {}
 
     /**
      * Visits an enumeration value of the annotation.
@@ -56,7 +56,7 @@ interface AnnotationVisitor {
      * @param descriptor the class descriptor of the enumeration class.
      * @param value the actual enumeration value.
      */
-    fun visitEnum(name: String, descriptor: String, value: String)
+    fun visitEnum(name: String?, descriptor: String, value: String) {}
 
     /**
      * Visits a nested annotation value of the annotation.
@@ -67,7 +67,7 @@ interface AnnotationVisitor {
      * visitor is not interested in visiting this nested annotation. *The nested annotation
      * value must be fully visited before calling other methods on this annotation visitor*.
      */
-    fun visitAnnotation(name: String, descriptor: String): AnnotationVisitor
+    fun visitAnnotation(name: String?, descriptor: String?): AnnotationVisitor? = null
 
     /**
      * Visits an array value of the annotation. Note that arrays of primitive values (such as byte,
@@ -79,26 +79,26 @@ interface AnnotationVisitor {
      * this visitor are ignored. *All the array values must be visited before calling other
      * methods on this annotation visitor*.
      */
-    fun visitArray(name: String): AnnotationVisitor
+    fun visitArray(name: String?): AnnotationVisitor? = null
 
     /** Visits the end of the annotation.  */
-    fun visitEnd()
+    fun visitEnd() {}
 
     class FromOw2(val ow2: org.objectweb.asm.AnnotationVisitor) : AnnotationVisitor {
-        override fun visit(name: String, value: Any) {
+        override fun visit(name: String?, value: Any) {
             ow2.visit(name, value)
         }
 
-        override fun visitEnum(name: String, descriptor: String, value: String) {
+        override fun visitEnum(name: String?, descriptor: String, value: String) {
             ow2.visitEnum(name, descriptor, value)
         }
 
-        override fun visitAnnotation(name: String, descriptor: String): AnnotationVisitor {
-            return FromOw2(ow2.visitAnnotation(name, descriptor)!!)
+        override fun visitAnnotation(name: String?, descriptor: String?): AnnotationVisitor? {
+            return ow2.visitAnnotation(name, descriptor)?.let { FromOw2(it) }
         }
 
-        override fun visitArray(name: String): AnnotationVisitor {
-            return FromOw2(ow2.visitArray(name)!!)
+        override fun visitArray(name: String?): AnnotationVisitor? {
+            return ow2.visitArray(name)?.let { FromOw2(it) }
         }
 
         override fun visitEnd() {
@@ -106,25 +106,25 @@ interface AnnotationVisitor {
         }
     }
 
-    class ToOw2(val toOw2: AnnotationVisitor) : org.objectweb.asm.AnnotationVisitor(org.objectweb.asm.Opcodes.ASM9) {
-        override fun visit(name: String, value: Any) {
-            toOw2.visit(name, value)
+    class ToOw2(val grunt: AnnotationVisitor) : org.objectweb.asm.AnnotationVisitor(org.objectweb.asm.Opcodes.ASM9) {
+        override fun visit(name: String?, value: Any) {
+            grunt.visit(name, value)
         }
 
-        override fun visitEnum(name: String, descriptor: String, value: String) {
-            toOw2.visitEnum(name, descriptor, value)
+        override fun visitEnum(name: String?, descriptor: String, value: String) {
+            grunt.visitEnum(name, descriptor, value)
         }
 
-        override fun visitAnnotation(name: String, descriptor: String): org.objectweb.asm.AnnotationVisitor {
-            return ToOw2(toOw2.visitAnnotation(name, descriptor))
+        override fun visitAnnotation(name: String?, descriptor: String?): org.objectweb.asm.AnnotationVisitor? {
+            return grunt.visitAnnotation(name, descriptor)?.let { ToOw2(it) }
         }
 
-        override fun visitArray(name: String): org.objectweb.asm.AnnotationVisitor {
-            return ToOw2(toOw2.visitArray(name))
+        override fun visitArray(name: String?): org.objectweb.asm.AnnotationVisitor {
+            return grunt.visitArray(name)?.let { ToOw2(it) }!!
         }
 
         override fun visitEnd() {
-            toOw2.visitEnd()
+            grunt.visitEnd()
         }
     }
 }
