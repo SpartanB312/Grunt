@@ -1,0 +1,10 @@
+.gradle
+.idea
+/.gradle
+/logs
+.kotlin
+hs_err_pid*.log
+/engine.json
+build/
+/release
+/run
