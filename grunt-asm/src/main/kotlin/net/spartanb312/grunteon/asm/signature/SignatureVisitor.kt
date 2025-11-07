@@ -56,87 +56,87 @@ interface SignatureVisitor {
      *
      * @return a non null visitor to visit the signature of the class bound.
      */
-    fun visitClassBound(): SignatureVisitor
+    fun visitClassBound(): SignatureVisitor = this
 
     /**
      * Visits an interface bound of the last visited formal type parameter.
      *
      * @return a non null visitor to visit the signature of the interface bound.
      */
-    fun visitInterfaceBound(): SignatureVisitor
+    fun visitInterfaceBound(): SignatureVisitor = this
 
     /**
      * Visits the type of the super class.
      *
      * @return a non null visitor to visit the signature of the super class type.
      */
-    fun visitSuperclass(): SignatureVisitor
+    fun visitSuperclass(): SignatureVisitor = this
 
     /**
      * Visits the type of an interface implemented by the class.
      *
      * @return a non null visitor to visit the signature of the interface type.
      */
-    fun visitInterface(): SignatureVisitor
+    fun visitInterface(): SignatureVisitor = this
 
     /**
      * Visits the type of a method parameter.
      *
      * @return a non null visitor to visit the signature of the parameter type.
      */
-    fun visitParameterType(): SignatureVisitor
+    fun visitParameterType(): SignatureVisitor = this
 
     /**
      * Visits the return type of the method.
      *
      * @return a non null visitor to visit the signature of the return type.
      */
-    fun visitReturnType(): SignatureVisitor
+    fun visitReturnType(): SignatureVisitor = this
 
     /**
      * Visits the type of a method exception.
      *
      * @return a non null visitor to visit the signature of the exception type.
      */
-    fun visitExceptionType(): SignatureVisitor
+    fun visitExceptionType(): SignatureVisitor = this
 
     /**
      * Visits a signature corresponding to a primitive type.
      *
      * @param descriptor the descriptor of the primitive type, or 'V' for `void` .
      */
-    fun visitBaseType(descriptor: Char)
+    fun visitBaseType(descriptor: Char) {}
 
     /**
      * Visits a signature corresponding to a type variable.
      *
      * @param name the name of the type variable.
      */
-    fun visitTypeVariable(name: String)
+    fun visitTypeVariable(name: String) {}
 
     /**
      * Visits a signature corresponding to an array type.
      *
      * @return a non null visitor to visit the signature of the array element type.
      */
-    fun visitArrayType(): SignatureVisitor
+    fun visitArrayType(): SignatureVisitor = this
 
     /**
      * Starts the visit of a signature corresponding to a class or interface type.
      *
      * @param name the internal name of the class or interface (see [     ][Type.getInternalName]).
      */
-    fun visitClassType(name: String)
+    fun visitClassType(name: String) {}
 
     /**
      * Visits an inner class.
      *
      * @param name the local name of the inner class in its enclosing class.
      */
-    fun visitInnerClassType(name: String)
+    fun visitInnerClassType(name: String) {}
 
     /** Visits an unbounded type argument of the last visited class or inner class type.  */
-    fun visitTypeArgument()
+    fun visitTypeArgument() {}
 
     /**
      * Visits a type argument of the last visited class or inner class type.
@@ -144,7 +144,7 @@ interface SignatureVisitor {
      * @param wildcard '+', '-' or '='.
      * @return a non null visitor to visit the signature of the type argument.
      */
-    fun visitTypeArgument(wildcard: Char): SignatureVisitor
+    fun visitTypeArgument(wildcard: Char): SignatureVisitor = this
 
     /** Ends the visit of a signature corresponding to a class or interface type.  */
     fun visitEnd() {}
@@ -220,6 +220,10 @@ interface SignatureVisitor {
         override fun visitTypeArgument(wildcard: Char): SignatureVisitor {
             return FromOw2(ow2.visitTypeArgument(wildcard))
         }
+
+        override fun visitEnd() {
+            ow2.visitEnd()
+        }
     }
 
     class ToOw2(val grunt: SignatureVisitor) :
@@ -282,6 +286,10 @@ interface SignatureVisitor {
 
         override fun visitTypeArgument(wildcard: Char): org.objectweb.asm.signature.SignatureVisitor {
             return ToOw2(grunt.visitTypeArgument(wildcard))
+        }
+
+        override fun visitEnd() {
+            grunt.visitEnd()
         }
     }
 }
