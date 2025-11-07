@@ -3,6 +3,10 @@ plugins {
 }
 
 dependencies {
+    testImplementation(libs.junitAPI)
+    testImplementation(kotlin("test"))
+    testImplementation(project(":grunt-testcase"))
+
     projectLib(project(":grunt-bootstrap"))
     //projectLib(project(":grunt-ir"))
     projectLib("net.spartanb312:genesis-kotlin:1.0")
