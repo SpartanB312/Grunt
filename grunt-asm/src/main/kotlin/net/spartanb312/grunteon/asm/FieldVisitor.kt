@@ -103,8 +103,9 @@ interface FieldVisitor {
         }
     }
 
-    class ToOw2(val toOw2: org.objectweb.asm.FieldVisitor) : FieldVisitor {
-        override fun visitAnnotation(descriptor: String, visible: Boolean): AnnotationVisitor? {
+    class ToOw2(val toOw2: FieldVisitor) :
+        org.objectweb.asm.FieldVisitor(org.objectweb.asm.Opcodes.ASM9) {
+        override fun visitAnnotation(descriptor: String, visible: Boolean): org.objectweb.asm.AnnotationVisitor? {
             return toOw2.visitAnnotation(descriptor, visible)?.let { AnnotationVisitor.ToOw2(it) }
         }
 
@@ -113,7 +114,7 @@ interface FieldVisitor {
             typePath: TypePath?,
             descriptor: String,
             visible: Boolean
-        ): AnnotationVisitor? {
+        ): org.objectweb.asm.AnnotationVisitor? {
             return toOw2.visitTypeAnnotation(typeRef, typePath, descriptor, visible)
                 ?.let { AnnotationVisitor.ToOw2(it) }
         }

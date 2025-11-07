@@ -106,7 +106,7 @@ interface AnnotationVisitor {
         }
     }
 
-    class ToOw2(val toOw2: org.objectweb.asm.AnnotationVisitor) : AnnotationVisitor {
+    class ToOw2(val toOw2: AnnotationVisitor) : org.objectweb.asm.AnnotationVisitor(org.objectweb.asm.Opcodes.ASM9) {
         override fun visit(name: String, value: Any) {
             toOw2.visit(name, value)
         }
@@ -115,12 +115,12 @@ interface AnnotationVisitor {
             toOw2.visitEnum(name, descriptor, value)
         }
 
-        override fun visitAnnotation(name: String, descriptor: String): AnnotationVisitor {
-            return ToOw2(toOw2.visitAnnotation(name, descriptor)!!)
+        override fun visitAnnotation(name: String, descriptor: String): org.objectweb.asm.AnnotationVisitor {
+            return ToOw2(toOw2.visitAnnotation(name, descriptor))
         }
 
-        override fun visitArray(name: String): AnnotationVisitor {
-            return ToOw2(toOw2.visitArray(name)!!)
+        override fun visitArray(name: String): org.objectweb.asm.AnnotationVisitor {
+            return ToOw2(toOw2.visitArray(name))
         }
 
         override fun visitEnd() {

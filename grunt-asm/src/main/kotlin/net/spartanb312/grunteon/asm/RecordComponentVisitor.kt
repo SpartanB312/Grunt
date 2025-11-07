@@ -104,8 +104,9 @@ interface RecordComponentVisitor {
         }
     }
 
-    class ToOw2(val toOw2: org.objectweb.asm.RecordComponentVisitor) : RecordComponentVisitor {
-        override fun visitAnnotation(descriptor: String, visible: Boolean): AnnotationVisitor? {
+    class ToOw2(val toOw2: RecordComponentVisitor) :
+        org.objectweb.asm.RecordComponentVisitor(org.objectweb.asm.Opcodes.ASM9) {
+        override fun visitAnnotation(descriptor: String, visible: Boolean): org.objectweb.asm.AnnotationVisitor? {
             return toOw2.visitAnnotation(descriptor, visible)?.let { AnnotationVisitor.ToOw2(it) }
         }
 
@@ -114,7 +115,7 @@ interface RecordComponentVisitor {
             typePath: TypePath?,
             descriptor: String,
             visible: Boolean
-        ): AnnotationVisitor? {
+        ): org.objectweb.asm.AnnotationVisitor? {
             return toOw2.visitTypeAnnotation(typeRef, typePath, descriptor, visible)
                 ?.let { AnnotationVisitor.ToOw2(it) }
         }

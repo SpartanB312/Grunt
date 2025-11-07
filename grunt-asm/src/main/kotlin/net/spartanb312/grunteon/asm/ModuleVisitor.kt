@@ -137,7 +137,8 @@ interface ModuleVisitor {
         }
     }
 
-    class ToOw2(val toOw2: org.objectweb.asm.ModuleVisitor) : ModuleVisitor {
+    class ToOw2(val toOw2: ModuleVisitor) :
+        org.objectweb.asm.ModuleVisitor(org.objectweb.asm.Opcodes.ASM9) {
         override fun visitMainClass(mainClass: String) {
             toOw2.visitMainClass(mainClass)
         }
