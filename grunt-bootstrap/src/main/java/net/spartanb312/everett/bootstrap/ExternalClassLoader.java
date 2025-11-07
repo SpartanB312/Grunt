@@ -138,6 +138,38 @@ public class ExternalClassLoader extends URLClassLoader {
     }
 
     @Override
+    @SuppressWarnings("ALL")
+    public Enumeration<URL> getResources(String name) throws IOException {
+        Set<URL> urlList = new HashSet<>();
+        // Find in this class loader
+        URL resInCache = resourceCache.getOrDefault(name, null);
+        if (resInCache != null) urlList.add(resInCache);
+        URL resInThis = super.findResource(name);
+        if (resInThis != null) urlList.add(resInThis);
+        URL resInParent = getParent().getResource(name);
+        if (resInParent != null) urlList.add(resInParent);
+        for (String path : resourcePaths) {
+            URL res = findInPath(path, name);
+            if (res != null) urlList.add(res);
+        }
+        for (String sysPath : systemPaths) {
+            URL res = findInPath(sysPath, name);
+            if (res != null) urlList.add(res);
+        }
+        for (String dummy : dummyPaths) {
+            URL res = findInPath(dummy, name);
+            if (res != null) urlList.add(res);
+        }
+        // Deep scan other class loader
+        for (ExternalClassLoader loader : loaderPool) {
+            if (loader == this) continue;
+            var inOther = findResource(name, false);
+            if (inOther != null) urlList.add(inOther);
+        }
+        return Collections.enumeration(urlList);
+    }
+
+    @Override
     public URL findResource(String name) {
         return findResource(name, true);
     }
