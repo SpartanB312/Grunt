@@ -1,12 +1,5 @@
 plugins {
-    java
-}
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
+    id("buildsrc.convention.java")
 }
 
 tasks {

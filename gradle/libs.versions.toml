@@ -1,9 +1,14 @@
 [versions]
-kotlin = "2.1.21"
+kotlin = "2.2.21"
+kotlinDSL = "6.4.2"
+
 gson = "2.12.1"
-asm = "9.7.1"
+asm = "9.9"
 
 [libraries]
+kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlinDSLGradlePlugin = { module = "org.gradle.kotlin.kotlin-dsl:org.gradle.kotlin.kotlin-dsl.gradle.plugin", version.ref = "kotlinDSL" }
+
 # Objectweb
 asm = { group = "org.ow2.asm", name = "asm", version.ref = "asm" }
 asm-tree = { group = "org.ow2.asm", name = "asm-tree", version.ref = "asm" }
