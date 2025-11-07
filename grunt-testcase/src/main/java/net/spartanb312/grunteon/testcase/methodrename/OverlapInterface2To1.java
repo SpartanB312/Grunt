@@ -1,7 +1,6 @@
 package net.spartanb312.grunteon.testcase.methodrename;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class OverlapInterface2To1 {
     public static void main(String[] args) {
