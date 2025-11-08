@@ -34,20 +34,14 @@ import org.objectweb.asm.MethodVisitor
  *
  * @author Remi Forax
  */
-class ParameterNode
-/**
- * Constructs a new [ParameterNode].
- *
- * @param access The parameter's access flags. Valid values are `ACC_FINAL`, `ACC_SYNTHETIC` or/and `ACC_MANDATED` (see [org.objectweb.asm.Opcodes]).
- * @param name the parameter's name.
- */(
+interface ParameterNode : Node {
     /** The parameter's name.  */
-    var name: String?,
+    val name: String
     /**
      * The parameter's access flags (see [org.objectweb.asm.Opcodes]). Valid values are `ACC_FINAL`, `ACC_SYNTHETIC` and `ACC_MANDATED`.
      */
-    var access: Int
-) {
+    val access: Int
+
     /**
      * Makes the given visitor visit this parameter declaration.
      *
@@ -56,4 +50,9 @@ class ParameterNode
     fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitParameter(name, access)
     }
+}
+
+interface MutableParameterNode : ParameterNode {
+    override var name: String
+    override var access: Int
 }

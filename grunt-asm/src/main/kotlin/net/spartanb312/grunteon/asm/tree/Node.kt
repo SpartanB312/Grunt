@@ -34,6 +34,11 @@ interface NodeFactory {
         attrs: MutableList<Attribute> = ArrayList(0)
     ): MutableFieldNode
 
+    fun ParameterNode(
+        name: String,
+        access: Int
+    ): MutableParameterNode
+
     object Default : NodeFactory {
         override fun Annotation(
             desc: String,
@@ -83,6 +88,16 @@ interface NodeFactory {
             override var visibleTypeAnnotations = visibleTypeAnnotations
             override var invisibleTypeAnnotations = invisibleTypeAnnotations
             override var attrs: MutableList<Attribute> = attrs
+        }
+
+        override fun ParameterNode(
+            name: String,
+            access: Int
+        ): MutableParameterNode = object : MutableParameterNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var name: String = name
+            override var access: Int = access
         }
     }
 }
