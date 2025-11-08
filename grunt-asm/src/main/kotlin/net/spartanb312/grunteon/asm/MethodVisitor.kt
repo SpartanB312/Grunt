@@ -307,7 +307,7 @@ interface MethodVisitor {
         name: String,
         descriptor: String,
         bootstrapMethodHandle: Handle,
-        vararg bootstrapMethodArguments: Any
+        bootstrapMethodArguments: List<Any>
     ) {
     }
 
@@ -640,13 +640,13 @@ interface MethodVisitor {
             name: String,
             descriptor: String,
             bootstrapMethodHandle: Handle,
-            vararg bootstrapMethodArguments: Any
+            bootstrapMethodArguments: List<Any>
         ) {
             ow2.visitInvokeDynamicInsn(
                 name,
                 descriptor,
                 bootstrapMethodHandle,
-                *bootstrapMethodArguments
+                *bootstrapMethodArguments.toTypedArray()
             )
         }
 
@@ -856,9 +856,9 @@ interface MethodVisitor {
             name: String,
             descriptor: String,
             bootstrapMethodHandle: Handle,
-            vararg bootstrapMethodArguments: Any
+            bootstrapMethodArguments: Array<Any>
         ) {
-            grunt.visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle, *bootstrapMethodArguments)
+            grunt.visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments.toList())
         }
 
         override fun visitJumpInsn(opcode: Int, label: Label) {

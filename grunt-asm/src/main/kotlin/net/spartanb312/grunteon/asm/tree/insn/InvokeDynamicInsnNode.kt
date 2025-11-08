@@ -27,51 +27,37 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
+import net.spartanb312.grunteon.asm.MethodVisitor
 import org.objectweb.asm.Handle
-import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents an invokedynamic instruction.
  *
  * @author Remi Forax
  */
-class InvokeDynamicInsnNode(
+interface InvokeDynamicInsnNode : BaseInsnNode {
+    override val opcode: Int
+        get() = Opcodes.INVOKEDYNAMIC
+
     /** The method's name.  */
-    var name: String?,
+    val name: String
+
     /** The method's descriptor (see [org.objectweb.asm.Type]).  */
-    var desc: String?,
-    /** The bootstrap method.  */
-    var bsm: Handle?,
-    vararg bootstrapMethodArguments: Any?
-) : AbstractInsnNode(Opcodes.INVOKEDYNAMIC) {
+    val desc: String
+
+    /** The bootstrap method. */
+    val bsm: Handle
+
     /** The bootstrap method constant arguments.  */
-    var bsmArgs: Array<Any?>
+    val bsmArgs: List<Any>
 
-    /**
-     * Constructs a new [InvokeDynamicInsnNode].
-     *
-     * @param name the method's name.
-     * @param desc the method's descriptor (see [org.objectweb.asm.Type]).
-     * @param bsm the bootstrap method.
-     * @param bootstrapMethodArguments the bootstrap method constant arguments. Each argument must be
-     * an [Integer], [Float], [Long], [Double], [String], [     ] or [Handle] value. This method is allowed to modify the
-     * content of the array so a caller should expect that this array may change.
-     */
-    init {
-        this.bsmArgs = bootstrapMethodArguments // NOPMD(ArrayIsStoredDirectly): public field.
-    }
-
-    override fun getType(): Int {
-        return INVOKE_DYNAMIC_INSN
-    }
+    override val type: Int
+        get() = AbstractInsnNode.INVOKE_DYNAMIC_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitInvokeDynamicInsn(name, desc, bsm, *bsmArgs)
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return InvokeDynamicInsnNode(name, desc, bsm, *bsmArgs).cloneAnnotations(this)
+        methodVisitor.visitInvokeDynamicInsn(name, desc, bsm, bsmArgs)
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }
