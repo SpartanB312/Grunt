@@ -27,54 +27,35 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents a field instruction. A field instruction is an instruction that loads or
  * stores the value of a field of an object.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class FieldInsnNode
-/**
- * Constructs a new [FieldInsnNode].
- *
- * @param opcode the opcode of the type instruction to be constructed. This opcode must be
- * GETSTATIC, PUTSTATIC, GETFIELD or PUTFIELD.
- * @param owner the internal name of the field's owner class (see [     ][org.objectweb.asm.Type.getInternalName]).
- * @param name the field's name.
- * @param desc the field's descriptor (see [org.objectweb.asm.Type]).
- */(
-    opcode: Int,
+interface FieldInsnNode : BaseInsnNode {
+    override val opcode: Int
+
     /**
      * The internal name of the field's owner class (see [ ][org.objectweb.asm.Type.getInternalName]).
      */
-    var owner: String?,
-    /** The field's name.  */
-    var name: String?,
-    /** The field's descriptor (see [org.objectweb.asm.Type]).  */
-    var desc: String?
-) : AbstractInsnNode(opcode) {
-    /**
-     * Sets the opcode of this instruction.
-     *
-     * @param opcode the new instruction opcode. This opcode must be GETSTATIC, PUTSTATIC, GETFIELD or
-     * PUTFIELD.
-     */
-    fun setOpcode(opcode: Int) {
-        this.opcode = opcode
-    }
+    val owner: String
 
-    override fun getType(): Int {
-        return FIELD_INSN
-    }
+    /** The field's name.  */
+    val name: String
+
+    /** The field's descriptor (see [org.objectweb.asm.Type]).  */
+    val desc: String
+
+    override val type: Int
+        get() = AbstractInsnNode.FIELD_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitFieldInsn(opcode, owner, name, desc)
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return FieldInsnNode(opcode, owner, name, desc).cloneAnnotations(this)
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

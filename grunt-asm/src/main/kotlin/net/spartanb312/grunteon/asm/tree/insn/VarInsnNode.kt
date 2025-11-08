@@ -27,47 +27,27 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents a local variable instruction. A local variable instruction is an
  * instruction that loads or stores the value of a local variable.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class VarInsnNode
-/**
- * Constructs a new [VarInsnNode].
- *
- * @param opcode the opcode of the local variable instruction to be constructed. This opcode must
- * be ILOAD, LLOAD, FLOAD, DLOAD, ALOAD, ISTORE, LSTORE, FSTORE, DSTORE, ASTORE or RET.
- * @param `var` the operand of the instruction to be constructed. This operand is the index of
- * a local variable.
- */(
-    opcode: Int,
-    /** The operand of this instruction. This operand is the index of a local variable.  */
-    var `var`: Int
-) : AbstractInsnNode(opcode) {
-    /**
-     * Sets the opcode of this instruction.
-     *
-     * @param opcode the new instruction opcode. This opcode must be ILOAD, LLOAD, FLOAD, DLOAD,
-     * ALOAD, ISTORE, LSTORE, FSTORE, DSTORE, ASTORE or RET.
-     */
-    fun setOpcode(opcode: Int) {
-        this.opcode = opcode
-    }
+interface VarInsnNode : BaseInsnNode {
+    override val opcode: Int
 
-    override fun getType(): Int {
-        return VAR_INSN
-    }
+    /** The operand of this instruction. This operand is the index of a local variable.  */
+    val variable: Int
+
+    override val type: Int
+        get() = AbstractInsnNode.VAR_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitVarInsn(opcode, `var`)
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return VarInsnNode(opcode, `var`).cloneAnnotations(this)
+        methodVisitor.visitVarInsn(opcode, variable)
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }
