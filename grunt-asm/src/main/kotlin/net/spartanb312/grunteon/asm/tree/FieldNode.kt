@@ -118,10 +118,10 @@ interface MutableFieldNode : FieldNode, FieldVisitor {
     override var desc: String
     override var signature: String?
     override var value: Any?
-    override val visibleAnnotations: MutableList<MutableAnnotationNode>
-    override val invisibleAnnotations: MutableList<MutableAnnotationNode>
-    override val visibleTypeAnnotations: MutableList<MutableTypeAnnotationNode>
-    override val invisibleTypeAnnotations: MutableList<MutableTypeAnnotationNode>
+    override val visibleAnnotations: MutableList<AnnotationNode>
+    override val invisibleAnnotations: MutableList<AnnotationNode>
+    override val visibleTypeAnnotations: MutableList<TypeAnnotationNode>
+    override val invisibleTypeAnnotations: MutableList<TypeAnnotationNode>
     override val attrs: MutableList<Attribute>
 
     // -----------------------------------------------------------------------------------------------

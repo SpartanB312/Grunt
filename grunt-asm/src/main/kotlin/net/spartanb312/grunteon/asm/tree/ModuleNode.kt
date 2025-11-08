@@ -76,11 +76,11 @@ interface MutableModuleNode : ModuleNode, ModuleVisitor {
     override var version: String?
     override var mainClass: String?
     override val packages: MutableList<String>
-    override val requires: MutableList<MutableModuleRequireNode>
-    override val exports: MutableList<MutableModuleExportNode>
-    override val opens: MutableList<MutableModuleOpenNode>
+    override val requires: MutableList<ModuleRequireNode>
+    override val exports: MutableList<ModuleExportNode>
+    override val opens: MutableList<ModuleOpenNode>
     override val uses: MutableList<String>
-    override val provides: MutableList<MutableModuleProvideNode>
+    override val provides: MutableList<ModuleProvideNode>
 
     override fun visitMainClass(mainClass: String) {
         this.mainClass = mainClass

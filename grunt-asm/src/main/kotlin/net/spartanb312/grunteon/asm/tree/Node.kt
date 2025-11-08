@@ -27,10 +27,10 @@ interface NodeFactory {
         desc: String = "",
         signature: String? = null,
         value: Any? = null,
-        visibleAnnotations: MutableList<MutableAnnotationNode> = ArrayList(0),
-        invisibleAnnotations: MutableList<MutableAnnotationNode> = ArrayList(0),
-        visibleTypeAnnotations: MutableList<MutableTypeAnnotationNode> = ArrayList(0),
-        invisibleTypeAnnotations: MutableList<MutableTypeAnnotationNode> = ArrayList(0),
+        visibleAnnotations: MutableList<AnnotationNode> = ArrayList(0),
+        invisibleAnnotations: MutableList<AnnotationNode> = ArrayList(0),
+        visibleTypeAnnotations: MutableList<TypeAnnotationNode> = ArrayList(0),
+        invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = ArrayList(0),
         attrs: MutableList<Attribute> = ArrayList(0)
     ): MutableFieldNode
 
@@ -68,11 +68,11 @@ interface NodeFactory {
         version: String?,
         mainClass: String?,
         packages: MutableList<String>,
-        requires: MutableList<MutableModuleRequireNode>,
-        exports: MutableList<MutableModuleExportNode>,
-        opens: MutableList<MutableModuleOpenNode>,
+        requires: MutableList<ModuleRequireNode>,
+        exports: MutableList<ModuleExportNode>,
+        opens: MutableList<ModuleOpenNode>,
         uses: MutableList<String>,
-        provides: MutableList<MutableModuleProvideNode>
+        provides: MutableList<ModuleProvideNode>
     ): MutableModuleNode
 
     object Default : NodeFactory {
@@ -106,10 +106,10 @@ interface NodeFactory {
             desc: String,
             signature: String?,
             value: Any?,
-            visibleAnnotations: MutableList<MutableAnnotationNode>,
-            invisibleAnnotations: MutableList<MutableAnnotationNode>,
-            visibleTypeAnnotations: MutableList<MutableTypeAnnotationNode>,
-            invisibleTypeAnnotations: MutableList<MutableTypeAnnotationNode>,
+            visibleAnnotations: MutableList<AnnotationNode>,
+            invisibleAnnotations: MutableList<AnnotationNode>,
+            visibleTypeAnnotations: MutableList<TypeAnnotationNode>,
+            invisibleTypeAnnotations: MutableList<TypeAnnotationNode>,
             attrs: MutableList<Attribute>
         ): MutableFieldNode = object : MutableFieldNode {
             override val nodeFactory: NodeFactory
@@ -188,11 +188,11 @@ interface NodeFactory {
             version: String?,
             mainClass: String?,
             packages: MutableList<String>,
-            requires: MutableList<MutableModuleRequireNode>,
-            exports: MutableList<MutableModuleExportNode>,
-            opens: MutableList<MutableModuleOpenNode>,
+            requires: MutableList<ModuleRequireNode>,
+            exports: MutableList<ModuleExportNode>,
+            opens: MutableList<ModuleOpenNode>,
             uses: MutableList<String>,
-            provides: MutableList<MutableModuleProvideNode>
+            provides: MutableList<ModuleProvideNode>
         ): MutableModuleNode = object : MutableModuleNode {
             override val nodeFactory: NodeFactory
                 get() = this@Default
@@ -201,11 +201,11 @@ interface NodeFactory {
             override var version: String? = version
             override var mainClass: String? = mainClass
             override var packages: MutableList<String> = packages
-            override var requires: MutableList<MutableModuleRequireNode> = requires
-            override var exports: MutableList<MutableModuleExportNode> = exports
-            override var opens: MutableList<MutableModuleOpenNode> = opens
+            override var requires: MutableList<ModuleRequireNode> = requires
+            override var exports: MutableList<ModuleExportNode> = exports
+            override var opens: MutableList<ModuleOpenNode> = opens
             override var uses: MutableList<String> = uses
-            override var provides: MutableList<MutableModuleProvideNode> = provides
+            override var provides: MutableList<ModuleProvideNode> = provides
         }
     }
 }
