@@ -19,4 +19,31 @@ interface NodeFactory {
         typeRef: Int,
         typePath: TypePath? = null
     ): MutableTypeAnnotationNode
+
+    object Default : NodeFactory {
+        override fun Annotation(
+            desc: String,
+            values: MutableList<Any?>
+        ): MutableAnnotationNode = object : MutableAnnotationNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var desc: String = desc
+            override var values: MutableList<Any?> = values
+        }
+
+
+        override fun TypeAnnotationNode(
+            desc: String,
+            values: MutableList<Any?>,
+            typeRef: Int,
+            typePath: TypePath?
+        ): MutableTypeAnnotationNode = object : MutableTypeAnnotationNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var desc: String = desc
+            override var values: MutableList<Any?> = values
+            override var typeRef: Int = typeRef
+            override var typePath: TypePath? = typePath
+        }
+    }
 }
