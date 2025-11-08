@@ -27,52 +27,30 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents a jump instruction. A jump instruction is an instruction that may jump to
  * another instruction.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class JumpInsnNode
-/**
- * Constructs a new [JumpInsnNode].
- *
- * @param opcode the opcode of the type instruction to be constructed. This opcode must be IFEQ,
- * IFNE, IFLT, IFGE, IFGT, IFLE, IF_ICMPEQ, IF_ICMPNE, IF_ICMPLT, IF_ICMPGE, IF_ICMPGT,
- * IF_ICMPLE, IF_ACMPEQ, IF_ACMPNE, GOTO, JSR, IFNULL or IFNONNULL.
- * @param label the operand of the instruction to be constructed. This operand is a label that
- * designates the instruction to which the jump instruction may jump.
- */(
-    opcode: Int,
+interface JumpInsnNode : BaseInsnNode {
+    override val opcode: Int
+
     /**
      * The operand of this instruction. This operand is a label that designates the instruction to
      * which this instruction may jump.
      */
-    var label: LabelNode
-) : AbstractInsnNode(opcode) {
-    /**
-     * Sets the opcode of this instruction.
-     *
-     * @param opcode the new instruction opcode. This opcode must be IFEQ, IFNE, IFLT, IFGE, IFGT,
-     * IFLE, IF_ICMPEQ, IF_ICMPNE, IF_ICMPLT, IF_ICMPGE, IF_ICMPGT, IF_ICMPLE, IF_ACMPEQ,
-     * IF_ACMPNE, GOTO, JSR, IFNULL or IFNONNULL.
-     */
-    fun setOpcode(opcode: Int) {
-        this.opcode = opcode
-    }
+    val label: LabelNode
 
-    override fun getType(): Int {
-        return JUMP_INSN
-    }
+    override val type: Int
+        get() = AbstractInsnNode.JUMP_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitJumpInsn(opcode, label.getLabel())
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode {
-        return JumpInsnNode(opcode, clone(label, clonedLabels)).cloneAnnotations(this)
+        methodVisitor.visitJumpInsn(opcode, label.value)
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

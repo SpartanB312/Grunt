@@ -27,46 +27,21 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
+import net.spartanb312.grunteon.asm.MethodVisitor
 import org.objectweb.asm.Label
-import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.tree.AbstractInsnNode
 
-/** An [AbstractInsnNode] that encapsulates a [Label].  */
-class LabelNode : AbstractInsnNode {
-    private var value: Label? = null
+/** An [BaseInsnNode] that encapsulates a [Label].  */
+interface LabelNode : BaseInsnNode {
+    override val opcode: Int
+        get() = -1
 
-    constructor() : super(-1)
+    val value: Label
 
-    constructor(label: Label?) : super(-1) {
-        this.value = label
-    }
-
-    override fun getType(): Int {
-        return LABEL
-    }
-
-    val label: Label
-        /**
-         * Returns the label encapsulated by this node. A new label is created and associated with this
-         * node if it was created without an encapsulated label.
-         *
-         * @return the label encapsulated by this node.
-         */
-        get() {
-            if (value == null) {
-                value = Label()
-            }
-            return value
-        }
+    override val type: Int
+        get() = AbstractInsnNode.LABEL
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitLabel(this.label)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode? {
-        return clonedLabels.get(this)
-    }
-
-    fun resetLabel() {
-        value = null
+        methodVisitor.visitLabel(this.value)
     }
 }

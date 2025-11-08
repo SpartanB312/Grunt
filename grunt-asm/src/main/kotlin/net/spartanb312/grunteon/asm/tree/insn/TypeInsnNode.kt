@@ -27,50 +27,30 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents a type instruction. A type instruction is an instruction which takes an
  * internal name as parameter (see [org.objectweb.asm.Type.getInternalName]).
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class TypeInsnNode
-/**
- * Constructs a new [TypeInsnNode].
- *
- * @param opcode the opcode of the type instruction to be constructed. This opcode must be NEW,
- * ANEWARRAY, CHECKCAST or INSTANCEOF.
- * @param desc the operand of the instruction to be constructed. This operand is an internal name
- * (see [org.objectweb.asm.Type.getInternalName]).
- */(
-    opcode: Int,
+interface TypeInsnNode : BaseInsnNode {
+    override val opcode: Int
+
     /**
      * The operand of this instruction. Despite its name (due to historical reasons), this operand is
      * an internal name (see [org.objectweb.asm.Type.getInternalName]).
      */
-    var desc: String?
-) : AbstractInsnNode(opcode) {
-    /**
-     * Sets the opcode of this instruction.
-     *
-     * @param opcode the new instruction opcode. This opcode must be NEW, ANEWARRAY, CHECKCAST or
-     * INSTANCEOF.
-     */
-    fun setOpcode(opcode: Int) {
-        this.opcode = opcode
-    }
+    val desc: String
 
-    override fun getType(): Int {
-        return TYPE_INSN
-    }
+    override val type: Int
+        get() = AbstractInsnNode.TYPE_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitTypeInsn(opcode, desc)
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return TypeInsnNode(opcode, desc).cloneAnnotations(this)
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }
