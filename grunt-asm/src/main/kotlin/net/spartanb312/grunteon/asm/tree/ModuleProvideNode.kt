@@ -27,24 +27,20 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
-import org.objectweb.asm.ModuleVisitor
+import net.spartanb312.grunteon.asm.ModuleVisitor
+
 
 /** A node that represents a provided service and its providers. */
-interface ModuleProvideNode {
-    val service: String?
-    val providers: List<String?>?
+interface ModuleProvideNode : Node {
+    val service: String
+    val providers: List<String>
 
     fun accept(moduleVisitor: ModuleVisitor) {
-        moduleVisitor.visitProvide(service, *if (providers == null) null else providers.toTypedArray())
+        moduleVisitor.visitProvide(service, *providers.toTypedArray())
     }
 }
 
 interface MutableModuleProvideNode : ModuleProvideNode {
-    override var service: String?
-    override var providers: MutableList<String?>?
-
-    companion object {
-        class Impl(override var service: String?, override var providers: MutableList<String?>?) :
-            MutableModuleProvideNode
-    }
+    override var service: String
+    override var providers: MutableList<String>
 }

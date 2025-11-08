@@ -32,33 +32,25 @@ import org.objectweb.asm.ModuleVisitor
 /**
  * A node that represents an exported package with its name and the module that can access to it.
  */
-interface ModuleExportNode {
+interface ModuleExportNode : Node {
     /** The internal name of the exported package */
-    val packaze: String?
+    val packaze: String
 
     /** The access flags */
     val access: Int
 
     /** The list of modules that can access this exported package, or null */
-    val modules: List<String?>?
+    val modules: List<String>
 
     /** Makes the given module visitor visit this export declaration. */
     fun accept(moduleVisitor: ModuleVisitor) {
-        moduleVisitor.visitExport(packaze, access, *if (modules == null) null else modules.toTypedArray())
+        moduleVisitor.visitExport(packaze, access, *modules.toTypedArray())
     }
 }
 
 /** Mutable variant of [ModuleExportNode]. */
 interface MutableModuleExportNode : ModuleExportNode {
-    override var packaze: String?
+    override var packaze: String
     override var access: Int
-    override var modules: MutableList<String?>?
-
-    companion object {
-        class Impl(
-            override var packaze: String?,
-            override var access: Int,
-            override var modules: MutableList<String?>?
-        ) : MutableModuleExportNode
-    }
+    override var modules: MutableList<String>
 }

@@ -39,6 +39,42 @@ interface NodeFactory {
         access: Int
     ): MutableParameterNode
 
+    fun ModuleRequire(
+        module: String,
+        access: Int,
+        version: String?
+    ): MutableModuleRequireNode
+
+    fun ModuleExport(
+        packaze: String,
+        access: Int,
+        modules: MutableList<String>
+    ): MutableModuleExportNode
+
+    fun ModuleOpen(
+        packaze: String,
+        access: Int,
+        modules: MutableList<String>
+    ): MutableModuleOpenNode
+
+    fun ModuleProvide(
+        service: String,
+        providers: MutableList<String>
+    ): MutableModuleProvideNode
+
+    fun Module(
+        name: String,
+        access: Int,
+        version: String?,
+        mainClass: String?,
+        packages: MutableList<String>,
+        requires: MutableList<MutableModuleRequireNode>,
+        exports: MutableList<MutableModuleExportNode>,
+        opens: MutableList<MutableModuleOpenNode>,
+        uses: MutableList<String>,
+        provides: MutableList<MutableModuleProvideNode>
+    ): MutableModuleNode
+
     object Default : NodeFactory {
         override fun Annotation(
             desc: String,
@@ -98,6 +134,78 @@ interface NodeFactory {
                 get() = this@Default
             override var name: String = name
             override var access: Int = access
+        }
+
+        override fun ModuleRequire(
+            module: String,
+            access: Int,
+            version: String?
+        ): MutableModuleRequireNode = object : MutableModuleRequireNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var module: String = module
+            override var access: Int = access
+            override var version: String? = version
+        }
+
+        override fun ModuleExport(
+            packaze: String,
+            access: Int,
+            modules: MutableList<String>
+        ): MutableModuleExportNode = object : MutableModuleExportNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var packaze: String = packaze
+            override var access: Int = access
+            override var modules: MutableList<String> = modules
+        }
+
+        override fun ModuleOpen(
+            packaze: String,
+            access: Int,
+            modules: MutableList<String>
+        ): MutableModuleOpenNode = object : MutableModuleOpenNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var packaze: String = packaze
+            override var access: Int = access
+            override var modules: MutableList<String> = modules
+        }
+
+        override fun ModuleProvide(
+            service: String,
+            providers: MutableList<String>
+        ): MutableModuleProvideNode = object : MutableModuleProvideNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var service: String = service
+            override var providers: MutableList<String> = providers
+        }
+
+        override fun Module(
+            name: String,
+            access: Int,
+            version: String?,
+            mainClass: String?,
+            packages: MutableList<String>,
+            requires: MutableList<MutableModuleRequireNode>,
+            exports: MutableList<MutableModuleExportNode>,
+            opens: MutableList<MutableModuleOpenNode>,
+            uses: MutableList<String>,
+            provides: MutableList<MutableModuleProvideNode>
+        ): MutableModuleNode = object : MutableModuleNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var name: String = name
+            override var access: Int = access
+            override var version: String? = version
+            override var mainClass: String? = mainClass
+            override var packages: MutableList<String> = packages
+            override var requires: MutableList<MutableModuleRequireNode> = requires
+            override var exports: MutableList<MutableModuleExportNode> = exports
+            override var opens: MutableList<MutableModuleOpenNode> = opens
+            override var uses: MutableList<String> = uses
+            override var provides: MutableList<MutableModuleProvideNode> = provides
         }
     }
 }

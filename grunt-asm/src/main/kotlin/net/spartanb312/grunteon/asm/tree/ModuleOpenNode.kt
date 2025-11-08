@@ -30,26 +30,18 @@ package net.spartanb312.grunteon.asm.tree
 import org.objectweb.asm.ModuleVisitor
 
 /** A node that represents an opened package with its name and the module that can access it. */
-interface ModuleOpenNode {
-    val packaze: String?
+interface ModuleOpenNode : Node {
+    val packaze: String
     val access: Int
-    val modules: List<String?>?
+    val modules: List<String>
 
     fun accept(moduleVisitor: ModuleVisitor) {
-        moduleVisitor.visitOpen(packaze, access, *if (modules == null) null else modules.toTypedArray())
+        moduleVisitor.visitOpen(packaze, access, *modules.toTypedArray())
     }
 }
 
 interface MutableModuleOpenNode : ModuleOpenNode {
-    override var packaze: String?
+    override var packaze: String
     override var access: Int
-    override var modules: MutableList<String?>?
-
-    companion object {
-        class Impl(
-            override var packaze: String?,
-            override var access: Int,
-            override var modules: MutableList<String?>?
-        ) : MutableModuleOpenNode
-    }
+    override var modules: MutableList<String>
 }

@@ -30,8 +30,8 @@ package net.spartanb312.grunteon.asm.tree
 import org.objectweb.asm.ModuleVisitor
 
 /** A node that represents a required module with its name and access of a module descriptor. */
-interface ModuleRequireNode {
-    val module: String?
+interface ModuleRequireNode : Node {
+    val module: String
     val access: Int
     val version: String?
 
@@ -41,12 +41,7 @@ interface ModuleRequireNode {
 }
 
 interface MutableModuleRequireNode : ModuleRequireNode {
-    override var module: String?
+    override var module: String
     override var access: Int
     override var version: String?
-
-    companion object {
-        class Impl(override var module: String?, override var access: Int, override var version: String?) :
-            MutableModuleRequireNode
-    }
 }

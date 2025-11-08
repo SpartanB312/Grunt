@@ -27,215 +27,91 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
+import net.spartanb312.grunteon.asm.ModuleVisitor
 import org.objectweb.asm.ClassVisitor
-import org.objectweb.asm.ModuleVisitor
-import org.objectweb.asm.Opcodes
 
-/**
- * A node that represents a module declaration.
- *
- * @author Remi Forax
- */
-class ModuleNode : ModuleVisitor {
-    /** The fully qualified name (using dots) of this module.  */
-    var name: String?
+/** A node that represents a module declaration. */
+interface ModuleNode : Node {
+    val name: String
+    val access: Int
+    val version: String?
+    val mainClass: String?
+    val packages: List<String>
+    val requires: List<ModuleRequireNode>
+    val exports: List<ModuleExportNode>
+    val opens: List<ModuleOpenNode>
+    val uses: List<String>
+    val provides: List<ModuleProvideNode>
 
-    /**
-     * The module's access flags, among `ACC_OPEN`, `ACC_SYNTHETIC` and `ACC_MANDATED`.
-     */
-    var access: Int
+    fun accept(classVisitor: ClassVisitor) {
+        val moduleVisitor = classVisitor.visitModule(name, access, version) ?: return
 
-    /** The version of this module. May be null.  */
-    var version: String?
-
-    /**
-     * The internal name of the main class of this module (see [ ][org.objectweb.asm.Type.getInternalName]). May be null.
-     */
-    var mainClass: String? = null
-
-    /**
-     * The internal name of the packages declared by this module (see [ ][org.objectweb.asm.Type.getInternalName]). May be null.
-     */
-    var packages: MutableList<String?>? = null
-
-    /** The dependencies of this module. May be null.  */
-    var requires: MutableList<ModuleRequireNode?>? = null
-
-    /** The packages exported by this module. May be null.  */
-    var exports: MutableList<ModuleExportNode?>? = null
-
-    /** The packages opened by this module. May be null.  */
-    var opens: MutableList<ModuleOpenNode?>? = null
-
-    /**
-     * The internal names of the services used by this module (see [ ][org.objectweb.asm.Type.getInternalName]). May be null.
-     */
-    var uses: MutableList<String?>? = null
-
-    /** The services provided by this module. May be null.  */
-    var provides: MutableList<ModuleProvideNode?>? = null
-
-    /**
-     * Constructs a [ModuleNode]. *Subclasses must not use this constructor*. Instead, they
-     * must use the [.ModuleNode] version.
-     *
-     * @param name the fully qualified name (using dots) of the module.
-     * @param access the module access flags, among `ACC_OPEN`, `ACC_SYNTHETIC` and `ACC_MANDATED`.
-     * @param version the module version, or null.
-     * @throws IllegalStateException If a subclass calls this constructor.
-     */
-    constructor(name: String?, access: Int, version: String?) : super( /* latest api = */Opcodes.ASM9) {
-        check(javaClass == ModuleNode::class.java)
-        this.name = name
-        this.access = access
-        this.version = version
+        if (mainClass != null) {
+            moduleVisitor.visitMainClass(mainClass)
+        }
+        packages.forEach { packaze ->
+            moduleVisitor.visitPackage(packaze)
+        }
+        requires.forEach { require ->
+            moduleVisitor.visitRequire(require.module, require.access, require.version)
+        }
+        exports.forEach { export ->
+            moduleVisitor.visitExport(export.packaze, export.access, *export.modules.toTypedArray())
+        }
+        opens.forEach { open ->
+            moduleVisitor.visitOpen(open.packaze, open.access, *open.modules.toTypedArray())
+        }
+        uses.forEach { service ->
+            moduleVisitor.visitUse(service)
+        }
+        provides.forEach { provide ->
+            moduleVisitor.visitProvide(provide.service, *provide.providers.toTypedArray())
+        }
     }
+}
 
-    // TODO(forax): why is there no 'mainClass' and 'packages' parameters in this constructor?
-    /**
-     * Constructs a [ModuleNode].
-     *
-     * @param api the ASM API version implemented by this visitor. Must be one of [     ][Opcodes.ASM6], [Opcodes.ASM7], [Opcodes.ASM8] or [Opcodes.ASM9].
-     * @param name the fully qualified name (using dots) of the module.
-     * @param access the module access flags, among `ACC_OPEN`, `ACC_SYNTHETIC` and `ACC_MANDATED`.
-     * @param version the module version, or null.
-     * @param requires The dependencies of this module. May be null.
-     * @param exports The packages exported by this module. May be null.
-     * @param opens The packages opened by this module. May be null.
-     * @param uses The internal names of the services used by this module (see [     ][org.objectweb.asm.Type.getInternalName]). May be null.
-     * @param provides The services provided by this module. May be null.
-     */
-    constructor(
-        api: Int,
-        name: String?,
-        access: Int,
-        version: String?,
-        requires: MutableList<ModuleRequireNode?>?,
-        exports: MutableList<ModuleExportNode?>?,
-        opens: MutableList<ModuleOpenNode?>?,
-        uses: MutableList<String?>?,
-        provides: MutableList<ModuleProvideNode?>?
-    ) : super(api) {
-        this.name = name
-        this.access = access
-        this.version = version
-        this.requires = requires
-        this.exports = exports
-        this.opens = opens
-        this.uses = uses
-        this.provides = provides
-    }
+interface MutableModuleNode : ModuleNode, ModuleVisitor {
+    override var name: String
+    override var access: Int
+    override var version: String?
+    override var mainClass: String?
+    override val packages: MutableList<String>
+    override val requires: MutableList<MutableModuleRequireNode>
+    override val exports: MutableList<MutableModuleExportNode>
+    override val opens: MutableList<MutableModuleOpenNode>
+    override val uses: MutableList<String>
+    override val provides: MutableList<MutableModuleProvideNode>
 
-    override fun visitMainClass(mainClass: String?) {
+    override fun visitMainClass(mainClass: String) {
         this.mainClass = mainClass
     }
 
-    override fun visitPackage(packaze: String?) {
-        if (packages == null) {
-            packages = ArrayList<String?>(5)
-        }
-        packages!!.add(packaze)
+    override fun visitPackage(packaze: String) {
+        packages.add(packaze)
     }
 
-    override fun visitRequire(module: String?, access: Int, version: String?) {
-        if (requires == null) {
-            requires = ArrayList<ModuleRequireNode?>(5)
-        }
-        requires!!.add(ModuleRequireNode(module, access, version))
+    override fun visitRequire(module: String, access: Int, version: String?) {
+        requires.add(nodeFactory.ModuleRequire(module, access, version))
     }
 
-    override fun visitExport(packaze: String?, access: Int, vararg modules: String?) {
-        if (exports == null) {
-            exports = ArrayList<ModuleExportNode?>(5)
-        }
-        exports!!.add(ModuleExportNode(packaze, access, Util.asArrayList<String?>(modules)))
+    override fun visitExport(packaze: String, access: Int, modules: Array<String>?) {
+        exports.add(nodeFactory.ModuleExport(packaze, access, modules?.toMutableList() ?: mutableListOf()))
     }
 
-    override fun visitOpen(packaze: String?, access: Int, vararg modules: String?) {
-        if (opens == null) {
-            opens = ArrayList<ModuleOpenNode?>(5)
-        }
-        opens!!.add(ModuleOpenNode(packaze, access, Util.asArrayList<String?>(modules)))
+
+    override fun visitOpen(packaze: String, access: Int, modules: Array<String>?) {
+        opens.add(nodeFactory.ModuleOpen(packaze, access, modules?.toMutableList() ?: mutableListOf()))
     }
 
-    override fun visitUse(service: String?) {
-        if (uses == null) {
-            uses = ArrayList<String?>(5)
-        }
-        uses!!.add(service)
+    override fun visitUse(service: String) {
+        uses.add(service)
     }
 
-    override fun visitProvide(service: String?, vararg providers: String?) {
-        if (provides == null) {
-            provides = ArrayList<ModuleProvideNode?>(5)
-        }
-        provides!!.add(ModuleProvideNode(service, Util.asArrayList<String?>(providers)))
+    override fun visitProvide(service: String, providers: Array<String>) {
+        provides.add(nodeFactory.ModuleProvide(service, providers.toMutableList()))
     }
 
     override fun visitEnd() {
         // Nothing to do.
-    }
-
-    /**
-     * Makes the given class visitor visit this module.
-     *
-     * @param classVisitor a class visitor.
-     */
-    fun accept(classVisitor: ClassVisitor) {
-        val moduleVisitor = classVisitor.visitModule(name, access, version)
-        if (moduleVisitor == null) {
-            return
-        }
-        if (mainClass != null) {
-            moduleVisitor.visitMainClass(mainClass)
-        }
-        if (packages != null) {
-            var i = 0
-            val n = packages!!.size
-            while (i < n) {
-                moduleVisitor.visitPackage(packages!!.get(i))
-                i++
-            }
-        }
-        if (requires != null) {
-            var i = 0
-            val n = requires!!.size
-            while (i < n) {
-                requires!!.get(i)!!.accept(moduleVisitor)
-                i++
-            }
-        }
-        if (exports != null) {
-            var i = 0
-            val n = exports!!.size
-            while (i < n) {
-                exports!!.get(i)!!.accept(moduleVisitor)
-                i++
-            }
-        }
-        if (opens != null) {
-            var i = 0
-            val n = opens!!.size
-            while (i < n) {
-                opens!!.get(i)!!.accept(moduleVisitor)
-                i++
-            }
-        }
-        if (uses != null) {
-            var i = 0
-            val n = uses!!.size
-            while (i < n) {
-                moduleVisitor.visitUse(uses!!.get(i))
-                i++
-            }
-        }
-        if (provides != null) {
-            var i = 0
-            val n = provides!!.size
-            while (i < n) {
-                provides!!.get(i)!!.accept(moduleVisitor)
-                i++
-            }
-        }
     }
 }
