@@ -27,138 +27,60 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
-import net.spartanb312.grunteon.asm.tree.AnnotationNode.accept
-import org.objectweb.asm.*
+import net.spartanb312.grunteon.asm.AnnotationVisitor
+import net.spartanb312.grunteon.asm.ClassVisitor
+import net.spartanb312.grunteon.asm.FieldVisitor
+import org.objectweb.asm.Attribute
+import org.objectweb.asm.TypePath
 
 /**
  * A node that represents a field.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class FieldNode
-/**
- * Constructs a new [FieldNode].
- *
- * @param api the ASM API version implemented by this visitor. Must be one of the `ASM`*x* values in [Opcodes].
- * @param access the field's access flags (see [Opcodes]). This parameter
- * also indicates if the field is synthetic and/or deprecated.
- * @param name the field's name.
- * @param desc the field's descriptor (see [org.objectweb.asm.Type]).
- * @param signature the field's signature.
- * @param value the field's initial value. This parameter, which may be null if the
- * field does not have an initial value, must be an [Integer], a [Float], a [     ], a [Double] or a [String].
- */(
-    api: Int,
+interface FieldNode : Node {
+
     /**
      * The field's access flags (see [Opcodes]). This field also indicates if
      * the field is synthetic and/or deprecated.
      */
-    var access: Int,
+    val access: Int
+
     /** The field's name.  */
-    var name: String?,
+    val name: String
+
     /** The field's descriptor (see [org.objectweb.asm.Type]).  */
-    var desc: String?,
+    val desc: String
+
     /** The field's signature. May be null.  */
-    var signature: String?,
+    val signature: String?
+
     /**
      * The field's initial value. This field, which may be null if the field does not have
      * an initial value, must be an [Integer], a [Float], a [Long], a [Double]
      * or a [String].
      */
-    var value: Any?
-) : FieldVisitor(api) {
-    /** The runtime visible annotations of this field. May be null.  */
-    var visibleAnnotations: MutableList<AnnotationNode>? = null
+    val value: Any?
+
+    /** The runtime visible _root_ide_package_.kotlin.collections.List of this field. May be null.  */
+    val visibleAnnotations: List<AnnotationNode>
 
     /** The runtime invisible annotations of this field. May be null.  */
-    var invisibleAnnotations: MutableList<AnnotationNode>? = null
+    val invisibleAnnotations: List<AnnotationNode>
 
     /** The runtime visible type annotations of this field. May be null.  */
-    var visibleTypeAnnotations: MutableList<TypeAnnotationNode>? = null
+    val visibleTypeAnnotations: List<TypeAnnotationNode>
 
     /** The runtime invisible type annotations of this field. May be null.  */
-    var invisibleTypeAnnotations: MutableList<TypeAnnotationNode>? = null
+    val invisibleTypeAnnotations: List<TypeAnnotationNode>
 
     /** The non standard attributes of this field. * May be null.  */
-    var attrs: MutableList<Attribute?>? = null
-
-    /**
-     * Constructs a new [FieldNode]. *Subclasses must not use this constructor*. Instead,
-     * they must use the [.FieldNode] version.
-     *
-     * @param access the field's access flags (see [Opcodes]). This parameter
-     * also indicates if the field is synthetic and/or deprecated.
-     * @param name the field's name.
-     * @param descriptor the field's descriptor (see [org.objectweb.asm.Type]).
-     * @param signature the field's signature.
-     * @param value the field's initial value. This parameter, which may be null if the
-     * field does not have an initial value, must be an [Integer], a [Float], a [     ], a [Double] or a [String].
-     * @throws IllegalStateException If a subclass calls this constructor.
-     */
-    constructor(
-        access: Int,
-        name: String?,
-        descriptor: String?,
-        signature: String?,
-        value: Any?
-    ) : this( /* latest api = */Opcodes.ASM9, access, name, descriptor, signature, value) {
-        check(javaClass == FieldNode::class.java)
-    }
-
-    // -----------------------------------------------------------------------------------------------
-    // Implementation of the FieldVisitor abstract class
-    // -----------------------------------------------------------------------------------------------
-    override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor {
-        val annotation: AnnotationNode = net.spartanb312.grunteon.asm.tree.AnnotationNode(descriptor)
-        if (visible) {
-            visibleAnnotations = Util.add<AnnotationNode?>(visibleAnnotations, annotation)
-        } else {
-            invisibleAnnotations = Util.add<AnnotationNode?>(invisibleAnnotations, annotation)
-        }
-        return annotation
-    }
-
-    override fun visitTypeAnnotation(
-        typeRef: Int, typePath: TypePath?, descriptor: String?, visible: Boolean
-    ): AnnotationVisitor {
-        val typeAnnotation: TypeAnnotationNode = TypeAnnotationNode(typeRef, typePath, descriptor)
-        if (visible) {
-            visibleTypeAnnotations = Util.add<TypeAnnotationNode>(visibleTypeAnnotations, typeAnnotation)
-        } else {
-            invisibleTypeAnnotations = Util.add<TypeAnnotationNode>(invisibleTypeAnnotations, typeAnnotation)
-        }
-        return typeAnnotation
-    }
-
-    override fun visitAttribute(attribute: Attribute?) {
-        attrs = Util.add<Attribute?>(attrs, attribute)
-    }
-
-    override fun visitEnd() {
-        // Nothing to do.
-    }
+    val attrs: List<Attribute>
 
     // -----------------------------------------------------------------------------------------------
     // Accept methods
     // -----------------------------------------------------------------------------------------------
-    /**
-     * Checks that this field node is compatible with the given ASM API version. This method checks
-     * that this node, and all its children recursively, do not contain elements that were introduced
-     * in more recent versions of the ASM API than the given version.
-     *
-     * @param api an ASM API version. Must be one of the `ASM`*x* values in [     ].
-     */
-    fun check(api: Int) {
-        if (api == Opcodes.ASM4) {
-            if (visibleTypeAnnotations != null && !visibleTypeAnnotations!!.isEmpty()) {
-                throw UnsupportedClassVersionException()
-            }
-            if (invisibleTypeAnnotations != null && !invisibleTypeAnnotations!!.isEmpty()) {
-                throw UnsupportedClassVersionException()
-            }
-        }
-    }
-
     /**
      * Makes the given class visitor visit this field.
      *
@@ -170,59 +92,75 @@ class FieldNode
             return
         }
         // Visit the annotations.
-        if (visibleAnnotations != null) {
-            var i = 0
-            val n = visibleAnnotations!!.size
-            while (i < n) {
-                val annotation = visibleAnnotations!!.get(i)
-                annotation.accept(fieldVisitor.visitAnnotation(annotation.desc, true))
-                ++i
-            }
+        visibleAnnotations.forEach {
+            it.accept(fieldVisitor.visitAnnotation(it.desc, true))
         }
-        if (invisibleAnnotations != null) {
-            var i = 0
-            val n = invisibleAnnotations!!.size
-            while (i < n) {
-                val annotation = invisibleAnnotations!!.get(i)
-                annotation.accept(fieldVisitor.visitAnnotation(annotation.desc, false))
-                ++i
-            }
+        invisibleAnnotations.forEach {
+            it.accept(fieldVisitor.visitAnnotation(it.desc, false))
         }
-        if (visibleTypeAnnotations != null) {
-            var i = 0
-            val n = visibleTypeAnnotations!!.size
-            while (i < n) {
-                val typeAnnotation: TypeAnnotationNode = visibleTypeAnnotations!!.get(i)
-                typeAnnotation.accept(
-                    fieldVisitor.visitTypeAnnotation(
-                        typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, true
-                    )
-                )
-                ++i
-            }
+        visibleTypeAnnotations.forEach {
+            it.accept(fieldVisitor.visitTypeAnnotation(it.typeRef, it.typePath, it.desc, true))
         }
-        if (invisibleTypeAnnotations != null) {
-            var i = 0
-            val n = invisibleTypeAnnotations!!.size
-            while (i < n) {
-                val typeAnnotation: TypeAnnotationNode = invisibleTypeAnnotations!!.get(i)
-                typeAnnotation.accept(
-                    fieldVisitor.visitTypeAnnotation(
-                        typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, false
-                    )
-                )
-                ++i
-            }
+        invisibleTypeAnnotations.forEach {
+            it.accept(fieldVisitor.visitTypeAnnotation(it.typeRef, it.typePath, it.desc, false))
         }
         // Visit the non standard attributes.
-        if (attrs != null) {
-            var i = 0
-            val n = attrs!!.size
-            while (i < n) {
-                fieldVisitor.visitAttribute(attrs!!.get(i))
-                ++i
-            }
+        attrs.forEach {
+            fieldVisitor.visitAttribute(it)
         }
         fieldVisitor.visitEnd()
+    }
+}
+
+interface MutableFieldNode : FieldNode, FieldVisitor {
+    override var access: Int
+    override var name: String
+    override var desc: String
+    override var signature: String?
+    override var value: Any?
+    override val visibleAnnotations: MutableList<MutableAnnotationNode>
+    override val invisibleAnnotations: MutableList<MutableAnnotationNode>
+    override val visibleTypeAnnotations: MutableList<MutableTypeAnnotationNode>
+    override val invisibleTypeAnnotations: MutableList<MutableTypeAnnotationNode>
+    override val attrs: MutableList<Attribute>
+
+    // -----------------------------------------------------------------------------------------------
+    // Implementation of the FieldVisitor abstract class
+    // -----------------------------------------------------------------------------------------------
+    override fun visitAnnotation(descriptor: String, visible: Boolean): AnnotationVisitor {
+        val annotation: MutableAnnotationNode = nodeFactory.Annotation(desc = descriptor)
+        if (visible) {
+            visibleAnnotations.add(annotation)
+        } else {
+            invisibleAnnotations.add(annotation)
+        }
+        return annotation
+    }
+
+    override fun visitTypeAnnotation(
+        typeRef: Int,
+        typePath: TypePath?,
+        descriptor: String,
+        visible: Boolean
+    ): AnnotationVisitor {
+        val typeAnnotation = nodeFactory.TypeAnnotationNode(
+            desc = descriptor,
+            typeRef = typeRef,
+            typePath = typePath
+        )
+        if (visible) {
+            visibleTypeAnnotations.add(typeAnnotation)
+        } else {
+            invisibleTypeAnnotations.add(typeAnnotation)
+        }
+        return typeAnnotation
+    }
+
+    override fun visitAttribute(attribute: Attribute) {
+        attrs.add(attribute)
+    }
+
+    override fun visitEnd() {
+        // Nothing to do.
     }
 }
