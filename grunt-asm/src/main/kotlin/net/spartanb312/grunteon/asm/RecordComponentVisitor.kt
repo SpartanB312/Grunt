@@ -64,7 +64,10 @@ interface RecordComponentVisitor {
      * interested in visiting this annotation.
      */
     fun visitTypeAnnotation(
-        typeRef: Int, typePath: TypePath?, descriptor: String, visible: Boolean
+        typeRef: Int,
+        typePath: TypePath?,
+        descriptor: String,
+        visible: Boolean
     ): AnnotationVisitor? = null
 
     /**

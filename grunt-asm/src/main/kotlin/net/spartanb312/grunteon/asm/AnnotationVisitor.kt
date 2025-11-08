@@ -67,7 +67,7 @@ interface AnnotationVisitor {
      * visitor is not interested in visiting this nested annotation. *The nested annotation
      * value must be fully visited before calling other methods on this annotation visitor*.
      */
-    fun visitAnnotation(name: String?, descriptor: String?): AnnotationVisitor? = null
+    fun visitAnnotation(name: String, descriptor: String): AnnotationVisitor? = null
 
     /**
      * Visits an array value of the annotation. Note that arrays of primitive values (such as byte,
@@ -93,7 +93,7 @@ interface AnnotationVisitor {
             ow2.visitEnum(name, descriptor, value)
         }
 
-        override fun visitAnnotation(name: String?, descriptor: String?): AnnotationVisitor? {
+        override fun visitAnnotation(name: String, descriptor: String): AnnotationVisitor? {
             return ow2.visitAnnotation(name, descriptor)?.let { FromOw2(it) }
         }
 
@@ -115,7 +115,7 @@ interface AnnotationVisitor {
             grunt.visitEnum(name, descriptor, value)
         }
 
-        override fun visitAnnotation(name: String?, descriptor: String?): org.objectweb.asm.AnnotationVisitor? {
+        override fun visitAnnotation(name: String, descriptor: String): org.objectweb.asm.AnnotationVisitor? {
             return grunt.visitAnnotation(name, descriptor)?.let { ToOw2(it) }
         }
 

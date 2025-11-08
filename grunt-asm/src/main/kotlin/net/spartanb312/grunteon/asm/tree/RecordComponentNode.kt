@@ -27,155 +27,103 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
-import net.spartanb312.grunteon.asm.tree.AnnotationNode.accept
-import org.objectweb.asm.*
+import net.spartanb312.grunteon.asm.AnnotationVisitor
+import net.spartanb312.grunteon.asm.ClassVisitor
+import net.spartanb312.grunteon.asm.RecordComponentVisitor
+import org.objectweb.asm.Attribute
+import org.objectweb.asm.TypePath
 
-/** A node that represents a record component. */
-interface RecordComponentNode {
-    val name: String?
-    val descriptor: String?
+
+/**
+ * A node that represents a record component.
+ *
+ * @author Remi Forax
+ * @author Luna
+ */
+interface RecordComponentNode : Node {
+    val name: String
+    val descriptor: String
     val signature: String?
 
-    val visibleAnnotations: List<AnnotationNode>?
-    val invisibleAnnotations: List<AnnotationNode>?
-    val visibleTypeAnnotations: List<TypeAnnotationNode>?
-    val invisibleTypeAnnotations: List<TypeAnnotationNode>?
-    val attrs: List<Attribute?>?
-
-    fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? = null
-
-    fun visitTypeAnnotation(
-        typeRef: Int,
-        typePath: TypePath?,
-        descriptor: String?,
-        visible: Boolean
-    ): AnnotationVisitor? = null
-
-    fun visitAttribute(attribute: Attribute?) {}
-
-    fun visitEnd() {}
-
-    fun check(api: Int) {
-        if (api < Opcodes.ASM8) {
-            throw UnsupportedClassVersionException()
-        }
-    }
+    val visibleAnnotations: List<AnnotationNode>
+    val invisibleAnnotations: List<AnnotationNode>
+    val visibleTypeAnnotations: List<TypeAnnotationNode>
+    val invisibleTypeAnnotations: List<TypeAnnotationNode>
+    val attrs: List<Attribute>
 
     fun accept(classVisitor: ClassVisitor) {
-        val recordComponentVisitor = classVisitor.visitRecordComponent(name, descriptor, signature)
-        if (recordComponentVisitor == null) {
-            return
-        }
+        val recordComponentVisitor = classVisitor.visitRecordComponent(name, descriptor, signature) ?: return
+
         // Visit the annotations.
-        if (visibleAnnotations != null) {
-            var i = 0
-            val n = visibleAnnotations.size
-            while (i < n) {
-                val annotation = visibleAnnotations[i]
-                annotation.accept(recordComponentVisitor.visitAnnotation(annotation.desc, true))
-                ++i
-            }
+        visibleAnnotations.forEach {
+            it.accept(recordComponentVisitor.visitAnnotation(it.desc, true))
         }
-        if (invisibleAnnotations != null) {
-            var i = 0
-            val n = invisibleAnnotations.size
-            while (i < n) {
-                val annotation = invisibleAnnotations[i]
-                annotation.accept(recordComponentVisitor.visitAnnotation(annotation.desc, false))
-                ++i
-            }
+        invisibleAnnotations.forEach {
+            it.accept(recordComponentVisitor.visitAnnotation(it.desc, false))
         }
-        if (visibleTypeAnnotations != null) {
-            var i = 0
-            val n = visibleTypeAnnotations.size
-            while (i < n) {
-                val typeAnnotation: TypeAnnotationNode = visibleTypeAnnotations[i]
-                typeAnnotation.accept(
-                    recordComponentVisitor.visitTypeAnnotation(
-                        typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, true
-                    )
-                )
-                ++i
-            }
+        visibleTypeAnnotations.forEach {
+            it.accept(recordComponentVisitor.visitTypeAnnotation(it.typeRef, it.typePath, it.desc, true))
         }
-        if (invisibleTypeAnnotations != null) {
-            var i = 0
-            val n = invisibleTypeAnnotations.size
-            while (i < n) {
-                val typeAnnotation: TypeAnnotationNode = invisibleTypeAnnotations[i]
-                typeAnnotation.accept(
-                    recordComponentVisitor.visitTypeAnnotation(
-                        typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, false
-                    )
-                )
-                ++i
-            }
+        invisibleTypeAnnotations.forEach {
+            it.accept(recordComponentVisitor.visitTypeAnnotation(it.typeRef, it.typePath, it.desc, false))
         }
         // Visit the non standard attributes.
-        if (attrs != null) {
-            var i = 0
-            val n = attrs.size
-            while (i < n) {
-                recordComponentVisitor.visitAttribute(attrs[i])
-                ++i
-            }
+        attrs.forEach {
+            recordComponentVisitor.visitAttribute(it)
         }
         recordComponentVisitor.visitEnd()
     }
 }
 
-interface MutableRecordComponentNode : RecordComponentNode {
-    override var name: String?
-    override var descriptor: String?
+interface MutableRecordComponentNode : RecordComponentNode, RecordComponentVisitor {
+    override var name: String
+    override var descriptor: String
     override var signature: String?
 
-    override var visibleAnnotations: MutableList<AnnotationNode>?
-    override var invisibleAnnotations: MutableList<AnnotationNode>?
-    override var visibleTypeAnnotations: MutableList<TypeAnnotationNode>?
-    override var invisibleTypeAnnotations: MutableList<TypeAnnotationNode>?
-    override var attrs: MutableList<Attribute?>?
+    override val visibleAnnotations: MutableList<AnnotationNode>
+    override val invisibleAnnotations: MutableList<AnnotationNode>
+    override val visibleTypeAnnotations: MutableList<TypeAnnotationNode>
+    override val invisibleTypeAnnotations: MutableList<TypeAnnotationNode>
+    override val attrs: MutableList<Attribute>
 
-    companion object {
-        class Impl(
-            override var name: String?,
-            override var descriptor: String?,
-            override var signature: String?
-        ) : MutableRecordComponentNode {
-            override var visibleAnnotations: MutableList<AnnotationNode>? = null
-            override var invisibleAnnotations: MutableList<AnnotationNode>? = null
-            override var visibleTypeAnnotations: MutableList<TypeAnnotationNode>? = null
-            override var invisibleTypeAnnotations: MutableList<TypeAnnotationNode>? = null
-            override var attrs: MutableList<Attribute?>? = null
 
-            // The visitor implementations are provided by the interface defaults.
-            override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? {
-                val annotation: AnnotationNode = net.spartanb312.grunteon.asm.tree.AnnotationNode(descriptor)
-                if (visible) {
-                    visibleAnnotations = Util.add(visibleAnnotations, annotation)
-                } else {
-                    invisibleAnnotations = Util.add(invisibleAnnotations, annotation)
-                }
-                return annotation
-            }
-
-            override fun visitTypeAnnotation(
-                typeRef: Int,
-                typePath: TypePath?,
-                descriptor: String?,
-                visible: Boolean
-            ): AnnotationVisitor? {
-                val typeAnnotation: TypeAnnotationNode = TypeAnnotationNode(typeRef, typePath, descriptor)
-                if (visible) {
-                    visibleTypeAnnotations = Util.add(visibleTypeAnnotations, typeAnnotation)
-                } else {
-                    invisibleTypeAnnotations = Util.add(invisibleTypeAnnotations, typeAnnotation)
-                }
-                return typeAnnotation
-            }
-
-            override fun visitAttribute(attribute: Attribute?) {
-                attrs = Util.add(attrs, attribute)
-            }
+    // -----------------------------------------------------------------------------------------------
+    // Implementation of the FieldVisitor abstract class
+    // -----------------------------------------------------------------------------------------------
+    override fun visitAnnotation(descriptor: String, visible: Boolean): AnnotationVisitor {
+        val annotation = nodeFactory.Annotation(desc = descriptor)
+        if (visible) {
+            visibleAnnotations.add(annotation)
+        } else {
+            invisibleAnnotations.add(annotation)
         }
+        return annotation
+    }
+
+    override fun visitTypeAnnotation(
+        typeRef: Int,
+        typePath: TypePath?,
+        descriptor: String,
+        visible: Boolean
+    ): AnnotationVisitor {
+        val typeAnnotation = nodeFactory.TypeAnnotationNode(
+            desc = descriptor,
+            typeRef = typeRef,
+            typePath = typePath
+        )
+        if (visible) {
+            visibleTypeAnnotations.add(typeAnnotation)
+        } else {
+            invisibleTypeAnnotations.add(typeAnnotation)
+        }
+        return typeAnnotation
+    }
+
+    override fun visitAttribute(attribute: Attribute) {
+        attrs.add(attribute)
+    }
+
+    override fun visitEnd() {
+        // Nothing to do.
     }
 }
