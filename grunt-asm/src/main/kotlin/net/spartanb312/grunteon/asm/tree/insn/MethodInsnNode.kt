@@ -27,71 +27,41 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents a method instruction. A method instruction is an instruction that invokes
  * a method.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class MethodInsnNode
-/**
- * Constructs a new [MethodInsnNode].
- *
- * @param opcode the opcode of the type instruction to be constructed. This opcode must be
- * INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC or INVOKEINTERFACE.
- * @param owner the internal name of the method's owner class (see [     ][org.objectweb.asm.Type.getInternalName]).
- * @param name the method's name.
- * @param desc the method's descriptor (see [org.objectweb.asm.Type]).
- */ @JvmOverloads constructor(
-    opcode: Int,
+interface MethodInsnNode : BaseInsnNode {
+    override val opcode: Int
+
     /**
      * The internal name of the method's owner class (see [ ][org.objectweb.asm.Type.getInternalName]).
      *
-     *
      * For methods of arrays, e.g., `clone()`, the array type descriptor.
      */
-    var owner: String?,
+    val owner: String
+
     /** The method's name.  */
-    var name: String?,
+    val name: String
+
     /** The method's descriptor (see [org.objectweb.asm.Type]).  */
-    var desc: String?,
+    val desc: String
+
     /** Whether the method's owner class if an interface.  */
-    var itf: Boolean = opcode == Opcodes.INVOKEINTERFACE
-) : AbstractInsnNode(opcode) {
-    /**
-     * Constructs a new [MethodInsnNode].
-     *
-     * @param opcode the opcode of the type instruction to be constructed. This opcode must be
-     * INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC or INVOKEINTERFACE.
-     * @param owner the internal name of the method's owner class (see [     ][org.objectweb.asm.Type.getInternalName]).
-     * @param name the method's name.
-     * @param desc the method's descriptor (see [org.objectweb.asm.Type]).
-     * @param itf if the method's owner class is an interface.
-     */
+    val itf: Boolean get() = opcode == Opcodes.INVOKEINTERFACE
 
-    /**
-     * Sets the opcode of this instruction.
-     *
-     * @param opcode the new instruction opcode. This opcode must be INVOKEVIRTUAL, INVOKESPECIAL,
-     * INVOKESTATIC or INVOKEINTERFACE.
-     */
-    fun setOpcode(opcode: Int) {
-        this.opcode = opcode
-    }
-
-    override fun getType(): Int {
-        return METHOD_INSN
-    }
+    override val type: Int
+        get() = AbstractInsnNode.METHOD_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitMethodInsn(opcode, owner, name, desc, itf)
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return MethodInsnNode(opcode, owner, name, desc, itf).cloneAnnotations(this)
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

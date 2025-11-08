@@ -27,8 +27,6 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
-import net.spartanb312.grunteon.asm.tree.insn.InnerClassNode
-import net.spartanb312.grunteon.asm.tree.insn.MethodNode
 import org.objectweb.asm.*
 
 /**

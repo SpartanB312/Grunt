@@ -25,8 +25,10 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree.insn
+package net.spartanb312.grunteon.asm.tree
 
+import net.spartanb312.grunteon.asm.tree.insn.BaseInsnNode
+import net.spartanb312.grunteon.asm.tree.insn.LabelNode
 import org.objectweb.asm.MethodVisitor
 
 /**
@@ -47,7 +49,7 @@ class LineNumberNode
     var line: Int,
     /** The first instruction corresponding to this line number.  */
     var start: LabelNode
-) : AbstractInsnNode(-1) {
+) : BaseInsnNode(-1) {
     override fun getType(): Int {
         return LINE
     }
@@ -56,7 +58,7 @@ class LineNumberNode
         methodVisitor.visitLineNumber(line, start.getLabel())
     }
 
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode {
+    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): BaseInsnNode {
         return LineNumberNode(line, clone(start, clonedLabels))
     }
 }

@@ -25,9 +25,10 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree.insn
+package net.spartanb312.grunteon.asm.tree
 
 import net.spartanb312.grunteon.asm.tree.*
+import net.spartanb312.grunteon.asm.tree.insn.*
 import org.objectweb.asm.*
 
 /**
@@ -150,7 +151,7 @@ class MethodNode : MethodVisitor {
      * @param api the ASM API version implemented by this visitor. Must be one of the `ASM`*x* values in [Opcodes].
      */
     constructor(api: Int) : super(api) {
-        this.instructions = InsnList()
+        this.instructions = net.spartanb312.grunteon.asm.tree.insn.InsnList()
     }
 
     /**
@@ -203,7 +204,7 @@ class MethodNode : MethodVisitor {
             this.localVariables = ArrayList<LocalVariableNode?>(5)
         }
         this.tryCatchBlocks = ArrayList<TryCatchBlockNode>()
-        this.instructions = InsnList()
+        this.instructions = net.spartanb312.grunteon.asm.tree.insn.InsnList()
     }
 
     // -----------------------------------------------------------------------------------------------
@@ -331,7 +332,15 @@ class MethodNode : MethodVisitor {
         }
         val opcode = opcodeAndSource and Opcodes.SOURCE_MASK.inv()
 
-        instructions.add(MethodInsnNode(opcode, owner, name, descriptor, isInterface))
+        instructions.add(
+            net.spartanb312.grunteon.asm.tree.insn.MethodInsnNode(
+                opcode,
+                owner,
+                name,
+                descriptor,
+                isInterface
+            )
+        )
     }
 
     override fun visitInvokeDynamicInsn(

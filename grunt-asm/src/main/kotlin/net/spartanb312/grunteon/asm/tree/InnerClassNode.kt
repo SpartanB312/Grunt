@@ -25,13 +25,13 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree.insn
+package net.spartanb312.grunteon.asm.tree
 
 import org.objectweb.asm.ClassVisitor
 
 /**
  * A node that represents an inner class. This inner class is not necessarily a member of the [ ] containing this object. More precisely, every class or interface C which is referenced
- * by a [net.spartanb312.grunteon.asm.tree.ClassNode] and which is not a package member must be represented with an [ ]. The [net.spartanb312.grunteon.asm.tree.ClassNode] must reference its nested class or interface members, and
+ * by a [ClassNode] and which is not a package member must be represented with an [ ]. The [ClassNode] must reference its nested class or interface members, and
  * its enclosing class, if any. See the JVMS 4.7.6 section for more details.
  *
  * @author Eric Bruneton
