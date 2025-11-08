@@ -25,52 +25,38 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
 import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 
 /**
- * A node that represents a type instruction. A type instruction is an instruction which takes an
- * internal name as parameter (see [org.objectweb.asm.Type.getInternalName]).
+ * A node that represents a MULTIANEWARRAY instruction.
  *
  * @author Eric Bruneton
  */
-class TypeInsnNode
+class MultiANewArrayInsnNode
 /**
- * Constructs a new [TypeInsnNode].
+ * Constructs a new [MultiANewArrayInsnNode].
  *
- * @param opcode the opcode of the type instruction to be constructed. This opcode must be NEW,
- * ANEWARRAY, CHECKCAST or INSTANCEOF.
- * @param desc the operand of the instruction to be constructed. This operand is an internal name
- * (see [org.objectweb.asm.Type.getInternalName]).
+ * @param desc an array type descriptor (see [org.objectweb.asm.Type]).
+ * @param dims the number of dimensions of the array to allocate.
  */(
-    opcode: Int,
-    /**
-     * The operand of this instruction. Despite its name (due to historical reasons), this operand is
-     * an internal name (see [org.objectweb.asm.Type.getInternalName]).
-     */
-    var desc: String?
-) : AbstractInsnNode(opcode) {
-    /**
-     * Sets the opcode of this instruction.
-     *
-     * @param opcode the new instruction opcode. This opcode must be NEW, ANEWARRAY, CHECKCAST or
-     * INSTANCEOF.
-     */
-    fun setOpcode(opcode: Int) {
-        this.opcode = opcode
-    }
-
+    /** An array type descriptor (see [org.objectweb.asm.Type]).  */
+    var desc: String?,
+    /** Number of dimensions of the array to allocate.  */
+    var dims: Int
+) : AbstractInsnNode(Opcodes.MULTIANEWARRAY) {
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.TYPE_INSN
+        return MULTIANEWARRAY_INSN
     }
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitTypeInsn(opcode, desc)
+        methodVisitor.visitMultiANewArrayInsn(desc, dims)
         acceptAnnotations(methodVisitor)
     }
 
     override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return TypeInsnNode(opcode, desc).cloneAnnotations(this)
+        return MultiANewArrayInsnNode(desc, dims).cloneAnnotations(this)
     }
 }

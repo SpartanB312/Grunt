@@ -25,73 +25,38 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.Label
 import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes
 
 /**
- * A node that represents a LOOKUPSWITCH instruction.
+ * A node that represents a line number declaration. These nodes are pseudo instruction nodes in
+ * order to be inserted in an instruction list.
  *
  * @author Eric Bruneton
  */
-class LookupSwitchInsnNode(
-    /** Beginning of the default handler block.  */
-    var dflt: LabelNode, keys: IntArray?, labels: Array<LabelNode?>?
-) : AbstractInsnNode(Opcodes.LOOKUPSWITCH) {
-    /** The values of the keys.  */
-    var keys: MutableList<Int?>
-
-    /** Beginnings of the handler blocks.  */
-    var labels: MutableList<LabelNode?>
-
-    /**
-     * Constructs a new [LookupSwitchInsnNode].
-     *
-     * @param dflt beginning of the default handler block.
-     * @param keys the values of the keys.
-     * @param labels beginnings of the handler blocks. `labels[i]` is the beginning of the
-     * handler block for the `keys[i]` key.
-     */
-    init {
-        this.keys = Util.asArrayList(keys)
-        this.labels = Util.asArrayList<LabelNode?>(labels)
-    }
-
+class LineNumberNode
+/**
+ * Constructs a new [LineNumberNode].
+ *
+ * @param line a line number. This number refers to the source file from which the class was
+ * compiled.
+ * @param start the first instruction corresponding to this line number.
+ */(
+    /** A line number. This number refers to the source file from which the class was compiled.  */
+    var line: Int,
+    /** The first instruction corresponding to this line number.  */
+    var start: LabelNode
+) : AbstractInsnNode(-1) {
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.LOOKUPSWITCH_INSN
+        return LINE
     }
 
     override fun accept(methodVisitor: MethodVisitor) {
-        val keysArray = IntArray(this.keys.size)
-        run {
-            var i = 0
-            val n = keysArray.size
-            while (i < n) {
-                keysArray[i] = this.keys.get(i)!!
-                ++i
-            }
-        }
-        val labelsArray = arrayOfNulls<Label>(this.labels.size)
-        var i = 0
-        val n = labelsArray.size
-        while (i < n) {
-            labelsArray[i] = this.labels.get(i)!!.getLabel()
-            ++i
-        }
-        methodVisitor.visitLookupSwitchInsn(dflt.getLabel(), keysArray, labelsArray)
-        acceptAnnotations(methodVisitor)
+        methodVisitor.visitLineNumber(line, start.getLabel())
     }
 
     override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode {
-        val clone =
-            LookupSwitchInsnNode(
-                AbstractInsnNode.Companion.clone(dflt, clonedLabels),
-                null,
-                AbstractInsnNode.Companion.clone(labels, clonedLabels)
-            )
-        clone.keys.addAll(keys)
-        return clone.cloneAnnotations(this)
+        return LineNumberNode(line, clone(start, clonedLabels))
     }
 }

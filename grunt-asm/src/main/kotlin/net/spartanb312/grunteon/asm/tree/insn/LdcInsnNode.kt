@@ -25,49 +25,43 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
 import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 
 /**
- * A node that represents a local variable instruction. A local variable instruction is an
- * instruction that loads or stores the value of a local variable.
+ * A node that represents an LDC instruction.
  *
  * @author Eric Bruneton
  */
-class VarInsnNode
+class LdcInsnNode
 /**
- * Constructs a new [VarInsnNode].
+ * Constructs a new [LdcInsnNode].
  *
- * @param opcode the opcode of the local variable instruction to be constructed. This opcode must
- * be ILOAD, LLOAD, FLOAD, DLOAD, ALOAD, ISTORE, LSTORE, FSTORE, DSTORE, ASTORE or RET.
- * @param `var` the operand of the instruction to be constructed. This operand is the index of
- * a local variable.
+ * @param cst the constant to be loaded on the stack. This parameter mist be a non null [     ], a [Float], a [Long], a [Double], a [String], a [     ] of OBJECT or ARRAY sort for `.class` constants, for classes whose version is
+ * 49, a [Type] of METHOD sort for MethodType, a [Handle] for MethodHandle
+ * constants, for classes whose version is 51 or a [ConstantDynamic] for a constant
+ * dynamic for classes whose version is 55.
  */(
-    opcode: Int,
-    /** The operand of this instruction. This operand is the index of a local variable.  */
-    var `var`: Int
-) : AbstractInsnNode(opcode) {
     /**
-     * Sets the opcode of this instruction.
-     *
-     * @param opcode the new instruction opcode. This opcode must be ILOAD, LLOAD, FLOAD, DLOAD,
-     * ALOAD, ISTORE, LSTORE, FSTORE, DSTORE, ASTORE or RET.
+     * The constant to be loaded on the stack. This field must be a non null [Integer], a [ ], a [Long], a [Double], a [String], a [Type] of OBJECT or ARRAY
+     * sort for `.class` constants, for classes whose version is 49, a [Type] of METHOD
+     * sort for MethodType, a [Handle] for MethodHandle constants, for classes whose version is
+     * 51 or a [ConstantDynamic] for a constant dynamic for classes whose version is 55.
      */
-    fun setOpcode(opcode: Int) {
-        this.opcode = opcode
-    }
-
+    var cst: Any?
+) : AbstractInsnNode(Opcodes.LDC) {
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.VAR_INSN
+        return LDC_INSN
     }
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitVarInsn(opcode, `var`)
+        methodVisitor.visitLdcInsn(cst)
         acceptAnnotations(methodVisitor)
     }
 
     override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return VarInsnNode(opcode, `var`).cloneAnnotations(this)
+        return LdcInsnNode(cst).cloneAnnotations(this)
     }
 }

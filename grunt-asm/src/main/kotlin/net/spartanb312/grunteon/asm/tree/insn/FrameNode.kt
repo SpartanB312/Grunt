@@ -25,8 +25,9 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
+import net.spartanb312.grunteon.asm.tree.Util
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 
@@ -105,7 +106,7 @@ class FrameNode : AbstractInsnNode {
     }
 
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.FRAME
+        return FRAME
     }
 
     override fun accept(methodVisitor: MethodVisitor) {

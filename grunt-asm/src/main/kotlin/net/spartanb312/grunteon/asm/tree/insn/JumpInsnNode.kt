@@ -25,38 +25,54 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
 import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes
 
 /**
- * A node that represents a MULTIANEWARRAY instruction.
+ * A node that represents a jump instruction. A jump instruction is an instruction that may jump to
+ * another instruction.
  *
  * @author Eric Bruneton
  */
-class MultiANewArrayInsnNode
+class JumpInsnNode
 /**
- * Constructs a new [MultiANewArrayInsnNode].
+ * Constructs a new [JumpInsnNode].
  *
- * @param desc an array type descriptor (see [org.objectweb.asm.Type]).
- * @param dims the number of dimensions of the array to allocate.
+ * @param opcode the opcode of the type instruction to be constructed. This opcode must be IFEQ,
+ * IFNE, IFLT, IFGE, IFGT, IFLE, IF_ICMPEQ, IF_ICMPNE, IF_ICMPLT, IF_ICMPGE, IF_ICMPGT,
+ * IF_ICMPLE, IF_ACMPEQ, IF_ACMPNE, GOTO, JSR, IFNULL or IFNONNULL.
+ * @param label the operand of the instruction to be constructed. This operand is a label that
+ * designates the instruction to which the jump instruction may jump.
  */(
-    /** An array type descriptor (see [org.objectweb.asm.Type]).  */
-    var desc: String?,
-    /** Number of dimensions of the array to allocate.  */
-    var dims: Int
-) : AbstractInsnNode(Opcodes.MULTIANEWARRAY) {
+    opcode: Int,
+    /**
+     * The operand of this instruction. This operand is a label that designates the instruction to
+     * which this instruction may jump.
+     */
+    var label: LabelNode
+) : AbstractInsnNode(opcode) {
+    /**
+     * Sets the opcode of this instruction.
+     *
+     * @param opcode the new instruction opcode. This opcode must be IFEQ, IFNE, IFLT, IFGE, IFGT,
+     * IFLE, IF_ICMPEQ, IF_ICMPNE, IF_ICMPLT, IF_ICMPGE, IF_ICMPGT, IF_ICMPLE, IF_ACMPEQ,
+     * IF_ACMPNE, GOTO, JSR, IFNULL or IFNONNULL.
+     */
+    fun setOpcode(opcode: Int) {
+        this.opcode = opcode
+    }
+
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.MULTIANEWARRAY_INSN
+        return JUMP_INSN
     }
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitMultiANewArrayInsn(desc, dims)
+        methodVisitor.visitJumpInsn(opcode, label.getLabel())
         acceptAnnotations(methodVisitor)
     }
 
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return MultiANewArrayInsnNode(desc, dims).cloneAnnotations(this)
+    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode {
+        return JumpInsnNode(opcode, clone(label, clonedLabels)).cloneAnnotations(this)
     }
 }

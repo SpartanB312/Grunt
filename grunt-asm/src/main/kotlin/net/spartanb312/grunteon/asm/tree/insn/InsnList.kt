@@ -25,7 +25,7 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
 import org.objectweb.asm.MethodVisitor
 
@@ -556,11 +556,11 @@ class InsnList : Iterable<AbstractInsnNode?> {
 
         override fun add(o: Any?) {
             if (nextInsn != null) {
-                this@InsnList.insertBefore(nextInsn!!, (o as net.spartanb312.grunteon.asm.tree.AbstractInsnNode?)!!)
+                this@InsnList.insertBefore(nextInsn!!, (o as AbstractInsnNode?)!!)
             } else if (previousInsn != null) {
-                this@InsnList.insert(previousInsn!!, (o as net.spartanb312.grunteon.asm.tree.AbstractInsnNode?)!!)
+                this@InsnList.insert(previousInsn!!, (o as AbstractInsnNode?)!!)
             } else {
-                this@InsnList.add((o as net.spartanb312.grunteon.asm.tree.AbstractInsnNode?)!!)
+                this@InsnList.add((o as AbstractInsnNode?)!!)
             }
             previousInsn = o
             remove = null
@@ -568,7 +568,7 @@ class InsnList : Iterable<AbstractInsnNode?> {
 
         override fun set(o: Any?) {
             if (remove != null) {
-                this@InsnList.set(remove!!, (o as net.spartanb312.grunteon.asm.tree.AbstractInsnNode?)!!)
+                this@InsnList.set(remove!!, (o as AbstractInsnNode?)!!)
                 if (remove === previousInsn) {
                     previousInsn = o as AbstractInsnNode
                 } else {

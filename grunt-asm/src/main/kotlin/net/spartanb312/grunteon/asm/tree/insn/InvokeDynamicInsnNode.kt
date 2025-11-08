@@ -25,73 +25,53 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
+import org.objectweb.asm.Handle
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 
 /**
- * A node that represents a method instruction. A method instruction is an instruction that invokes
- * a method.
+ * A node that represents an invokedynamic instruction.
  *
- * @author Eric Bruneton
+ * @author Remi Forax
  */
-class MethodInsnNode
-/**
- * Constructs a new [MethodInsnNode].
- *
- * @param opcode the opcode of the type instruction to be constructed. This opcode must be
- * INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC or INVOKEINTERFACE.
- * @param owner the internal name of the method's owner class (see [     ][org.objectweb.asm.Type.getInternalName]).
- * @param name the method's name.
- * @param desc the method's descriptor (see [org.objectweb.asm.Type]).
- */ @JvmOverloads constructor(
-    opcode: Int,
-    /**
-     * The internal name of the method's owner class (see [ ][org.objectweb.asm.Type.getInternalName]).
-     *
-     *
-     * For methods of arrays, e.g., `clone()`, the array type descriptor.
-     */
-    var owner: String?,
+class InvokeDynamicInsnNode(
     /** The method's name.  */
     var name: String?,
     /** The method's descriptor (see [org.objectweb.asm.Type]).  */
     var desc: String?,
-    /** Whether the method's owner class if an interface.  */
-    var itf: Boolean = opcode == Opcodes.INVOKEINTERFACE
-) : AbstractInsnNode(opcode) {
-    /**
-     * Constructs a new [MethodInsnNode].
-     *
-     * @param opcode the opcode of the type instruction to be constructed. This opcode must be
-     * INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC or INVOKEINTERFACE.
-     * @param owner the internal name of the method's owner class (see [     ][org.objectweb.asm.Type.getInternalName]).
-     * @param name the method's name.
-     * @param desc the method's descriptor (see [org.objectweb.asm.Type]).
-     * @param itf if the method's owner class is an interface.
-     */
+    /** The bootstrap method.  */
+    var bsm: Handle?,
+    vararg bootstrapMethodArguments: Any?
+) : AbstractInsnNode(Opcodes.INVOKEDYNAMIC) {
+    /** The bootstrap method constant arguments.  */
+    var bsmArgs: Array<Any?>
 
     /**
-     * Sets the opcode of this instruction.
+     * Constructs a new [InvokeDynamicInsnNode].
      *
-     * @param opcode the new instruction opcode. This opcode must be INVOKEVIRTUAL, INVOKESPECIAL,
-     * INVOKESTATIC or INVOKEINTERFACE.
+     * @param name the method's name.
+     * @param desc the method's descriptor (see [org.objectweb.asm.Type]).
+     * @param bsm the bootstrap method.
+     * @param bootstrapMethodArguments the bootstrap method constant arguments. Each argument must be
+     * an [Integer], [Float], [Long], [Double], [String], [     ] or [Handle] value. This method is allowed to modify the
+     * content of the array so a caller should expect that this array may change.
      */
-    fun setOpcode(opcode: Int) {
-        this.opcode = opcode
+    init {
+        this.bsmArgs = bootstrapMethodArguments // NOPMD(ArrayIsStoredDirectly): public field.
     }
 
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.METHOD_INSN
+        return INVOKE_DYNAMIC_INSN
     }
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitMethodInsn(opcode, owner, name, desc, itf)
+        methodVisitor.visitInvokeDynamicInsn(name, desc, bsm, *bsmArgs)
         acceptAnnotations(methodVisitor)
     }
 
     override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return MethodInsnNode(opcode, owner, name, desc, itf).cloneAnnotations(this)
+        return InvokeDynamicInsnNode(name, desc, bsm, *bsmArgs).cloneAnnotations(this)
     }
 }

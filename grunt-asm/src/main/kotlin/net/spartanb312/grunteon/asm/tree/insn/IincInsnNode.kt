@@ -25,53 +25,38 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.Handle
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 
 /**
- * A node that represents an invokedynamic instruction.
+ * A node that represents an IINC instruction.
  *
- * @author Remi Forax
+ * @author Eric Bruneton
  */
-class InvokeDynamicInsnNode(
-    /** The method's name.  */
-    var name: String?,
-    /** The method's descriptor (see [org.objectweb.asm.Type]).  */
-    var desc: String?,
-    /** The bootstrap method.  */
-    var bsm: Handle?,
-    vararg bootstrapMethodArguments: Any?
-) : AbstractInsnNode(Opcodes.INVOKEDYNAMIC) {
-    /** The bootstrap method constant arguments.  */
-    var bsmArgs: Array<Any?>
-
-    /**
-     * Constructs a new [InvokeDynamicInsnNode].
-     *
-     * @param name the method's name.
-     * @param desc the method's descriptor (see [org.objectweb.asm.Type]).
-     * @param bsm the bootstrap method.
-     * @param bootstrapMethodArguments the bootstrap method constant arguments. Each argument must be
-     * an [Integer], [Float], [Long], [Double], [String], [     ] or [Handle] value. This method is allowed to modify the
-     * content of the array so a caller should expect that this array may change.
-     */
-    init {
-        this.bsmArgs = bootstrapMethodArguments // NOPMD(ArrayIsStoredDirectly): public field.
-    }
-
+class IincInsnNode
+/**
+ * Constructs a new [IincInsnNode].
+ *
+ * @param `var` index of the local variable to be incremented.
+ * @param incr increment amount to increment the local variable by.
+ */(
+    /** Index of the local variable to be incremented.  */
+    var `var`: Int,
+    /** Amount to increment the local variable by.  */
+    var incr: Int
+) : AbstractInsnNode(Opcodes.IINC) {
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.INVOKE_DYNAMIC_INSN
+        return IINC_INSN
     }
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitInvokeDynamicInsn(name, desc, bsm, *bsmArgs)
+        methodVisitor.visitIincInsn(`var`, incr)
         acceptAnnotations(methodVisitor)
     }
 
     override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return InvokeDynamicInsnNode(name, desc, bsm, *bsmArgs).cloneAnnotations(this)
+        return IincInsnNode(`var`, incr).cloneAnnotations(this)
     }
 }

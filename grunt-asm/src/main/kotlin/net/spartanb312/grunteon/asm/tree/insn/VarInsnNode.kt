@@ -25,54 +25,49 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
 import org.objectweb.asm.MethodVisitor
 
 /**
- * A node that represents a jump instruction. A jump instruction is an instruction that may jump to
- * another instruction.
+ * A node that represents a local variable instruction. A local variable instruction is an
+ * instruction that loads or stores the value of a local variable.
  *
  * @author Eric Bruneton
  */
-class JumpInsnNode
+class VarInsnNode
 /**
- * Constructs a new [JumpInsnNode].
+ * Constructs a new [VarInsnNode].
  *
- * @param opcode the opcode of the type instruction to be constructed. This opcode must be IFEQ,
- * IFNE, IFLT, IFGE, IFGT, IFLE, IF_ICMPEQ, IF_ICMPNE, IF_ICMPLT, IF_ICMPGE, IF_ICMPGT,
- * IF_ICMPLE, IF_ACMPEQ, IF_ACMPNE, GOTO, JSR, IFNULL or IFNONNULL.
- * @param label the operand of the instruction to be constructed. This operand is a label that
- * designates the instruction to which the jump instruction may jump.
+ * @param opcode the opcode of the local variable instruction to be constructed. This opcode must
+ * be ILOAD, LLOAD, FLOAD, DLOAD, ALOAD, ISTORE, LSTORE, FSTORE, DSTORE, ASTORE or RET.
+ * @param `var` the operand of the instruction to be constructed. This operand is the index of
+ * a local variable.
  */(
     opcode: Int,
-    /**
-     * The operand of this instruction. This operand is a label that designates the instruction to
-     * which this instruction may jump.
-     */
-    var label: LabelNode
+    /** The operand of this instruction. This operand is the index of a local variable.  */
+    var `var`: Int
 ) : AbstractInsnNode(opcode) {
     /**
      * Sets the opcode of this instruction.
      *
-     * @param opcode the new instruction opcode. This opcode must be IFEQ, IFNE, IFLT, IFGE, IFGT,
-     * IFLE, IF_ICMPEQ, IF_ICMPNE, IF_ICMPLT, IF_ICMPGE, IF_ICMPGT, IF_ICMPLE, IF_ACMPEQ,
-     * IF_ACMPNE, GOTO, JSR, IFNULL or IFNONNULL.
+     * @param opcode the new instruction opcode. This opcode must be ILOAD, LLOAD, FLOAD, DLOAD,
+     * ALOAD, ISTORE, LSTORE, FSTORE, DSTORE, ASTORE or RET.
      */
     fun setOpcode(opcode: Int) {
         this.opcode = opcode
     }
 
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.JUMP_INSN
+        return VAR_INSN
     }
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitJumpInsn(opcode, label.getLabel())
+        methodVisitor.visitVarInsn(opcode, `var`)
         acceptAnnotations(methodVisitor)
     }
 
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode {
-        return JumpInsnNode(opcode, AbstractInsnNode.Companion.clone(label, clonedLabels)).cloneAnnotations(this)
+    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
+        return VarInsnNode(opcode, `var`).cloneAnnotations(this)
     }
 }

@@ -25,43 +25,56 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
 import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes
 
 /**
- * A node that represents an LDC instruction.
+ * A node that represents a field instruction. A field instruction is an instruction that loads or
+ * stores the value of a field of an object.
  *
  * @author Eric Bruneton
  */
-class LdcInsnNode
+class FieldInsnNode
 /**
- * Constructs a new [LdcInsnNode].
+ * Constructs a new [FieldInsnNode].
  *
- * @param cst the constant to be loaded on the stack. This parameter mist be a non null [     ], a [Float], a [Long], a [Double], a [String], a [     ] of OBJECT or ARRAY sort for `.class` constants, for classes whose version is
- * 49, a [Type] of METHOD sort for MethodType, a [Handle] for MethodHandle
- * constants, for classes whose version is 51 or a [ConstantDynamic] for a constant
- * dynamic for classes whose version is 55.
+ * @param opcode the opcode of the type instruction to be constructed. This opcode must be
+ * GETSTATIC, PUTSTATIC, GETFIELD or PUTFIELD.
+ * @param owner the internal name of the field's owner class (see [     ][org.objectweb.asm.Type.getInternalName]).
+ * @param name the field's name.
+ * @param desc the field's descriptor (see [org.objectweb.asm.Type]).
  */(
+    opcode: Int,
     /**
-     * The constant to be loaded on the stack. This field must be a non null [Integer], a [ ], a [Long], a [Double], a [String], a [Type] of OBJECT or ARRAY
-     * sort for `.class` constants, for classes whose version is 49, a [Type] of METHOD
-     * sort for MethodType, a [Handle] for MethodHandle constants, for classes whose version is
-     * 51 or a [ConstantDynamic] for a constant dynamic for classes whose version is 55.
+     * The internal name of the field's owner class (see [ ][org.objectweb.asm.Type.getInternalName]).
      */
-    var cst: Any?
-) : AbstractInsnNode(Opcodes.LDC) {
+    var owner: String?,
+    /** The field's name.  */
+    var name: String?,
+    /** The field's descriptor (see [org.objectweb.asm.Type]).  */
+    var desc: String?
+) : AbstractInsnNode(opcode) {
+    /**
+     * Sets the opcode of this instruction.
+     *
+     * @param opcode the new instruction opcode. This opcode must be GETSTATIC, PUTSTATIC, GETFIELD or
+     * PUTFIELD.
+     */
+    fun setOpcode(opcode: Int) {
+        this.opcode = opcode
+    }
+
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.LDC_INSN
+        return FIELD_INSN
     }
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitLdcInsn(cst)
+        methodVisitor.visitFieldInsn(opcode, owner, name, desc)
         acceptAnnotations(methodVisitor)
     }
 
     override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return LdcInsnNode(cst).cloneAnnotations(this)
+        return FieldInsnNode(opcode, owner, name, desc).cloneAnnotations(this)
     }
 }

@@ -25,9 +25,9 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
-import net.spartanb312.grunteon.asm.tree.AnnotationNode.accept
+import net.spartanb312.grunteon.asm.tree.*
 import org.objectweb.asm.*
 
 /**
@@ -58,16 +58,16 @@ class MethodNode : MethodVisitor {
     var parameters: MutableList<ParameterNode?>? = null
 
     /** The runtime visible annotations of this method. May be null.  */
-    var visibleAnnotations: MutableList<AnnotationNode>? = null
+    var visibleAnnotations: MutableList<AnnotationNode?>? = null
 
     /** The runtime invisible annotations of this method. May be null.  */
-    var invisibleAnnotations: MutableList<AnnotationNode>? = null
+    var invisibleAnnotations: MutableList<AnnotationNode?>? = null
 
     /** The runtime visible type annotations of this method. May be null.  */
-    var visibleTypeAnnotations: MutableList<TypeAnnotationNode>? = null
+    var visibleTypeAnnotations: MutableList<TypeAnnotationNode?>? = null
 
     /** The runtime invisible type annotations of this method. May be null.  */
-    var invisibleTypeAnnotations: MutableList<TypeAnnotationNode>? = null
+    var invisibleTypeAnnotations: MutableList<TypeAnnotationNode?>? = null
 
     /** The non standard attributes of this method. May be null.  */
     var attrs: MutableList<Attribute?>? = null
@@ -93,7 +93,7 @@ class MethodNode : MethodVisitor {
     /**
      * The runtime visible parameter annotations of this method. These lists are lists of [ ] objects. May be null.
      */
-    var visibleParameterAnnotations: Array<MutableList<AnnotationNode>?>?
+    var visibleParameterAnnotations: Array<MutableList<AnnotationNode?>?>? = null
 
     /**
      * The number of method parameters than can have runtime invisible annotations. This number must
@@ -108,7 +108,7 @@ class MethodNode : MethodVisitor {
     /**
      * The runtime invisible parameter annotations of this method. These lists are lists of [ ] objects. May be null.
      */
-    var invisibleParameterAnnotations: Array<MutableList<AnnotationNode>?>?
+    var invisibleParameterAnnotations: Array<MutableList<AnnotationNode?>?>? = null
 
     /** The instructions of this method.  */
     var instructions: InsnList
@@ -213,21 +213,25 @@ class MethodNode : MethodVisitor {
         if (parameters == null) {
             parameters = ArrayList<ParameterNode?>(5)
         }
-        parameters!!.add(ParameterNode(name, access))
+        parameters!!.add(net.spartanb312.grunteon.asm.tree.ParameterNode(name, access))
     }
 
     override fun visitAnnotationDefault(): AnnotationVisitor? {
-        return net.spartanb312.grunteon.asm.tree.AnnotationNode(
-            object : ArrayList<Any?>(0) {
-                override fun add(o: Any?): Boolean {
-                    annotationDefault = o
-                    return super.add(o)
-                }
-            })
+        val list = object : ArrayList<Any?>(0) {
+            override fun add(o: Any?): Boolean {
+                annotationDefault = o
+                return super.add(o)
+            }
+        }
+        return MutableAnnotationNode.Impl(null, list)
+    }
+
+    override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? {
+        return MutableAnnotationNode.Impl(descriptor, mutableListOf())
     }
 
     override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor {
-        val annotation: AnnotationNode = net.spartanb312.grunteon.asm.tree.AnnotationNode(descriptor)
+        val annotation: MutableAnnotationNode = MutableAnnotationNode.Impl(descriptor, mutableListOf())
         if (visible) {
             visibleAnnotations = Util.add<AnnotationNode?>(visibleAnnotations, annotation)
         } else {
@@ -237,15 +241,12 @@ class MethodNode : MethodVisitor {
     }
 
     override fun visitTypeAnnotation(
-        typeRef: Int, typePath: TypePath?, descriptor: String?, visible: Boolean
-    ): AnnotationVisitor {
-        val typeAnnotation: TypeAnnotationNode = TypeAnnotationNode(typeRef, typePath, descriptor)
-        if (visible) {
-            visibleTypeAnnotations = Util.add<TypeAnnotationNode>(visibleTypeAnnotations, typeAnnotation)
-        } else {
-            invisibleTypeAnnotations = Util.add<TypeAnnotationNode>(invisibleTypeAnnotations, typeAnnotation)
-        }
-        return typeAnnotation
+        typeRef: Int,
+        typePath: TypePath?,
+        descriptor: String?,
+        visible: Boolean
+    ): AnnotationVisitor? {
+        return net.spartanb312.grunteon.asm.tree.TypeAnnotationNode(typeRef, typePath, descriptor)
     }
 
     override fun visitAnnotableParameterCount(parameterCount: Int, visible: Boolean) {
@@ -259,23 +260,11 @@ class MethodNode : MethodVisitor {
     override fun visitParameterAnnotation(
         parameter: Int, descriptor: String?, visible: Boolean
     ): AnnotationVisitor {
-        val annotation: AnnotationNode = net.spartanb312.grunteon.asm.tree.AnnotationNode(descriptor)
+        val annotation: MutableAnnotationNode = MutableAnnotationNode.Impl(descriptor, mutableListOf())
         if (visible) {
-            if (visibleParameterAnnotations == null) {
-                val params = Type.getArgumentCount(desc)
-                visibleParameterAnnotations =
-                    arrayOfNulls<MutableList<*>>(params) as Array<MutableList<AnnotationNode>?>
-            }
-            visibleParameterAnnotations!![parameter] =
-                Util.add<AnnotationNode?>(visibleParameterAnnotations!![parameter], annotation)
+            visibleParameterAnnotations = Util.setOrCreate(visibleParameterAnnotations, annotation)
         } else {
-            if (invisibleParameterAnnotations == null) {
-                val params = Type.getArgumentCount(desc)
-                invisibleParameterAnnotations =
-                    arrayOfNulls<MutableList<*>>(params) as Array<MutableList<AnnotationNode>?>
-            }
-            invisibleParameterAnnotations!![parameter] =
-                Util.add<AnnotationNode?>(invisibleParameterAnnotations!![parameter], annotation)
+            invisibleParameterAnnotations = Util.setOrCreate(invisibleParameterAnnotations, annotation)
         }
         return annotation
     }
@@ -397,7 +386,8 @@ class MethodNode : MethodVisitor {
             currentInsn = currentInsn.getPrevious()
         }
         // Add the annotation to this instruction.
-        val typeAnnotation: TypeAnnotationNode = TypeAnnotationNode(typeRef, typePath, descriptor)
+        val typeAnnotation: TypeAnnotationNode =
+            net.spartanb312.grunteon.asm.tree.TypeAnnotationNode(typeRef, typePath, descriptor)
         if (visible) {
             currentInsn.visibleTypeAnnotations =
                 Util.add<TypeAnnotationNode?>(currentInsn.visibleTypeAnnotations, typeAnnotation)
@@ -420,7 +410,8 @@ class MethodNode : MethodVisitor {
         typeRef: Int, typePath: TypePath?, descriptor: String?, visible: Boolean
     ): AnnotationVisitor {
         val tryCatchBlock = tryCatchBlocks!!.get((typeRef and 0x00FFFF00) shr 8)
-        val typeAnnotation: TypeAnnotationNode = TypeAnnotationNode(typeRef, typePath, descriptor)
+        val typeAnnotation: TypeAnnotationNode =
+            net.spartanb312.grunteon.asm.tree.TypeAnnotationNode(typeRef, typePath, descriptor)
         if (visible) {
             tryCatchBlock.visibleTypeAnnotations =
                 Util.add<TypeAnnotationNode?>(tryCatchBlock.visibleTypeAnnotations, typeAnnotation)
@@ -636,10 +627,11 @@ class MethodNode : MethodVisitor {
         }
         // Visit the annotations.
         if (annotationDefault != null) {
-            val annotationVisitor = methodVisitor.visitAnnotationDefault()
-            AnnotationNode.accept(annotationVisitor, null, annotationDefault!!)
-            if (annotationVisitor != null) {
-                annotationVisitor.visitEnd()
+            val av = methodVisitor.visitAnnotationDefault()
+            val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
+            AnnotationNode.Companion.accept(conv, null, annotationDefault!!)
+            if (av != null) {
+                av.visitEnd()
             }
         }
         if (visibleAnnotations != null) {
@@ -647,7 +639,9 @@ class MethodNode : MethodVisitor {
             val n = visibleAnnotations!!.size
             while (i < n) {
                 val annotation = visibleAnnotations!!.get(i)
-                annotation.accept(methodVisitor.visitAnnotation(annotation.desc, true))
+                val av = methodVisitor.visitAnnotation(annotation.desc, true)
+                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
+                annotation.accept(conv)
                 ++i
             }
         }
@@ -656,7 +650,9 @@ class MethodNode : MethodVisitor {
             val n = invisibleAnnotations!!.size
             while (i < n) {
                 val annotation = invisibleAnnotations!!.get(i)
-                annotation.accept(methodVisitor.visitAnnotation(annotation.desc, false))
+                val av = methodVisitor.visitAnnotation(annotation.desc, false)
+                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
+                annotation.accept(conv)
                 ++i
             }
         }
@@ -665,11 +661,11 @@ class MethodNode : MethodVisitor {
             val n = visibleTypeAnnotations!!.size
             while (i < n) {
                 val typeAnnotation: TypeAnnotationNode = visibleTypeAnnotations!!.get(i)
-                typeAnnotation.accept(
-                    methodVisitor.visitTypeAnnotation(
-                        typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, true
-                    )
+                val av = methodVisitor.visitTypeAnnotation(
+                    typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, true
                 )
+                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
+                typeAnnotation.accept(conv)
                 ++i
             }
         }
@@ -678,11 +674,11 @@ class MethodNode : MethodVisitor {
             val n = invisibleTypeAnnotations!!.size
             while (i < n) {
                 val typeAnnotation: TypeAnnotationNode = invisibleTypeAnnotations!!.get(i)
-                typeAnnotation.accept(
-                    methodVisitor.visitTypeAnnotation(
-                        typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, false
-                    )
+                val av = methodVisitor.visitTypeAnnotation(
+                    typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, false
                 )
+                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
+                typeAnnotation.accept(conv)
                 ++i
             }
         }
@@ -702,7 +698,9 @@ class MethodNode : MethodVisitor {
                 val m = parameterAnnotations.size
                 while (j < m) {
                     val annotation = parameterAnnotations.get(j)
-                    annotation.accept(methodVisitor.visitParameterAnnotation(i, annotation.desc, true))
+                    val av = methodVisitor.visitParameterAnnotation(i, annotation.desc, true)
+                    val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
+                    annotation.accept(conv)
                     ++j
                 }
                 ++i
@@ -724,7 +722,9 @@ class MethodNode : MethodVisitor {
                 val m = parameterAnnotations.size
                 while (j < m) {
                     val annotation = parameterAnnotations.get(j)
-                    annotation.accept(methodVisitor.visitParameterAnnotation(i, annotation.desc, false))
+                    val av = methodVisitor.visitParameterAnnotation(i, annotation.desc, false)
+                    val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
+                    annotation.accept(conv)
                     ++j
                 }
                 ++i

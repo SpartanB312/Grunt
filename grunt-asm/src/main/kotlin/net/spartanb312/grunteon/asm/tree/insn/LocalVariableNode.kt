@@ -25,48 +25,48 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.Label
 import org.objectweb.asm.MethodVisitor
 
-/** An [AbstractInsnNode] that encapsulates a [Label].  */
-class LabelNode : AbstractInsnNode {
-    private var value: Label? = null
-
-    constructor() : super(-1)
-
-    constructor(label: Label?) : super(-1) {
-        this.value = label
-    }
-
-    override fun getType(): Int {
-        return AbstractInsnNode.Companion.LABEL
-    }
-
-    val label: Label
-        /**
-         * Returns the label encapsulated by this node. A new label is created and associated with this
-         * node if it was created without an encapsulated label.
-         *
-         * @return the label encapsulated by this node.
-         */
-        get() {
-            if (value == null) {
-                value = Label()
-            }
-            return value
-        }
-
-    override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitLabel(this.label)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode? {
-        return clonedLabels.get(this)
-    }
-
-    fun resetLabel() {
-        value = null
+/**
+ * A node that represents a local variable declaration.
+ *
+ * @author Eric Bruneton
+ */
+class LocalVariableNode
+/**
+ * Constructs a new [LocalVariableNode].
+ *
+ * @param name the name of a local variable.
+ * @param desc the type descriptor of this local variable.
+ * @param signature the signature of this local variable. May be null.
+ * @param start the first instruction corresponding to the scope of this local variable
+ * (inclusive).
+ * @param end the last instruction corresponding to the scope of this local variable (exclusive).
+ * @param index the local variable's index.
+ */(
+    /** The name of a local variable.  */
+    var name: String?,
+    /** The type descriptor of this local variable.  */
+    var desc: String?,
+    /** The signature of this local variable. May be null.  */
+    var signature: String?,
+    /** The first instruction corresponding to the scope of this local variable (inclusive).  */
+    var start: LabelNode,
+    /** The last instruction corresponding to the scope of this local variable (exclusive).  */
+    var end: LabelNode,
+    /** The local variable's index.  */
+    var index: Int
+) {
+    /**
+     * Makes the given visitor visit this local variable declaration.
+     *
+     * @param methodVisitor a method visitor.
+     */
+    fun accept(methodVisitor: MethodVisitor) {
+        methodVisitor.visitLocalVariable(
+            name, desc, signature, start.getLabel(), end.getLabel(), index
+        )
     }
 }

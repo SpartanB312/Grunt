@@ -27,8 +27,8 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
-import net.spartanb312.grunteon.asm.tree.AnnotationNode.accept
-import net.spartanb312.grunteon.asm.tree.AnnotationNode.check
+import net.spartanb312.grunteon.asm.tree.insn.InnerClassNode
+import net.spartanb312.grunteon.asm.tree.insn.MethodNode
 import org.objectweb.asm.*
 
 /**
@@ -101,10 +101,10 @@ class ClassNode(api: Int) : ClassVisitor(api) {
     var outerMethodDesc: String? = null
 
     /** The runtime visible annotations of this class. May be null.  */
-    var visibleAnnotations: MutableList<AnnotationNode>? = null
+    var visibleAnnotations: MutableList<AnnotationNode?>? = null
 
     /** The runtime invisible annotations of this class. May be null.  */
-    var invisibleAnnotations: MutableList<AnnotationNode>? = null
+    var invisibleAnnotations: MutableList<AnnotationNode?>? = null
 
     /** The runtime visible type annotations of this class. May be null.  */
     var visibleTypeAnnotations: MutableList<TypeAnnotationNode>? = null
@@ -189,8 +189,40 @@ class ClassNode(api: Int) : ClassVisitor(api) {
     }
 
     override fun visitModule(name: String?, access: Int, version: String?): ModuleVisitor {
-        module = ModuleNode(name, access, version)
-        return module!!
+        module = MutableModuleNode.Impl(name, access, version)
+        return object : ModuleVisitor(Opcodes.ASM9) {
+            val impl = module as MutableModuleNode.Impl
+
+            override fun visitMainClass(mainClass: String?) {
+                impl.visitMainClass(mainClass)
+            }
+
+            override fun visitPackage(packaze: String?) {
+                impl.visitPackage(packaze)
+            }
+
+            override fun visitRequire(module: String?, access: Int, version: String?) {
+                impl.visitRequire(module, access, version)
+            }
+
+            override fun visitExport(packaze: String?, access: Int, vararg modules: String?) {
+                impl.visitExport(packaze, access, *modules)
+            }
+
+            override fun visitOpen(packaze: String?, access: Int, vararg modules: String?) {
+                impl.visitOpen(packaze, access, *modules)
+            }
+
+            override fun visitUse(service: String?) {
+                impl.visitUse(service)
+            }
+
+            override fun visitProvide(service: String?, vararg providers: String?) {
+                impl.visitProvide(service, *providers)
+            }
+
+            override fun visitEnd() {}
+        }
     }
 
     override fun visitNestHost(nestHost: String?) {
@@ -204,7 +236,7 @@ class ClassNode(api: Int) : ClassVisitor(api) {
     }
 
     override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor {
-        val annotation: AnnotationNode = net.spartanb312.grunteon.asm.tree.AnnotationNode(descriptor)
+        val annotation: MutableAnnotationNode = MutableAnnotationNode.Impl(descriptor, mutableListOf())
         if (visible) {
             visibleAnnotations = Util.add<AnnotationNode?>(visibleAnnotations, annotation)
         } else {
@@ -247,7 +279,7 @@ class ClassNode(api: Int) : ClassVisitor(api) {
     override fun visitRecordComponent(
         name: String?, descriptor: String?, signature: String?
     ): RecordComponentVisitor {
-        val recordComponent = RecordComponentNode(name, descriptor, signature)
+        val recordComponent = MutableRecordComponentNode.Impl(name, descriptor, signature)
         recordComponents = Util.add<RecordComponentNode?>(recordComponents, recordComponent)
         return recordComponent
     }
@@ -353,7 +385,9 @@ class ClassNode(api: Int) : ClassVisitor(api) {
     fun accept(classVisitor: ClassVisitor) {
         // Visit the header.
         val interfacesArray = arrayOfNulls<String>(this.interfaces.size)
-        this.interfaces.toArray<String?>(interfacesArray)
+        for (i in this.interfaces.indices) {
+            interfacesArray[i] = this.interfaces[i]
+        }
         classVisitor.visit(version, access, name, signature, superName, interfacesArray)
         // Visit the source.
         if (sourceFile != null || sourceDebug != null) {
@@ -377,7 +411,9 @@ class ClassNode(api: Int) : ClassVisitor(api) {
             val n = visibleAnnotations!!.size
             while (i < n) {
                 val annotation = visibleAnnotations!!.get(i)
-                annotation.accept(classVisitor.visitAnnotation(annotation.desc, true))
+                val av = classVisitor.visitAnnotation(annotation.desc, true)
+                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
+                annotation.accept(conv)
                 ++i
             }
         }
@@ -386,7 +422,9 @@ class ClassNode(api: Int) : ClassVisitor(api) {
             val n = invisibleAnnotations!!.size
             while (i < n) {
                 val annotation = invisibleAnnotations!!.get(i)
-                annotation.accept(classVisitor.visitAnnotation(annotation.desc, false))
+                val av = classVisitor.visitAnnotation(annotation.desc, false)
+                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
+                annotation.accept(conv)
                 ++i
             }
         }
@@ -395,11 +433,11 @@ class ClassNode(api: Int) : ClassVisitor(api) {
             val n = visibleTypeAnnotations!!.size
             while (i < n) {
                 val typeAnnotation: TypeAnnotationNode = visibleTypeAnnotations!!.get(i)
-                typeAnnotation.accept(
-                    classVisitor.visitTypeAnnotation(
-                        typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, true
-                    )
+                val av = classVisitor.visitTypeAnnotation(
+                    typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, true
                 )
+                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
+                typeAnnotation.accept(conv)
                 ++i
             }
         }
@@ -408,11 +446,11 @@ class ClassNode(api: Int) : ClassVisitor(api) {
             val n = invisibleTypeAnnotations!!.size
             while (i < n) {
                 val typeAnnotation: TypeAnnotationNode = invisibleTypeAnnotations!!.get(i)
-                typeAnnotation.accept(
-                    classVisitor.visitTypeAnnotation(
-                        typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, false
-                    )
+                val av = classVisitor.visitTypeAnnotation(
+                    typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, false
                 )
+                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
+                typeAnnotation.accept(conv)
                 ++i
             }
         }

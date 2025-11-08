@@ -25,9 +25,9 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
-import net.spartanb312.grunteon.asm.tree.AnnotationNode.accept
+import net.spartanb312.grunteon.asm.tree.TypeAnnotationNode
 import org.objectweb.asm.MethodVisitor
 
 /**
@@ -166,7 +166,7 @@ abstract class AbstractInsnNode protected constructor(
             while (i < n) {
                 val sourceAnnotation: TypeAnnotationNode = insnNode.visibleTypeAnnotations!!.get(i)
                 val cloneAnnotation: TypeAnnotationNode =
-                    TypeAnnotationNode(
+                    net.spartanb312.grunteon.asm.tree.TypeAnnotationNode(
                         sourceAnnotation.typeRef, sourceAnnotation.typePath, sourceAnnotation.desc
                     )
                 sourceAnnotation.accept(cloneAnnotation)
@@ -181,7 +181,7 @@ abstract class AbstractInsnNode protected constructor(
             while (i < n) {
                 val sourceAnnotation: TypeAnnotationNode = insnNode.invisibleTypeAnnotations!!.get(i)
                 val cloneAnnotation: TypeAnnotationNode =
-                    TypeAnnotationNode(
+                    net.spartanb312.grunteon.asm.tree.TypeAnnotationNode(
                         sourceAnnotation.typeRef, sourceAnnotation.typePath, sourceAnnotation.desc
                     )
                 sourceAnnotation.accept(cloneAnnotation)

@@ -25,46 +25,74 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
+import net.spartanb312.grunteon.asm.tree.Util
+import org.objectweb.asm.Label
 import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 
 /**
- * A node that represents an instruction with a single int operand.
+ * A node that represents a LOOKUPSWITCH instruction.
  *
  * @author Eric Bruneton
  */
-class IntInsnNode
-/**
- * Constructs a new [IntInsnNode].
- *
- * @param opcode the opcode of the instruction to be constructed. This opcode must be BIPUSH,
- * SIPUSH or NEWARRAY.
- * @param operand the operand of the instruction to be constructed.
- */(
-    opcode: Int,
-    /** The operand of this instruction.  */
-    var operand: Int
-) : AbstractInsnNode(opcode) {
+class LookupSwitchInsnNode(
+    /** Beginning of the default handler block.  */
+    var dflt: LabelNode, keys: IntArray?, labels: Array<LabelNode?>?
+) : AbstractInsnNode(Opcodes.LOOKUPSWITCH) {
+    /** The values of the keys.  */
+    var keys: MutableList<Int?>
+
+    /** Beginnings of the handler blocks.  */
+    var labels: MutableList<LabelNode?>
+
     /**
-     * Sets the opcode of this instruction.
+     * Constructs a new [LookupSwitchInsnNode].
      *
-     * @param opcode the new instruction opcode. This opcode must be BIPUSH, SIPUSH or NEWARRAY.
+     * @param dflt beginning of the default handler block.
+     * @param keys the values of the keys.
+     * @param labels beginnings of the handler blocks. `labels[i]` is the beginning of the
+     * handler block for the `keys[i]` key.
      */
-    fun setOpcode(opcode: Int) {
-        this.opcode = opcode
+    init {
+        this.keys = Util.asArrayList(keys)
+        this.labels = Util.asArrayList<LabelNode?>(labels)
     }
 
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.INT_INSN
+        return LOOKUPSWITCH_INSN
     }
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitIntInsn(opcode, operand)
+        val keysArray = IntArray(this.keys.size)
+        run {
+            var i = 0
+            val n = keysArray.size
+            while (i < n) {
+                keysArray[i] = this.keys.get(i)!!
+                ++i
+            }
+        }
+        val labelsArray = arrayOfNulls<Label>(this.labels.size)
+        var i = 0
+        val n = labelsArray.size
+        while (i < n) {
+            labelsArray[i] = this.labels.get(i)!!.getLabel()
+            ++i
+        }
+        methodVisitor.visitLookupSwitchInsn(dflt.getLabel(), keysArray, labelsArray)
         acceptAnnotations(methodVisitor)
     }
 
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return IntInsnNode(opcode, operand).cloneAnnotations(this)
+    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode {
+        val clone =
+            LookupSwitchInsnNode(
+                clone(dflt, clonedLabels),
+                null,
+                clone(labels, clonedLabels)
+            )
+        clone.keys.addAll(keys)
+        return clone.cloneAnnotations(this)
     }
 }

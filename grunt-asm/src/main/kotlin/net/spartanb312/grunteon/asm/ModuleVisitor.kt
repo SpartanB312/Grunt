@@ -68,7 +68,7 @@ interface ModuleVisitor {
      * @param modules the fully qualified names (using dots) of the modules that can access the public
      * classes of the exported package, or null.
      */
-    fun visitExport(packaze: String, access: Int, vararg modules: String?) {}
+    fun visitExport(packaze: String, access: Int, modules: Array<String>?) {}
 
     /**
      * Visits an open package of the current module.
@@ -78,7 +78,7 @@ interface ModuleVisitor {
      * @param modules the fully qualified names (using dots) of the modules that can use deep
      * reflection to the classes of the open package, or null.
      */
-    fun visitOpen(packaze: String, access: Int, vararg modules: String?) {}
+    fun visitOpen(packaze: String, access: Int, modules: Array<String>?) {}
 
     /**
      * Visits a service used by the current module. The name must be the internal name of an interface
@@ -95,7 +95,7 @@ interface ModuleVisitor {
      * @param providers the internal names (see [Type.getInternalName]) of the implementations
      * of the service (there is at least one provider).
      */
-    fun visitProvide(service: String?, vararg providers: String) {}
+    fun visitProvide(service: String, providers: Array<String>) {}
 
     /**
      * Visits the end of the module. This method, which is the last one to be called, is used to
@@ -116,19 +116,19 @@ interface ModuleVisitor {
             ow2.visitRequire(module, access, version)
         }
 
-        override fun visitExport(packaze: String, access: Int, vararg modules: String?) {
-            ow2.visitExport(packaze, access, *modules)
+        override fun visitExport(packaze: String, access: Int, modules: Array<String>?) {
+            ow2.visitExport(packaze, access, *(modules ?: emptyArray()))
         }
 
-        override fun visitOpen(packaze: String, access: Int, vararg modules: String?) {
-            ow2.visitOpen(packaze, access, *modules)
+        override fun visitOpen(packaze: String, access: Int, modules: Array<String>?) {
+            ow2.visitOpen(packaze, access, *(modules ?: emptyArray()))
         }
 
         override fun visitUse(service: String) {
             ow2.visitUse(service)
         }
 
-        override fun visitProvide(service: String?, vararg providers: String) {
+        override fun visitProvide(service: String, providers: Array<String>) {
             ow2.visitProvide(service, *providers)
         }
 
@@ -151,20 +151,20 @@ interface ModuleVisitor {
             toOw2.visitRequire(module, access, version)
         }
 
-        override fun visitExport(packaze: String, access: Int, vararg modules: String?) {
-            toOw2.visitExport(packaze, access, *modules)
+        override fun visitExport(packaze: String, access: Int, modules: Array<String>?) {
+            toOw2.visitExport(packaze, access, modules)
         }
 
-        override fun visitOpen(packaze: String, access: Int, vararg modules: String?) {
-            toOw2.visitOpen(packaze, access, *modules)
+        override fun visitOpen(packaze: String, access: Int, modules: Array<String>?) {
+            toOw2.visitOpen(packaze, access, modules)
         }
 
         override fun visitUse(service: String) {
             toOw2.visitUse(service)
         }
 
-        override fun visitProvide(service: String?, vararg providers: String) {
-            toOw2.visitProvide(service, *providers)
+        override fun visitProvide(service: String, providers: Array<String>) {
+            toOw2.visitProvide(service, providers)
         }
 
         override fun visitEnd() {

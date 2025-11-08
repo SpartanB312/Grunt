@@ -25,64 +25,52 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.Label
 import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes
 
 /**
- * A node that represents a TABLESWITCH instruction.
+ * A node that represents a type instruction. A type instruction is an instruction which takes an
+ * internal name as parameter (see [org.objectweb.asm.Type.getInternalName]).
  *
  * @author Eric Bruneton
  */
-class TableSwitchInsnNode(
-    /** The minimum key value.  */
-    var min: Int,
-    /** The maximum key value.  */
-    var max: Int,
-    /** Beginning of the default handler block.  */
-    var dflt: LabelNode, vararg labels: LabelNode?
-) : AbstractInsnNode(Opcodes.TABLESWITCH) {
-    /** Beginnings of the handler blocks. This list is a list of [LabelNode] objects.  */
-    var labels: MutableList<LabelNode?>
-
+class TypeInsnNode
+/**
+ * Constructs a new [TypeInsnNode].
+ *
+ * @param opcode the opcode of the type instruction to be constructed. This opcode must be NEW,
+ * ANEWARRAY, CHECKCAST or INSTANCEOF.
+ * @param desc the operand of the instruction to be constructed. This operand is an internal name
+ * (see [org.objectweb.asm.Type.getInternalName]).
+ */(
+    opcode: Int,
     /**
-     * Constructs a new [TableSwitchInsnNode].
-     *
-     * @param min the minimum key value.
-     * @param max the maximum key value.
-     * @param dflt beginning of the default handler block.
-     * @param labels beginnings of the handler blocks. `labels[i]` is the beginning of the
-     * handler block for the `min + i` key.
+     * The operand of this instruction. Despite its name (due to historical reasons), this operand is
+     * an internal name (see [org.objectweb.asm.Type.getInternalName]).
      */
-    init {
-        this.labels = Util.asArrayList<LabelNode?>(labels)
+    var desc: String?
+) : AbstractInsnNode(opcode) {
+    /**
+     * Sets the opcode of this instruction.
+     *
+     * @param opcode the new instruction opcode. This opcode must be NEW, ANEWARRAY, CHECKCAST or
+     * INSTANCEOF.
+     */
+    fun setOpcode(opcode: Int) {
+        this.opcode = opcode
     }
 
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.TABLESWITCH_INSN
+        return TYPE_INSN
     }
 
     override fun accept(methodVisitor: MethodVisitor) {
-        val labelsArray = arrayOfNulls<Label>(this.labels.size)
-        var i = 0
-        val n = labelsArray.size
-        while (i < n) {
-            labelsArray[i] = this.labels.get(i)!!.getLabel()
-            ++i
-        }
-        methodVisitor.visitTableSwitchInsn(min, max, dflt.getLabel(), *labelsArray)
+        methodVisitor.visitTypeInsn(opcode, desc)
         acceptAnnotations(methodVisitor)
     }
 
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode {
-        return TableSwitchInsnNode(
-            min,
-            max,
-            AbstractInsnNode.Companion.clone(dflt, clonedLabels),
-            *AbstractInsnNode.Companion.clone(labels, clonedLabels)
-        )
-            .cloneAnnotations(this)
+    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
+        return TypeInsnNode(opcode, desc).cloneAnnotations(this)
     }
 }

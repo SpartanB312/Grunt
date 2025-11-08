@@ -25,56 +25,73 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-package net.spartanb312.grunteon.asm.tree
+package net.spartanb312.grunteon.asm.tree.insn
 
 import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 
 /**
- * A node that represents a field instruction. A field instruction is an instruction that loads or
- * stores the value of a field of an object.
+ * A node that represents a method instruction. A method instruction is an instruction that invokes
+ * a method.
  *
  * @author Eric Bruneton
  */
-class FieldInsnNode
+class MethodInsnNode
 /**
- * Constructs a new [FieldInsnNode].
+ * Constructs a new [MethodInsnNode].
  *
  * @param opcode the opcode of the type instruction to be constructed. This opcode must be
- * GETSTATIC, PUTSTATIC, GETFIELD or PUTFIELD.
- * @param owner the internal name of the field's owner class (see [     ][org.objectweb.asm.Type.getInternalName]).
- * @param name the field's name.
- * @param desc the field's descriptor (see [org.objectweb.asm.Type]).
- */(
+ * INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC or INVOKEINTERFACE.
+ * @param owner the internal name of the method's owner class (see [     ][org.objectweb.asm.Type.getInternalName]).
+ * @param name the method's name.
+ * @param desc the method's descriptor (see [org.objectweb.asm.Type]).
+ */ @JvmOverloads constructor(
     opcode: Int,
     /**
-     * The internal name of the field's owner class (see [ ][org.objectweb.asm.Type.getInternalName]).
+     * The internal name of the method's owner class (see [ ][org.objectweb.asm.Type.getInternalName]).
+     *
+     *
+     * For methods of arrays, e.g., `clone()`, the array type descriptor.
      */
     var owner: String?,
-    /** The field's name.  */
+    /** The method's name.  */
     var name: String?,
-    /** The field's descriptor (see [org.objectweb.asm.Type]).  */
-    var desc: String?
+    /** The method's descriptor (see [org.objectweb.asm.Type]).  */
+    var desc: String?,
+    /** Whether the method's owner class if an interface.  */
+    var itf: Boolean = opcode == Opcodes.INVOKEINTERFACE
 ) : AbstractInsnNode(opcode) {
+    /**
+     * Constructs a new [MethodInsnNode].
+     *
+     * @param opcode the opcode of the type instruction to be constructed. This opcode must be
+     * INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC or INVOKEINTERFACE.
+     * @param owner the internal name of the method's owner class (see [     ][org.objectweb.asm.Type.getInternalName]).
+     * @param name the method's name.
+     * @param desc the method's descriptor (see [org.objectweb.asm.Type]).
+     * @param itf if the method's owner class is an interface.
+     */
+
     /**
      * Sets the opcode of this instruction.
      *
-     * @param opcode the new instruction opcode. This opcode must be GETSTATIC, PUTSTATIC, GETFIELD or
-     * PUTFIELD.
+     * @param opcode the new instruction opcode. This opcode must be INVOKEVIRTUAL, INVOKESPECIAL,
+     * INVOKESTATIC or INVOKEINTERFACE.
      */
     fun setOpcode(opcode: Int) {
         this.opcode = opcode
     }
 
     override fun getType(): Int {
-        return AbstractInsnNode.Companion.FIELD_INSN
+        return METHOD_INSN
     }
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitFieldInsn(opcode, owner, name, desc)
+        methodVisitor.visitMethodInsn(opcode, owner, name, desc, itf)
         acceptAnnotations(methodVisitor)
     }
 
     override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return FieldInsnNode(opcode, owner, name, desc).cloneAnnotations(this)
+        return MethodInsnNode(opcode, owner, name, desc, itf).cloneAnnotations(this)
     }
 }

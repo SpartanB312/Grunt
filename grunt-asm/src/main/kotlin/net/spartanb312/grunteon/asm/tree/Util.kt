@@ -149,7 +149,7 @@ internal object Util {
 
     fun <T> asArrayList(length: Int, array: Array<T?>): MutableList<T?> {
         val list: MutableList<T?> = ArrayList<T?>(length)
-        for (i in 0..<length) {
+        for (i in 0 until length) {
             list.add(array[i]) // NOPMD(UseArraysAsList): we convert a part of the array.
         }
         return list
