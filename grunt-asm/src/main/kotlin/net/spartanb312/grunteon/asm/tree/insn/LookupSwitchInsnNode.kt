@@ -27,72 +27,34 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import net.spartanb312.grunteon.asm.tree.Util
-import org.objectweb.asm.Label
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents a LOOKUPSWITCH instruction.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class LookupSwitchInsnNode(
+interface LookupSwitchInsnNode : BaseInsnNode {
+    override val opcode: Int
+        get() = Opcodes.LOOKUPSWITCH
+
     /** Beginning of the default handler block.  */
-    var dflt: LabelNode, keys: IntArray?, labels: Array<LabelNode?>?
-) : AbstractInsnNode(Opcodes.LOOKUPSWITCH) {
+    val dflt: LabelNode
+
     /** The values of the keys.  */
-    var keys: MutableList<Int?>
+    val keys: List<Int>
 
-    /** Beginnings of the handler blocks.  */
-    var labels: MutableList<LabelNode?>
+    /** Beginnings of the handler blocks. `labels[i]` is the beginning of the handler block for the `keys[i]` key.  */
+    val labels: List<LabelNode>
 
-    /**
-     * Constructs a new [LookupSwitchInsnNode].
-     *
-     * @param dflt beginning of the default handler block.
-     * @param keys the values of the keys.
-     * @param labels beginnings of the handler blocks. `labels[i]` is the beginning of the
-     * handler block for the `keys[i]` key.
-     */
-    init {
-        this.keys = Util.asArrayList(keys)
-        this.labels = Util.asArrayList<LabelNode?>(labels)
-    }
-
-    override fun getType(): Int {
-        return LOOKUPSWITCH_INSN
-    }
+    override val type: Int
+        get() = AbstractInsnNode.LOOKUPSWITCH_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
-        val keysArray = IntArray(this.keys.size)
-        run {
-            var i = 0
-            val n = keysArray.size
-            while (i < n) {
-                keysArray[i] = this.keys.get(i)!!
-                ++i
-            }
-        }
-        val labelsArray = arrayOfNulls<Label>(this.labels.size)
-        var i = 0
-        val n = labelsArray.size
-        while (i < n) {
-            labelsArray[i] = this.labels.get(i)!!.getLabel()
-            ++i
-        }
-        methodVisitor.visitLookupSwitchInsn(dflt.getLabel(), keysArray, labelsArray)
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode {
-        val clone =
-            LookupSwitchInsnNode(
-                clone(dflt, clonedLabels),
-                null,
-                clone(labels, clonedLabels)
-            )
-        clone.keys.addAll(keys)
-        return clone.cloneAnnotations(this)
+        methodVisitor.visitLookupSwitchInsn(dflt.value, keys, labels.map { it.value })
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

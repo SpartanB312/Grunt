@@ -403,7 +403,7 @@ interface MethodVisitor {
      * @param labels beginnings of the handler blocks. `labels[i]` is the beginning of the
      * handler block for the `keys[i]` key.
      */
-    fun visitLookupSwitchInsn(dflt: Label, keys: IntArray, labels: Array<Label>) {}
+    fun visitLookupSwitchInsn(dflt: Label, keys: List<Int>, labels: List<Label>) {}
 
     /**
      * Visits a MULTIANEWARRAY instruction.
@@ -677,10 +677,10 @@ interface MethodVisitor {
 
         override fun visitLookupSwitchInsn(
             dflt: Label,
-            keys: IntArray,
-            labels: Array<Label>
+            keys: List<Int>,
+            labels: List<Label>
         ) {
-            ow2.visitLookupSwitchInsn(dflt, keys, labels)
+            ow2.visitLookupSwitchInsn(dflt, keys.toIntArray(), labels.toTypedArray())
         }
 
         override fun visitMultiANewArrayInsn(descriptor: String, numDimensions: Int) {
@@ -891,7 +891,7 @@ interface MethodVisitor {
             keys: IntArray,
             labels: Array<Label>
         ) {
-            grunt.visitLookupSwitchInsn(dflt, keys, labels)
+            grunt.visitLookupSwitchInsn(dflt, keys.toList(), labels.toList())
         }
 
         override fun visitMultiANewArrayInsn(descriptor: String, numDimensions: Int) {
