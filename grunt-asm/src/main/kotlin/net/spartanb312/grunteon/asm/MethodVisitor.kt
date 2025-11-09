@@ -393,7 +393,7 @@ interface MethodVisitor {
      * @param labels beginnings of the handler blocks. `labels[i]` is the beginning of the
      * handler block for the `min + i` key.
      */
-    fun visitTableSwitchInsn(min: Int, max: Int, dflt: Label, vararg labels: Label) {}
+    fun visitTableSwitchInsn(min: Int, max: Int, dflt: Label, labels: List<Label>) {}
 
     /**
      * Visits a LOOKUPSWITCH instruction.
@@ -670,9 +670,9 @@ interface MethodVisitor {
             min: Int,
             max: Int,
             dflt: Label,
-            vararg labels: Label
+            labels: List<Label>
         ) {
-            ow2.visitTableSwitchInsn(min, max, dflt, *labels)
+            ow2.visitTableSwitchInsn(min, max, dflt, *labels.toTypedArray())
         }
 
         override fun visitLookupSwitchInsn(
@@ -881,9 +881,9 @@ interface MethodVisitor {
             min: Int,
             max: Int,
             dflt: Label,
-            vararg labels: Label
+            labels: Array<Label>
         ) {
-            grunt.visitTableSwitchInsn(min, max, dflt, *labels)
+            grunt.visitTableSwitchInsn(min, max, dflt, labels.toList())
         }
 
         override fun visitLookupSwitchInsn(

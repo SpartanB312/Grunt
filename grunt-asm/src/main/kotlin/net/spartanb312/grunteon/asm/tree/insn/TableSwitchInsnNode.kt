@@ -27,63 +27,37 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import net.spartanb312.grunteon.asm.tree.Util
-import org.objectweb.asm.Label
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents a TABLESWITCH instruction.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class TableSwitchInsnNode(
+interface TableSwitchInsnNode : BaseInsnNode {
+    override val opcode: Int
+        get() = Opcodes.TABLESWITCH
+
     /** The minimum key value.  */
-    var min: Int,
+    val min: Int
+
     /** The maximum key value.  */
-    var max: Int,
+    val max: Int
+
     /** Beginning of the default handler block.  */
-    var dflt: LabelNode, vararg labels: LabelNode?
-) : AbstractInsnNode(Opcodes.TABLESWITCH) {
-    /** Beginnings of the handler blocks. This list is a list of [LabelNode] objects.  */
-    var labels: MutableList<LabelNode?>
+    val dflt: LabelNode
 
-    /**
-     * Constructs a new [TableSwitchInsnNode].
-     *
-     * @param min the minimum key value.
-     * @param max the maximum key value.
-     * @param dflt beginning of the default handler block.
-     * @param labels beginnings of the handler blocks. `labels[i]` is the beginning of the
-     * handler block for the `min + i` key.
-     */
-    init {
-        this.labels = Util.asArrayList<LabelNode?>(labels)
-    }
+    /** Beeginnings of the handler blocks. `labels[i]` is the beginning of the handler block for the `min + i` key.  */
+    val labels: List<LabelNode>
 
-    override fun getType(): Int {
-        return TABLESWITCH_INSN
-    }
+    override val type: Int
+        get() = AbstractInsnNode.TABLESWITCH_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
-        val labelsArray = arrayOfNulls<Label>(this.labels.size)
-        var i = 0
-        val n = labelsArray.size
-        while (i < n) {
-            labelsArray[i] = this.labels.get(i)!!.getLabel()
-            ++i
-        }
-        methodVisitor.visitTableSwitchInsn(min, max, dflt.getLabel(), *labelsArray)
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode {
-        return TableSwitchInsnNode(
-            min,
-            max,
-            clone(dflt, clonedLabels),
-            *clone(labels, clonedLabels)
-        )
-            .cloneAnnotations(this)
+        methodVisitor.visitTableSwitchInsn(min, max, dflt.value, labels.map { it.value })
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }
