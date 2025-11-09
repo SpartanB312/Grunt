@@ -27,44 +27,27 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents an instruction with a single int operand.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class IntInsnNode
-/**
- * Constructs a new [IntInsnNode].
- *
- * @param opcode the opcode of the instruction to be constructed. This opcode must be BIPUSH,
- * SIPUSH or NEWARRAY.
- * @param operand the operand of the instruction to be constructed.
- */(
-    opcode: Int,
-    /** The operand of this instruction.  */
-    var operand: Int
-) : AbstractInsnNode(opcode) {
-    /**
-     * Sets the opcode of this instruction.
-     *
-     * @param opcode the new instruction opcode. This opcode must be BIPUSH, SIPUSH or NEWARRAY.
-     */
-    fun setOpcode(opcode: Int) {
-        this.opcode = opcode
-    }
+interface IntInsnNode : BaseInsnNode {
+    /** The opcode of the instruction to be constructed. This opcode must be BIPUSH, SIPUSH or NEWARRAY. */
+    override val opcode: Int
 
-    override fun getType(): Int {
-        return INT_INSN
-    }
+    /** The operand of this instruction.  */
+    val operand: Int
+
+    override val type: Int
+        get() = AbstractInsnNode.INT_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitIntInsn(opcode, operand)
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return IntInsnNode(opcode, operand).cloneAnnotations(this)
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }
