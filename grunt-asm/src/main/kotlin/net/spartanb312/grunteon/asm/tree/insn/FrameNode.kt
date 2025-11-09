@@ -27,9 +27,9 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import net.spartanb312.grunteon.asm.tree.Util
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents a stack map frame. These nodes are pseudo instruction nodes in order to be
@@ -42,136 +42,56 @@ import org.objectweb.asm.Opcodes
  * (*) this is mandatory only for classes whose version is greater than or equal to [ ][Opcodes.V1_6].
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class FrameNode : AbstractInsnNode {
+interface FrameNode : BaseInsnNode {
+    override val opcode: Int
+        get() = -1
+
     /**
      * The type of this frame. Must be [Opcodes.F_NEW] for expanded frames, or [ ][Opcodes.F_FULL], [Opcodes.F_APPEND], [Opcodes.F_CHOP], [Opcodes.F_SAME] or
      * [Opcodes.F_APPEND], [Opcodes.F_SAME1] for compressed frames.
      */
-    var type: Int = 0
+    val frameType: Int
 
     /**
      * The types of the local variables of this stack map frame. Elements of this list can be Integer,
      * String or LabelNode objects (for primitive, reference and uninitialized types respectively -
      * see [MethodVisitor]).
      */
-    var local: MutableList<Any?>? = null
+    val local: List<Any>?
 
     /**
-     * The types of the operand stack elements of this stack map frame. Elements of this list can be
-     * Integer, String or LabelNode objects (for primitive, reference and uninitialized types
-     * respectively - see [MethodVisitor]).
-     */
-    var stack: MutableList<Any?>? = null
-
-    private constructor() : super(-1)
-
-    /**
-     * Constructs a new [FrameNode].
-     *
-     * @param type the type of this frame. Must be [Opcodes.F_NEW] for expanded frames, or
-     * [Opcodes.F_FULL], [Opcodes.F_APPEND], [Opcodes.F_CHOP], [     ][Opcodes.F_SAME] or [Opcodes.F_APPEND], [Opcodes.F_SAME1] for compressed frames.
-     * @param numLocal number of local variables of this stack map frame. Long and double values count
-     * for one variable.
-     * @param local the types of the local variables of this stack map frame. Elements of this list
-     * can be Integer, String or LabelNode objects (for primitive, reference and uninitialized
-     * types respectively - see [MethodVisitor]). Long and double values are represented by
-     * a single element.
-     * @param numStack number of operand stack elements of this stack map frame. Long and double
-     * values count for one stack element.
-     * @param stack the types of the operand stack elements of this stack map frame. Elements of this
+     * The types of the operand stack elements of this stack map frame. Elements of this
      * list can be Integer, String or LabelNode objects (for primitive, reference and
      * uninitialized types respectively - see [MethodVisitor]). Long and double values are
      * represented by a single element.
      */
-    constructor(
-        type: Int,
-        numLocal: Int,
-        local: Array<Any?>?,
-        numStack: Int,
-        stack: Array<Any?>?
-    ) : super(-1) {
-        this.type = type
-        when (type) {
-            Opcodes.F_NEW, Opcodes.F_FULL -> {
-                this.local = Util.asArrayList<Any?>(numLocal, local)
-                this.stack = Util.asArrayList<Any?>(numStack, stack)
-            }
-            Opcodes.F_APPEND -> this.local = Util.asArrayList<Any?>(numLocal, local)
-            Opcodes.F_CHOP -> this.local = Util.asArrayList<Any?>(numLocal)
-            Opcodes.F_SAME -> {}
-            Opcodes.F_SAME1 -> this.stack = Util.asArrayList<Any?>(1, stack)
-            else -> throw IllegalArgumentException()
-        }
-    }
+    val stack: List<Any>?
 
-    override fun getType(): Int {
-        return FRAME
-    }
+    override val type: Int
+        get() = AbstractInsnNode.FRAME
 
     override fun accept(methodVisitor: MethodVisitor) {
-        when (type) {
+        when (frameType) {
             Opcodes.F_NEW, Opcodes.F_FULL -> methodVisitor.visitFrame(
-                type,
+                frameType,
                 local!!.size,
-                Companion.asArray(local!!),
+                unwrapLabel(local),
                 stack!!.size,
-                Companion.asArray(stack!!)
+                unwrapLabel(stack)
             )
-            Opcodes.F_APPEND -> methodVisitor.visitFrame(type, local!!.size, Companion.asArray(local!!), 0, null)
-            Opcodes.F_CHOP -> methodVisitor.visitFrame(type, local!!.size, null, 0, null)
-            Opcodes.F_SAME -> methodVisitor.visitFrame(type, 0, null, 0, null)
-            Opcodes.F_SAME1 -> methodVisitor.visitFrame(type, 0, null, 1, Companion.asArray(stack!!))
+            Opcodes.F_APPEND -> methodVisitor.visitFrame(frameType, local!!.size, unwrapLabel(local), 0, null)
+            Opcodes.F_CHOP -> methodVisitor.visitFrame(frameType, local!!.size, null, 0, null)
+            Opcodes.F_SAME -> methodVisitor.visitFrame(frameType, 0, null, 0, null)
+            Opcodes.F_SAME1 -> methodVisitor.visitFrame(frameType, 0, null, 1, unwrapLabel(stack))
             else -> throw IllegalArgumentException()
         }
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>): AbstractInsnNode {
-        val clone = FrameNode()
-        clone.type = type
-        if (local != null) {
-            clone.local = ArrayList<Any?>()
-            var i = 0
-            val n = local!!.size
-            while (i < n) {
-                var localElement = local!!.get(i)
-                if (localElement is LabelNode) {
-                    localElement = clonedLabels.get(localElement)
-                }
-                clone.local!!.add(localElement)
-                ++i
-            }
-        }
-        if (stack != null) {
-            clone.stack = ArrayList<Any?>()
-            var i = 0
-            val n = stack!!.size
-            while (i < n) {
-                var stackElement = stack!!.get(i)
-                if (stackElement is LabelNode) {
-                    stackElement = clonedLabels.get(stackElement)
-                }
-                clone.stack!!.add(stackElement)
-                ++i
-            }
-        }
-        return clone
     }
 
     companion object {
-        private fun asArray(list: MutableList<Any?>): Array<Any?> {
-            val array = arrayOfNulls<Any>(list.size)
-            var i = 0
-            val n = array.size
-            while (i < n) {
-                var o = list.get(i)
-                if (o is LabelNode) {
-                    o = o.getLabel()
-                }
-                array[i] = o
-                ++i
-            }
-            return array
+        private fun unwrapLabel(list: List<Any>?): List<Any>? {
+            return list?.map { if (it is LabelNode) it.value else it }
         }
     }
 }

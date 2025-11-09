@@ -200,9 +200,9 @@ interface MethodVisitor {
     fun visitFrame(
         type: Int,
         numLocal: Int,
-        local: Array<Any>,
+        local: List<Any>?,
         numStack: Int,
-        stack: Array<Any>
+        stack: List<Any>?
     ) {
     }
 
@@ -594,11 +594,11 @@ interface MethodVisitor {
         override fun visitFrame(
             type: Int,
             numLocal: Int,
-            local: Array<Any>,
+            local: List<Any>?,
             numStack: Int,
-            stack: Array<Any>
+            stack: List<Any>?
         ) {
-            ow2.visitFrame(type, numLocal, local, numStack, stack)
+            ow2.visitFrame(type, numLocal, local?.toTypedArray(), numStack, stack?.toTypedArray())
         }
 
         override fun visitInsn(opcode: Int) {
@@ -810,11 +810,11 @@ interface MethodVisitor {
         override fun visitFrame(
             type: Int,
             numLocal: Int,
-            local: Array<Any>,
+            local: Array<Any>?,
             numStack: Int,
-            stack: Array<Any>
+            stack: Array<Any>?
         ) {
-            grunt.visitFrame(type, numLocal, local, numStack, stack)
+            grunt.visitFrame(type, numLocal, local?.toList(), numStack, stack?.toList())
         }
 
         override fun visitInsn(opcode: Int) {
