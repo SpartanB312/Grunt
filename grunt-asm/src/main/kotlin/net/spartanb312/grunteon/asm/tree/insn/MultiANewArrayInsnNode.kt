@@ -27,36 +27,32 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents a MULTIANEWARRAY instruction.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class MultiANewArrayInsnNode
-/**
- * Constructs a new [MultiANewArrayInsnNode].
- *
- * @param desc an array type descriptor (see [org.objectweb.asm.Type]).
- * @param dims the number of dimensions of the array to allocate.
- */(
+interface MultiANewArrayInsnNode : BaseInsnNode {
+
     /** An array type descriptor (see [org.objectweb.asm.Type]).  */
-    var desc: String?,
+    val desc: String
+
     /** Number of dimensions of the array to allocate.  */
-    var dims: Int
-) : AbstractInsnNode(Opcodes.MULTIANEWARRAY) {
-    override fun getType(): Int {
-        return MULTIANEWARRAY_INSN
-    }
+    val dims: Int
+
+    override val opcode: Int
+        get() = Opcodes.MULTIANEWARRAY
+
+    override val type: Int
+        get() = AbstractInsnNode.MULTIANEWARRAY_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitMultiANewArrayInsn(desc, dims)
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return MultiANewArrayInsnNode(desc, dims).cloneAnnotations(this)
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }
