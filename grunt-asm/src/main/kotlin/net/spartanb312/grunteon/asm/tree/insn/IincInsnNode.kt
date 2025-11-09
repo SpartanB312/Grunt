@@ -27,36 +27,31 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents an IINC instruction.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class IincInsnNode
-/**
- * Constructs a new [IincInsnNode].
- *
- * @param `var` index of the local variable to be incremented.
- * @param incr increment amount to increment the local variable by.
- */(
+interface IincInsnNode : BaseInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IINC
+
     /** Index of the local variable to be incremented.  */
-    var `var`: Int,
+    val variable: Int
+
     /** Amount to increment the local variable by.  */
-    var incr: Int
-) : AbstractInsnNode(Opcodes.IINC) {
-    override fun getType(): Int {
-        return IINC_INSN
-    }
+    val increment: Int
+
+    override val type: Int
+        get() = AbstractInsnNode.IINC_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitIincInsn(`var`, incr)
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return IincInsnNode(`var`, incr).cloneAnnotations(this)
+        methodVisitor.visitIincInsn(variable, increment)
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }
