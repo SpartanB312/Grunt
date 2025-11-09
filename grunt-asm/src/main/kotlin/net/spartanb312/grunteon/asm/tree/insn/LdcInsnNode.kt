@@ -27,41 +27,33 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree.insn
 
-import org.objectweb.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
  * A node that represents an LDC instruction.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class LdcInsnNode
-/**
- * Constructs a new [LdcInsnNode].
- *
- * @param cst the constant to be loaded on the stack. This parameter mist be a non null [     ], a [Float], a [Long], a [Double], a [String], a [     ] of OBJECT or ARRAY sort for `.class` constants, for classes whose version is
- * 49, a [Type] of METHOD sort for MethodType, a [Handle] for MethodHandle
- * constants, for classes whose version is 51 or a [ConstantDynamic] for a constant
- * dynamic for classes whose version is 55.
- */(
+interface LdcInsnNode : BaseInsnNode {
+    override val opcode: Int
+        get() = Opcodes.LDC
+
     /**
      * The constant to be loaded on the stack. This field must be a non null [Integer], a [ ], a [Long], a [Double], a [String], a [Type] of OBJECT or ARRAY
      * sort for `.class` constants, for classes whose version is 49, a [Type] of METHOD
      * sort for MethodType, a [Handle] for MethodHandle constants, for classes whose version is
      * 51 or a [ConstantDynamic] for a constant dynamic for classes whose version is 55.
      */
-    var cst: Any?
-) : AbstractInsnNode(Opcodes.LDC) {
-    override fun getType(): Int {
-        return LDC_INSN
-    }
+    val cst: Any
+
+    override val type: Int
+        get() = AbstractInsnNode.LDC_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitLdcInsn(cst)
-        acceptAnnotations(methodVisitor)
-    }
-
-    override fun clone(clonedLabels: MutableMap<LabelNode?, LabelNode?>?): AbstractInsnNode {
-        return LdcInsnNode(cst).cloneAnnotations(this)
+        BaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }
