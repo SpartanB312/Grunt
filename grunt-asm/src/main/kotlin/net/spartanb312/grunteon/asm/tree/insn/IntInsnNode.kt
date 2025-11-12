@@ -28,6 +28,7 @@
 package net.spartanb312.grunteon.asm.tree.insn
 
 import net.spartanb312.grunteon.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
@@ -50,4 +51,19 @@ sealed interface IIntInsnNode : IBaseInsnNode {
         methodVisitor.visitIntInsn(opcode, operand)
         IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
+}
+
+interface BiPushInsnNode : IIntInsnNode {
+    override val opcode: Int
+        get() = Opcodes.BIPUSH
+}
+
+interface SiPushInsnNode : IIntInsnNode {
+    override val opcode: Int
+        get() = Opcodes.SIPUSH
+}
+
+interface NewArrayInsnNode : IIntInsnNode {
+    override val opcode: Int
+        get() = Opcodes.NEWARRAY
 }
