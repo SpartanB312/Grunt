@@ -28,6 +28,7 @@
 package net.spartanb312.grunteon.asm.tree.insn
 
 import net.spartanb312.grunteon.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
@@ -53,4 +54,94 @@ sealed interface IJumpInsnNode : IBaseInsnNode {
         methodVisitor.visitJumpInsn(opcode, label.value)
         IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
+}
+
+interface IfEqInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IFEQ
+}
+
+interface IfNeInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IFNE
+}
+
+interface IfLtInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IFLT
+}
+
+interface IfGeInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IFGE
+}
+
+interface IfGtInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IFGT
+}
+
+interface IfLeInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IFLE
+}
+
+interface IfIcmpEqInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IF_ICMPEQ
+}
+
+interface IfIcmpNeInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IF_ICMPNE
+}
+
+interface IfIcmpLtInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IF_ICMPLT
+}
+
+interface IfIcmpGeInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IF_ICMPGE
+}
+
+interface IfIcmpGtInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IF_ICMPGT
+}
+
+interface IfIcmpLeInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IF_ICMPLE
+}
+
+interface IfAcmpEqInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IF_ACMPEQ
+}
+
+interface IfAcmpNeInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IF_ACMPNE
+}
+
+interface GotoInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.GOTO
+}
+
+interface JsrInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.JSR
+}
+
+interface IfNullInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IFNULL
+}
+
+interface IfNonNullInsnNode : IJumpInsnNode {
+    override val opcode: Int
+        get() = Opcodes.IFNONNULL
 }
