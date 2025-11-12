@@ -11,6 +11,9 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Luna
  */
 interface LineNumberNode : IBaseInsnNode {
+    override val opcode: Int
+        get() = -1
+
     /** A line number. This number refers to the source file from which the class was compiled.  */
     val line: Int
 

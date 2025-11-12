@@ -5,6 +5,7 @@ package net.spartanb312.grunteon.asm.tree
 import net.spartanb312.grunteon.asm.MethodVisitor
 import net.spartanb312.grunteon.asm.tree.insn.*
 import org.objectweb.asm.Handle
+import org.objectweb.asm.Label
 
 interface InsnList : List<IBaseInsnNode> {
     fun accept(mv: MethodVisitor) {
@@ -235,9 +236,11 @@ interface InsnListBuilder {
     fun IFNULL(label: LabelNode)
     fun IFNONNULL(label: LabelNode)
 
-    fun LABEL(label: LabelNode)
+    fun LABEL(label: Label)
 
     fun LDC(constant: Any)
+
+    fun LINE(line: Int, label: LabelNode)
 
     fun build(): InsnList
 }
@@ -489,10 +492,16 @@ fun InsnListBuilder.IFNONNULL(
 
 fun InsnListBuilder.LABEL(
     src: LabelNode,
-    label: LabelNode = src
+    label: Label = src.value
 ) = LABEL(label)
 
 fun InsnListBuilder.LDC(
     src: LdcInsnNode,
     constant: Any = src.constant
 ) = LDC(constant)
+
+fun InsnListBuilder.LINE(
+    src: LineNumberNode,
+    line: Int = src.line,
+    label: LabelNode = src.start
+) = LINE(line, label)
