@@ -212,6 +212,10 @@ interface InsnListBuilder {
     fun MONITORENTER()
     fun MONITOREXIT()
 
+    fun BIPUSH(byte: Byte)
+    fun SIPUSH(short: Short)
+    fun NEWARRAY(arrayType: NewArrayInsnNode.NewArrayType)
+
     fun build(): InsnList
 }
 
@@ -354,3 +358,18 @@ fun InsnListBuilder.INVOKEDYNAMIC(
     bsm,
     bsmArgs
 )
+
+fun InsnListBuilder.BIPUSH(
+    src: BiPushInsnNode,
+    byte: Byte = src.operand.toByte()
+) = BIPUSH(byte)
+
+fun InsnListBuilder.SIPUSH(
+    src: SiPushInsnNode,
+    short: Short = src.operand.toShort()
+) = SIPUSH(short)
+
+fun InsnListBuilder.NEWARRAY(
+    src: NewArrayInsnNode,
+    arrayType: NewArrayInsnNode.NewArrayType = NewArrayInsnNode.NewArrayType.fromValue(src.operand)
+) = NEWARRAY(arrayType)

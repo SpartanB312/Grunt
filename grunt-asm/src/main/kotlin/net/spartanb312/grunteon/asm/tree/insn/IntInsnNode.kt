@@ -66,4 +66,31 @@ interface SiPushInsnNode : IIntInsnNode {
 interface NewArrayInsnNode : IIntInsnNode {
     override val opcode: Int
         get() = Opcodes.NEWARRAY
+
+    enum class NewArrayType(val value: Int) {
+        BOOLEAN(Opcodes.T_BOOLEAN),
+        CHAR(Opcodes.T_CHAR),
+        FLOAT(Opcodes.T_FLOAT),
+        DOUBLE(Opcodes.T_DOUBLE),
+        BYTE(Opcodes.T_BYTE),
+        SHORT(Opcodes.T_SHORT),
+        INT(Opcodes.T_INT),
+        LONG(Opcodes.T_LONG);
+
+        companion object {
+            fun fromValue(value: Int): NewArrayType {
+                return when (value) {
+                    Opcodes.T_BOOLEAN -> BOOLEAN
+                    Opcodes.T_CHAR -> CHAR
+                    Opcodes.T_FLOAT -> FLOAT
+                    Opcodes.T_DOUBLE -> DOUBLE
+                    Opcodes.T_BYTE -> BYTE
+                    Opcodes.T_SHORT -> SHORT
+                    Opcodes.T_INT -> INT
+                    Opcodes.T_LONG -> LONG
+                    else -> throw IllegalArgumentException("Invalid new array type value: $value")
+                }
+            }
+        }
+    }
 }
