@@ -242,6 +242,19 @@ interface InsnListBuilder {
 
     fun LINE(line: Int, label: LabelNode)
 
+    fun LOOKUPSWITCH(
+        dflt: LabelNode,
+        keys: List<Int>,
+        labels: List<LabelNode>
+    )
+
+    fun TABLESWITCH(
+        min: Int,
+        max: Int,
+        dflt: LabelNode,
+        labels: List<LabelNode>
+    )
+
     fun build(): InsnList
 }
 
@@ -505,3 +518,27 @@ fun InsnListBuilder.LINE(
     line: Int = src.line,
     label: LabelNode = src.start
 ) = LINE(line, label)
+
+fun InsnListBuilder.LOOKUPSWITCH(
+    src: LookupSwitchInsnNode,
+    dflt: LabelNode = src.dflt,
+    keys: List<Int> = src.keys,
+    labels: List<LabelNode> = src.labels
+) = LOOKUPSWITCH(
+    dflt,
+    keys,
+    labels
+)
+
+fun InsnListBuilder.TABLESWITCH(
+    src: TableSwitchInsnNode,
+    min: Int = src.min,
+    max: Int = src.max,
+    dflt: LabelNode = src.dflt,
+    labels: List<LabelNode> = src.labels
+) = TABLESWITCH(
+    min,
+    max,
+    dflt,
+    labels
+)
