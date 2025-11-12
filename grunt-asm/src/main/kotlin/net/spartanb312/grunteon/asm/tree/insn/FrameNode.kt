@@ -72,26 +72,124 @@ sealed interface IFrameNode : IBaseInsnNode {
     override val type: Int
         get() = AbstractInsnNode.FRAME
 
-    override fun accept(methodVisitor: MethodVisitor) {
-        when (frameType) {
-            Opcodes.F_NEW, Opcodes.F_FULL -> methodVisitor.visitFrame(
-                frameType,
-                local!!.size,
-                unwrapLabel(local),
-                stack!!.size,
-                unwrapLabel(stack)
-            )
-            Opcodes.F_APPEND -> methodVisitor.visitFrame(frameType, local!!.size, unwrapLabel(local), 0, null)
-            Opcodes.F_CHOP -> methodVisitor.visitFrame(frameType, local!!.size, null, 0, null)
-            Opcodes.F_SAME -> methodVisitor.visitFrame(frameType, 0, null, 0, null)
-            Opcodes.F_SAME1 -> methodVisitor.visitFrame(frameType, 0, null, 1, unwrapLabel(stack))
-            else -> throw IllegalArgumentException()
-        }
-    }
+//    override fun accept(methodVisitor: MethodVisitor) {
+//        when (frameType) {
+//            Opcodes.F_NEW, Opcodes.F_FULL -> methodVisitor.visitFrame(
+//                frameType,
+//                local!!.size,
+//                unwrapLabel(local),
+//                stack!!.size,
+//                unwrapLabel(stack)
+//            )
+//            Opcodes.F_APPEND -> methodVisitor.visitFrame(frameType, local!!.size, unwrapLabel(local), 0, null)
+//            Opcodes.F_CHOP -> methodVisitor.visitFrame(frameType, local!!.size, null, 0, null)
+//            Opcodes.F_SAME -> methodVisitor.visitFrame(frameType, 0, null, 0, null)
+//            Opcodes.F_SAME1 -> methodVisitor.visitFrame(frameType, 0, null, 1, unwrapLabel(stack))
+//            else -> throw IllegalArgumentException()
+//        }
+//    }
+}
 
-    companion object {
-        private fun unwrapLabel(list: List<Any>?): List<Any>? {
-            return list?.map { if (it is LabelNode) it.value else it }
-        }
+private fun unwrapLabel(list: List<Any>): List<Any> {
+    return list.map { if (it is LabelNode) it.value else it }
+}
+
+interface FNewNode : IFrameNode {
+    override val frameType: Int
+        get() = Opcodes.F_NEW
+
+    override val local: List<Any>
+
+    override val stack: List<Any>
+
+    override fun accept(methodVisitor: MethodVisitor) {
+        methodVisitor.visitFrame(
+            frameType,
+            local.size,
+            unwrapLabel(local),
+            stack.size,
+            unwrapLabel(stack)
+        )
+    }
+}
+
+interface FFullNode : IFrameNode {
+    override val frameType: Int
+        get() = Opcodes.F_FULL
+
+    override val local: List<Any>
+
+    override val stack: List<Any>
+
+    override fun accept(methodVisitor: MethodVisitor) {
+        methodVisitor.visitFrame(
+            frameType,
+            local.size,
+            unwrapLabel(local),
+            stack.size,
+            unwrapLabel(stack)
+        )
+    }
+}
+
+interface FAppendNode : IFrameNode {
+    override val frameType: Int
+        get() = Opcodes.F_APPEND
+
+    override val local: List<Any>
+
+    @Deprecated("DO NOT USE", level = DeprecationLevel.HIDDEN)
+    override val stack: List<Any>?
+        get() = null
+
+    override fun accept(methodVisitor: MethodVisitor) {
+        methodVisitor.visitFrame(frameType, local.size, unwrapLabel(local), 0, null)
+    }
+}
+
+interface FChopNode : IFrameNode {
+    override val frameType: Int
+        get() = Opcodes.F_CHOP
+
+    override val local: List<Any>
+
+    @Deprecated("DO NOT USE", level = DeprecationLevel.HIDDEN)
+    override val stack: List<Any>?
+        get() = null
+
+    override fun accept(methodVisitor: MethodVisitor) {
+        methodVisitor.visitFrame(frameType, local.size, local, 0, null)
+    }
+}
+
+interface FSameNode : IFrameNode {
+    override val frameType: Int
+        get() = Opcodes.F_SAME
+
+    @Deprecated("DO NOT USE", level = DeprecationLevel.HIDDEN)
+    override val local: List<Any>?
+        get() = null
+
+    @Deprecated("DO NOT USE", level = DeprecationLevel.HIDDEN)
+    override val stack: List<Any>?
+        get() = null
+
+    override fun accept(methodVisitor: MethodVisitor) {
+        methodVisitor.visitFrame(frameType, 0, null, 0, null)
+    }
+}
+
+interface FSame1Node : IFrameNode {
+    override val frameType: Int
+        get() = Opcodes.F_SAME1
+
+    @Deprecated("DO NOT USE", level = DeprecationLevel.HIDDEN)
+    override val local: List<Any>?
+        get() = null
+
+    override val stack: List<Any>
+
+    override fun accept(methodVisitor: MethodVisitor) {
+        methodVisitor.visitFrame(frameType, 0, null, 1, unwrapLabel(stack))
     }
 }
