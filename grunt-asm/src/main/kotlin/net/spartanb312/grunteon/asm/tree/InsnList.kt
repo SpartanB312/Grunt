@@ -254,6 +254,22 @@ interface InsnListBuilder {
         labels: List<LabelNode>
     )
 
+    fun NEW(
+        type: String
+    )
+
+    fun ANEWARRAY(
+        type: String
+    )
+
+    fun CHECKCAST(
+        type: String
+    )
+
+    fun INSTANCEOF(
+        type: String
+    )
+
     fun build(): InsnList
 }
 
@@ -535,4 +551,32 @@ fun InsnListBuilder.TABLESWITCH(
     max,
     dflt,
     labels
+)
+
+fun InsnListBuilder.NEW(
+    src: NewInsnNode,
+    type: String = src.desc
+) = NEW(
+    type
+)
+
+fun InsnListBuilder.ANEWARRAY(
+    src: ANewArrayInsnNode,
+    type: String = src.desc
+) = ANEWARRAY(
+    type
+)
+
+fun InsnListBuilder.CHECKCAST(
+    src: CheckCastInsnNode,
+    type: String = src.desc
+) = CHECKCAST(
+    type
+)
+
+fun InsnListBuilder.INSTANCEOF(
+    src: InstanceOfInsnNode,
+    type: String = src.desc
+) = INSTANCEOF(
+    type
 )
