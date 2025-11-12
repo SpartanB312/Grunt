@@ -4,6 +4,7 @@ package net.spartanb312.grunteon.asm.tree
 
 import net.spartanb312.grunteon.asm.MethodVisitor
 import net.spartanb312.grunteon.asm.tree.insn.*
+import org.objectweb.asm.Handle
 
 interface InsnList : List<IBaseInsnNode> {
     fun accept(mv: MethodVisitor) {
@@ -82,6 +83,13 @@ interface InsnListBuilder {
         owner: String,
         name: String,
         desc: String
+    )
+
+    fun INVOKEDYNAMIC(
+        name: String,
+        desc: String,
+        bsm: Handle,
+        bsmArgs: List<Any>
     )
 
     fun NOP()
@@ -332,4 +340,17 @@ fun InsnListBuilder.INVOKEINTERFACE(
     owner,
     name,
     desc
+)
+
+fun InsnListBuilder.INVOKEDYNAMIC(
+    src: InvokeDynamicInsnNode,
+    name: String = src.name,
+    desc: String = src.desc,
+    bsm: Handle = src.bsm,
+    bsmArgs: List<Any> = src.bsmArgs
+) = INVOKEDYNAMIC(
+    name,
+    desc,
+    bsm,
+    bsmArgs
 )
