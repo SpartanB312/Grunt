@@ -55,6 +55,11 @@ interface InsnListBuilder {
         stack: List<Any>
     )
 
+    fun IINC(
+        variable: Int,
+        increment: Int
+    )
+
     fun build(): InsnList
 }
 
@@ -132,4 +137,13 @@ fun InsnListBuilder.F_SAME1(
     stack: List<Any> = src.stack
 ) = F_SAME1(
     stack
+)
+
+fun InsnListBuilder.IINC(
+    src: IincInsnNode,
+    variable: Int = src.variable,
+    increment: Int = src.increment
+) = IINC(
+    variable,
+    increment
 )
