@@ -232,7 +232,6 @@ interface InsnListBuilder {
     fun IF_ACMPEQ(label: LabelNode)
     fun IF_ACMPNE(label: LabelNode)
     fun GOTO(label: LabelNode)
-    fun JSR(label: LabelNode)
     fun IFNULL(label: LabelNode)
     fun IFNONNULL(label: LabelNode)
 
@@ -487,11 +486,6 @@ fun InsnListBuilder.GOTO(
     src: GotoInsnNode,
     label: LabelNode = src.label
 ) = GOTO(label)
-
-fun InsnListBuilder.JSR(
-    src: JsrInsnNode,
-    label: LabelNode = src.label
-) = JSR(label)
 
 fun InsnListBuilder.IFNULL(
     src: IfNullInsnNode,

@@ -102,8 +102,3 @@ interface AStoreInsnNode : IVarInsnNode {
     override val opcode: Int
         get() = Opcodes.ASTORE
 }
-
-interface RetInsnNode : IVarInsnNode {
-    override val opcode: Int
-        get() = Opcodes.RET
-}

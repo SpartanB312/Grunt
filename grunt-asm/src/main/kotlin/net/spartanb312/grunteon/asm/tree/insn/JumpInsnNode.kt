@@ -131,11 +131,6 @@ interface GotoInsnNode : IJumpInsnNode {
         get() = Opcodes.GOTO
 }
 
-interface JsrInsnNode : IJumpInsnNode {
-    override val opcode: Int
-        get() = Opcodes.JSR
-}
-
 interface IfNullInsnNode : IJumpInsnNode {
     override val opcode: Int
         get() = Opcodes.IFNULL
