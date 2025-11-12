@@ -270,6 +270,17 @@ interface InsnListBuilder {
         type: String
     )
 
+    fun ILoad(variable: Int)
+    fun LLoad(variable: Int)
+    fun FLoad(variable: Int)
+    fun DLoad(variable: Int)
+    fun ALoad(variable: Int)
+    fun IStore(variable: Int)
+    fun LStore(variable: Int)
+    fun FStore(variable: Int)
+    fun DStore(variable: Int)
+    fun AStore(variable: Int)
+
     fun build(): InsnList
 }
 
@@ -580,3 +591,53 @@ fun InsnListBuilder.INSTANCEOF(
 ) = INSTANCEOF(
     type
 )
+
+fun InsnListBuilder.ILoad(
+    src: ILoadInsnNode,
+    variable: Int = src.variable
+) = ILoad(variable)
+
+fun InsnListBuilder.LLoad(
+    src: LLoadInsnNode,
+    variable: Int = src.variable
+) = LLoad(variable)
+
+fun InsnListBuilder.FLoad(
+    src: FLoadInsnNode,
+    variable: Int = src.variable
+) = FLoad(variable)
+
+fun InsnListBuilder.DLoad(
+    src: DLoadInsnNode,
+    variable: Int = src.variable
+) = DLoad(variable)
+
+fun InsnListBuilder.ALoad(
+    src: ALoadInsnNode,
+    variable: Int = src.variable
+) = ALoad(variable)
+
+fun InsnListBuilder.IStore(
+    src: IStoreInsnNode,
+    variable: Int = src.variable
+) = IStore(variable)
+
+fun InsnListBuilder.LStore(
+    src: LStoreInsnNode,
+    variable: Int = src.variable
+) = LStore(variable)
+
+fun InsnListBuilder.FStore(
+    src: FStoreInsnNode,
+    variable: Int = src.variable
+) = FStore(variable)
+
+fun InsnListBuilder.DStore(
+    src: DStoreInsnNode,
+    variable: Int = src.variable
+) = DStore(variable)
+
+fun InsnListBuilder.AStore(
+    src: AStoreInsnNode,
+    variable: Int = src.variable
+) = AStore(variable)
