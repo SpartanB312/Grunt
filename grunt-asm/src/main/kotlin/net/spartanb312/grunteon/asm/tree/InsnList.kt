@@ -235,6 +235,8 @@ interface InsnListBuilder {
     fun IFNULL(label: LabelNode)
     fun IFNONNULL(label: LabelNode)
 
+    fun LABEL(label: LabelNode)
+
     fun build(): InsnList
 }
 
@@ -482,3 +484,8 @@ fun InsnListBuilder.IFNONNULL(
     src: IfNonNullInsnNode,
     label: LabelNode = src.label
 ) = IFNONNULL(label)
+
+fun InsnListBuilder.LABEL(
+    src: LabelNode,
+    label: LabelNode = src
+) = LABEL(label)
