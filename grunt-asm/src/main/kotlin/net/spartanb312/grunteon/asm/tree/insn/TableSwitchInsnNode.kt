@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-sealed interface TableSwitchInsnNode : BaseInsnNode {
+sealed interface ITableSwitchInsnNode : IBaseInsnNode {
     override val opcode: Int
         get() = Opcodes.TABLESWITCH
 
@@ -58,6 +58,6 @@ sealed interface TableSwitchInsnNode : BaseInsnNode {
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitTableSwitchInsn(min, max, dflt.value, labels.map { it.value })
-        BaseInsnNode.acceptAnnotations(this, methodVisitor)
+        IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

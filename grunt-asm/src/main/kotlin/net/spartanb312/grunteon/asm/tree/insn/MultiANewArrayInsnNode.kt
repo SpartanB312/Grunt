@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-sealed interface MultiANewArrayInsnNode : BaseInsnNode {
+sealed interface IMultiANewArrayInsnNode : IBaseInsnNode {
 
     /** An array type descriptor (see [org.objectweb.asm.Type]).  */
     val desc: String
@@ -53,6 +53,6 @@ sealed interface MultiANewArrayInsnNode : BaseInsnNode {
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitMultiANewArrayInsn(desc, dims)
-        BaseInsnNode.acceptAnnotations(this, methodVisitor)
+        IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

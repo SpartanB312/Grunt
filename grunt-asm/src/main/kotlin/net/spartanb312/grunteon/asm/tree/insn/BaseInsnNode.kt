@@ -32,12 +32,12 @@ import net.spartanb312.grunteon.asm.tree.TypeAnnotationNode
 
 /**
  * A node that represents a bytecode instruction. *An instruction can appear at most once in at
- * most one [InsnList] at a time*.
+ * most one [net.spartanb312.grunteon.asm.tree.InsnList] at a time*.
  *
  * @author Eric Bruneton
  * @author Luna
  */
-sealed interface BaseInsnNode {
+sealed interface IBaseInsnNode {
     /**
      * The opcode of this instruction, or -1 if this is not a JVM instruction (e.g. a label or a line
      * number).
@@ -77,7 +77,7 @@ sealed interface BaseInsnNode {
          *
          * @param methodVisitor a method visitor.
          */
-        internal fun acceptAnnotations(node: BaseInsnNode, methodVisitor: MethodVisitor) {
+        internal fun acceptAnnotations(node: IBaseInsnNode, methodVisitor: MethodVisitor) {
             node.visibleTypeAnnotations.forEach {
                 it.accept(methodVisitor.visitTypeAnnotation(it.typeRef, it.typePath, it.desc, true))
             }

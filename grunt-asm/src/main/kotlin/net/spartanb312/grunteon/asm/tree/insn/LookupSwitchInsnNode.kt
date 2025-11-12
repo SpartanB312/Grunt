@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-sealed interface LookupSwitchInsnNode : BaseInsnNode {
+sealed interface ILookupSwitchInsnNode : IBaseInsnNode {
     override val opcode: Int
         get() = Opcodes.LOOKUPSWITCH
 
@@ -55,6 +55,6 @@ sealed interface LookupSwitchInsnNode : BaseInsnNode {
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitLookupSwitchInsn(dflt.value, keys, labels.map { it.value })
-        BaseInsnNode.acceptAnnotations(this, methodVisitor)
+        IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

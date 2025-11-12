@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-sealed interface VarInsnNode : BaseInsnNode {
+sealed interface IVarInsnNode : IBaseInsnNode {
     override val opcode: Int
 
     /** The operand of this instruction. This operand is the index of a local variable.  */
@@ -48,6 +48,6 @@ sealed interface VarInsnNode : BaseInsnNode {
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitVarInsn(opcode, variable)
-        BaseInsnNode.acceptAnnotations(this, methodVisitor)
+        IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

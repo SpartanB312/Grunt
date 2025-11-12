@@ -36,7 +36,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-sealed interface IntInsnNode : BaseInsnNode {
+sealed interface IIntInsnNode : IBaseInsnNode {
     /** The opcode of the instruction to be constructed. This opcode must be BIPUSH, SIPUSH or NEWARRAY. */
     override val opcode: Int
 
@@ -48,6 +48,6 @@ sealed interface IntInsnNode : BaseInsnNode {
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitIntInsn(opcode, operand)
-        BaseInsnNode.acceptAnnotations(this, methodVisitor)
+        IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

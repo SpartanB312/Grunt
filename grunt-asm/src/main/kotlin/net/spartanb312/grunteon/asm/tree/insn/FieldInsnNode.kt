@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-sealed interface FieldInsnNode : BaseInsnNode {
+sealed interface IFieldInsnNode : IBaseInsnNode {
     override val opcode: Int
 
     /**
@@ -56,6 +56,6 @@ sealed interface FieldInsnNode : BaseInsnNode {
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitFieldInsn(opcode, owner, name, desc)
-        BaseInsnNode.acceptAnnotations(this, methodVisitor)
+        IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

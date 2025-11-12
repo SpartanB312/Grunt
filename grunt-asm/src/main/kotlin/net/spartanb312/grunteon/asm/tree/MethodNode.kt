@@ -151,7 +151,7 @@ class MethodNode : MethodVisitor {
      * @param api the ASM API version implemented by this visitor. Must be one of the `ASM`*x* values in [Opcodes].
      */
     constructor(api: Int) : super(api) {
-        this.instructions = net.spartanb312.grunteon.asm.tree.insn.InsnList()
+        this.instructions = net.spartanb312.grunteon.asm.tree.InsnList()
     }
 
     /**
@@ -204,7 +204,7 @@ class MethodNode : MethodVisitor {
             this.localVariables = ArrayList<LocalVariableNode?>(5)
         }
         this.tryCatchBlocks = ArrayList<TryCatchBlockNode>()
-        this.instructions = net.spartanb312.grunteon.asm.tree.insn.InsnList()
+        this.instructions = net.spartanb312.grunteon.asm.tree.InsnList()
     }
 
     // -----------------------------------------------------------------------------------------------

@@ -31,8 +31,8 @@ import net.spartanb312.grunteon.asm.MethodVisitor
 import org.objectweb.asm.Label
 import org.objectweb.asm.tree.AbstractInsnNode
 
-/** An [BaseInsnNode] that encapsulates a [Label].  */
-sealed interface LabelNode : BaseInsnNode {
+/** An [IBaseInsnNode] that encapsulates a [Label].  */
+sealed interface ILabelNode : IBaseInsnNode {
     override val opcode: Int
         get() = -1
 

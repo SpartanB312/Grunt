@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  *
  * @author Remi Forax
  */
-sealed interface InvokeDynamicInsnNode : BaseInsnNode {
+sealed interface IInvokeDynamicInsnNode : IBaseInsnNode {
     override val opcode: Int
         get() = Opcodes.INVOKEDYNAMIC
 
@@ -58,6 +58,6 @@ sealed interface InvokeDynamicInsnNode : BaseInsnNode {
 
     override fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitInvokeDynamicInsn(name, desc, bsm, bsmArgs)
-        BaseInsnNode.acceptAnnotations(this, methodVisitor)
+        IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }
