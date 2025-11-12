@@ -47,13 +47,13 @@ sealed interface LdcInsnNode : IBaseInsnNode {
      * sort for MethodType, a [Handle] for MethodHandle constants, for classes whose version is
      * 51 or a [ConstantDynamic] for a constant dynamic for classes whose version is 55.
      */
-    val cst: Any
+    val constant: Any
 
     override val type: Int
         get() = AbstractInsnNode.LDC_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitLdcInsn(cst)
+        methodVisitor.visitLdcInsn(constant)
         IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

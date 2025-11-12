@@ -588,7 +588,7 @@ class MethodNode : MethodVisitor {
                 } else if (insn is InvokeDynamicInsnNode) {
                     throw UnsupportedClassVersionException()
                 } else if (insn is LdcInsnNode) {
-                    val value = insn.cst
+                    val value = insn.constant
                     if (value is Handle
                         || (value is Type && value.getSort() == Type.METHOD)
                     ) {
@@ -609,7 +609,7 @@ class MethodNode : MethodVisitor {
             for (i in instructions.size() - 1 downTo 0) {
                 val insn = instructions.get(i)
                 if (insn is LdcInsnNode) {
-                    val value = insn.cst
+                    val value = insn.constant
                     if (value is ConstantDynamic) {
                         throw UnsupportedClassVersionException()
                     }

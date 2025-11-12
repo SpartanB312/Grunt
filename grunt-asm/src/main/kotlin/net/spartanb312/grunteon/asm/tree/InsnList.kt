@@ -237,6 +237,8 @@ interface InsnListBuilder {
 
     fun LABEL(label: LabelNode)
 
+    fun LDC(constant: Any)
+
     fun build(): InsnList
 }
 
@@ -489,3 +491,8 @@ fun InsnListBuilder.LABEL(
     src: LabelNode,
     label: LabelNode = src
 ) = LABEL(label)
+
+fun InsnListBuilder.LDC(
+    src: LdcInsnNode,
+    constant: Any = src.constant
+) = LDC(constant)
