@@ -28,6 +28,7 @@
 package net.spartanb312.grunteon.asm.tree.insn
 
 import net.spartanb312.grunteon.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
@@ -58,4 +59,24 @@ sealed interface IFieldInsnNode : IBaseInsnNode {
         methodVisitor.visitFieldInsn(opcode, owner, name, desc)
         IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
+}
+
+interface GetStaticInsnNode : IFieldInsnNode {
+    override val opcode: Int
+        get() = Opcodes.GETSTATIC
+}
+
+interface PutStaticInsnNode : IFieldInsnNode {
+    override val opcode: Int
+        get() = Opcodes.PUTSTATIC
+}
+
+interface GetFieldInsnNode : IFieldInsnNode {
+    override val opcode: Int
+        get() = Opcodes.GETFIELD
+}
+
+interface PutFieldInsnNode : IFieldInsnNode {
+    override val opcode: Int
+        get() = Opcodes.PUTFIELD
 }

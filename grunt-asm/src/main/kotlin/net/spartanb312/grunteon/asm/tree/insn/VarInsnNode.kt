@@ -28,6 +28,7 @@
 package net.spartanb312.grunteon.asm.tree.insn
 
 import net.spartanb312.grunteon.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
 
 /**
@@ -50,4 +51,59 @@ sealed interface IVarInsnNode : IBaseInsnNode {
         methodVisitor.visitVarInsn(opcode, variable)
         IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
+}
+
+interface ILoadInsnNode : IVarInsnNode {
+    override val opcode: Int
+        get() = Opcodes.ILOAD
+}
+
+interface LLoadInsnNode : IVarInsnNode {
+    override val opcode: Int
+        get() = Opcodes.LLOAD
+}
+
+interface FLoadInsnNode : IVarInsnNode {
+    override val opcode: Int
+        get() = Opcodes.FLOAD
+}
+
+interface DLoadInsnNode : IVarInsnNode {
+    override val opcode: Int
+        get() = Opcodes.DLOAD
+}
+
+interface ALoadInsnNode : IVarInsnNode {
+    override val opcode: Int
+        get() = Opcodes.ALOAD
+}
+
+interface IStoreInsnNode : IVarInsnNode {
+    override val opcode: Int
+        get() = Opcodes.ISTORE
+}
+
+interface LStoreInsnNode : IVarInsnNode {
+    override val opcode: Int
+        get() = Opcodes.LSTORE
+}
+
+interface FStoreInsnNode : IVarInsnNode {
+    override val opcode: Int
+        get() = Opcodes.FSTORE
+}
+
+interface DStoreInsnNode : IVarInsnNode {
+    override val opcode: Int
+        get() = Opcodes.DSTORE
+}
+
+interface AStoreInsnNode : IVarInsnNode {
+    override val opcode: Int
+        get() = Opcodes.ASTORE
+}
+
+interface RetInsnNode : IVarInsnNode {
+    override val opcode: Int
+        get() = Opcodes.RET
 }
