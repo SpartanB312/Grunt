@@ -333,7 +333,7 @@ class MethodNode : MethodVisitor {
         val opcode = opcodeAndSource and Opcodes.SOURCE_MASK.inv()
 
         instructions.add(
-            net.spartanb312.grunteon.asm.tree.insn.MethodInsnNode(
+            net.spartanb312.grunteon.asm.tree.insn.IMethodInsnNode(
                 opcode,
                 owner,
                 name,
@@ -580,7 +580,7 @@ class MethodNode : MethodVisitor {
                 if (insn.invisibleTypeAnnotations != null && !insn.invisibleTypeAnnotations.isEmpty()) {
                     throw UnsupportedClassVersionException()
                 }
-                if (insn is MethodInsnNode) {
+                if (insn is IMethodInsnNode) {
                     val isInterface = insn.itf
                     if (isInterface != (insn.opcode == Opcodes.INVOKEINTERFACE)) {
                         throw UnsupportedClassVersionException()

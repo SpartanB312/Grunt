@@ -6,7 +6,7 @@ import net.spartanb312.grunteon.asm.MethodVisitor
 import net.spartanb312.grunteon.asm.tree.insn.BaseInsnNode
 import net.spartanb312.grunteon.asm.tree.insn.FieldInsnNode
 import net.spartanb312.grunteon.asm.tree.insn.FrameNode
-import net.spartanb312.grunteon.asm.tree.insn.MethodInsnNode
+import net.spartanb312.grunteon.asm.tree.insn.IMethodInsnNode
 
 interface InsnList : List<BaseInsnNode> {
     fun accept(mv: MethodVisitor) {
@@ -77,7 +77,7 @@ fun InsnListBuilder.FrameNode(
 )
 
 fun InsnListBuilder.MethodInsnNode(
-    methodInsnNode: MethodInsnNode,
+    methodInsnNode: IMethodInsnNode,
     opcode: Int = methodInsnNode.opcode,
     owner: String = methodInsnNode.owner,
     name: String = methodInsnNode.name,

@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-sealed interface IMultiANewArrayInsnNode : IBaseInsnNode {
+sealed interface MultiANewArrayInsnNode : IBaseInsnNode {
 
     /** An array type descriptor (see [org.objectweb.asm.Type]).  */
     val desc: String

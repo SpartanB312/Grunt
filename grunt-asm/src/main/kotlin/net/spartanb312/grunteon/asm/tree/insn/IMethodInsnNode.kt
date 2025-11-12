@@ -54,14 +54,31 @@ sealed interface IMethodInsnNode : IBaseInsnNode {
     /** The method's descriptor (see [org.objectweb.asm.Type]).  */
     val desc: String
 
-    /** Whether the method's owner class if an interface.  */
-    val itf: Boolean get() = opcode == Opcodes.INVOKEINTERFACE
-
     override val type: Int
         get() = AbstractInsnNode.METHOD_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitMethodInsn(opcode, owner, name, desc, itf)
+        methodVisitor.visitMethodInsn(opcode, owner, name, desc, opcode == Opcodes.INVOKEINTERFACE)
         IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
+}
+
+interface InvokeVirtualInsnNode : IMethodInsnNode {
+    override val opcode: Int
+        get() = Opcodes.INVOKEVIRTUAL
+}
+
+interface InvokeSpecialInsnNode : IMethodInsnNode {
+    override val opcode: Int
+        get() = Opcodes.INVOKESPECIAL
+}
+
+interface InvokeStaticInsnNode : IMethodInsnNode {
+    override val opcode: Int
+        get() = Opcodes.INVOKESTATIC
+}
+
+interface InvokeInterfaceInsnNode : IMethodInsnNode {
+    override val opcode: Int
+        get() = Opcodes.INVOKEINTERFACE
 }
