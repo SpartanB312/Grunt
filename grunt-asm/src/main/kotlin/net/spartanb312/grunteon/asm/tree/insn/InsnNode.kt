@@ -36,7 +36,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-interface InsnNode : BaseInsnNode {
+sealed interface InsnNode : BaseInsnNode {
     /**
      * The opcode of the instruction to be constructed. This opcode must be NOP,
      * ACONST_NULL, ICONST_M1, ICONST_0, ICONST_1, ICONST_2, ICONST_3, ICONST_4, ICONST_5,

@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-interface IincInsnNode : BaseInsnNode {
+sealed interface IincInsnNode : BaseInsnNode {
     override val opcode: Int
         get() = Opcodes.IINC
 

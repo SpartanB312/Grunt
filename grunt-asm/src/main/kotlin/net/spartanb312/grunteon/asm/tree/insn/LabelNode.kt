@@ -32,7 +32,7 @@ import org.objectweb.asm.Label
 import org.objectweb.asm.tree.AbstractInsnNode
 
 /** An [BaseInsnNode] that encapsulates a [Label].  */
-interface LabelNode : BaseInsnNode {
+sealed interface LabelNode : BaseInsnNode {
     override val opcode: Int
         get() = -1
 

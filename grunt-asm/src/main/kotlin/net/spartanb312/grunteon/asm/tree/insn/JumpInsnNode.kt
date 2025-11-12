@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-interface JumpInsnNode : BaseInsnNode {
+sealed interface JumpInsnNode : BaseInsnNode {
     override val opcode: Int
 
     /**

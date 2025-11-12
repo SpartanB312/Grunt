@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-interface VarInsnNode : BaseInsnNode {
+sealed interface VarInsnNode : BaseInsnNode {
     override val opcode: Int
 
     /** The operand of this instruction. This operand is the index of a local variable.  */

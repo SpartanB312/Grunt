@@ -44,7 +44,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-interface FrameNode : BaseInsnNode {
+sealed interface FrameNode : BaseInsnNode {
     override val opcode: Int
         get() = -1
 

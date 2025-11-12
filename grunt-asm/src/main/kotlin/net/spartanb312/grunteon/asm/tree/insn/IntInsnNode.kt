@@ -36,7 +36,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-interface IntInsnNode : BaseInsnNode {
+sealed interface IntInsnNode : BaseInsnNode {
     /** The opcode of the instruction to be constructed. This opcode must be BIPUSH, SIPUSH or NEWARRAY. */
     override val opcode: Int
 

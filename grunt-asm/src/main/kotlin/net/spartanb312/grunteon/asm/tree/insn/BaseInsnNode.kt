@@ -37,7 +37,7 @@ import net.spartanb312.grunteon.asm.tree.TypeAnnotationNode
  * @author Eric Bruneton
  * @author Luna
  */
-interface BaseInsnNode {
+sealed interface BaseInsnNode {
     /**
      * The opcode of this instruction, or -1 if this is not a JVM instruction (e.g. a label or a line
      * number).

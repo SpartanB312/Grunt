@@ -297,19 +297,19 @@ class MethodNode : MethodVisitor {
     }
 
     override fun visitInsn(opcode: Int) {
-        instructions.add(InsnNode(opcode))
+        instructions.add(net.spartanb312.grunteon.asm.tree.insn.InsnNode(opcode))
     }
 
     override fun visitIntInsn(opcode: Int, operand: Int) {
-        instructions.add(IntInsnNode(opcode, operand))
+        instructions.add(net.spartanb312.grunteon.asm.tree.insn.IntInsnNode(opcode, operand))
     }
 
     override fun visitVarInsn(opcode: Int, varIndex: Int) {
-        instructions.add(VarInsnNode(opcode, varIndex))
+        instructions.add(net.spartanb312.grunteon.asm.tree.insn.VarInsnNode(opcode, varIndex))
     }
 
     override fun visitTypeInsn(opcode: Int, type: String?) {
-        instructions.add(TypeInsnNode(opcode, type))
+        instructions.add(net.spartanb312.grunteon.asm.tree.insn.TypeInsnNode(opcode, type))
     }
 
     override fun visitFieldInsn(
@@ -350,14 +350,14 @@ class MethodNode : MethodVisitor {
         vararg bootstrapMethodArguments: Any?
     ) {
         instructions.add(
-            InvokeDynamicInsnNode(
+            net.spartanb312.grunteon.asm.tree.insn.InvokeDynamicInsnNode(
                 name, descriptor, bootstrapMethodHandle, *bootstrapMethodArguments
             )
         )
     }
 
     override fun visitJumpInsn(opcode: Int, label: Label) {
-        instructions.add(JumpInsnNode(opcode, getLabelNode(label)))
+        instructions.add(net.spartanb312.grunteon.asm.tree.insn.JumpInsnNode(opcode, getLabelNode(label)))
     }
 
     override fun visitLabel(label: Label) {
@@ -365,25 +365,38 @@ class MethodNode : MethodVisitor {
     }
 
     override fun visitLdcInsn(value: Any?) {
-        instructions.add(LdcInsnNode(value))
+        instructions.add(net.spartanb312.grunteon.asm.tree.insn.LdcInsnNode(value))
     }
 
     override fun visitIincInsn(varIndex: Int, increment: Int) {
-        instructions.add(IincInsnNode(varIndex, increment))
+        instructions.add(net.spartanb312.grunteon.asm.tree.insn.IincInsnNode(varIndex, increment))
     }
 
     override fun visitTableSwitchInsn(
         min: Int, max: Int, dflt: Label, vararg labels: Label?
     ) {
-        instructions.add(TableSwitchInsnNode(min, max, getLabelNode(dflt), *getLabelNodes(labels)))
+        instructions.add(
+            net.spartanb312.grunteon.asm.tree.insn.TableSwitchInsnNode(
+                min,
+                max,
+                getLabelNode(dflt),
+                *getLabelNodes(labels)
+            )
+        )
     }
 
     override fun visitLookupSwitchInsn(dflt: Label, keys: IntArray?, labels: Array<Label?>) {
-        instructions.add(LookupSwitchInsnNode(getLabelNode(dflt), keys, getLabelNodes(labels)))
+        instructions.add(
+            net.spartanb312.grunteon.asm.tree.insn.LookupSwitchInsnNode(
+                getLabelNode(dflt),
+                keys,
+                getLabelNodes(labels)
+            )
+        )
     }
 
     override fun visitMultiANewArrayInsn(descriptor: String?, numDimensions: Int) {
-        instructions.add(MultiANewArrayInsnNode(descriptor, numDimensions))
+        instructions.add(net.spartanb312.grunteon.asm.tree.insn.MultiANewArrayInsnNode(descriptor, numDimensions))
     }
 
     override fun visitInsnAnnotation(
@@ -492,7 +505,7 @@ class MethodNode : MethodVisitor {
      */
     protected fun getLabelNode(label: Label): LabelNode {
         if (label.info !is LabelNode) {
-            label.info = LabelNode()
+            label.info = net.spartanb312.grunteon.asm.tree.insn.LabelNode()
         }
         return label.info as LabelNode
     }
