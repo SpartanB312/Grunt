@@ -60,6 +60,30 @@ interface InsnListBuilder {
         increment: Int
     )
 
+    fun INVOKEVIRTUAL(
+        owner: String,
+        name: String,
+        desc: String
+    )
+
+    fun INVOKESPECIAL(
+        owner: String,
+        name: String,
+        desc: String
+    )
+
+    fun INVOKESTATIC(
+        owner: String,
+        name: String,
+        desc: String
+    )
+
+    fun INVOKEINTERFACE(
+        owner: String,
+        name: String,
+        desc: String
+    )
+
     fun build(): InsnList
 }
 
@@ -130,8 +154,6 @@ fun InsnListBuilder.F_CHOP(
     local
 )
 
-fun InsnListBuilder.F_SAME(src: FSameNode) = F_SAME()
-
 fun InsnListBuilder.F_SAME1(
     src: FSame1Node,
     stack: List<Any> = src.stack
@@ -146,4 +168,48 @@ fun InsnListBuilder.IINC(
 ) = IINC(
     variable,
     increment
+)
+
+fun InsnListBuilder.INVOKEVIRTUAL(
+    src: InvokeVirtualInsnNode,
+    owner: String = src.owner,
+    name: String = src.name,
+    desc: String = src.desc
+) = INVOKEVIRTUAL(
+    owner,
+    name,
+    desc
+)
+
+fun InsnListBuilder.INVOKESPECIAL(
+    src: InvokeSpecialInsnNode,
+    owner: String = src.owner,
+    name: String = src.name,
+    desc: String = src.desc
+) = INVOKESPECIAL(
+    owner,
+    name,
+    desc
+)
+
+fun InsnListBuilder.INVOKESTATIC(
+    src: InvokeStaticInsnNode,
+    owner: String = src.owner,
+    name: String = src.name,
+    desc: String = src.desc
+) = INVOKESTATIC(
+    owner,
+    name,
+    desc
+)
+
+fun InsnListBuilder.INVOKEINTERFACE(
+    src: InvokeInterfaceInsnNode,
+    owner: String = src.owner,
+    name: String = src.name,
+    desc: String = src.desc
+) = INVOKEINTERFACE(
+    owner,
+    name,
+    desc
 )
