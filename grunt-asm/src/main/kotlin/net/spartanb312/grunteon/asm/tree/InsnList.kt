@@ -216,6 +216,25 @@ interface InsnListBuilder {
     fun SIPUSH(short: Short)
     fun NEWARRAY(arrayType: NewArrayInsnNode.NewArrayType)
 
+    fun IFEQ(label: LabelNode)
+    fun IFNE(label: LabelNode)
+    fun IFLT(label: LabelNode)
+    fun IFGE(label: LabelNode)
+    fun IFGT(label: LabelNode)
+    fun IFLE(label: LabelNode)
+    fun IF_ICMPEQ(label: LabelNode)
+    fun IF_ICMPNE(label: LabelNode)
+    fun IF_ICMPLT(label: LabelNode)
+    fun IF_ICMPGE(label: LabelNode)
+    fun IF_ICMPGT(label: LabelNode)
+    fun IF_ICMPLE(label: LabelNode)
+    fun IF_ACMPEQ(label: LabelNode)
+    fun IF_ACMPNE(label: LabelNode)
+    fun GOTO(label: LabelNode)
+    fun JSR(label: LabelNode)
+    fun IFNULL(label: LabelNode)
+    fun IFNONNULL(label: LabelNode)
+
     fun build(): InsnList
 }
 
@@ -373,3 +392,93 @@ fun InsnListBuilder.NEWARRAY(
     src: NewArrayInsnNode,
     arrayType: NewArrayInsnNode.NewArrayType = NewArrayInsnNode.NewArrayType.fromValue(src.operand)
 ) = NEWARRAY(arrayType)
+
+fun InsnListBuilder.IFEQ(
+    src: IfEqInsnNode,
+    label: LabelNode = src.label
+) = IFEQ(label)
+
+fun InsnListBuilder.IFNE(
+    src: IfNeInsnNode,
+    label: LabelNode = src.label
+) = IFNE(label)
+
+fun InsnListBuilder.IFLT(
+    src: IfLtInsnNode,
+    label: LabelNode = src.label
+) = IFLT(label)
+
+fun InsnListBuilder.IFGE(
+    src: IfGeInsnNode,
+    label: LabelNode = src.label
+) = IFGE(label)
+
+fun InsnListBuilder.IFGT(
+    src: IfGtInsnNode,
+    label: LabelNode = src.label
+) = IFGT(label)
+
+fun InsnListBuilder.IFLE(
+    src: IfLeInsnNode,
+    label: LabelNode = src.label
+) = IFLE(label)
+
+fun InsnListBuilder.IF_ICMPEQ(
+    src: IfIcmpEqInsnNode,
+    label: LabelNode = src.label
+) = IF_ICMPEQ(label)
+
+fun InsnListBuilder.IF_ICMPNE(
+    src: IfIcmpNeInsnNode,
+    label: LabelNode = src.label
+) = IF_ICMPNE(label)
+
+fun InsnListBuilder.IF_ICMPLT(
+    src: IfIcmpLtInsnNode,
+    label: LabelNode = src.label
+) = IF_ICMPLT(label)
+
+fun InsnListBuilder.IF_ICMPGE(
+    src: IfIcmpGeInsnNode,
+    label: LabelNode = src.label
+) = IF_ICMPGE(label)
+
+fun InsnListBuilder.IF_ICMPGT(
+    src: IfIcmpGtInsnNode,
+    label: LabelNode = src.label
+) = IF_ICMPGT(label)
+
+fun InsnListBuilder.IF_ICMPLE(
+    src: IfIcmpLeInsnNode,
+    label: LabelNode = src.label
+) = IF_ICMPLE(label)
+
+fun InsnListBuilder.IF_ACMPEQ(
+    src: IfAcmpEqInsnNode,
+    label: LabelNode = src.label
+) = IF_ACMPEQ(label)
+
+fun InsnListBuilder.IF_ACMPNE(
+    src: IfAcmpNeInsnNode,
+    label: LabelNode = src.label
+) = IF_ACMPNE(label)
+
+fun InsnListBuilder.GOTO(
+    src: GotoInsnNode,
+    label: LabelNode = src.label
+) = GOTO(label)
+
+fun InsnListBuilder.JSR(
+    src: JsrInsnNode,
+    label: LabelNode = src.label
+) = JSR(label)
+
+fun InsnListBuilder.IFNULL(
+    src: IfNullInsnNode,
+    label: LabelNode = src.label
+) = IFNULL(label)
+
+fun InsnListBuilder.IFNONNULL(
+    src: IfNonNullInsnNode,
+    label: LabelNode = src.label
+) = IFNONNULL(label)
