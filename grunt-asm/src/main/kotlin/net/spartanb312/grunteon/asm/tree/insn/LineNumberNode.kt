@@ -24,6 +24,6 @@ interface LineNumberNode : IBaseInsnNode {
         get() = AbstractInsnNode.LINE
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitLineNumber(line, start.value)
+        methodVisitor.visitLineNumber(line, methodVisitor.getLabel(start))
     }
 }

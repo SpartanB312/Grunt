@@ -36,12 +36,10 @@ sealed interface LabelNode : IBaseInsnNode {
     override val opcode: Int
         get() = -1
 
-    val value: Label
-
     override val type: Int
         get() = AbstractInsnNode.LABEL
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitLabel(this.value)
+        methodVisitor.visitLabel(methodVisitor.getLabel(this))
     }
 }

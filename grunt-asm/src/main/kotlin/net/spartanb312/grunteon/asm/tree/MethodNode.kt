@@ -27,51 +27,59 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
-import net.spartanb312.grunteon.asm.tree.*
-import net.spartanb312.grunteon.asm.tree.insn.*
-import org.objectweb.asm.*
+import net.spartanb312.grunteon.asm.AnnotationVisitor
+import net.spartanb312.grunteon.asm.ClassVisitor
+import net.spartanb312.grunteon.asm.MethodVisitor
+import net.spartanb312.grunteon.asm.tree.insn.LabelNode
+import net.spartanb312.grunteon.asm.tree.insn.NewArrayInsnNode
+import org.objectweb.asm.Attribute
+import org.objectweb.asm.Handle
+import org.objectweb.asm.Label
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.TypePath
 
 /**
  * A node that represents a method.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class MethodNode : MethodVisitor {
+interface MethodNode : Node {
     /**
      * The method's access flags (see [Opcodes]). This field also indicates if the method is
      * synthetic and/or deprecated.
      */
-    var access: Int = 0
+    val access: Int
 
     /** The method's name.  */
-    var name: String? = null
+    val name: String
 
     /** The method's descriptor (see [Type]).  */
-    var desc: String? = null
+    val desc: String
 
     /** The method's signature. May be null.  */
-    var signature: String? = null
+    val signature: String?
 
     /** The internal names of the method's exception classes (see [Type.getInternalName]).  */
-    var exceptions: MutableList<String?>? = null
+    val exceptions: List<String>
 
     /** The method parameter info (access flags and name).  */
-    var parameters: MutableList<ParameterNode?>? = null
+    val parameters: List<ParameterNode>
 
     /** The runtime visible annotations of this method. May be null.  */
-    var visibleAnnotations: MutableList<AnnotationNode?>? = null
+    val visibleAnnotations: List<AnnotationNode>
 
     /** The runtime invisible annotations of this method. May be null.  */
-    var invisibleAnnotations: MutableList<AnnotationNode?>? = null
+    val invisibleAnnotations: List<AnnotationNode>
 
     /** The runtime visible type annotations of this method. May be null.  */
-    var visibleTypeAnnotations: MutableList<TypeAnnotationNode?>? = null
+    val visibleTypeAnnotations: List<TypeAnnotationNode>
 
     /** The runtime invisible type annotations of this method. May be null.  */
-    var invisibleTypeAnnotations: MutableList<TypeAnnotationNode?>? = null
+    val invisibleTypeAnnotations: List<TypeAnnotationNode>
 
     /** The non standard attributes of this method. May be null.  */
-    var attrs: MutableList<Attribute?>? = null
+    val attrs: List<Attribute>
 
     /**
      * The default value of this annotation interface method. This field must be a [Byte],
@@ -79,7 +87,7 @@ class MethodNode : MethodVisitor {
      * enumeration values), a [AnnotationNode], or a [List] of values of one of the
      * preceding types. May be null.
      */
-    var annotationDefault: Any? = null
+    val annotationDefault: Any?
 
     /**
      * The number of method parameters than can have runtime visible annotations. This number must be
@@ -89,12 +97,12 @@ class MethodNode : MethodVisitor {
      * ignored when computing parameter indices for the purpose of parameter annotations (see
      * https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-4.html#jvms-4.7.18).
      */
-    var visibleAnnotableParameterCount: Int = 0
+    val visibleAnnotableParameterCount: Int
 
     /**
      * The runtime visible parameter annotations of this method. These lists are lists of [ ] objects. May be null.
      */
-    var visibleParameterAnnotations: Array<MutableList<AnnotationNode?>?>? = null
+    val visibleParameterAnnotations: List<List<AnnotationNode>>
 
     /**
      * The number of method parameters than can have runtime invisible annotations. This number must
@@ -104,519 +112,37 @@ class MethodNode : MethodVisitor {
      * ignored when computing parameter indices for the purpose of parameter annotations (see
      * https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-4.html#jvms-4.7.18).
      */
-    var invisibleAnnotableParameterCount: Int = 0
+    val invisibleAnnotableParameterCount: Int
 
     /**
      * The runtime invisible parameter annotations of this method. These lists are lists of [ ] objects. May be null.
      */
-    var invisibleParameterAnnotations: Array<MutableList<AnnotationNode?>?>? = null
+    val invisibleParameterAnnotations: List<List<AnnotationNode>>
 
     /** The instructions of this method.  */
-    var instructions: InsnList
+    val instructions: InsnList
 
     /** The try catch blocks of this method.  */
-    var tryCatchBlocks: MutableList<TryCatchBlockNode>? = null
+    val tryCatchBlocks: List<TryCatchBlockNode>
 
     /** The maximum stack size of this method.  */
-    var maxStack: Int = 0
+    val maxStack: Int
 
     /** The maximum number of local variables of this method.  */
-    var maxLocals: Int = 0
+    val maxLocals: Int
 
     /** The local variables of this method. May be null  */
-    var localVariables: MutableList<LocalVariableNode?>? = null
+    val localVariables: List<LocalVariableNode>
 
     /** The visible local variable annotations of this method. May be null  */
-    var visibleLocalVariableAnnotations: MutableList<LocalVariableAnnotationNode?>? = null
+    val visibleLocalVariableAnnotations: List<LocalVariableAnnotationNode>
 
     /** The invisible local variable annotations of this method. May be null  */
-    var invisibleLocalVariableAnnotations: MutableList<LocalVariableAnnotationNode?>? = null
-
-    /** Whether the accept method has been called on this object.  */
-    private var visited = false
-
-    /**
-     * Constructs an uninitialized [MethodNode]. *Subclasses must not use this
-     * constructor*. Instead, they must use the [.MethodNode] version.
-     *
-     * @throws IllegalStateException If a subclass calls this constructor.
-     */
-    constructor() : this( /* latest api = */Opcodes.ASM9) {
-        check(javaClass == MethodNode::class.java)
-    }
-
-    /**
-     * Constructs an uninitialized [MethodNode].
-     *
-     * @param api the ASM API version implemented by this visitor. Must be one of the `ASM`*x* values in [Opcodes].
-     */
-    constructor(api: Int) : super(api) {
-        this.instructions = net.spartanb312.grunteon.asm.tree.InsnList()
-    }
-
-    /**
-     * Constructs a new [MethodNode]. *Subclasses must not use this constructor*. Instead,
-     * they must use the [.MethodNode] version.
-     *
-     * @param access the method's access flags (see [Opcodes]). This parameter also indicates if
-     * the method is synthetic and/or deprecated.
-     * @param name the method's name.
-     * @param descriptor the method's descriptor (see [Type]).
-     * @param signature the method's signature. May be null.
-     * @param exceptions the internal names of the method's exception classes (see [     ][Type.getInternalName]). May be null.
-     * @throws IllegalStateException If a subclass calls this constructor.
-     */
-    constructor(
-        access: Int,
-        name: String?,
-        descriptor: String,
-        signature: String?,
-        exceptions: Array<String?>?
-    ) : this( /* latest api = */Opcodes.ASM9, access, name, descriptor, signature, exceptions) {
-        check(javaClass == MethodNode::class.java)
-    }
-
-    /**
-     * Constructs a new [MethodNode].
-     *
-     * @param api the ASM API version implemented by this visitor. Must be one of the `ASM`*x* values in [Opcodes].
-     * @param access the method's access flags (see [Opcodes]). This parameter also indicates if
-     * the method is synthetic and/or deprecated.
-     * @param name the method's name.
-     * @param descriptor the method's descriptor (see [Type]).
-     * @param signature the method's signature. May be null.
-     * @param exceptions the internal names of the method's exception classes (see [     ][Type.getInternalName]). May be null.
-     */
-    constructor(
-        api: Int,
-        access: Int,
-        name: String?,
-        descriptor: String,
-        signature: String?,
-        exceptions: Array<String?>?
-    ) : super(api) {
-        this.access = access
-        this.name = name
-        this.desc = descriptor
-        this.signature = signature
-        this.exceptions = Util.asArrayList<String?>(exceptions)
-        if ((access and Opcodes.ACC_ABSTRACT) == 0) {
-            this.localVariables = ArrayList<LocalVariableNode?>(5)
-        }
-        this.tryCatchBlocks = ArrayList<TryCatchBlockNode>()
-        this.instructions = net.spartanb312.grunteon.asm.tree.InsnList()
-    }
-
-    // -----------------------------------------------------------------------------------------------
-    // Implementation of the MethodVisitor abstract class
-    // -----------------------------------------------------------------------------------------------
-    override fun visitParameter(name: String?, access: Int) {
-        if (parameters == null) {
-            parameters = ArrayList<ParameterNode?>(5)
-        }
-        parameters!!.add(net.spartanb312.grunteon.asm.tree.ParameterNode(name, access))
-    }
-
-    override fun visitAnnotationDefault(): AnnotationVisitor? {
-        val list = object : ArrayList<Any?>(0) {
-            override fun add(o: Any?): Boolean {
-                annotationDefault = o
-                return super.add(o)
-            }
-        }
-        return MutableAnnotationNode.Impl(null, list)
-    }
-
-    override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? {
-        return MutableAnnotationNode.Impl(descriptor, mutableListOf())
-    }
-
-    override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor {
-        val annotation: MutableAnnotationNode = MutableAnnotationNode.Impl(descriptor, mutableListOf())
-        if (visible) {
-            visibleAnnotations = Util.add<AnnotationNode?>(visibleAnnotations, annotation)
-        } else {
-            invisibleAnnotations = Util.add<AnnotationNode?>(invisibleAnnotations, annotation)
-        }
-        return annotation
-    }
-
-    override fun visitTypeAnnotation(
-        typeRef: Int,
-        typePath: TypePath?,
-        descriptor: String?,
-        visible: Boolean
-    ): AnnotationVisitor? {
-        return net.spartanb312.grunteon.asm.tree.TypeAnnotationNode(typeRef, typePath, descriptor)
-    }
-
-    override fun visitAnnotableParameterCount(parameterCount: Int, visible: Boolean) {
-        if (visible) {
-            visibleAnnotableParameterCount = parameterCount
-        } else {
-            invisibleAnnotableParameterCount = parameterCount
-        }
-    }
-
-    override fun visitParameterAnnotation(
-        parameter: Int, descriptor: String?, visible: Boolean
-    ): AnnotationVisitor {
-        val annotation: MutableAnnotationNode = MutableAnnotationNode.Impl(descriptor, mutableListOf())
-        if (visible) {
-            visibleParameterAnnotations = Util.setOrCreate(visibleParameterAnnotations, annotation)
-        } else {
-            invisibleParameterAnnotations = Util.setOrCreate(invisibleParameterAnnotations, annotation)
-        }
-        return annotation
-    }
-
-    override fun visitAttribute(attribute: Attribute?) {
-        attrs = Util.add<Attribute?>(attrs, attribute)
-    }
-
-    override fun visitCode() {
-        // Nothing to do.
-    }
-
-    override fun visitFrame(
-        type: Int,
-        numLocal: Int,
-        local: Array<Any?>?,
-        numStack: Int,
-        stack: Array<Any?>?
-    ) {
-        instructions.add(
-            FrameNode(
-                type,
-                numLocal,
-                if (local == null) null else getLabelNodes(local),
-                numStack,
-                if (stack == null) null else getLabelNodes(stack)
-            )
-        )
-    }
-
-    override fun visitInsn(opcode: Int) {
-        instructions.add(net.spartanb312.grunteon.asm.tree.insn.InsnNode(opcode))
-    }
-
-    override fun visitIntInsn(opcode: Int, operand: Int) {
-        instructions.add(net.spartanb312.grunteon.asm.tree.insn.IntInsnNode(opcode, operand))
-    }
-
-    override fun visitVarInsn(opcode: Int, varIndex: Int) {
-        instructions.add(net.spartanb312.grunteon.asm.tree.insn.VarInsnNode(opcode, varIndex))
-    }
-
-    override fun visitTypeInsn(opcode: Int, type: String?) {
-        instructions.add(net.spartanb312.grunteon.asm.tree.insn.TypeInsnNode(opcode, type))
-    }
-
-    override fun visitFieldInsn(
-        opcode: Int, owner: String?, name: String?, descriptor: String?
-    ) {
-        instructions.add(FieldInsnNode(opcode, owner, name, descriptor))
-    }
-
-    override fun visitMethodInsn(
-        opcodeAndSource: Int,
-        owner: String?,
-        name: String?,
-        descriptor: String?,
-        isInterface: Boolean
-    ) {
-        if (api < Opcodes.ASM5 && (opcodeAndSource and Opcodes.SOURCE_DEPRECATED) == 0) {
-            // Redirect the call to the deprecated version of this method.
-            super.visitMethodInsn(opcodeAndSource, owner, name, descriptor, isInterface)
-            return
-        }
-        val opcode = opcodeAndSource and Opcodes.SOURCE_MASK.inv()
-
-        instructions.add(
-            net.spartanb312.grunteon.asm.tree.insn.IMethodInsnNode(
-                opcode,
-                owner,
-                name,
-                descriptor,
-                isInterface
-            )
-        )
-    }
-
-    override fun visitInvokeDynamicInsn(
-        name: String?,
-        descriptor: String?,
-        bootstrapMethodHandle: Handle?,
-        vararg bootstrapMethodArguments: Any?
-    ) {
-        instructions.add(
-            net.spartanb312.grunteon.asm.tree.insn.InvokeDynamicInsnNode(
-                name, descriptor, bootstrapMethodHandle, *bootstrapMethodArguments
-            )
-        )
-    }
-
-    override fun visitJumpInsn(opcode: Int, label: Label) {
-        instructions.add(net.spartanb312.grunteon.asm.tree.insn.JumpInsnNode(opcode, getLabelNode(label)))
-    }
-
-    override fun visitLabel(label: Label) {
-        instructions.add(getLabelNode(label))
-    }
-
-    override fun visitLdcInsn(value: Any?) {
-        instructions.add(net.spartanb312.grunteon.asm.tree.insn.LdcInsnNode(value))
-    }
-
-    override fun visitIincInsn(varIndex: Int, increment: Int) {
-        instructions.add(net.spartanb312.grunteon.asm.tree.insn.IincInsnNode(varIndex, increment))
-    }
-
-    override fun visitTableSwitchInsn(
-        min: Int, max: Int, dflt: Label, vararg labels: Label?
-    ) {
-        instructions.add(
-            net.spartanb312.grunteon.asm.tree.insn.TableSwitchInsnNode(
-                min,
-                max,
-                getLabelNode(dflt),
-                *getLabelNodes(labels)
-            )
-        )
-    }
-
-    override fun visitLookupSwitchInsn(dflt: Label, keys: IntArray?, labels: Array<Label?>) {
-        instructions.add(
-            net.spartanb312.grunteon.asm.tree.insn.LookupSwitchInsnNode(
-                getLabelNode(dflt),
-                keys,
-                getLabelNodes(labels)
-            )
-        )
-    }
-
-    override fun visitMultiANewArrayInsn(descriptor: String?, numDimensions: Int) {
-        instructions.add(net.spartanb312.grunteon.asm.tree.insn.MultiANewArrayInsnNode(descriptor, numDimensions))
-    }
-
-    override fun visitInsnAnnotation(
-        typeRef: Int, typePath: TypePath?, descriptor: String?, visible: Boolean
-    ): AnnotationVisitor {
-        // Find the last real instruction, i.e. the instruction targeted by this annotation.
-        var currentInsn = instructions.getLast()
-        while (currentInsn.getOpcode() == -1) {
-            currentInsn = currentInsn.getPrevious()
-        }
-        // Add the annotation to this instruction.
-        val typeAnnotation: TypeAnnotationNode =
-            net.spartanb312.grunteon.asm.tree.TypeAnnotationNode(typeRef, typePath, descriptor)
-        if (visible) {
-            currentInsn.visibleTypeAnnotations =
-                Util.add<TypeAnnotationNode?>(currentInsn.visibleTypeAnnotations, typeAnnotation)
-        } else {
-            currentInsn.invisibleTypeAnnotations =
-                Util.add<TypeAnnotationNode?>(currentInsn.invisibleTypeAnnotations, typeAnnotation)
-        }
-        return typeAnnotation
-    }
-
-    override fun visitTryCatchBlock(
-        start: Label, end: Label, handler: Label, type: String?
-    ) {
-        val tryCatchBlock =
-            TryCatchBlockNode(getLabelNode(start), getLabelNode(end), getLabelNode(handler), type)
-        tryCatchBlocks = Util.add<TryCatchBlockNode?>(tryCatchBlocks, tryCatchBlock)
-    }
-
-    override fun visitTryCatchAnnotation(
-        typeRef: Int, typePath: TypePath?, descriptor: String?, visible: Boolean
-    ): AnnotationVisitor {
-        val tryCatchBlock = tryCatchBlocks!!.get((typeRef and 0x00FFFF00) shr 8)
-        val typeAnnotation: TypeAnnotationNode =
-            net.spartanb312.grunteon.asm.tree.TypeAnnotationNode(typeRef, typePath, descriptor)
-        if (visible) {
-            tryCatchBlock.visibleTypeAnnotations =
-                Util.add<TypeAnnotationNode?>(tryCatchBlock.visibleTypeAnnotations, typeAnnotation)
-        } else {
-            tryCatchBlock.invisibleTypeAnnotations =
-                Util.add<TypeAnnotationNode?>(tryCatchBlock.invisibleTypeAnnotations, typeAnnotation)
-        }
-        return typeAnnotation
-    }
-
-    override fun visitLocalVariable(
-        name: String?,
-        descriptor: String?,
-        signature: String?,
-        start: Label,
-        end: Label,
-        index: Int
-    ) {
-        val localVariable =
-            LocalVariableNode(
-                name, descriptor, signature, getLabelNode(start), getLabelNode(end), index
-            )
-        localVariables = Util.add<LocalVariableNode?>(localVariables, localVariable)
-    }
-
-    override fun visitLocalVariableAnnotation(
-        typeRef: Int,
-        typePath: TypePath?,
-        start: Array<Label?>,
-        end: Array<Label?>,
-        index: IntArray?,
-        descriptor: String?,
-        visible: Boolean
-    ): AnnotationVisitor {
-        val localVariableAnnotation =
-            LocalVariableAnnotationNode(
-                typeRef, typePath, getLabelNodes(start), getLabelNodes(end), index, descriptor
-            )
-        if (visible) {
-            visibleLocalVariableAnnotations =
-                Util.add<LocalVariableAnnotationNode?>(visibleLocalVariableAnnotations, localVariableAnnotation)
-        } else {
-            invisibleLocalVariableAnnotations =
-                Util.add<LocalVariableAnnotationNode?>(invisibleLocalVariableAnnotations, localVariableAnnotation)
-        }
-        return localVariableAnnotation
-    }
-
-    override fun visitLineNumber(line: Int, start: Label) {
-        instructions.add(LineNumberNode(line, getLabelNode(start)))
-    }
-
-    override fun visitMaxs(maxStack: Int, maxLocals: Int) {
-        this.maxStack = maxStack
-        this.maxLocals = maxLocals
-    }
-
-    override fun visitEnd() {
-        // Nothing to do.
-    }
-
-    /**
-     * Returns the LabelNode corresponding to the given Label. Creates a new LabelNode if necessary.
-     * The default implementation of this method uses the [Label.info] field to store
-     * associations between labels and label nodes.
-     *
-     * @param label a Label.
-     * @return the LabelNode corresponding to label.
-     */
-    protected fun getLabelNode(label: Label): LabelNode {
-        if (label.info !is LabelNode) {
-            label.info = net.spartanb312.grunteon.asm.tree.insn.LabelNode()
-        }
-        return label.info as LabelNode
-    }
-
-    private fun getLabelNodes(labels: Array<Label?>): Array<LabelNode?> {
-        val labelNodes = arrayOfNulls<LabelNode>(labels.size)
-        var i = 0
-        val n = labels.size
-        while (i < n) {
-            labelNodes[i] = getLabelNode(labels[i]!!)
-            ++i
-        }
-        return labelNodes
-    }
-
-    private fun getLabelNodes(objects: Array<Any?>): Array<Any?> {
-        val labelNodes = arrayOfNulls<Any>(objects.size)
-        var i = 0
-        val n = objects.size
-        while (i < n) {
-            var o = objects[i]
-            if (o is Label) {
-                o = getLabelNode(o)
-            }
-            labelNodes[i] = o
-            ++i
-        }
-        return labelNodes
-    }
+    val invisibleLocalVariableAnnotations: List<LocalVariableAnnotationNode>
 
     // -----------------------------------------------------------------------------------------------
     // Accept method
     // -----------------------------------------------------------------------------------------------
-    /**
-     * Checks that this method node is compatible with the given ASM API version. This method checks
-     * that this node, and all its children recursively, do not contain elements that were introduced
-     * in more recent versions of the ASM API than the given version.
-     *
-     * @param api an ASM API version. Must be one of the `ASM`*x* values in [     ].
-     */
-    fun check(api: Int) {
-        if (api == Opcodes.ASM4) {
-            if (parameters != null && !parameters!!.isEmpty()) {
-                throw UnsupportedClassVersionException()
-            }
-            if (visibleTypeAnnotations != null && !visibleTypeAnnotations!!.isEmpty()) {
-                throw UnsupportedClassVersionException()
-            }
-            if (invisibleTypeAnnotations != null && !invisibleTypeAnnotations!!.isEmpty()) {
-                throw UnsupportedClassVersionException()
-            }
-            if (tryCatchBlocks != null) {
-                for (i in tryCatchBlocks!!.indices.reversed()) {
-                    val tryCatchBlock = tryCatchBlocks!!.get(i)
-                    if (tryCatchBlock.visibleTypeAnnotations != null
-                        && !tryCatchBlock.visibleTypeAnnotations.isEmpty()
-                    ) {
-                        throw UnsupportedClassVersionException()
-                    }
-                    if (tryCatchBlock.invisibleTypeAnnotations != null
-                        && !tryCatchBlock.invisibleTypeAnnotations.isEmpty()
-                    ) {
-                        throw UnsupportedClassVersionException()
-                    }
-                }
-            }
-            for (i in instructions.size() - 1 downTo 0) {
-                val insn = instructions.get(i)
-                if (insn.visibleTypeAnnotations != null && !insn.visibleTypeAnnotations.isEmpty()) {
-                    throw UnsupportedClassVersionException()
-                }
-                if (insn.invisibleTypeAnnotations != null && !insn.invisibleTypeAnnotations.isEmpty()) {
-                    throw UnsupportedClassVersionException()
-                }
-                if (insn is IMethodInsnNode) {
-                    val isInterface = insn.itf
-                    if (isInterface != (insn.opcode == Opcodes.INVOKEINTERFACE)) {
-                        throw UnsupportedClassVersionException()
-                    }
-                } else if (insn is InvokeDynamicInsnNode) {
-                    throw UnsupportedClassVersionException()
-                } else if (insn is LdcInsnNode) {
-                    val value = insn.constant
-                    if (value is Handle
-                        || (value is Type && value.getSort() == Type.METHOD)
-                    ) {
-                        throw UnsupportedClassVersionException()
-                    }
-                }
-            }
-            if (visibleLocalVariableAnnotations != null && !visibleLocalVariableAnnotations!!.isEmpty()) {
-                throw UnsupportedClassVersionException()
-            }
-            if (invisibleLocalVariableAnnotations != null
-                && !invisibleLocalVariableAnnotations!!.isEmpty()
-            ) {
-                throw UnsupportedClassVersionException()
-            }
-        }
-        if (api < Opcodes.ASM7) {
-            for (i in instructions.size() - 1 downTo 0) {
-                val insn = instructions.get(i)
-                if (insn is LdcInsnNode) {
-                    val value = insn.constant
-                    if (value is ConstantDynamic) {
-                        throw UnsupportedClassVersionException()
-                    }
-                }
-            }
-        }
-    }
 
     /**
      * Makes the given class visitor visit this method.
@@ -624,9 +150,8 @@ class MethodNode : MethodVisitor {
      * @param classVisitor a class visitor.
      */
     fun accept(classVisitor: ClassVisitor) {
-        val exceptionsArray = if (exceptions == null) null else exceptions.toTypedArray<String?>()
         val methodVisitor =
-            classVisitor.visitMethod(access, name, desc, signature, exceptionsArray)
+            classVisitor.visitMethod(access, name, desc, signature, exceptions.takeIf { it.isNotEmpty() })
         if (methodVisitor != null) {
             accept(methodVisitor)
         }
@@ -639,175 +164,577 @@ class MethodNode : MethodVisitor {
      */
     fun accept(methodVisitor: MethodVisitor) {
         // Visit the parameters.
-        if (parameters != null) {
-            var i = 0
-            val n = parameters!!.size
-            while (i < n) {
-                parameters!!.get(i)!!.accept(methodVisitor)
-                i++
-            }
+        parameters.forEach {
+            it.accept(methodVisitor)
         }
         // Visit the annotations.
-        if (annotationDefault != null) {
-            val av = methodVisitor.visitAnnotationDefault()
-            val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
-            AnnotationNode.Companion.accept(conv, null, annotationDefault!!)
-            if (av != null) {
-                av.visitEnd()
+        annotationDefault?.let { node ->
+            methodVisitor.visitAnnotationDefault()?.let { visitor ->
+                AnnotationNode.accept(visitor, "", node)
+                visitor.visitEnd()
             }
         }
-        if (visibleAnnotations != null) {
-            var i = 0
-            val n = visibleAnnotations!!.size
-            while (i < n) {
-                val annotation = visibleAnnotations!!.get(i)
-                val av = methodVisitor.visitAnnotation(annotation.desc, true)
-                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
-                annotation.accept(conv)
-                ++i
-            }
+        visibleAnnotations.forEach {
+            it.accept(methodVisitor.visitAnnotation(it.desc, true))
         }
-        if (invisibleAnnotations != null) {
-            var i = 0
-            val n = invisibleAnnotations!!.size
-            while (i < n) {
-                val annotation = invisibleAnnotations!!.get(i)
-                val av = methodVisitor.visitAnnotation(annotation.desc, false)
-                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
-                annotation.accept(conv)
-                ++i
-            }
+        invisibleAnnotations.forEach {
+            it.accept(methodVisitor.visitAnnotation(it.desc, false))
         }
-        if (visibleTypeAnnotations != null) {
-            var i = 0
-            val n = visibleTypeAnnotations!!.size
-            while (i < n) {
-                val typeAnnotation: TypeAnnotationNode = visibleTypeAnnotations!!.get(i)
-                val av = methodVisitor.visitTypeAnnotation(
-                    typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, true
-                )
-                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
-                typeAnnotation.accept(conv)
-                ++i
-            }
+        visibleTypeAnnotations.forEach {
+            it.accept(methodVisitor.visitTypeAnnotation(it.typeRef, it.typePath, it.desc, true))
         }
-        if (invisibleTypeAnnotations != null) {
-            var i = 0
-            val n = invisibleTypeAnnotations!!.size
-            while (i < n) {
-                val typeAnnotation: TypeAnnotationNode = invisibleTypeAnnotations!!.get(i)
-                val av = methodVisitor.visitTypeAnnotation(
-                    typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, false
-                )
-                val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
-                typeAnnotation.accept(conv)
-                ++i
-            }
+        invisibleTypeAnnotations.forEach {
+            it.accept(methodVisitor.visitTypeAnnotation(it.typeRef, it.typePath, it.desc, false))
         }
         if (visibleAnnotableParameterCount > 0) {
             methodVisitor.visitAnnotableParameterCount(visibleAnnotableParameterCount, true)
         }
-        if (visibleParameterAnnotations != null) {
-            var i = 0
-            val n = visibleParameterAnnotations!!.size
-            while (i < n) {
-                val parameterAnnotations = visibleParameterAnnotations!![i]
-                if (parameterAnnotations == null) {
-                    ++i
-                    continue
-                }
-                var j = 0
-                val m = parameterAnnotations.size
-                while (j < m) {
-                    val annotation = parameterAnnotations.get(j)
-                    val av = methodVisitor.visitParameterAnnotation(i, annotation.desc, true)
-                    val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
-                    annotation.accept(conv)
-                    ++j
-                }
-                ++i
+        visibleParameterAnnotations.forEachIndexed { i, parameterAnnotations ->
+            parameterAnnotations.forEach { annotation ->
+                annotation.accept(methodVisitor.visitParameterAnnotation(i, annotation.desc, true))
             }
         }
         if (invisibleAnnotableParameterCount > 0) {
             methodVisitor.visitAnnotableParameterCount(invisibleAnnotableParameterCount, false)
         }
-        if (invisibleParameterAnnotations != null) {
-            var i = 0
-            val n = invisibleParameterAnnotations!!.size
-            while (i < n) {
-                val parameterAnnotations = invisibleParameterAnnotations!![i]
-                if (parameterAnnotations == null) {
-                    ++i
-                    continue
-                }
-                var j = 0
-                val m = parameterAnnotations.size
-                while (j < m) {
-                    val annotation = parameterAnnotations.get(j)
-                    val av = methodVisitor.visitParameterAnnotation(i, annotation.desc, false)
-                    val conv = av?.let { net.spartanb312.grunteon.asm.AnnotationVisitor.FromOw2(it) }
-                    annotation.accept(conv)
-                    ++j
-                }
-                ++i
+        invisibleParameterAnnotations.forEachIndexed { i, parameterAnnotations ->
+            parameterAnnotations.forEach { annotation ->
+                annotation.accept(methodVisitor.visitParameterAnnotation(i, annotation.desc, false))
             }
         }
         // Visit the non standard attributes.
-        if (visited) {
-            instructions.resetLabels()
-        }
-        if (attrs != null) {
-            var i = 0
-            val n = attrs!!.size
-            while (i < n) {
-                methodVisitor.visitAttribute(attrs!!.get(i))
-                ++i
-            }
+        attrs.forEach {
+            methodVisitor.visitAttribute(it)
         }
         // Visit the code.
-        if (instructions.size() > 0) {
+        if (instructions.isNotEmpty()) {
             methodVisitor.visitCode()
-            // Visits the try catch blocks.
-            if (tryCatchBlocks != null) {
-                var i = 0
-                val n = tryCatchBlocks!!.size
-                while (i < n) {
-                    tryCatchBlocks!!.get(i).updateIndex(i)
-                    tryCatchBlocks!!.get(i).accept(methodVisitor)
-                    ++i
-                }
+            tryCatchBlocks.forEach {
+                it.accept(methodVisitor)
             }
-            // Visit the instructions.
             instructions.accept(methodVisitor)
-            // Visits the local variables.
-            if (localVariables != null) {
-                var i = 0
-                val n = localVariables!!.size
-                while (i < n) {
-                    localVariables!!.get(i)!!.accept(methodVisitor)
-                    ++i
-                }
+            localVariables.forEach {
+                it.accept(methodVisitor)
             }
-            // Visits the local variable annotations.
-            if (visibleLocalVariableAnnotations != null) {
-                var i = 0
-                val n = visibleLocalVariableAnnotations!!.size
-                while (i < n) {
-                    visibleLocalVariableAnnotations!!.get(i)!!.accept(methodVisitor, true)
-                    ++i
-                }
+            visibleLocalVariableAnnotations.forEach {
+                it.accept(methodVisitor, true)
             }
-            if (invisibleLocalVariableAnnotations != null) {
-                var i = 0
-                val n = invisibleLocalVariableAnnotations!!.size
-                while (i < n) {
-                    invisibleLocalVariableAnnotations!!.get(i)!!.accept(methodVisitor, false)
-                    ++i
-                }
+            invisibleLocalVariableAnnotations.forEach {
+                it.accept(methodVisitor, false)
             }
             methodVisitor.visitMaxs(maxStack, maxLocals)
-            visited = true
         }
         methodVisitor.visitEnd()
+    }
+}
+
+interface MutableMethodNode : MethodNode, MethodVisitor {
+    override var access: Int
+    override var name: String
+    override var desc: String
+    override var signature: String?
+    override val exceptions: MutableList<String>
+    override val parameters: MutableList<ParameterNode>
+    override val visibleAnnotations: MutableList<AnnotationNode>
+    override val invisibleAnnotations: MutableList<AnnotationNode>
+    override val visibleTypeAnnotations: MutableList<TypeAnnotationNode>
+    override val invisibleTypeAnnotations: MutableList<TypeAnnotationNode>
+    override val attrs: MutableList<Attribute>
+    override var annotationDefault: Any?
+    override var visibleAnnotableParameterCount: Int
+    override val visibleParameterAnnotations: MutableList<MutableList<AnnotationNode>>
+    override var invisibleAnnotableParameterCount: Int
+    override val invisibleParameterAnnotations: MutableList<MutableList<AnnotationNode>>
+    override val instructions: MutableInsnList
+    override val tryCatchBlocks: MutableList<MutableTryCatchBlockNode>
+    override var maxStack: Int
+    override var maxLocals: Int
+    override val localVariables: MutableList<MutableLocalVariableNode>
+    override val visibleLocalVariableAnnotations: MutableList<LocalVariableAnnotationNode>
+    override val invisibleLocalVariableAnnotations: MutableList<LocalVariableAnnotationNode>
+
+    override fun getLabelNode(label: Label): LabelNode {
+        var info = label.info
+        if (info !is LabelNode) {
+            info = instructions.createLabelNode()
+            label.info = info
+        }
+        return info
+    }
+
+    override fun getLabel(labelNode: LabelNode): Label {
+        throw UnsupportedOperationException()
+    }
+
+
+    // -----------------------------------------------------------------------------------------------
+    // Implementation of the MethodVisitor abstract class
+    // -----------------------------------------------------------------------------------------------
+    override fun visitParameter(name: String?, access: Int) {
+        parameters.add(nodeFactory.ParameterNode(name!!, access))
+    }
+
+    override fun visitAnnotationDefault(): AnnotationVisitor? {
+        val list = object : ArrayList<Any>(0) {
+            override fun add(o: Any): Boolean {
+                annotationDefault = o
+                return super.add(o)
+            }
+        }
+        return nodeFactory.Annotation(values = list)
+    }
+
+    override fun visitAnnotation(descriptor: String, visible: Boolean): AnnotationVisitor? {
+        val annotation = nodeFactory.Annotation(descriptor, mutableListOf())
+        if (visible) {
+            visibleAnnotations.add(annotation)
+        } else {
+            invisibleAnnotations.add(annotation)
+        }
+        return annotation
+    }
+
+    override fun visitTypeAnnotation(
+        typeRef: Int,
+        typePath: TypePath?,
+        descriptor: String,
+        visible: Boolean
+    ): AnnotationVisitor? {
+        val typeAnnotation = nodeFactory.TypeAnnotationNode(typeRef = typeRef, typePath = typePath, desc = descriptor)
+        if (visible) {
+            visibleTypeAnnotations.add(typeAnnotation)
+        } else {
+            invisibleTypeAnnotations.add(typeAnnotation)
+        }
+        return typeAnnotation
+    }
+
+    override fun visitAnnotableParameterCount(parameterCount: Int, visible: Boolean) {
+        if (visible) {
+            visibleAnnotableParameterCount = parameterCount
+        } else {
+            invisibleAnnotableParameterCount = parameterCount
+        }
+    }
+
+    override fun visitParameterAnnotation(parameter: Int, descriptor: String, visible: Boolean): AnnotationVisitor? {
+        val annotation = nodeFactory.Annotation(desc = descriptor, values = mutableListOf())
+        if (visible) {
+            while (visibleParameterAnnotations.size <= parameter) {
+                visibleParameterAnnotations.add(mutableListOf())
+            }
+            visibleParameterAnnotations[parameter].add(annotation)
+        } else {
+            while (invisibleParameterAnnotations.size <= parameter) {
+                invisibleParameterAnnotations.add(mutableListOf())
+            }
+            invisibleParameterAnnotations[parameter].add(annotation)
+        }
+        return annotation
+    }
+
+    override fun visitAttribute(attribute: Attribute) {
+        attrs.add(attribute)
+    }
+
+    override fun visitCode() {
+        // Nothing to do.
+    }
+
+    override fun visitFrame(type: Int, numLocal: Int, local: List<Any>?, numStack: Int, stack: List<Any>?) {
+        when (type) {
+            Opcodes.F_NEW -> instructions.F_NEW(
+                getLabelNodes(local!!),
+                getLabelNodes(stack!!)
+            )
+            Opcodes.F_FULL -> instructions.F_FULL(
+                getLabelNodes(local!!),
+                getLabelNodes(stack!!)
+            )
+            Opcodes.F_APPEND -> instructions.F_APPEND(
+                getLabelNodes(local!!)
+            )
+            Opcodes.F_CHOP -> instructions.F_CHOP(getLabelNodes(local!!))
+            Opcodes.F_SAME -> instructions.F_SAME()
+            Opcodes.F_SAME1 -> instructions.F_SAME1(getLabelNodes(stack!!))
+            else -> {
+                throw IllegalArgumentException("Invalid frame type: $type")
+            }
+        }
+    }
+
+    override fun visitInsn(opcode: Int) {
+        when (opcode) {
+            Opcodes.NOP -> instructions.NOP()
+            Opcodes.ACONST_NULL -> instructions.ACONST_NULL()
+            Opcodes.ICONST_M1 -> instructions.ICONST_M1()
+            Opcodes.ICONST_0 -> instructions.ICONST_0()
+            Opcodes.ICONST_1 -> instructions.ICONST_1()
+            Opcodes.ICONST_2 -> instructions.ICONST_2()
+            Opcodes.ICONST_3 -> instructions.ICONST_3()
+            Opcodes.ICONST_4 -> instructions.ICONST_4()
+            Opcodes.ICONST_5 -> instructions.ICONST_5()
+            Opcodes.LCONST_0 -> instructions.LCONST_0()
+            Opcodes.LCONST_1 -> instructions.LCONST_1()
+            Opcodes.FCONST_0 -> instructions.FCONST_0()
+            Opcodes.FCONST_1 -> instructions.FCONST_1()
+            Opcodes.FCONST_2 -> instructions.FCONST_2()
+            Opcodes.DCONST_0 -> instructions.DCONST_0()
+            Opcodes.DCONST_1 -> instructions.DCONST_1()
+
+            Opcodes.IALOAD -> instructions.IALOAD()
+            Opcodes.LALOAD -> instructions.LALOAD()
+            Opcodes.FALOAD -> instructions.FALOAD()
+            Opcodes.DALOAD -> instructions.DALOAD()
+            Opcodes.AALOAD -> instructions.AALOAD()
+            Opcodes.BALOAD -> instructions.BALOAD()
+            Opcodes.CALOAD -> instructions.CALOAD()
+            Opcodes.SALOAD -> instructions.SALOAD()
+
+            Opcodes.IASTORE -> instructions.IASTORE()
+            Opcodes.LASTORE -> instructions.LASTORE()
+            Opcodes.FASTORE -> instructions.FASTORE()
+            Opcodes.DASTORE -> instructions.DASTORE()
+            Opcodes.AASTORE -> instructions.AASTORE()
+            Opcodes.BASTORE -> instructions.BASTORE()
+            Opcodes.CASTORE -> instructions.CASTORE()
+            Opcodes.SASTORE -> instructions.SASTORE()
+
+            Opcodes.POP -> instructions.POP()
+            Opcodes.POP2 -> instructions.POP2()
+            Opcodes.DUP -> instructions.DUP()
+            Opcodes.DUP_X1 -> instructions.DUP_X1()
+            Opcodes.DUP_X2 -> instructions.DUP_X2()
+            Opcodes.DUP2 -> instructions.DUP2()
+            Opcodes.DUP2_X1 -> instructions.DUP2_X1()
+            Opcodes.DUP2_X2 -> instructions.DUP2_X2()
+            Opcodes.SWAP -> instructions.SWAP()
+
+            Opcodes.IADD -> instructions.IADD()
+            Opcodes.LADD -> instructions.LADD()
+            Opcodes.FADD -> instructions.FADD()
+            Opcodes.DADD -> instructions.DADD()
+            Opcodes.ISUB -> instructions.ISUB()
+            Opcodes.LSUB -> instructions.LSUB()
+            Opcodes.FSUB -> instructions.FSUB()
+            Opcodes.DSUB -> instructions.DSUB()
+            Opcodes.IMUL -> instructions.IMUL()
+            Opcodes.LMUL -> instructions.LMUL()
+            Opcodes.FMUL -> instructions.FMUL()
+            Opcodes.DMUL -> instructions.DMUL()
+            Opcodes.IDIV -> instructions.IDIV()
+            Opcodes.LDIV -> instructions.LDIV()
+            Opcodes.FDIV -> instructions.FDIV()
+            Opcodes.DDIV -> instructions.DDIV()
+            Opcodes.IREM -> instructions.IREM()
+            Opcodes.LREM -> instructions.LREM()
+            Opcodes.FREM -> instructions.FREM()
+            Opcodes.DREM -> instructions.DREM()
+
+            Opcodes.INEG -> instructions.INEG()
+            Opcodes.LNEG -> instructions.LNEG()
+            Opcodes.FNEG -> instructions.FNEG()
+            Opcodes.DNEG -> instructions.DNEG()
+
+            Opcodes.ISHL -> instructions.ISHL()
+            Opcodes.LSHL -> instructions.LSHL()
+            Opcodes.ISHR -> instructions.ISHR()
+            Opcodes.LSHR -> instructions.LSHR()
+            Opcodes.IUSHR -> instructions.IUSHR()
+            Opcodes.LUSHR -> instructions.LUSHR()
+
+            Opcodes.IAND -> instructions.IAND()
+            Opcodes.LAND -> instructions.LAND()
+            Opcodes.IOR -> instructions.IOR()
+            Opcodes.LOR -> instructions.LOR()
+            Opcodes.IXOR -> instructions.IXOR()
+            Opcodes.LXOR -> instructions.LXOR()
+
+            Opcodes.I2L -> instructions.I2L()
+            Opcodes.I2F -> instructions.I2F()
+            Opcodes.I2D -> instructions.I2D()
+            Opcodes.L2I -> instructions.L2I()
+            Opcodes.L2F -> instructions.L2F()
+            Opcodes.L2D -> instructions.L2D()
+            Opcodes.F2I -> instructions.F2I()
+            Opcodes.F2L -> instructions.F2L()
+            Opcodes.F2D -> instructions.F2D()
+            Opcodes.D2I -> instructions.D2I()
+            Opcodes.D2L -> instructions.D2L()
+            Opcodes.D2F -> instructions.D2F()
+
+            Opcodes.I2B -> instructions.I2B()
+            Opcodes.I2C -> instructions.I2C()
+            Opcodes.I2S -> instructions.I2S()
+
+            Opcodes.LCMP -> instructions.LCMP()
+            Opcodes.FCMPL -> instructions.FCMPL()
+            Opcodes.FCMPG -> instructions.FCMPG()
+            Opcodes.DCMPL -> instructions.DCMPL()
+            Opcodes.DCMPG -> instructions.DCMPG()
+
+            Opcodes.IRETURN -> instructions.IRETURN()
+            Opcodes.LRETURN -> instructions.LRETURN()
+            Opcodes.FRETURN -> instructions.FRETURN()
+            Opcodes.DRETURN -> instructions.DRETURN()
+            Opcodes.ARETURN -> instructions.ARETURN()
+            Opcodes.RETURN -> instructions.RETURN()
+
+            Opcodes.ARRAYLENGTH -> instructions.ARRAYLENGTH()
+            Opcodes.ATHROW -> instructions.ATHROW()
+            Opcodes.MONITORENTER -> instructions.MONITORENTER()
+            Opcodes.MONITOREXIT -> instructions.MONITOREXIT()
+
+            else -> throw IllegalArgumentException("Invalid opcode for visitInsn: $opcode")
+        }
+    }
+
+    override fun visitIntInsn(opcode: Int, operand: Int) {
+        when (opcode) {
+            Opcodes.BIPUSH -> instructions.BIPUSH(operand.toByte())
+            Opcodes.SIPUSH -> instructions.SIPUSH(operand.toShort())
+            Opcodes.NEWARRAY -> instructions.NEWARRAY(NewArrayInsnNode.NewArrayType.fromValue(operand))
+            else -> throw IllegalArgumentException("Invalid opcode for visitIntInsn: $opcode")
+        }
+    }
+
+    override fun visitVarInsn(opcode: Int, varIndex: Int) {
+        when (opcode) {
+            Opcodes.ILOAD -> instructions.ILOAD(varIndex)
+            Opcodes.LLOAD -> instructions.LLOAD(varIndex)
+            Opcodes.FLOAD -> instructions.FLOAD(varIndex)
+            Opcodes.DLOAD -> instructions.DLOAD(varIndex)
+            Opcodes.ALOAD -> instructions.ALOAD(varIndex)
+
+            Opcodes.ISTORE -> instructions.ISTORE(varIndex)
+            Opcodes.LSTORE -> instructions.LSTORE(varIndex)
+            Opcodes.FSTORE -> instructions.FSTORE(varIndex)
+            Opcodes.DSTORE -> instructions.DSTORE(varIndex)
+            Opcodes.ASTORE -> instructions.ASTORE(varIndex)
+
+            else -> throw IllegalArgumentException("Invalid opcode for visitVarInsn: $opcode")
+        }
+    }
+
+    override fun visitTypeInsn(opcode: Int, type: String) {
+        when (opcode) {
+            Opcodes.NEW -> instructions.NEW(type)
+            Opcodes.ANEWARRAY -> instructions.ANEWARRAY(type)
+            Opcodes.CHECKCAST -> instructions.CHECKCAST(type)
+            Opcodes.INSTANCEOF -> instructions.INSTANCEOF(type)
+            else -> throw IllegalArgumentException("Invalid opcode for visitTypeInsn: $opcode")
+        }
+    }
+
+    override fun visitFieldInsn(opcode: Int, owner: String, name: String, descriptor: String) {
+        when (opcode) {
+            Opcodes.GETSTATIC -> instructions.GETSTATIC(owner, name, descriptor)
+            Opcodes.PUTSTATIC -> instructions.PUTSTATIC(owner, name, descriptor)
+            Opcodes.GETFIELD -> instructions.GETFIELD(owner, name, descriptor)
+            Opcodes.PUTFIELD -> instructions.PUTFIELD(owner, name, descriptor)
+            else -> throw IllegalArgumentException("Invalid opcode for visitFieldInsn: $opcode")
+        }
+    }
+
+    override fun visitMethodInsn(opcode: Int, owner: String, name: String, descriptor: String, isInterface: Boolean) {
+        when (opcode) {
+            Opcodes.INVOKEVIRTUAL -> instructions.INVOKEVIRTUAL(owner, name, descriptor)
+            Opcodes.INVOKESPECIAL -> instructions.INVOKESPECIAL(owner, name, descriptor)
+            Opcodes.INVOKESTATIC -> instructions.INVOKESTATIC(owner, name, descriptor)
+            Opcodes.INVOKEINTERFACE -> instructions.INVOKEINTERFACE(owner, name, descriptor)
+            else -> throw IllegalArgumentException("Invalid opcode for visitMethodInsn: $opcode")
+        }
+    }
+
+    override fun visitInvokeDynamicInsn(
+        name: String,
+        descriptor: String,
+        bootstrapMethodHandle: Handle,
+        bootstrapMethodArguments: List<Any>
+    ) {
+        instructions.INVOKEDYNAMIC(name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments)
+    }
+
+    override fun visitJumpInsn(opcode: Int, label: Label) {
+        val labelNode = getLabelNode(label)
+        when (opcode) {
+            Opcodes.IFEQ -> instructions.IFEQ(labelNode)
+            Opcodes.IFNE -> instructions.IFNE(labelNode)
+            Opcodes.IFLT -> instructions.IFLT(labelNode)
+            Opcodes.IFGE -> instructions.IFGE(labelNode)
+            Opcodes.IFGT -> instructions.IFGT(labelNode)
+            Opcodes.IFLE -> instructions.IFLE(labelNode)
+            Opcodes.IF_ICMPEQ -> instructions.IF_ICMPEQ(labelNode)
+            Opcodes.IF_ICMPNE -> instructions.IF_ICMPNE(labelNode)
+            Opcodes.IF_ICMPLT -> instructions.IF_ICMPLT(labelNode)
+            Opcodes.IF_ICMPGE -> instructions.IF_ICMPGE(labelNode)
+            Opcodes.IF_ICMPGT -> instructions.IF_ICMPGT(labelNode)
+            Opcodes.IF_ICMPLE -> instructions.IF_ICMPLE(labelNode)
+            Opcodes.IF_ACMPEQ -> instructions.IF_ACMPEQ(labelNode)
+            Opcodes.IF_ACMPNE -> instructions.IF_ACMPNE(labelNode)
+            Opcodes.GOTO -> instructions.GOTO(labelNode)
+            Opcodes.IFNULL -> instructions.IFNULL(labelNode)
+            Opcodes.IFNONNULL -> instructions.IFNONNULL(labelNode)
+            else -> throw IllegalArgumentException("Invalid opcode for visitJumpInsn: $opcode")
+        }
+    }
+
+    override fun visitLabel(label: Label) {
+        instructions.LABEL(getLabelNode(label))
+    }
+
+    override fun visitLdcInsn(value: Any) {
+        instructions.LDC(value)
+    }
+
+    override fun visitIincInsn(varIndex: Int, increment: Int) {
+        instructions.IINC(varIndex, increment)
+    }
+
+    override fun visitTableSwitchInsn(min: Int, max: Int, dflt: Label, labels: List<Label>) {
+        instructions.TABLESWITCH(
+            min,
+            max,
+            getLabelNode(dflt),
+            getLabelNodes(labels)
+        )
+    }
+
+    override fun visitLookupSwitchInsn(dflt: Label, keys: List<Int>, labels: List<Label>) {
+        instructions.LOOKUPSWITCH(
+            getLabelNode(dflt),
+            keys,
+            getLabelNodes(labels)
+        )
+    }
+
+    override fun visitMultiANewArrayInsn(descriptor: String, numDimensions: Int) {
+        instructions.MULTIANEWARRAY(descriptor, numDimensions)
+    }
+
+    override fun visitInsnAnnotation(
+        typeRef: Int,
+        typePath: TypePath?,
+        descriptor: String,
+        visible: Boolean
+    ): AnnotationVisitor {
+        // Find the last real instruction, i.e. the instruction targeted by this annotation.
+        var currentInsnIndex = instructions.lastIndex
+        while (instructions[currentInsnIndex].opcode == -1) {
+            currentInsnIndex--
+        }
+
+        // Add the annotation to this instruction.
+        val typeAnnotation = nodeFactory.TypeAnnotationNode(
+            typeRef = typeRef,
+            typePath = typePath,
+            desc = descriptor
+        )
+
+        instructions.addTypeAnnotation(currentInsnIndex, typeAnnotation, visible)
+
+        return typeAnnotation
+    }
+
+    override fun visitTryCatchBlock(start: Label, end: Label, handler: Label?, type: String?) {
+        val tryCatchBlock = nodeFactory.TryCatchBlockNode(
+            getLabelNode(start),
+            getLabelNode(end),
+            getLabelNode(handler!!),
+            type
+        )
+        tryCatchBlock.updateIndex(tryCatchBlocks.size)
+        tryCatchBlocks.add(tryCatchBlock)
+    }
+
+    override fun visitTryCatchAnnotation(
+        typeRef: Int,
+        typePath: TypePath?,
+        descriptor: String,
+        visible: Boolean
+    ): AnnotationVisitor? {
+        val tryCatchBlock = tryCatchBlocks[(typeRef and 0x00FFFF00) shr 8]
+        val typeAnnotation = nodeFactory.TypeAnnotationNode(
+            typeRef = typeRef,
+            typePath = typePath,
+            desc = descriptor
+        )
+        if (visible) {
+            tryCatchBlock.visibleTypeAnnotations.add(typeAnnotation)
+        } else {
+            tryCatchBlock.invisibleTypeAnnotations.add(typeAnnotation)
+        }
+        return typeAnnotation
+    }
+
+    override fun visitLocalVariable(
+        name: String,
+        descriptor: String,
+        signature: String?,
+        start: Label,
+        end: Label,
+        index: Int
+    ) {
+        val localVariable = nodeFactory.LocalVariableNode(
+            name,
+            descriptor,
+            signature,
+            getLabelNode(start),
+            getLabelNode(end),
+            index
+        )
+        localVariables.add(localVariable)
+    }
+
+    override fun visitLocalVariableAnnotation(
+        typeRef: Int,
+        typePath: TypePath?,
+        start: List<Label>,
+        end: List<Label>,
+        index: List<Int>,
+        descriptor: String,
+        visible: Boolean
+    ): AnnotationVisitor {
+        val localVariableAnnotation = nodeFactory.LocalVariableAnnotationNode(
+            typeRef,
+            typePath,
+            getLabelNodes(start),
+            getLabelNodes(end),
+            index,
+            descriptor,
+            visible
+        )
+        if (visible) {
+            visibleLocalVariableAnnotations.add(localVariableAnnotation)
+        } else {
+            invisibleLocalVariableAnnotations.add(localVariableAnnotation)
+        }
+        return localVariableAnnotation
+    }
+
+    override fun visitLineNumber(line: Int, start: Label) {
+        instructions.LINE(line, getLabelNode(start))
+    }
+
+    override fun visitMaxs(maxStack: Int, maxLocals: Int) {
+        this.maxStack = maxStack
+        this.maxLocals = maxLocals
+    }
+
+    override fun visitEnd() {
+        // Nothing to do.
+    }
+}
+
+private fun MutableMethodNode.getLabelNodes(objects: List<Label>): List<LabelNode> =
+    objects.map {
+        getLabelNode(it)
+    }
+
+private fun MutableMethodNode.getLabelNodes(objects: List<Any>): List<Any> = objects.map {
+    if (it is Label) {
+        getLabelNode(it)
+    } else {
+        it
     }
 }

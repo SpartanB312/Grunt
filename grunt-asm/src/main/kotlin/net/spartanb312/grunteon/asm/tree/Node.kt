@@ -1,5 +1,6 @@
 package net.spartanb312.grunteon.asm.tree
 
+import net.spartanb312.grunteon.asm.tree.insn.LabelNode
 import org.objectweb.asm.Attribute
 import org.objectweb.asm.TypePath
 
@@ -10,7 +11,7 @@ interface Node {
 @Suppress("FunctionName")
 interface NodeFactory {
     fun Annotation(
-        desc: String,
+        desc: String = "",
         values: MutableList<Any> = ArrayList(0)
     ): MutableAnnotationNode
 
@@ -74,6 +75,34 @@ interface NodeFactory {
         uses: MutableList<String>,
         provides: MutableList<ModuleProvideNode>
     ): MutableModuleNode
+
+    fun TryCatchBlockNode(
+        start: LabelNode,
+        end: LabelNode,
+        handler: LabelNode,
+        type: String?,
+        visibleTypeAnnotations: MutableList<TypeAnnotationNode> = ArrayList(0),
+        invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = ArrayList(0)
+    ): MutableTryCatchBlockNode
+
+    fun LocalVariableNode(
+        name: String,
+        desc: String,
+        signature: String?,
+        start: LabelNode,
+        end: LabelNode,
+        index: Int
+    ): MutableLocalVariableNode
+
+    fun LocalVariableAnnotationNode(
+        typeRef: Int,
+        typePath: TypePath?,
+        start: List<LabelNode>,
+        end: List<LabelNode>,
+        index: List<Int>,
+        desc: String,
+        visible: Boolean
+    ): MutableLocalVariableAnnotationNode
 
     object Default : NodeFactory {
         override fun Annotation(
@@ -331,4 +360,21 @@ fun NodeFactory.Module(
     opens,
     uses,
     provides
+)
+
+fun NodeFactory.TryCatchBlockNode(
+    src: TryCatchBlockNode,
+    start: LabelNode = src.start,
+    end: LabelNode = src.end,
+    handler: LabelNode = src.handler!!,
+    type: String? = src.type,
+    visibleTypeAnnotations: MutableList<TypeAnnotationNode> = src.visibleTypeAnnotations.toMutableList(),
+    invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = src.invisibleTypeAnnotations.toMutableList()
+) = TryCatchBlockNode(
+    start,
+    end,
+    handler,
+    type,
+    visibleTypeAnnotations,
+    invisibleTypeAnnotations
 )

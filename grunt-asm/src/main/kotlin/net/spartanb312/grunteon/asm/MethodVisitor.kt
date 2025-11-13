@@ -27,6 +27,7 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm
 
+import net.spartanb312.grunteon.asm.tree.insn.LabelNode
 import org.objectweb.asm.Attribute
 import org.objectweb.asm.Handle
 import org.objectweb.asm.Label
@@ -48,6 +49,9 @@ import org.objectweb.asm.TypePath
  * @author Luna
  */
 interface MethodVisitor {
+    fun getLabelNode(label: Label): LabelNode
+    fun getLabel(labelNode: LabelNode): Label
+
     // -----------------------------------------------------------------------------------------------
     // Parameters, annotations and non standard attributes
     // -----------------------------------------------------------------------------------------------
@@ -96,7 +100,7 @@ interface MethodVisitor {
     fun visitTypeAnnotation(
         typeRef: Int,
         typePath: TypePath?,
-        descriptor: String?,
+        descriptor: String,
         visible: Boolean
     ): AnnotationVisitor? = null
 
@@ -428,7 +432,7 @@ interface MethodVisitor {
      * interested in visiting this annotation.
      */
     fun visitInsnAnnotation(
-        typeRef: Int, typePath: TypePath?, descriptor: String?, visible: Boolean
+        typeRef: Int, typePath: TypePath?, descriptor: String, visible: Boolean
     ): AnnotationVisitor? = null
 
     // -----------------------------------------------------------------------------------------------
@@ -545,6 +549,16 @@ interface MethodVisitor {
     fun visitEnd() {}
 
     class FromOw2(val ow2: org.objectweb.asm.MethodVisitor) : MethodVisitor {
+        private val labelMap = mutableMapOf<LabelNode, Label>()
+
+        override fun getLabelNode(label: Label): LabelNode {
+            throw UnsupportedOperationException()
+        }
+
+        override fun getLabel(labelNode: LabelNode): Label {
+            return labelMap.computeIfAbsent(labelNode) { Label() }
+        }
+
         override fun visitParameter(name: String?, access: Int) {
             ow2.visitParameter(name, access)
         }
@@ -563,7 +577,7 @@ interface MethodVisitor {
         override fun visitTypeAnnotation(
             typeRef: Int,
             typePath: TypePath?,
-            descriptor: String?,
+            descriptor: String,
             visible: Boolean
         ): AnnotationVisitor? {
             return ow2.visitTypeAnnotation(typeRef, typePath, descriptor, visible)
@@ -690,7 +704,7 @@ interface MethodVisitor {
         override fun visitInsnAnnotation(
             typeRef: Int,
             typePath: TypePath?,
-            descriptor: String?,
+            descriptor: String,
             visible: Boolean
         ): AnnotationVisitor? {
             return ow2.visitInsnAnnotation(typeRef, typePath, descriptor, visible)
@@ -779,7 +793,7 @@ interface MethodVisitor {
         override fun visitTypeAnnotation(
             typeRef: Int,
             typePath: TypePath?,
-            descriptor: String?,
+            descriptor: String,
             visible: Boolean
         ): org.objectweb.asm.AnnotationVisitor? {
             return grunt.visitTypeAnnotation(typeRef, typePath, descriptor, visible)
@@ -901,7 +915,7 @@ interface MethodVisitor {
         override fun visitInsnAnnotation(
             typeRef: Int,
             typePath: TypePath?,
-            descriptor: String?,
+            descriptor: String,
             visible: Boolean
         ): org.objectweb.asm.AnnotationVisitor? {
             return grunt.visitInsnAnnotation(typeRef, typePath, descriptor, visible)

@@ -53,12 +53,12 @@ interface TryCatchBlockNode : Node {
     val type: String?
 
     /** The runtime visible type annotations on the exception handler type. May be null.  */
-    val visibleTypeAnnotations: MutableList<TypeAnnotationNode>
+    val visibleTypeAnnotations: List<TypeAnnotationNode>
 
     /**
      * The runtime invisible type annotations on the exception handler type. May be null.
      */
-    val invisibleTypeAnnotations: MutableList<TypeAnnotationNode>
+    val invisibleTypeAnnotations: List<TypeAnnotationNode>
 
     /**
      * Makes the given visitor visit this try catch block.
@@ -67,7 +67,10 @@ interface TryCatchBlockNode : Node {
      */
     fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitTryCatchBlock(
-            start.value, end.value, handler?.value, type
+            methodVisitor.getLabel(start),
+            methodVisitor.getLabel(end),
+            handler?.let { methodVisitor.getLabel(it) },
+            type
         )
         visibleTypeAnnotations.forEach { node ->
             methodVisitor.visitTryCatchAnnotation(node.typeRef, node.typePath, node.desc, true)?.let {

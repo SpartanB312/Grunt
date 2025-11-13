@@ -51,7 +51,7 @@ sealed interface IJumpInsnNode : IBaseInsnNode {
         get() = AbstractInsnNode.JUMP_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitJumpInsn(opcode, label.value)
+        methodVisitor.visitJumpInsn(opcode, methodVisitor.getLabel(label))
         IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

@@ -71,27 +71,6 @@ sealed interface IFrameNode : IBaseInsnNode {
 
     override val type: Int
         get() = AbstractInsnNode.FRAME
-
-//    override fun accept(methodVisitor: MethodVisitor) {
-//        when (frameType) {
-//            Opcodes.F_NEW, Opcodes.F_FULL -> methodVisitor.visitFrame(
-//                frameType,
-//                local!!.size,
-//                unwrapLabel(local),
-//                stack!!.size,
-//                unwrapLabel(stack)
-//            )
-//            Opcodes.F_APPEND -> methodVisitor.visitFrame(frameType, local!!.size, unwrapLabel(local), 0, null)
-//            Opcodes.F_CHOP -> methodVisitor.visitFrame(frameType, local!!.size, null, 0, null)
-//            Opcodes.F_SAME -> methodVisitor.visitFrame(frameType, 0, null, 0, null)
-//            Opcodes.F_SAME1 -> methodVisitor.visitFrame(frameType, 0, null, 1, unwrapLabel(stack))
-//            else -> throw IllegalArgumentException()
-//        }
-//    }
-}
-
-private fun unwrapLabel(list: List<Any>): List<Any> {
-    return list.map { if (it is LabelNode) it.value else it }
 }
 
 interface FNewNode : IFrameNode {
@@ -106,9 +85,9 @@ interface FNewNode : IFrameNode {
         methodVisitor.visitFrame(
             frameType,
             local.size,
-            unwrapLabel(local),
+            local,
             stack.size,
-            unwrapLabel(stack)
+            stack
         )
     }
 }
@@ -125,9 +104,9 @@ interface FFullNode : IFrameNode {
         methodVisitor.visitFrame(
             frameType,
             local.size,
-            unwrapLabel(local),
+            local,
             stack.size,
-            unwrapLabel(stack)
+            stack
         )
     }
 }
@@ -143,7 +122,7 @@ interface FAppendNode : IFrameNode {
         get() = null
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitFrame(frameType, local.size, unwrapLabel(local), 0, null)
+        methodVisitor.visitFrame(frameType, local.size, local, 0, null)
     }
 }
 
@@ -190,6 +169,6 @@ interface FSame1Node : IFrameNode {
     override val stack: List<Any>
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitFrame(frameType, 0, null, 1, unwrapLabel(stack))
+        methodVisitor.visitFrame(frameType, 0, null, 1, stack)
     }
 }

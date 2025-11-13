@@ -57,7 +57,11 @@ sealed interface TableSwitchInsnNode : IBaseInsnNode {
         get() = AbstractInsnNode.TABLESWITCH_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitTableSwitchInsn(min, max, dflt.value, labels.map { it.value })
+        methodVisitor.visitTableSwitchInsn(
+            min,
+            max,
+            methodVisitor.getLabel(dflt),
+            labels.map { methodVisitor.getLabel(it) })
         IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

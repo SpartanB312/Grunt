@@ -5,7 +5,6 @@ package net.spartanb312.grunteon.asm.tree
 import net.spartanb312.grunteon.asm.MethodVisitor
 import net.spartanb312.grunteon.asm.tree.insn.*
 import org.objectweb.asm.Handle
-import org.objectweb.asm.Label
 
 interface InsnList : List<IBaseInsnNode> {
     fun accept(mv: MethodVisitor) {
@@ -13,7 +12,9 @@ interface InsnList : List<IBaseInsnNode> {
     }
 }
 
-interface InsnListBuilder {
+interface MutableInsnList : InsnList {
+    fun addTypeAnnotation(index: Int, typeAnnotationNode: TypeAnnotationNode, isVisible: Boolean)
+
     fun GETSTATIC(
         owner: String,
         name: String,
@@ -38,13 +39,18 @@ interface InsnListBuilder {
         desc: String
     )
 
-    fun F_APPEND(
-        local: List<Any>
+    fun F_NEW(
+        local: List<Any>,
+        stack: List<Any>
     )
 
     fun F_FULL(
         local: List<Any>,
         stack: List<Any>
+    )
+
+    fun F_APPEND(
+        local: List<Any>
     )
 
     fun F_CHOP(
@@ -235,7 +241,8 @@ interface InsnListBuilder {
     fun IFNULL(label: LabelNode)
     fun IFNONNULL(label: LabelNode)
 
-    fun LABEL(label: Label)
+    fun createLabelNode(): LabelNode
+    fun LABEL(labelNode: LabelNode)
 
     fun LDC(constant: Any)
 
@@ -254,6 +261,11 @@ interface InsnListBuilder {
         labels: List<LabelNode>
     )
 
+    fun MULTIANEWARRAY(
+        type: String,
+        dims: Int
+    )
+
     fun NEW(
         type: String
     )
@@ -270,21 +282,21 @@ interface InsnListBuilder {
         type: String
     )
 
-    fun ILoad(variable: Int)
-    fun LLoad(variable: Int)
-    fun FLoad(variable: Int)
-    fun DLoad(variable: Int)
-    fun ALoad(variable: Int)
-    fun IStore(variable: Int)
-    fun LStore(variable: Int)
-    fun FStore(variable: Int)
-    fun DStore(variable: Int)
-    fun AStore(variable: Int)
+    fun ILOAD(variable: Int)
+    fun LLOAD(variable: Int)
+    fun FLOAD(variable: Int)
+    fun DLOAD(variable: Int)
+    fun ALOAD(variable: Int)
+    fun ISTORE(variable: Int)
+    fun LSTORE(variable: Int)
+    fun FSTORE(variable: Int)
+    fun DSTORE(variable: Int)
+    fun ASTORE(variable: Int)
 
     fun build(): InsnList
 }
 
-fun InsnListBuilder.GETSTATIC(
+fun MutableInsnList.GETSTATIC(
     src: GetStaticInsnNode,
     owner: String = src.owner,
     name: String = src.name,
@@ -295,7 +307,7 @@ fun InsnListBuilder.GETSTATIC(
     desc
 )
 
-fun InsnListBuilder.PUTSTATIC(
+fun MutableInsnList.PUTSTATIC(
     src: GetStaticInsnNode,
     owner: String = src.owner,
     name: String = src.name,
@@ -306,7 +318,7 @@ fun InsnListBuilder.PUTSTATIC(
     desc
 )
 
-fun InsnListBuilder.GETFIELD(
+fun MutableInsnList.GETFIELD(
     src: GetStaticInsnNode,
     owner: String = src.owner,
     name: String = src.name,
@@ -317,7 +329,7 @@ fun InsnListBuilder.GETFIELD(
     desc
 )
 
-fun InsnListBuilder.PUTFIELD(
+fun MutableInsnList.PUTFIELD(
     src: GetStaticInsnNode,
     owner: String = src.owner,
     name: String = src.name,
@@ -328,14 +340,16 @@ fun InsnListBuilder.PUTFIELD(
     desc
 )
 
-fun InsnListBuilder.F_APPEND(
-    src: FAppendNode,
-    local: List<Any> = src.local
-) = F_APPEND(
-    local
+fun MutableInsnList.F_NEW(
+    src: FNewNode,
+    local: List<Any> = src.local,
+    stack: List<Any> = src.stack
+) = F_NEW(
+    local,
+    stack
 )
 
-fun InsnListBuilder.F_FULL(
+fun MutableInsnList.F_FULL(
     src: FFullNode,
     local: List<Any> = src.local,
     stack: List<Any> = src.stack
@@ -344,21 +358,28 @@ fun InsnListBuilder.F_FULL(
     stack
 )
 
-fun InsnListBuilder.F_CHOP(
+fun MutableInsnList.F_APPEND(
+    src: FAppendNode,
+    local: List<Any> = src.local
+) = F_APPEND(
+    local
+)
+
+fun MutableInsnList.F_CHOP(
     src: FAppendNode,
     local: List<Any> = src.local
 ) = F_CHOP(
     local
 )
 
-fun InsnListBuilder.F_SAME1(
+fun MutableInsnList.F_SAME1(
     src: FSame1Node,
     stack: List<Any> = src.stack
 ) = F_SAME1(
     stack
 )
 
-fun InsnListBuilder.IINC(
+fun MutableInsnList.IINC(
     src: IincInsnNode,
     variable: Int = src.variable,
     increment: Int = src.increment
@@ -367,7 +388,7 @@ fun InsnListBuilder.IINC(
     increment
 )
 
-fun InsnListBuilder.INVOKEVIRTUAL(
+fun MutableInsnList.INVOKEVIRTUAL(
     src: InvokeVirtualInsnNode,
     owner: String = src.owner,
     name: String = src.name,
@@ -378,7 +399,7 @@ fun InsnListBuilder.INVOKEVIRTUAL(
     desc
 )
 
-fun InsnListBuilder.INVOKESPECIAL(
+fun MutableInsnList.INVOKESPECIAL(
     src: InvokeSpecialInsnNode,
     owner: String = src.owner,
     name: String = src.name,
@@ -389,7 +410,7 @@ fun InsnListBuilder.INVOKESPECIAL(
     desc
 )
 
-fun InsnListBuilder.INVOKESTATIC(
+fun MutableInsnList.INVOKESTATIC(
     src: InvokeStaticInsnNode,
     owner: String = src.owner,
     name: String = src.name,
@@ -400,7 +421,7 @@ fun InsnListBuilder.INVOKESTATIC(
     desc
 )
 
-fun InsnListBuilder.INVOKEINTERFACE(
+fun MutableInsnList.INVOKEINTERFACE(
     src: InvokeInterfaceInsnNode,
     owner: String = src.owner,
     name: String = src.name,
@@ -411,7 +432,7 @@ fun InsnListBuilder.INVOKEINTERFACE(
     desc
 )
 
-fun InsnListBuilder.INVOKEDYNAMIC(
+fun MutableInsnList.INVOKEDYNAMIC(
     src: InvokeDynamicInsnNode,
     name: String = src.name,
     desc: String = src.desc,
@@ -424,123 +445,118 @@ fun InsnListBuilder.INVOKEDYNAMIC(
     bsmArgs
 )
 
-fun InsnListBuilder.BIPUSH(
+fun MutableInsnList.BIPUSH(
     src: BiPushInsnNode,
     byte: Byte = src.operand.toByte()
 ) = BIPUSH(byte)
 
-fun InsnListBuilder.SIPUSH(
+fun MutableInsnList.SIPUSH(
     src: SiPushInsnNode,
     short: Short = src.operand.toShort()
 ) = SIPUSH(short)
 
-fun InsnListBuilder.NEWARRAY(
+fun MutableInsnList.NEWARRAY(
     src: NewArrayInsnNode,
     arrayType: NewArrayInsnNode.NewArrayType = NewArrayInsnNode.NewArrayType.fromValue(src.operand)
 ) = NEWARRAY(arrayType)
 
-fun InsnListBuilder.IFEQ(
+fun MutableInsnList.IFEQ(
     src: IfEqInsnNode,
     label: LabelNode = src.label
 ) = IFEQ(label)
 
-fun InsnListBuilder.IFNE(
+fun MutableInsnList.IFNE(
     src: IfNeInsnNode,
     label: LabelNode = src.label
 ) = IFNE(label)
 
-fun InsnListBuilder.IFLT(
+fun MutableInsnList.IFLT(
     src: IfLtInsnNode,
     label: LabelNode = src.label
 ) = IFLT(label)
 
-fun InsnListBuilder.IFGE(
+fun MutableInsnList.IFGE(
     src: IfGeInsnNode,
     label: LabelNode = src.label
 ) = IFGE(label)
 
-fun InsnListBuilder.IFGT(
+fun MutableInsnList.IFGT(
     src: IfGtInsnNode,
     label: LabelNode = src.label
 ) = IFGT(label)
 
-fun InsnListBuilder.IFLE(
+fun MutableInsnList.IFLE(
     src: IfLeInsnNode,
     label: LabelNode = src.label
 ) = IFLE(label)
 
-fun InsnListBuilder.IF_ICMPEQ(
+fun MutableInsnList.IF_ICMPEQ(
     src: IfIcmpEqInsnNode,
     label: LabelNode = src.label
 ) = IF_ICMPEQ(label)
 
-fun InsnListBuilder.IF_ICMPNE(
+fun MutableInsnList.IF_ICMPNE(
     src: IfIcmpNeInsnNode,
     label: LabelNode = src.label
 ) = IF_ICMPNE(label)
 
-fun InsnListBuilder.IF_ICMPLT(
+fun MutableInsnList.IF_ICMPLT(
     src: IfIcmpLtInsnNode,
     label: LabelNode = src.label
 ) = IF_ICMPLT(label)
 
-fun InsnListBuilder.IF_ICMPGE(
+fun MutableInsnList.IF_ICMPGE(
     src: IfIcmpGeInsnNode,
     label: LabelNode = src.label
 ) = IF_ICMPGE(label)
 
-fun InsnListBuilder.IF_ICMPGT(
+fun MutableInsnList.IF_ICMPGT(
     src: IfIcmpGtInsnNode,
     label: LabelNode = src.label
 ) = IF_ICMPGT(label)
 
-fun InsnListBuilder.IF_ICMPLE(
+fun MutableInsnList.IF_ICMPLE(
     src: IfIcmpLeInsnNode,
     label: LabelNode = src.label
 ) = IF_ICMPLE(label)
 
-fun InsnListBuilder.IF_ACMPEQ(
+fun MutableInsnList.IF_ACMPEQ(
     src: IfAcmpEqInsnNode,
     label: LabelNode = src.label
 ) = IF_ACMPEQ(label)
 
-fun InsnListBuilder.IF_ACMPNE(
+fun MutableInsnList.IF_ACMPNE(
     src: IfAcmpNeInsnNode,
     label: LabelNode = src.label
 ) = IF_ACMPNE(label)
 
-fun InsnListBuilder.GOTO(
+fun MutableInsnList.GOTO(
     src: GotoInsnNode,
     label: LabelNode = src.label
 ) = GOTO(label)
 
-fun InsnListBuilder.IFNULL(
+fun MutableInsnList.IFNULL(
     src: IfNullInsnNode,
     label: LabelNode = src.label
 ) = IFNULL(label)
 
-fun InsnListBuilder.IFNONNULL(
+fun MutableInsnList.IFNONNULL(
     src: IfNonNullInsnNode,
     label: LabelNode = src.label
 ) = IFNONNULL(label)
 
-fun InsnListBuilder.LABEL(
-    src: LabelNode,
-    label: Label = src.value
-) = LABEL(label)
-
-fun InsnListBuilder.LDC(
+fun MutableInsnList.LDC(
     src: LdcInsnNode,
     constant: Any = src.constant
 ) = LDC(constant)
 
-fun InsnListBuilder.LINE(
+fun MutableInsnList.LINE(
     src: LineNumberNode,
     line: Int = src.line,
     label: LabelNode = src.start
 ) = LINE(line, label)
 
-fun InsnListBuilder.LOOKUPSWITCH(
+fun MutableInsnList.LOOKUPSWITCH(
     src: LookupSwitchInsnNode,
     dflt: LabelNode = src.dflt,
     keys: List<Int> = src.keys,
@@ -551,7 +567,7 @@ fun InsnListBuilder.LOOKUPSWITCH(
     labels
 )
 
-fun InsnListBuilder.TABLESWITCH(
+fun MutableInsnList.TABLESWITCH(
     src: TableSwitchInsnNode,
     min: Int = src.min,
     max: Int = src.max,
@@ -564,80 +580,89 @@ fun InsnListBuilder.TABLESWITCH(
     labels
 )
 
-fun InsnListBuilder.NEW(
+fun MutableInsnList.MULTIANEWARRAY(
+    src: MultiANewArrayInsnNode,
+    type: String = src.desc,
+    dims: Int = src.dims
+) = MULTIANEWARRAY(
+    type,
+    dims
+)
+
+fun MutableInsnList.NEW(
     src: NewInsnNode,
     type: String = src.desc
 ) = NEW(
     type
 )
 
-fun InsnListBuilder.ANEWARRAY(
+fun MutableInsnList.ANEWARRAY(
     src: ANewArrayInsnNode,
     type: String = src.desc
 ) = ANEWARRAY(
     type
 )
 
-fun InsnListBuilder.CHECKCAST(
+fun MutableInsnList.CHECKCAST(
     src: CheckCastInsnNode,
     type: String = src.desc
 ) = CHECKCAST(
     type
 )
 
-fun InsnListBuilder.INSTANCEOF(
+fun MutableInsnList.INSTANCEOF(
     src: InstanceOfInsnNode,
     type: String = src.desc
 ) = INSTANCEOF(
     type
 )
 
-fun InsnListBuilder.ILoad(
+fun MutableInsnList.ILOAD(
     src: ILoadInsnNode,
     variable: Int = src.variable
-) = ILoad(variable)
+) = ILOAD(variable)
 
-fun InsnListBuilder.LLoad(
+fun MutableInsnList.LLOAD(
     src: LLoadInsnNode,
     variable: Int = src.variable
-) = LLoad(variable)
+) = LLOAD(variable)
 
-fun InsnListBuilder.FLoad(
+fun MutableInsnList.FLOAD(
     src: FLoadInsnNode,
     variable: Int = src.variable
-) = FLoad(variable)
+) = FLOAD(variable)
 
-fun InsnListBuilder.DLoad(
+fun MutableInsnList.DLOAD(
     src: DLoadInsnNode,
     variable: Int = src.variable
-) = DLoad(variable)
+) = DLOAD(variable)
 
-fun InsnListBuilder.ALoad(
+fun MutableInsnList.ALOAD(
     src: ALoadInsnNode,
     variable: Int = src.variable
-) = ALoad(variable)
+) = ALOAD(variable)
 
-fun InsnListBuilder.IStore(
+fun MutableInsnList.ISTORE(
     src: IStoreInsnNode,
     variable: Int = src.variable
-) = IStore(variable)
+) = ISTORE(variable)
 
-fun InsnListBuilder.LStore(
+fun MutableInsnList.LSTORE(
     src: LStoreInsnNode,
     variable: Int = src.variable
-) = LStore(variable)
+) = LSTORE(variable)
 
-fun InsnListBuilder.FStore(
+fun MutableInsnList.FSTORE(
     src: FStoreInsnNode,
     variable: Int = src.variable
-) = FStore(variable)
+) = FSTORE(variable)
 
-fun InsnListBuilder.DStore(
+fun MutableInsnList.DSTORE(
     src: DStoreInsnNode,
     variable: Int = src.variable
-) = DStore(variable)
+) = DSTORE(variable)
 
-fun InsnListBuilder.AStore(
+fun MutableInsnList.ASTORE(
     src: AStoreInsnNode,
     variable: Int = src.variable
-) = AStore(variable)
+) = ASTORE(variable)

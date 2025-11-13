@@ -27,8 +27,8 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
+import net.spartanb312.grunteon.asm.MethodVisitor
 import net.spartanb312.grunteon.asm.tree.insn.LabelNode
-import org.objectweb.asm.MethodVisitor
 
 /**
  * A node that represents a local variable declaration.
@@ -57,7 +57,7 @@ interface LocalVariableNode : Node {
      */
     fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitLocalVariable(
-            name, desc, signature, start.value, end.value, index
+            name, desc, signature, methodVisitor.getLabel(start), methodVisitor.getLabel(end), index
         )
     }
 }

@@ -54,7 +54,10 @@ sealed interface LookupSwitchInsnNode : IBaseInsnNode {
         get() = AbstractInsnNode.LOOKUPSWITCH_INSN
 
     override fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitLookupSwitchInsn(dflt.value, keys, labels.map { it.value })
+        methodVisitor.visitLookupSwitchInsn(
+            methodVisitor.getLabel(dflt),
+            keys,
+            labels.map { methodVisitor.getLabel(it) })
         IBaseInsnNode.acceptAnnotations(this, methodVisitor)
     }
 }

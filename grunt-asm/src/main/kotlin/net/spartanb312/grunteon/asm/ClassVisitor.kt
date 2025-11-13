@@ -242,7 +242,7 @@ interface ClassVisitor {
         name: String,
         descriptor: String,
         signature: String?,
-        exceptions: Array<String>?
+        exceptions: List<String>?
     ): MethodVisitor? = null
 
     /**
@@ -344,9 +344,10 @@ interface ClassVisitor {
             name: String,
             descriptor: String,
             signature: String?,
-            exceptions: Array<String>?
+            exceptions: List<String>?
         ): MethodVisitor? {
-            return ow2.visitMethod(access, name, descriptor, signature, exceptions)?.let { MethodVisitor.FromOw2(it) }
+            return ow2.visitMethod(access, name, descriptor, signature, exceptions?.toTypedArray())
+                ?.let { MethodVisitor.FromOw2(it) }
         }
 
         override fun visitEnd() {
@@ -447,9 +448,10 @@ interface ClassVisitor {
             name: String,
             descriptor: String,
             signature: String?,
-            exceptions: Array<String>
+            exceptions: Array<String>?
         ): org.objectweb.asm.MethodVisitor? {
-            return toOw2.visitMethod(access, name, descriptor, signature, exceptions)?.let { MethodVisitor.ToOw2(it) }
+            return toOw2.visitMethod(access, name, descriptor, signature, exceptions?.toList())
+                ?.let { MethodVisitor.ToOw2(it) }
         }
 
         override fun visitEnd() {

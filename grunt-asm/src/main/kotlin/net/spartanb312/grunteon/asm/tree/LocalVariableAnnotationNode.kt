@@ -64,13 +64,19 @@ interface LocalVariableAnnotationNode : TypeAnnotationNode {
     fun accept(methodVisitor: MethodVisitor, visible: Boolean) {
         accept(
             methodVisitor.visitLocalVariableAnnotation(
-                typeRef, typePath, start.map { it.value }, end.map { it.value }, index, desc, visible
+                typeRef,
+                typePath,
+                start.map { methodVisitor.getLabel(it) },
+                end.map { methodVisitor.getLabel(it) },
+                index,
+                desc,
+                visible
             )
         )
     }
 }
 
-interface MutableLocalVariableAnnotationNode : LocalVariableAnnotationNode {
+interface MutableLocalVariableAnnotationNode : LocalVariableAnnotationNode, MutableTypeAnnotationNode {
     override val start: MutableList<LabelNode>
     override val end: MutableList<LabelNode>
     override val index: MutableList<Int>

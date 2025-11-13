@@ -197,7 +197,7 @@ interface MutableAnnotationNode : AnnotationNode, AnnotationVisitor {
         if (this.desc.isNotEmpty()) {
             values.add(name!!)
         }
-        val array = mutableListOf<Any?>()
+        val array = mutableListOf<Any>()
         values.add(array)
         return nodeFactory.Annotation(values = array)
     }
