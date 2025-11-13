@@ -15,89 +15,25 @@ interface InsnList : List<IBaseInsnNode> {
 interface MutableInsnList : InsnList {
     fun addTypeAnnotation(index: Int, typeAnnotationNode: TypeAnnotationNode, isVisible: Boolean)
 
-    fun GETSTATIC(
-        owner: String,
-        name: String,
-        desc: String
-    )
+    fun GETSTATIC(owner: String, name: String, desc: String)
+    fun PUTSTATIC(owner: String, name: String, desc: String)
+    fun GETFIELD(owner: String, name: String, desc: String)
+    fun PUTFIELD(owner: String, name: String, desc: String)
 
-    fun PUTSTATIC(
-        owner: String,
-        name: String,
-        desc: String
-    )
-
-    fun GETFIELD(
-        owner: String,
-        name: String,
-        desc: String
-    )
-
-    fun PUTFIELD(
-        owner: String,
-        name: String,
-        desc: String
-    )
-
-    fun F_NEW(
-        local: List<Any>,
-        stack: List<Any>
-    )
-
-    fun F_FULL(
-        local: List<Any>,
-        stack: List<Any>
-    )
-
-    fun F_APPEND(
-        local: List<Any>
-    )
-
-    fun F_CHOP(
-        local: List<Any>
-    )
-
+    fun F_NEW(local: List<Any>, stack: List<Any>)
+    fun F_FULL(local: List<Any>, stack: List<Any>)
+    fun F_APPEND(local: List<Any>)
+    fun F_CHOP(local: List<Any>)
     fun F_SAME()
+    fun F_SAME1(stack: List<Any>)
 
-    fun F_SAME1(
-        stack: List<Any>
-    )
+    fun IINC(variable: Int, increment: Int)
 
-    fun IINC(
-        variable: Int,
-        increment: Int
-    )
-
-    fun INVOKEVIRTUAL(
-        owner: String,
-        name: String,
-        desc: String
-    )
-
-    fun INVOKESPECIAL(
-        owner: String,
-        name: String,
-        desc: String
-    )
-
-    fun INVOKESTATIC(
-        owner: String,
-        name: String,
-        desc: String
-    )
-
-    fun INVOKEINTERFACE(
-        owner: String,
-        name: String,
-        desc: String
-    )
-
-    fun INVOKEDYNAMIC(
-        name: String,
-        desc: String,
-        bsm: Handle,
-        bsmArgs: List<Any>
-    )
+    fun INVOKEVIRTUAL(owner: String, name: String, desc: String)
+    fun INVOKESPECIAL(owner: String, name: String, desc: String)
+    fun INVOKESTATIC(owner: String, name: String, desc: String)
+    fun INVOKEINTERFACE(owner: String, name: String, desc: String)
+    fun INVOKEDYNAMIC(name: String, desc: String, bsm: Handle, bsmArgs: List<Any>)
 
     fun NOP()
     fun ACONST_NULL()
@@ -248,39 +184,14 @@ interface MutableInsnList : InsnList {
 
     fun LINE(line: Int, label: LabelNode)
 
-    fun LOOKUPSWITCH(
-        dflt: LabelNode,
-        keys: List<Int>,
-        labels: List<LabelNode>
-    )
+    fun LOOKUPSWITCH(dflt: LabelNode, keys: List<Int>, labels: List<LabelNode>)
+    fun TABLESWITCH(min: Int, max: Int, dflt: LabelNode, labels: List<LabelNode>)
+    fun MULTIANEWARRAY(type: String, dims: Int)
 
-    fun TABLESWITCH(
-        min: Int,
-        max: Int,
-        dflt: LabelNode,
-        labels: List<LabelNode>
-    )
-
-    fun MULTIANEWARRAY(
-        type: String,
-        dims: Int
-    )
-
-    fun NEW(
-        type: String
-    )
-
-    fun ANEWARRAY(
-        type: String
-    )
-
-    fun CHECKCAST(
-        type: String
-    )
-
-    fun INSTANCEOF(
-        type: String
-    )
+    fun NEW(type: String)
+    fun ANEWARRAY(type: String)
+    fun CHECKCAST(type: String)
+    fun INSTANCEOF(type: String)
 
     fun ILOAD(variable: Int)
     fun LLOAD(variable: Int)
@@ -292,8 +203,6 @@ interface MutableInsnList : InsnList {
     fun FSTORE(variable: Int)
     fun DSTORE(variable: Int)
     fun ASTORE(variable: Int)
-
-    fun build(): InsnList
 }
 
 fun MutableInsnList.GETSTATIC(

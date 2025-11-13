@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-sealed interface TableSwitchInsnNode : IBaseInsnNode {
+interface TableSwitchInsnNode : IBaseInsnNode {
     override val opcode: Int
         get() = Opcodes.TABLESWITCH
 

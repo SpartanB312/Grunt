@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  *
  * @author Remi Forax
  */
-sealed interface InvokeDynamicInsnNode : IBaseInsnNode {
+interface InvokeDynamicInsnNode : IBaseInsnNode {
     override val opcode: Int
         get() = Opcodes.INVOKEDYNAMIC
 

@@ -37,7 +37,7 @@ import org.objectweb.asm.tree.AbstractInsnNode
  * @author Eric Bruneton
  * @author Luna
  */
-sealed interface LookupSwitchInsnNode : IBaseInsnNode {
+interface LookupSwitchInsnNode : IBaseInsnNode {
     override val opcode: Int
         get() = Opcodes.LOOKUPSWITCH
 

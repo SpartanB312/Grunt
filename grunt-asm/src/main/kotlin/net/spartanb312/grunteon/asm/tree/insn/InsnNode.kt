@@ -61,6 +61,11 @@ sealed interface IInsnNode : IBaseInsnNode {
     }
 }
 
+interface NopInsnNode : IInsnNode {
+    override val opcode: Int
+        get() = Opcodes.NOP
+}
+
 interface AConstNullInsnNode : IInsnNode {
     override val opcode: Int
         get() = Opcodes.ACONST_NULL

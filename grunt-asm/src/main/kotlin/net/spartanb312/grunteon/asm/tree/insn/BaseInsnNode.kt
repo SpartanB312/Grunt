@@ -28,7 +28,7 @@
 package net.spartanb312.grunteon.asm.tree.insn
 
 import net.spartanb312.grunteon.asm.MethodVisitor
-import net.spartanb312.grunteon.asm.tree.TypeAnnotationNode
+import net.spartanb312.grunteon.asm.tree.TypeAnnotatable
 
 /**
  * A node that represents a bytecode instruction. *An instruction can appear at most once in at
@@ -37,24 +37,12 @@ import net.spartanb312.grunteon.asm.tree.TypeAnnotationNode
  * @author Eric Bruneton
  * @author Luna
  */
-sealed interface IBaseInsnNode {
+interface IBaseInsnNode : TypeAnnotatable {
     /**
      * The opcode of this instruction, or -1 if this is not a JVM instruction (e.g. a label or a line
      * number).
      */
     val opcode: Int
-
-    /**
-     * The runtime visible type annotations of this instruction. This field is only used for real
-     * instructions (i.e. not for labels, frames, or line number nodes). This list is a list of [ ] objects. May be null.
-     */
-    val visibleTypeAnnotations: List<TypeAnnotationNode>
-
-    /**
-     * The runtime invisible type annotations of this instruction. This field is only used for real
-     * instructions (i.e. not for labels, frames, or line number nodes). This list is a list of [ ] objects. May be null.
-     */
-    val invisibleTypeAnnotations: List<TypeAnnotationNode>
 
 
     /**
@@ -86,9 +74,4 @@ sealed interface IBaseInsnNode {
             }
         }
     }
-}
-
-interface IMutableBaseInsnNode : IBaseInsnNode {
-    override val visibleTypeAnnotations: MutableList<TypeAnnotationNode>
-    override val invisibleTypeAnnotations: MutableList<TypeAnnotationNode>
 }
