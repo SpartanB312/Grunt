@@ -34,32 +34,22 @@ import org.objectweb.asm.MethodVisitor
  * A node that represents a local variable declaration.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class LocalVariableNode
-/**
- * Constructs a new [LocalVariableNode].
- *
- * @param name the name of a local variable.
- * @param desc the type descriptor of this local variable.
- * @param signature the signature of this local variable. May be null.
- * @param start the first instruction corresponding to the scope of this local variable
- * (inclusive).
- * @param end the last instruction corresponding to the scope of this local variable (exclusive).
- * @param index the local variable's index.
- */(
+interface LocalVariableNode : Node {
     /** The name of a local variable.  */
-    var name: String?,
+    val name: String
     /** The type descriptor of this local variable.  */
-    var desc: String?,
+    val desc: String
     /** The signature of this local variable. May be null.  */
-    var signature: String?,
+    val signature: String?
     /** The first instruction corresponding to the scope of this local variable (inclusive).  */
-    var start: LabelNode,
+    val start: LabelNode
     /** The last instruction corresponding to the scope of this local variable (exclusive).  */
-    var end: LabelNode,
+    val end: LabelNode
     /** The local variable's index.  */
-    var index: Int
-) {
+    val index: Int
+
     /**
      * Makes the given visitor visit this local variable declaration.
      *
@@ -67,7 +57,16 @@ class LocalVariableNode
      */
     fun accept(methodVisitor: MethodVisitor) {
         methodVisitor.visitLocalVariable(
-            name, desc, signature, start.getLabel(), end.getLabel(), index
+            name, desc, signature, start.value, end.value, index
         )
     }
+}
+
+interface MutableLocalVariableNode : LocalVariableNode {
+    override var name: String
+    override var desc: String
+    override var signature: String?
+    override var start: LabelNode
+    override var end: LabelNode
+    override var index: Int
 }
