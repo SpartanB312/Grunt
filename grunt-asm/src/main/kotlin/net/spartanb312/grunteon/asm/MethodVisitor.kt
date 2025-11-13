@@ -512,9 +512,9 @@ interface MethodVisitor {
     fun visitLocalVariableAnnotation(
         typeRef: Int,
         typePath: TypePath?,
-        start: Array<Label>,
-        end: Array<Label>,
-        index: IntArray,
+        start: List<Label>,
+        end: List<Label>,
+        index: List<Int>,
         descriptor: String,
         visible: Boolean
     ): AnnotationVisitor? = null
@@ -730,18 +730,18 @@ interface MethodVisitor {
         override fun visitLocalVariableAnnotation(
             typeRef: Int,
             typePath: TypePath?,
-            start: Array<Label>,
-            end: Array<Label>,
-            index: IntArray,
+            start: List<Label>,
+            end: List<Label>,
+            index: List<Int>,
             descriptor: String,
             visible: Boolean
         ): AnnotationVisitor? {
             return ow2.visitLocalVariableAnnotation(
                 typeRef,
                 typePath,
-                start,
-                end,
-                index,
+                start.toTypedArray(),
+                end.toTypedArray(),
+                index.toIntArray(),
                 descriptor,
                 visible
             )?.let { AnnotationVisitor.FromOw2(it) }
@@ -950,9 +950,9 @@ interface MethodVisitor {
             return grunt.visitLocalVariableAnnotation(
                 typeRef,
                 typePath,
-                start,
-                end,
-                index,
+                start.toList(),
+                end.toList(),
+                index.toList(),
                 descriptor,
                 visible
             )?.let { AnnotationVisitor.ToOw2(it) }

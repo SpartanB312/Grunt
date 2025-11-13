@@ -27,91 +27,33 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
+import net.spartanb312.grunteon.asm.MethodVisitor
 import net.spartanb312.grunteon.asm.tree.insn.LabelNode
-import org.objectweb.asm.Label
-import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes
-import org.objectweb.asm.TypePath
 
 /**
  * A node that represents a type annotation on a local or resource variable.
  *
  * @author Eric Bruneton
  */
-class LocalVariableAnnotationNode(
-    api: Int,
-    typeRef: Int,
-    typePath: TypePath?,
-    start: Array<LabelNode?>?,
-    end: Array<LabelNode?>?,
-    index: IntArray?,
-    descriptor: String?
-) : TypeAnnotationNode(api, typeRef, typePath, descriptor) {
+interface LocalVariableAnnotationNode : TypeAnnotationNode {
     /**
      * The fist instructions corresponding to the continuous ranges that make the scope of this local
      * variable (inclusive). Must not be null.
      */
-    var start: MutableList<LabelNode?>
+    val start: List<LabelNode>
 
     /**
      * The last instructions corresponding to the continuous ranges that make the scope of this local
      * variable (exclusive). This list must have the same size as the 'start' list. Must not be
      * null.
      */
-    var end: MutableList<LabelNode?>
+    val end: List<LabelNode>
 
     /**
      * The local variable's index in each range. This list must have the same size as the 'start'
      * list. Must not be null.
      */
-    var index: MutableList<Int?>
-
-    /**
-     * Constructs a new [LocalVariableAnnotationNode]. *Subclasses must not use this
-     * constructor*. Instead, they must use the [.LocalVariableAnnotationNode] version.
-     *
-     * @param typeRef a reference to the annotated type. See [org.objectweb.asm.TypeReference].
-     * @param typePath the path to the annotated type argument, wildcard bound, array element type, or
-     * static inner type within 'typeRef'. May be null if the annotation targets
-     * 'typeRef' as a whole.
-     * @param start the fist instructions corresponding to the continuous ranges that make the scope
-     * of this local variable (inclusive).
-     * @param end the last instructions corresponding to the continuous ranges that make the scope of
-     * this local variable (exclusive). This array must have the same size as the 'start' array.
-     * @param index the local variable's index in each range. This array must have the same size as
-     * the 'start' array.
-     * @param descriptor the class descriptor of the annotation class.
-     */
-    constructor(
-        typeRef: Int,
-        typePath: TypePath?,
-        start: Array<LabelNode?>?,
-        end: Array<LabelNode?>?,
-        index: IntArray?,
-        descriptor: String?
-    ) : this( /* latest api = */Opcodes.ASM9, typeRef, typePath, start, end, index, descriptor)
-
-    /**
-     * Constructs a new [LocalVariableAnnotationNode].
-     *
-     * @param api the ASM API version implemented by this visitor. Must be one of the `ASM`*x* values in [Opcodes].
-     * @param typeRef a reference to the annotated type. See [org.objectweb.asm.TypeReference].
-     * @param start the fist instructions corresponding to the continuous ranges that make the scope
-     * of this local variable (inclusive).
-     * @param end the last instructions corresponding to the continuous ranges that make the scope of
-     * this local variable (exclusive). This array must have the same size as the 'start' array.
-     * @param index the local variable's index in each range. This array must have the same size as
-     * the 'start' array.
-     * @param typePath the path to the annotated type argument, wildcard bound, array element type, or
-     * static inner type within 'typeRef'. May be null if the annotation targets
-     * 'typeRef' as a whole.
-     * @param descriptor the class descriptor of the annotation class.
-     */
-    init {
-        this.start = Util.asArrayList<LabelNode?>(start)
-        this.end = Util.asArrayList<LabelNode?>(end)
-        this.index = Util.asArrayList(index)
-    }
+    val index: List<Int>
 
     /**
      * Makes the given visitor visit this type annotation.
@@ -120,21 +62,16 @@ class LocalVariableAnnotationNode(
      * @param visible true if the annotation is visible at runtime.
      */
     fun accept(methodVisitor: MethodVisitor, visible: Boolean) {
-        val startLabels = arrayOfNulls<Label>(this.start.size)
-        val endLabels = arrayOfNulls<Label>(this.end.size)
-        val indices = IntArray(this.index.size)
-        var i = 0
-        val n = startLabels.size
-        while (i < n) {
-            startLabels[i] = this.start.get(i)!!.getLabel()
-            endLabels[i] = this.end.get(i)!!.getLabel()
-            indices[i] = this.index.get(i)!!
-            ++i
-        }
         accept(
             methodVisitor.visitLocalVariableAnnotation(
-                typeRef, typePath, startLabels, endLabels, indices, desc, visible
+                typeRef, typePath, start.map { it.value }, end.map { it.value }, index, desc, visible
             )
         )
     }
+}
+
+interface MutableLocalVariableAnnotationNode : LocalVariableAnnotationNode {
+    override val start: MutableList<LabelNode>
+    override val end: MutableList<LabelNode>
+    override val index: MutableList<Int>
 }
