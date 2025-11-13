@@ -36,7 +36,7 @@ interface ModuleProvideNode : Node {
     val providers: List<String>
 
     fun accept(moduleVisitor: ModuleVisitor) {
-        moduleVisitor.visitProvide(service, *providers.toTypedArray())
+        moduleVisitor.visitProvide(service, providers.toTypedArray())
     }
 }
 

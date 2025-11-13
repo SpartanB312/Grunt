@@ -97,9 +97,9 @@ interface NodeFactory {
     fun LocalVariableAnnotationNode(
         typeRef: Int,
         typePath: TypePath?,
-        start: List<LabelNode>,
-        end: List<LabelNode>,
-        index: List<Int>,
+        start: MutableList<LabelNode>,
+        end: MutableList<LabelNode>,
+        index: MutableList<Int>,
         desc: String,
         visible: Boolean
     ): MutableLocalVariableAnnotationNode
@@ -235,6 +235,62 @@ interface NodeFactory {
             override var opens: MutableList<ModuleOpenNode> = opens
             override var uses: MutableList<String> = uses
             override var provides: MutableList<ModuleProvideNode> = provides
+        }
+
+        override fun TryCatchBlockNode(
+            start: LabelNode,
+            end: LabelNode,
+            handler: LabelNode,
+            type: String?,
+            visibleTypeAnnotations: MutableList<TypeAnnotationNode>,
+            invisibleTypeAnnotations: MutableList<TypeAnnotationNode>
+        ): MutableTryCatchBlockNode = object : MutableTryCatchBlockNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var start: LabelNode = start
+            override var end: LabelNode = end
+            override var handler: LabelNode = handler
+            override var type: String? = type
+            override var visibleTypeAnnotations: MutableList<TypeAnnotationNode> = visibleTypeAnnotations
+            override var invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = invisibleTypeAnnotations
+        }
+
+        override fun LocalVariableNode(
+            name: String,
+            desc: String,
+            signature: String?,
+            start: LabelNode,
+            end: LabelNode,
+            index: Int
+        ): MutableLocalVariableNode = object : MutableLocalVariableNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var name: String = name
+            override var desc: String = desc
+            override var signature: String? = signature
+            override var start: LabelNode = start
+            override var end: LabelNode = end
+            override var index: Int = index
+        }
+
+        override fun LocalVariableAnnotationNode(
+            typeRef: Int,
+            typePath: TypePath?,
+            start: MutableList<LabelNode>,
+            end: MutableList<LabelNode>,
+            index: MutableList<Int>,
+            desc: String,
+            visible: Boolean
+        ): MutableLocalVariableAnnotationNode = object : MutableLocalVariableAnnotationNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override val start: MutableList<LabelNode> = start
+            override val end: MutableList<LabelNode> = end
+            override val index: MutableList<Int> = index
+            override var typeRef: Int = typeRef
+            override var typePath: TypePath? = typePath
+            override var desc: String = desc
+            override val values: MutableList<Any> = ArrayList(0)
         }
     }
 }
@@ -377,4 +433,40 @@ fun NodeFactory.TryCatchBlockNode(
     type,
     visibleTypeAnnotations,
     invisibleTypeAnnotations
+)
+
+fun NodeFactory.LocalVariableNode(
+    src: LocalVariableNode,
+    name: String = src.name,
+    desc: String = src.desc,
+    signature: String? = src.signature,
+    start: LabelNode = src.start,
+    end: LabelNode = src.end,
+    index: Int = src.index
+) = LocalVariableNode(
+    name,
+    desc,
+    signature,
+    start,
+    end,
+    index
+)
+
+fun NodeFactory.LocalVariableAnnotationNode(
+    src: LocalVariableAnnotationNode,
+    typeRef: Int = src.typeRef,
+    typePath: TypePath? = src.typePath,
+    start: MutableList<LabelNode> = src.start.toMutableList(),
+    end: MutableList<LabelNode> = src.end.toMutableList(),
+    index: MutableList<Int> = src.index.toMutableList(),
+    desc: String = src.desc,
+    visible: Boolean
+) = LocalVariableAnnotationNode(
+    typeRef,
+    typePath,
+    start,
+    end,
+    index,
+    desc,
+    visible
 )

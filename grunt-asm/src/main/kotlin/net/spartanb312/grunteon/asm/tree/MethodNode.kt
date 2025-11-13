@@ -698,9 +698,9 @@ interface MutableMethodNode : MethodNode, MethodVisitor {
         val localVariableAnnotation = nodeFactory.LocalVariableAnnotationNode(
             typeRef,
             typePath,
-            getLabelNodes(start),
-            getLabelNodes(end),
-            index,
+            getLabelNodes(start).toMutableList(),
+            getLabelNodes(end).toMutableList(),
+            index.toMutableList(),
             descriptor,
             visible
         )
