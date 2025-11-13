@@ -1,5 +1,6 @@
 package net.spartanb312.grunteon.asm.tree
 
+import net.spartanb312.grunteon.asm.tree.insn.IBaseInsnNode
 import net.spartanb312.grunteon.asm.tree.insn.LabelNode
 import org.objectweb.asm.Attribute
 import org.objectweb.asm.TypePath
@@ -35,6 +36,35 @@ interface NodeFactory {
         attrs: MutableList<Attribute> = ArrayList(0)
     ): MutableFieldNode
 
+    fun InsnList(): MutableInsnList
+    fun InsnList(list: InsnList): MutableInsnList
+
+    fun MethodNode(
+        access: Int,
+        name: String,
+        desc: String,
+        signature: String?,
+        exceptions: MutableList<String>,
+        parameters: MutableList<ParameterNode>,
+        visibleAnnotations: MutableList<AnnotationNode> = ArrayList(0),
+        invisibleAnnotations: MutableList<AnnotationNode> = ArrayList(0),
+        visibleTypeAnnotations: MutableList<TypeAnnotationNode> = ArrayList(0),
+        invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = ArrayList(0),
+        attrs: MutableList<Attribute> = ArrayList(0),
+        annotationDefault: Any? = null,
+        visibleAnnotableParameterCount: Int = -1,
+        visibleParameterAnnotations: MutableList<MutableList<AnnotationNode>> = ArrayList(0),
+        invisibleAnnotableParameterCount: Int = -1,
+        invisibleParameterAnnotations: MutableList<MutableList<AnnotationNode>> = ArrayList(0),
+        instructions: MutableInsnList = InsnList(),
+        tryCatchBlocks: MutableList<MutableTryCatchBlockNode> = ArrayList(0),
+        maxStack: Int = -1,
+        maxLocals: Int = -1,
+        localVariables: MutableList<MutableLocalVariableNode> = ArrayList(0),
+        visibleLocalVariableAnnotations: MutableList<LocalVariableAnnotationNode> = ArrayList(0),
+        invisibleLocalVariableAnnotations: MutableList<LocalVariableAnnotationNode> = ArrayList(0)
+    ): MutableMethodNode
+
     fun ParameterNode(
         name: String,
         access: Int
@@ -67,13 +97,13 @@ interface NodeFactory {
         name: String,
         access: Int,
         version: String?,
-        mainClass: String?,
-        packages: MutableList<String>,
-        requires: MutableList<ModuleRequireNode>,
-        exports: MutableList<ModuleExportNode>,
-        opens: MutableList<ModuleOpenNode>,
-        uses: MutableList<String>,
-        provides: MutableList<ModuleProvideNode>
+        mainClass: String? = null,
+        packages: MutableList<String> = ArrayList(0),
+        requires: MutableList<ModuleRequireNode> = ArrayList(0),
+        exports: MutableList<ModuleExportNode> = ArrayList(0),
+        opens: MutableList<ModuleOpenNode> = ArrayList(0),
+        uses: MutableList<String> = ArrayList(0),
+        provides: MutableList<ModuleProvideNode> = ArrayList(0)
     ): MutableModuleNode
 
     fun TryCatchBlockNode(
@@ -103,6 +133,24 @@ interface NodeFactory {
         desc: String,
         visible: Boolean
     ): MutableLocalVariableAnnotationNode
+
+    fun InnerClassNode(
+        name: String,
+        outerName: String?,
+        innerName: String?,
+        access: Int
+    ): MutableInnerClassNode
+
+    fun RecordComponentNode(
+        name: String,
+        desc: String,
+        signature: String?,
+        visibleAnnotations: MutableList<AnnotationNode> = ArrayList(0),
+        invisibleAnnotations: MutableList<AnnotationNode> = ArrayList(0),
+        visibleTypeAnnotations: MutableList<TypeAnnotationNode> = ArrayList(0),
+        invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = ArrayList(0),
+        attrs: MutableList<Attribute> = ArrayList(0)
+    ): MutableRecordComponentNode
 
     object Default : NodeFactory {
         override fun Annotation(
@@ -153,6 +201,76 @@ interface NodeFactory {
             override var visibleTypeAnnotations = visibleTypeAnnotations
             override var invisibleTypeAnnotations = invisibleTypeAnnotations
             override var attrs: MutableList<Attribute> = attrs
+        }
+
+        @Suppress("JavaDefaultMethodsNotOverriddenByDelegation")
+        private class DefaultMutableInsnList(
+            private val list: MutableList<IBaseInsnNode> = ArrayList()
+        ) : MutableInsnList, List<IBaseInsnNode> by list {
+            override fun addTypeAnnotation(
+                index: Int,
+                typeAnnotationNode: TypeAnnotationNode,
+                isVisible: Boolean
+            ) {
+                TODO("Not yet implemented")
+            }
+
+        }
+
+        override fun MethodNode(
+            access: Int,
+            name: String,
+            desc: String,
+            signature: String?,
+            exceptions: MutableList<String>,
+            parameters: MutableList<ParameterNode>,
+            visibleAnnotations: MutableList<AnnotationNode>,
+            invisibleAnnotations: MutableList<AnnotationNode>,
+            visibleTypeAnnotations: MutableList<TypeAnnotationNode>,
+            invisibleTypeAnnotations: MutableList<TypeAnnotationNode>,
+            attrs: MutableList<Attribute>,
+            annotationDefault: Any?,
+            visibleAnnotableParameterCount: Int,
+            visibleParameterAnnotations: MutableList<MutableList<AnnotationNode>>,
+            invisibleAnnotableParameterCount: Int,
+            invisibleParameterAnnotations: MutableList<MutableList<AnnotationNode>>,
+            instructions: MutableInsnList,
+            tryCatchBlocks: MutableList<MutableTryCatchBlockNode>,
+            maxStack: Int,
+            maxLocals: Int,
+            localVariables: MutableList<MutableLocalVariableNode>,
+            visibleLocalVariableAnnotations: MutableList<LocalVariableAnnotationNode>,
+            invisibleLocalVariableAnnotations: MutableList<LocalVariableAnnotationNode>
+        ): MutableMethodNode = object : MutableMethodNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var access: Int = access
+            override var name: String = name
+            override var desc: String = desc
+            override var signature: String? = signature
+            override val exceptions: MutableList<String> = exceptions
+            override val parameters: MutableList<ParameterNode> = parameters
+            override val visibleAnnotations: MutableList<AnnotationNode> = visibleAnnotations
+            override val invisibleAnnotations: MutableList<AnnotationNode> = invisibleAnnotations
+            override val visibleTypeAnnotations: MutableList<TypeAnnotationNode> = visibleTypeAnnotations
+            override val invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = invisibleTypeAnnotations
+            override val attrs: MutableList<Attribute> = attrs
+            override var annotationDefault: Any? = annotationDefault
+            override var visibleAnnotableParameterCount: Int = visibleAnnotableParameterCount
+            override val visibleParameterAnnotations: MutableList<MutableList<AnnotationNode>> =
+                visibleParameterAnnotations
+            override var invisibleAnnotableParameterCount: Int = invisibleAnnotableParameterCount
+            override val invisibleParameterAnnotations: MutableList<MutableList<AnnotationNode>> =
+                invisibleParameterAnnotations
+            override val instructions: MutableInsnList = instructions
+            override val tryCatchBlocks: MutableList<MutableTryCatchBlockNode> = tryCatchBlocks
+            override var maxStack: Int = maxStack
+            override var maxLocals: Int = maxLocals
+            override val localVariables: MutableList<MutableLocalVariableNode> = localVariables
+            override val visibleLocalVariableAnnotations: MutableList<LocalVariableAnnotationNode> =
+                visibleLocalVariableAnnotations
+            override val invisibleLocalVariableAnnotations: MutableList<LocalVariableAnnotationNode> =
+                invisibleLocalVariableAnnotations
         }
 
         override fun ParameterNode(
@@ -291,6 +409,42 @@ interface NodeFactory {
             override var typePath: TypePath? = typePath
             override var desc: String = desc
             override val values: MutableList<Any> = ArrayList(0)
+        }
+
+        override fun InnerClassNode(
+            name: String,
+            outerName: String?,
+            innerName: String?,
+            access: Int
+        ): MutableInnerClassNode = object : MutableInnerClassNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var name: String = name
+            override var outerName: String? = outerName
+            override var innerName: String? = innerName
+            override var access: Int = access
+        }
+
+        override fun RecordComponentNode(
+            name: String,
+            desc: String,
+            signature: String?,
+            visibleAnnotations: MutableList<AnnotationNode>,
+            invisibleAnnotations: MutableList<AnnotationNode>,
+            visibleTypeAnnotations: MutableList<TypeAnnotationNode>,
+            invisibleTypeAnnotations: MutableList<TypeAnnotationNode>,
+            attrs: MutableList<Attribute>
+        ): MutableRecordComponentNode = object : MutableRecordComponentNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+            override var name: String = name
+            override var descriptor: String = desc
+            override var signature: String? = signature
+            override var visibleAnnotations: MutableList<AnnotationNode> = visibleAnnotations
+            override var invisibleAnnotations: MutableList<AnnotationNode> = invisibleAnnotations
+            override var visibleTypeAnnotations: MutableList<TypeAnnotationNode> = visibleTypeAnnotations
+            override var invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = invisibleTypeAnnotations
+            override var attrs: MutableList<Attribute> = attrs
         }
     }
 }
@@ -469,4 +623,38 @@ fun NodeFactory.LocalVariableAnnotationNode(
     index,
     desc,
     visible
+)
+
+fun NodeFactory.InnerClassNode(
+    src: InnerClassNode,
+    name: String = src.name,
+    outerName: String? = src.outerName,
+    innerName: String? = src.innerName,
+    access: Int = src.access
+) = InnerClassNode(
+    name,
+    outerName,
+    innerName,
+    access
+)
+
+fun NodeFactory.RecordComponentNode(
+    src: RecordComponentNode,
+    name: String = src.name,
+    desc: String = src.descriptor,
+    signature: String? = src.signature,
+    visibleAnnotations: MutableList<AnnotationNode> = src.visibleAnnotations.toMutableList(),
+    invisibleAnnotations: MutableList<AnnotationNode> = src.invisibleAnnotations.toMutableList(),
+    visibleTypeAnnotations: MutableList<TypeAnnotationNode> = src.visibleTypeAnnotations.toMutableList(),
+    invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = src.invisibleTypeAnnotations.toMutableList(),
+    attrs: MutableList<Attribute> = src.attrs.toMutableList()
+) = RecordComponentNode(
+    name,
+    desc,
+    signature,
+    visibleAnnotations,
+    invisibleAnnotations,
+    visibleTypeAnnotations,
+    invisibleTypeAnnotations,
+    attrs
 )

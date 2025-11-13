@@ -87,3 +87,8 @@ sealed interface IBaseInsnNode {
         }
     }
 }
+
+interface IMutableBaseInsnNode : IBaseInsnNode {
+    override val visibleTypeAnnotations: MutableList<TypeAnnotationNode>
+    override val invisibleTypeAnnotations: MutableList<TypeAnnotationNode>
+}

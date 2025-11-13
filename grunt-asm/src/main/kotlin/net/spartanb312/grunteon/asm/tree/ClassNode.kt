@@ -27,60 +27,63 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
-import org.objectweb.asm.*
+import net.spartanb312.grunteon.asm.*
+import org.objectweb.asm.Attribute
+import org.objectweb.asm.TypePath
 
 /**
  * A node that represents a class.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class ClassNode(api: Int) : ClassVisitor(api) {
+interface ClassNode : Node {
     /**
      * The class version. The minor version is stored in the 16 most significant bits, and the major
      * version in the 16 least significant bits.
      */
-    var version: Int = 0
+    val version: Int
 
     /**
      * The class's access flags (see [Opcodes]). This field also indicates if
      * the class is deprecated [Opcodes.ACC_DEPRECATED] or a record [Opcodes.ACC_RECORD].
      */
-    var access: Int = 0
+    val access: Int
 
     /** The internal name of this class (see [org.objectweb.asm.Type.getInternalName]).  */
-    var name: String? = null
+    val name: String
 
     /** The signature of this class. May be null.  */
-    var signature: String? = null
+    val signature: String?
 
     /**
      * The internal of name of the super class (see [org.objectweb.asm.Type.getInternalName]).
      * For interfaces, the super class is [Object]. May be null, but only for the
      * [Object] class.
      */
-    var superName: String? = null
+    val superName: String?
 
     /**
      * The internal names of the interfaces directly implemented by this class (see [ ][org.objectweb.asm.Type.getInternalName]).
      */
-    var interfaces: MutableList<String?>
+    val interfaces: MutableList<String>
 
     /** The name of the source file from which this class was compiled. May be null.  */
-    var sourceFile: String? = null
+    val sourceFile: String?
 
     /**
      * The correspondence between source and compiled elements of this class. May be null.
      */
-    var sourceDebug: String? = null
+    val sourceDebug: String?
 
     /** The module stored in this class. May be null.  */
-    var module: ModuleNode? = null
+    val module: ModuleNode?
 
     /**
      * The internal name of the enclosing class of this class (see [ ][org.objectweb.asm.Type.getInternalName]). Must be null if this class is not a
      * local or anonymous class.
      */
-    var outerClass: String? = null
+    val outerClass: String?
 
     /**
      * The name of the method that contains the class, or null if the class has no
@@ -88,7 +91,7 @@ class ClassNode(api: Int) : ClassVisitor(api) {
      * it is enclosed in an instance initializer, static initializer, instance variable initializer,
      * or class variable initializer).
      */
-    var outerMethod: String? = null
+    val outerMethod: String?
 
     /**
      * The descriptor of the method that contains the class, or null if the class has no
@@ -96,284 +99,49 @@ class ClassNode(api: Int) : ClassVisitor(api) {
      * it is enclosed in an instance initializer, static initializer, instance variable initializer,
      * or class variable initializer).
      */
-    var outerMethodDesc: String? = null
+    val outerMethodDesc: String?
 
     /** The runtime visible annotations of this class. May be null.  */
-    var visibleAnnotations: MutableList<AnnotationNode?>? = null
+    val visibleAnnotations: List<AnnotationNode>
 
     /** The runtime invisible annotations of this class. May be null.  */
-    var invisibleAnnotations: MutableList<AnnotationNode?>? = null
+    val invisibleAnnotations: List<AnnotationNode>
 
     /** The runtime visible type annotations of this class. May be null.  */
-    var visibleTypeAnnotations: MutableList<TypeAnnotationNode>? = null
+    val visibleTypeAnnotations: List<TypeAnnotationNode>
 
     /** The runtime invisible type annotations of this class. May be null.  */
-    var invisibleTypeAnnotations: MutableList<TypeAnnotationNode>? = null
+    val invisibleTypeAnnotations: List<TypeAnnotationNode>
 
     /** The non standard attributes of this class. May be null.  */
-    var attrs: MutableList<Attribute?>? = null
+    val attrs: List<Attribute>
 
     /** The inner classes of this class.  */
-    var innerClasses: MutableList<InnerClassNode?>
+    val innerClasses: List<InnerClassNode>
 
     /**
      * The internal name of the nest host class of this class (see [ ][org.objectweb.asm.Type.getInternalName]). May be null.
      */
-    var nestHostClass: String? = null
+    val nestHostClass: String?
 
     /**
      * The internal names of the nest members of this class (see [ ][org.objectweb.asm.Type.getInternalName]). May be null.
      */
-    var nestMembers: MutableList<String?>? = null
+    val nestMembers: List<String>
 
     /**
      * The internal names of the permitted subclasses of this class (see [ ][org.objectweb.asm.Type.getInternalName]). May be null.
      */
-    var permittedSubclasses: MutableList<String?>? = null
+    val permittedSubclasses: List<String>
 
     /** The record components of this class. May be null.  */
-    var recordComponents: MutableList<RecordComponentNode?>? = null
+    val recordComponents: List<RecordComponentNode>
 
     /** The fields of this class.  */
-    var fields: MutableList<FieldNode?>
+    val fields: List<FieldNode>
 
     /** The methods of this class.  */
-    var methods: MutableList<MethodNode?>
-
-    /**
-     * Constructs a new [ClassNode]. *Subclasses must not use this constructor*. Instead,
-     * they must use the [.ClassNode] version.
-     *
-     * @throws IllegalStateException If a subclass calls this constructor.
-     */
-    constructor() : this(Opcodes.ASM9) {
-        check(javaClass == ClassNode::class.java)
-    }
-
-    /**
-     * Constructs a new [ClassNode].
-     *
-     * @param api the ASM API version implemented by this visitor. Must be one of the `ASM`*x* values in [Opcodes].
-     */
-    init {
-        this.interfaces = ArrayList<String?>()
-        this.innerClasses = ArrayList<InnerClassNode?>()
-        this.fields = ArrayList<FieldNode?>()
-        this.methods = ArrayList<MethodNode?>()
-    }
-
-    // -----------------------------------------------------------------------------------------------
-    // Implementation of the ClassVisitor abstract class
-    // -----------------------------------------------------------------------------------------------
-    override fun visit(
-        version: Int,
-        access: Int,
-        name: String?,
-        signature: String?,
-        superName: String?,
-        interfaces: Array<String?>?
-    ) {
-        this.version = version
-        this.access = access
-        this.name = name
-        this.signature = signature
-        this.superName = superName
-        this.interfaces = Util.asArrayList<String?>(interfaces)
-    }
-
-    override fun visitSource(file: String?, debug: String?) {
-        sourceFile = file
-        sourceDebug = debug
-    }
-
-    override fun visitModule(name: String?, access: Int, version: String?): ModuleVisitor {
-        module = MutableModuleNode.Impl(name, access, version)
-        return object : ModuleVisitor(Opcodes.ASM9) {
-            val impl = module as MutableModuleNode.Impl
-
-            override fun visitMainClass(mainClass: String?) {
-                impl.visitMainClass(mainClass)
-            }
-
-            override fun visitPackage(packaze: String?) {
-                impl.visitPackage(packaze)
-            }
-
-            override fun visitRequire(module: String?, access: Int, version: String?) {
-                impl.visitRequire(module, access, version)
-            }
-
-            override fun visitExport(packaze: String?, access: Int, vararg modules: String?) {
-                impl.visitExport(packaze, access, *modules)
-            }
-
-            override fun visitOpen(packaze: String?, access: Int, vararg modules: String?) {
-                impl.visitOpen(packaze, access, *modules)
-            }
-
-            override fun visitUse(service: String?) {
-                impl.visitUse(service)
-            }
-
-            override fun visitProvide(service: String?, vararg providers: String?) {
-                impl.visitProvide(service, *providers)
-            }
-
-            override fun visitEnd() {}
-        }
-    }
-
-    override fun visitNestHost(nestHost: String?) {
-        this.nestHostClass = nestHost
-    }
-
-    override fun visitOuterClass(owner: String?, name: String?, descriptor: String?) {
-        outerClass = owner
-        outerMethod = name
-        outerMethodDesc = descriptor
-    }
-
-    override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor {
-        val annotation: MutableAnnotationNode = MutableAnnotationNode.Impl(descriptor, mutableListOf())
-        if (visible) {
-            visibleAnnotations = Util.add<AnnotationNode?>(visibleAnnotations, annotation)
-        } else {
-            invisibleAnnotations = Util.add<AnnotationNode?>(invisibleAnnotations, annotation)
-        }
-        return annotation
-    }
-
-    override fun visitTypeAnnotation(
-        typeRef: Int, typePath: TypePath?, descriptor: String?, visible: Boolean
-    ): AnnotationVisitor {
-        val typeAnnotation: TypeAnnotationNode = TypeAnnotationNode(typeRef, typePath, descriptor)
-        if (visible) {
-            visibleTypeAnnotations = Util.add<TypeAnnotationNode>(visibleTypeAnnotations, typeAnnotation)
-        } else {
-            invisibleTypeAnnotations = Util.add<TypeAnnotationNode>(invisibleTypeAnnotations, typeAnnotation)
-        }
-        return typeAnnotation
-    }
-
-    override fun visitAttribute(attribute: Attribute?) {
-        attrs = Util.add<Attribute?>(attrs, attribute)
-    }
-
-    override fun visitNestMember(nestMember: String?) {
-        nestMembers = Util.add<String?>(nestMembers, nestMember)
-    }
-
-    override fun visitPermittedSubclass(permittedSubclass: String?) {
-        permittedSubclasses = Util.add<String?>(permittedSubclasses, permittedSubclass)
-    }
-
-    override fun visitInnerClass(
-        name: String?, outerName: String?, innerName: String?, access: Int
-    ) {
-        val innerClass = InnerClassNode(name, outerName, innerName, access)
-        innerClasses.add(innerClass)
-    }
-
-    override fun visitRecordComponent(
-        name: String?, descriptor: String?, signature: String?
-    ): RecordComponentVisitor {
-        val recordComponent = MutableRecordComponentNode.Impl(name, descriptor, signature)
-        recordComponents = Util.add<RecordComponentNode?>(recordComponents, recordComponent)
-        return recordComponent
-    }
-
-    override fun visitField(
-        access: Int,
-        name: String?,
-        descriptor: String?,
-        signature: String?,
-        value: Any?
-    ): FieldVisitor {
-        val field = FieldNode(access, name, descriptor, signature, value)
-        fields.add(field)
-        return field
-    }
-
-    override fun visitMethod(
-        access: Int,
-        name: String?,
-        descriptor: String?,
-        signature: String?,
-        exceptions: Array<String?>?
-    ): MethodVisitor {
-        val method = MethodNode(access, name, descriptor, signature, exceptions)
-        methods.add(method)
-        return method
-    }
-
-    override fun visitEnd() {
-        // Nothing to do.
-    }
-
-    // -----------------------------------------------------------------------------------------------
-    // Accept method
-    // -----------------------------------------------------------------------------------------------
-    /**
-     * Checks that this class node is compatible with the given ASM API version. This method checks
-     * that this node, and all its children recursively, do not contain elements that were introduced
-     * in more recent versions of the ASM API than the given version.
-     *
-     * @param api an ASM API version. Must be one of the `ASM`*x* values in [     ].
-     */
-    fun check(api: Int) {
-        if (api < Opcodes.ASM9 && permittedSubclasses != null) {
-            throw UnsupportedClassVersionException()
-        }
-        if (api < Opcodes.ASM8 && ((access and Opcodes.ACC_RECORD) != 0 || recordComponents != null)) {
-            throw UnsupportedClassVersionException()
-        }
-        if (api < Opcodes.ASM7 && (nestHostClass != null || nestMembers != null)) {
-            throw UnsupportedClassVersionException()
-        }
-        if (api < Opcodes.ASM6 && module != null) {
-            throw UnsupportedClassVersionException()
-        }
-        if (api < Opcodes.ASM5) {
-            if (visibleTypeAnnotations != null && !visibleTypeAnnotations!!.isEmpty()) {
-                throw UnsupportedClassVersionException()
-            }
-            if (invisibleTypeAnnotations != null && !invisibleTypeAnnotations!!.isEmpty()) {
-                throw UnsupportedClassVersionException()
-            }
-        }
-        // Check the annotations.
-        if (visibleAnnotations != null) {
-            for (i in visibleAnnotations!!.indices.reversed()) {
-                visibleAnnotations!!.get(i).check(api)
-            }
-        }
-        if (invisibleAnnotations != null) {
-            for (i in invisibleAnnotations!!.indices.reversed()) {
-                invisibleAnnotations!!.get(i).check(api)
-            }
-        }
-        if (visibleTypeAnnotations != null) {
-            for (i in visibleTypeAnnotations!!.indices.reversed()) {
-                visibleTypeAnnotations!!.get(i).check(api)
-            }
-        }
-        if (invisibleTypeAnnotations != null) {
-            for (i in invisibleTypeAnnotations!!.indices.reversed()) {
-                invisibleTypeAnnotations!!.get(i).check(api)
-            }
-        }
-        if (recordComponents != null) {
-            for (i in recordComponents!!.indices.reversed()) {
-                recordComponents!!.get(i)!!.check(api)
-            }
-        }
-        for (i in fields.indices.reversed()) {
-            fields.get(i)!!.check(api)
-        }
-        for (i in methods.indices.reversed()) {
-            methods.get(i)!!.check(api)
-        }
-    }
+    val methods: List<MethodNode>
 
     /**
      * Makes the given class visitor visit this class.
@@ -514,5 +282,260 @@ class ClassNode(api: Int) : ClassVisitor(api) {
             ++i
         }
         classVisitor.visitEnd()
+    }
+}
+
+interface MutableClassNode : ClassNode, ClassVisitor {
+    override var version: Int
+    override var access: Int
+    override var name: String
+    override var signature: String?
+    override var superName: String?
+    override val interfaces: MutableList<String>
+    override var sourceFile: String?
+    override var sourceDebug: String?
+    override var module: ModuleNode?
+    override var outerClass: String?
+    override var outerMethod: String?
+    override var outerMethodDesc: String?
+    override val visibleAnnotations: MutableList<AnnotationNode>
+    override val invisibleAnnotations: MutableList<AnnotationNode>
+    override val visibleTypeAnnotations: MutableList<TypeAnnotationNode>
+    override val invisibleTypeAnnotations: MutableList<TypeAnnotationNode>
+    override val attrs: MutableList<Attribute>
+    override var nestHostClass: String?
+    override val nestMembers: MutableList<String>
+    override val permittedSubclasses: MutableList<String>
+    override val innerClasses: MutableList<InnerClassNode>
+    override val recordComponents: MutableList<RecordComponentNode>
+    override val fields: MutableList<FieldNode>
+    override val methods: MutableList<MethodNode>
+
+    // -----------------------------------------------------------------------------------------------
+    // Implementation of the ClassVisitor abstract class
+    // -----------------------------------------------------------------------------------------------
+    override fun visit(
+        version: Int,
+        access: Int,
+        name: String,
+        signature: String?,
+        superName: String?,
+        interfaces: Array<String>?
+    ) {
+        this.version = version
+        this.access = access
+        this.name = name
+        this.signature = signature
+        this.superName = superName
+        this.interfaces.clear()
+        interfaces?.let {
+            this.interfaces.addAll(it)
+        }
+    }
+
+    override fun visitSource(source: String?, debug: String?) {
+        this.sourceFile = source
+        this.sourceDebug = debug
+    }
+
+    override fun visitModule(name: String, access: Int, version: String?): ModuleVisitor? {
+        val moduleNode = nodeFactory.Module(
+            name,
+            access,
+            version
+        )
+
+        return object : ModuleVisitor {
+            override fun visitMainClass(mainClass: String) {
+                moduleNode.visitMainClass(mainClass)
+            }
+
+            override fun visitPackage(packaze: String) {
+                moduleNode.visitPackage(packaze)
+            }
+
+            override fun visitRequire(module: String, access: Int, version: String?) {
+                moduleNode.visitRequire(module, access, version)
+            }
+
+            override fun visitExport(
+                packaze: String,
+                access: Int,
+                modules: Array<String>?
+            ) {
+                moduleNode.visitExport(packaze, access, modules)
+            }
+
+            override fun visitOpen(packaze: String, access: Int, modules: Array<String>?) {
+                moduleNode.visitOpen(packaze, access, modules)
+            }
+
+            override fun visitUse(service: String) {
+                moduleNode.visitUse(service)
+            }
+
+            override fun visitProvide(service: String, providers: Array<String>) {
+                moduleNode.visitProvide(service, providers)
+            }
+
+            override fun visitEnd() {
+                moduleNode.visitEnd()
+                module = moduleNode
+            }
+        }
+    }
+
+    override fun visitNestHost(nestHost: String) {
+        this.nestHostClass = nestHost
+    }
+
+    override fun visitOuterClass(owner: String, name: String?, descriptor: String?) {
+        this.outerClass = owner
+        this.outerMethod = name
+        this.outerMethodDesc = descriptor
+    }
+
+    override fun visitAnnotation(descriptor: String, visible: Boolean): AnnotationVisitor? {
+        val annotation = nodeFactory.Annotation(descriptor)
+        if (visible) {
+            visibleAnnotations.add(annotation)
+        } else {
+            invisibleAnnotations.add(annotation)
+        }
+        return annotation
+    }
+
+    override fun visitTypeAnnotation(
+        typeRef: Int,
+        typePath: TypePath?,
+        descriptor: String,
+        visible: Boolean
+    ): AnnotationVisitor? {
+        val typeAnnotation = nodeFactory.TypeAnnotationNode(
+            typeRef = typeRef,
+            typePath = typePath,
+            desc = descriptor
+        )
+        if (visible) {
+            visibleTypeAnnotations.add(typeAnnotation)
+        } else {
+            invisibleTypeAnnotations.add(typeAnnotation)
+        }
+        return typeAnnotation
+    }
+
+    override fun visitAttribute(attribute: Attribute) {
+        attrs.add(attribute)
+    }
+
+    override fun visitNestMember(nestMember: String) {
+        nestMembers.add(nestMember)
+    }
+
+    override fun visitPermittedSubclass(permittedSubclass: String) {
+        permittedSubclasses.add(permittedSubclass)
+    }
+
+    override fun visitInnerClass(name: String, outerName: String?, innerName: String?, access: Int) {
+        innerClasses.add(nodeFactory.InnerClassNode(name, outerName, innerName, access))
+    }
+
+    override fun visitRecordComponent(name: String, descriptor: String, signature: String?): RecordComponentVisitor? {
+        val recordComponent = nodeFactory.RecordComponentNode(name, descriptor, signature)
+        recordComponents.add(recordComponent)
+        return recordComponent
+    }
+
+    override fun visitField(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String?,
+        value: Any?
+    ): FieldVisitor? {
+        val field = nodeFactory.FieldNode(access, name, descriptor, signature, value)
+        fields.add(field)
+        return field
+    }
+
+    override fun visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String?,
+        exceptions: List<String>?
+    ): MethodVisitor? {
+        val method = nodeFactory.MethodNode(access, name, descriptor, signature, exceptions)
+        methods.add(method)
+        return method
+    }
+
+    override fun visitEnd() {
+        // Nothing to do.
+    }
+
+    // -----------------------------------------------------------------------------------------------
+    // Accept method
+    // -----------------------------------------------------------------------------------------------
+    /**
+     * Checks that this class node is compatible with the given ASM API version. This method checks
+     * that this node, and all its children recursively, do not contain elements that were introduced
+     * in more recent versions of the ASM API than the given version.
+     *
+     * @param api an ASM API version. Must be one of the `ASM`*x* values in [     ].
+     */
+    fun check(api: Int) {
+        if (api < Opcodes.ASM9 && permittedSubclasses != null) {
+            throw UnsupportedClassVersionException()
+        }
+        if (api < Opcodes.ASM8 && ((access and Opcodes.ACC_RECORD) != 0 || recordComponents != null)) {
+            throw UnsupportedClassVersionException()
+        }
+        if (api < Opcodes.ASM7 && (nestHostClass != null || nestMembers != null)) {
+            throw UnsupportedClassVersionException()
+        }
+        if (api < Opcodes.ASM6 && module != null) {
+            throw UnsupportedClassVersionException()
+        }
+        if (api < Opcodes.ASM5) {
+            if (visibleTypeAnnotations != null && !visibleTypeAnnotations!!.isEmpty()) {
+                throw UnsupportedClassVersionException()
+            }
+            if (invisibleTypeAnnotations != null && !invisibleTypeAnnotations!!.isEmpty()) {
+                throw UnsupportedClassVersionException()
+            }
+        }
+        // Check the annotations.
+        if (visibleAnnotations != null) {
+            for (i in visibleAnnotations!!.indices.reversed()) {
+                visibleAnnotations!!.get(i).check(api)
+            }
+        }
+        if (invisibleAnnotations != null) {
+            for (i in invisibleAnnotations!!.indices.reversed()) {
+                invisibleAnnotations!!.get(i).check(api)
+            }
+        }
+        if (visibleTypeAnnotations != null) {
+            for (i in visibleTypeAnnotations!!.indices.reversed()) {
+                visibleTypeAnnotations!!.get(i).check(api)
+            }
+        }
+        if (invisibleTypeAnnotations != null) {
+            for (i in invisibleTypeAnnotations!!.indices.reversed()) {
+                invisibleTypeAnnotations!!.get(i).check(api)
+            }
+        }
+        if (recordComponents != null) {
+            for (i in recordComponents!!.indices.reversed()) {
+                recordComponents!!.get(i)!!.check(api)
+            }
+        }
+        for (i in fields.indices.reversed()) {
+            fields.get(i)!!.check(api)
+        }
+        for (i in methods.indices.reversed()) {
+            methods.get(i)!!.check(api)
+        }
     }
 }
