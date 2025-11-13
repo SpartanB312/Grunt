@@ -8,6 +8,7 @@ compose-hot-reload = "1.0.0-beta03"
 
 gson = "2.12.1"
 asm = "9.9"
+fastutil = "8.5.16"
 
 [plugins]
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }
@@ -24,6 +25,8 @@ asm-tree = { group = "org.ow2.asm", name = "asm-tree", version.ref = "asm" }
 asm-util = { group = "org.ow2.asm", name = "asm-util", version.ref = "asm" }
 asm-commons = { group = "org.ow2.asm", name = "asm-commons", version.ref = "asm" }
 asm-analysis = { group = "org.ow2.asm", name = "asm-analysis", version.ref = "asm" }
+
+fastutil = { module = "it.unimi.dsi:fastutil", version.ref = "fastutil" }
 
 [bundles]
 asm = ["asm", "asm-tree", "asm-util", "asm-commons", "asm-analysis"]
