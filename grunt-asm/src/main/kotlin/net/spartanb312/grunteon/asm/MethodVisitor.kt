@@ -445,7 +445,7 @@ interface MethodVisitor {
      * @throws IllegalArgumentException if one of the labels has already been visited by this visitor
      * (by the [.visitLabel] method).
      */
-    fun visitTryCatchBlock(start: Label, end: Label, handler: Label, type: String) {}
+    fun visitTryCatchBlock(start: Label, end: Label, handler: Label?, type: String?) {}
 
     /**
      * Visits an annotation on an exception handler type. This method must be called *after* the
@@ -700,8 +700,8 @@ interface MethodVisitor {
         override fun visitTryCatchBlock(
             start: Label,
             end: Label,
-            handler: Label,
-            type: String
+            handler: Label?,
+            type: String?
         ) {
             ow2.visitTryCatchBlock(start, end, handler, type)
         }
@@ -911,8 +911,8 @@ interface MethodVisitor {
         override fun visitTryCatchBlock(
             start: Label,
             end: Label,
-            handler: Label,
-            type: String
+            handler: Label?,
+            type: String?
         ) {
             grunt.visitTryCatchBlock(start, end, handler, type)
         }

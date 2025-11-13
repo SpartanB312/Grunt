@@ -27,43 +27,68 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
+import net.spartanb312.grunteon.asm.MethodVisitor
 import net.spartanb312.grunteon.asm.tree.insn.LabelNode
-import org.objectweb.asm.MethodVisitor
 
 /**
  * A node that represents a try catch block.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class TryCatchBlockNode
-/**
- * Constructs a new [TryCatchBlockNode].
- *
- * @param start the beginning of the exception handler's scope (inclusive).
- * @param end the end of the exception handler's scope (exclusive).
- * @param handler the beginning of the exception handler's code.
- * @param type the internal name of the type of exceptions handled by the handler (see [     ][org.objectweb.asm.Type.getInternalName]), or null to catch any exceptions (for
- * "finally" blocks).
- */(
+interface TryCatchBlockNode : Node {
     /** The beginning of the exception handler's scope (inclusive).  */
-    var start: LabelNode,
+    val start: LabelNode
+
     /** The end of the exception handler's scope (exclusive).  */
-    var end: LabelNode,
+    val end: LabelNode
+
     /** The beginning of the exception handler's code.  */
-    var handler: LabelNode?,
+    val handler: LabelNode?
+
     /**
      * The internal name of the type of exceptions handled by the handler. May be null to
      * catch any exceptions (for "finally" blocks).
      */
-    var type: String?
-) {
+    val type: String?
+
     /** The runtime visible type annotations on the exception handler type. May be null.  */
-    var visibleTypeAnnotations: MutableList<TypeAnnotationNode>? = null
+    val visibleTypeAnnotations: MutableList<TypeAnnotationNode>
 
     /**
      * The runtime invisible type annotations on the exception handler type. May be null.
      */
-    var invisibleTypeAnnotations: MutableList<TypeAnnotationNode>? = null
+    val invisibleTypeAnnotations: MutableList<TypeAnnotationNode>
+
+    /**
+     * Makes the given visitor visit this try catch block.
+     *
+     * @param methodVisitor a method visitor.
+     */
+    fun accept(methodVisitor: MethodVisitor) {
+        methodVisitor.visitTryCatchBlock(
+            start.value, end.value, handler?.value, type
+        )
+        visibleTypeAnnotations.forEach { node ->
+            methodVisitor.visitTryCatchAnnotation(node.typeRef, node.typePath, node.desc, true)?.let {
+                node.accept(it)
+            }
+        }
+        invisibleTypeAnnotations.forEach { node ->
+            methodVisitor.visitTryCatchAnnotation(node.typeRef, node.typePath, node.desc, false)?.let {
+                node.accept(it)
+            }
+        }
+    }
+}
+
+interface MutableTryCatchBlockNode : TryCatchBlockNode {
+    override var start: LabelNode
+    override var end: LabelNode
+    override var handler: LabelNode
+    override var type: String?
+    override val visibleTypeAnnotations: MutableList<TypeAnnotationNode>
+    override val invisibleTypeAnnotations: MutableList<TypeAnnotationNode>
 
     /**
      * Updates the index of this try catch block in the method's list of try catch block nodes. This
@@ -74,58 +99,17 @@ class TryCatchBlockNode
      */
     fun updateIndex(index: Int) {
         val newTypeRef = 0x42000000 or (index shl 8)
-        if (visibleTypeAnnotations != null) {
-            var i = 0
-            val n = visibleTypeAnnotations!!.size
-            while (i < n) {
-                visibleTypeAnnotations!!.get(i).typeRef = newTypeRef
-                ++i
-            }
+        visibleTypeAnnotations.forEachIndexed { i, node ->
+            visibleTypeAnnotations[i] = nodeFactory.TypeAnnotationNode(
+                node,
+                typeRef = newTypeRef
+            )
         }
-        if (invisibleTypeAnnotations != null) {
-            var i = 0
-            val n = invisibleTypeAnnotations!!.size
-            while (i < n) {
-                invisibleTypeAnnotations!!.get(i).typeRef = newTypeRef
-                ++i
-            }
-        }
-    }
-
-    /**
-     * Makes the given visitor visit this try catch block.
-     *
-     * @param methodVisitor a method visitor.
-     */
-    fun accept(methodVisitor: MethodVisitor) {
-        methodVisitor.visitTryCatchBlock(
-            start.getLabel(), end.getLabel(), if (handler == null) null else handler!!.getLabel(), type
-        )
-        if (visibleTypeAnnotations != null) {
-            var i = 0
-            val n = visibleTypeAnnotations!!.size
-            while (i < n) {
-                val typeAnnotation: TypeAnnotationNode = visibleTypeAnnotations!!.get(i)
-                typeAnnotation.accept(
-                    methodVisitor.visitTryCatchAnnotation(
-                        typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, true
-                    )
-                )
-                ++i
-            }
-        }
-        if (invisibleTypeAnnotations != null) {
-            var i = 0
-            val n = invisibleTypeAnnotations!!.size
-            while (i < n) {
-                val typeAnnotation: TypeAnnotationNode = invisibleTypeAnnotations!!.get(i)
-                typeAnnotation.accept(
-                    methodVisitor.visitTryCatchAnnotation(
-                        typeAnnotation.typeRef, typeAnnotation.typePath, typeAnnotation.desc, false
-                    )
-                )
-                ++i
-            }
+        invisibleTypeAnnotations.forEachIndexed { i, node ->
+            invisibleTypeAnnotations[i] = nodeFactory.TypeAnnotationNode(
+                node,
+                typeRef = newTypeRef
+            )
         }
     }
 }

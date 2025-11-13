@@ -46,7 +46,7 @@ interface AnnotationNode : Node {
      * array (for enumeration values), an [AnnotationNode], or a [List] of values of one
      * of the preceding types. The list may be null if there is no name value pair.
      */
-    val values: List<Any?>
+    val values: List<Any>
 
     // ------------------------------------------------------------------------
     // Accept methods
@@ -136,14 +136,14 @@ interface MutableAnnotationNode : AnnotationNode, AnnotationVisitor {
      * array (for enumeration values), an [MutableAnnotationNode], or a [List] of values of one
      * of the preceding types. The list may be null if there is no name value pair.
      */
-    override val values: MutableList<Any?>
+    override val values: MutableList<Any>
 
     // ------------------------------------------------------------------------
     // Implementation of the AnnotationVisitor abstract class
     // ------------------------------------------------------------------------
     override fun visit(name: String?, value: Any) {
         if (this.desc.isNotEmpty()) {
-            values.add(name)
+            values.add(name!!)
         }
 
         when (value) {
@@ -179,7 +179,7 @@ interface MutableAnnotationNode : AnnotationNode, AnnotationVisitor {
 
     override fun visitEnum(name: String?, descriptor: String, value: String) {
         if (this.desc.isNotEmpty()) {
-            values.add(name)
+            values.add(name!!)
         }
         values.add(arrayOf(descriptor, value))
     }
@@ -195,7 +195,7 @@ interface MutableAnnotationNode : AnnotationNode, AnnotationVisitor {
 
     override fun visitArray(name: String?): AnnotationVisitor {
         if (this.desc.isNotEmpty()) {
-            values.add(name)
+            values.add(name!!)
         }
         val array = mutableListOf<Any?>()
         values.add(array)

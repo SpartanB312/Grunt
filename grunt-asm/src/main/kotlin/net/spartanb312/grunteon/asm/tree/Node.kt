@@ -10,13 +10,13 @@ interface Node {
 @Suppress("FunctionName")
 interface NodeFactory {
     fun Annotation(
-        desc: String = "",
-        values: MutableList<Any?> = ArrayList(0)
+        desc: String,
+        values: MutableList<Any> = ArrayList(0)
     ): MutableAnnotationNode
 
     fun TypeAnnotationNode(
-        desc: String = "",
-        values: MutableList<Any?> = ArrayList(0),
+        desc: String,
+        values: MutableList<Any> = ArrayList(0),
         typeRef: Int,
         typePath: TypePath? = null
     ): MutableTypeAnnotationNode
@@ -78,24 +78,24 @@ interface NodeFactory {
     object Default : NodeFactory {
         override fun Annotation(
             desc: String,
-            values: MutableList<Any?>
+            values: MutableList<Any>
         ): MutableAnnotationNode = object : MutableAnnotationNode {
             override val nodeFactory: NodeFactory
                 get() = this@Default
             override var desc: String = desc
-            override var values: MutableList<Any?> = values
+            override var values: MutableList<Any> = values
         }
 
         override fun TypeAnnotationNode(
             desc: String,
-            values: MutableList<Any?>,
+            values: MutableList<Any>,
             typeRef: Int,
             typePath: TypePath?
         ): MutableTypeAnnotationNode = object : MutableTypeAnnotationNode {
             override val nodeFactory: NodeFactory
                 get() = this@Default
             override var desc: String = desc
-            override var values: MutableList<Any?> = values
+            override var values: MutableList<Any> = values
             override var typeRef: Int = typeRef
             override var typePath: TypePath? = typePath
         }
@@ -209,3 +209,126 @@ interface NodeFactory {
         }
     }
 }
+
+fun NodeFactory.Annotation(
+    src: AnnotationNode,
+    desc: String = src.desc,
+    values: MutableList<Any> = src.values.toMutableList()
+) = Annotation(
+    desc,
+    values
+)
+
+fun NodeFactory.TypeAnnotationNode(
+    src: TypeAnnotationNode,
+    desc: String = src.desc,
+    values: MutableList<Any> = src.values.toMutableList(),
+    typeRef: Int = src.typeRef,
+    typePath: TypePath? = src.typePath
+) = TypeAnnotationNode(
+    desc,
+    values,
+    typeRef,
+    typePath
+)
+
+fun NodeFactory.FieldNode(
+    src: FieldNode,
+    access: Int = src.access,
+    name: String = src.name,
+    desc: String = src.desc,
+    signature: String? = src.signature,
+    value: Any? = src.value,
+    visibleAnnotations: MutableList<AnnotationNode> = src.visibleAnnotations.toMutableList(),
+    invisibleAnnotations: MutableList<AnnotationNode> = src.invisibleAnnotations.toMutableList(),
+    visibleTypeAnnotations: MutableList<TypeAnnotationNode> = src.visibleTypeAnnotations.toMutableList(),
+    invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = src.invisibleTypeAnnotations.toMutableList(),
+    attrs: MutableList<Attribute> = src.attrs.toMutableList()
+) = FieldNode(
+    access,
+    name,
+    desc,
+    signature,
+    value,
+    visibleAnnotations,
+    invisibleAnnotations,
+    visibleTypeAnnotations,
+    invisibleTypeAnnotations,
+    attrs
+)
+
+fun NodeFactory.ParameterNode(
+    src: ParameterNode,
+    name: String = src.name,
+    access: Int = src.access
+) = ParameterNode(
+    name,
+    access
+)
+
+fun NodeFactory.ModuleRequire(
+    src: ModuleRequireNode,
+    module: String = src.module,
+    access: Int = src.access,
+    version: String? = src.version
+) = ModuleRequire(
+    module,
+    access,
+    version
+)
+
+fun NodeFactory.ModuleExport(
+    src: ModuleExportNode,
+    packaze: String = src.packaze,
+    access: Int = src.access,
+    modules: MutableList<String> = src.modules.toMutableList()
+) = ModuleExport(
+    packaze,
+    access,
+    modules
+)
+
+fun NodeFactory.ModuleOpen(
+    src: ModuleOpenNode,
+    packaze: String = src.packaze,
+    access: Int = src.access,
+    modules: MutableList<String> = src.modules.toMutableList()
+) = ModuleOpen(
+    packaze,
+    access,
+    modules
+)
+
+fun NodeFactory.ModuleProvide(
+    src: ModuleProvideNode,
+    service: String = src.service,
+    providers: MutableList<String> = src.providers.toMutableList()
+) = ModuleProvide(
+    service,
+    providers
+)
+
+fun NodeFactory.Module(
+    src: ModuleNode,
+    name: String = src.name,
+    access: Int = src.access,
+    version: String? = src.version,
+    mainClass: String? = src.mainClass,
+    packages: MutableList<String> = src.packages.toMutableList(),
+    requires: MutableList<ModuleRequireNode> = src.requires.toMutableList(),
+    exports: MutableList<ModuleExportNode> = src.exports.toMutableList(),
+    opens: MutableList<ModuleOpenNode> = src.opens.toMutableList(),
+    uses: MutableList<String> = src.uses.toMutableList(),
+    provides: MutableList<ModuleProvideNode> = src.provides.toMutableList()
+) = Module(
+    name,
+    access,
+    version,
+    mainClass,
+    packages,
+    requires,
+    exports,
+    opens,
+    uses,
+    provides
+)
