@@ -35,35 +35,26 @@ import org.objectweb.asm.ClassVisitor
  * its enclosing class, if any. See the JVMS 4.7.6 section for more details.
  *
  * @author Eric Bruneton
+ * @author Luna
  */
-class InnerClassNode
-/**
- * Constructs a new [InnerClassNode] for an inner class C.
- *
- * @param name the internal name of C (see [org.objectweb.asm.Type.getInternalName]).
- * @param outerName the internal name of the class or interface C is a member of (see [     ][org.objectweb.asm.Type.getInternalName]). Must be null if C is not the member
- * of a class or interface (e.g. for local or anonymous classes).
- * @param innerName the (simple) name of C. Must be null for anonymous inner classes.
- * @param access the access flags of C originally declared in the source code from which this
- * class was compiled.
- */(
+interface InnerClassNode : Node {
     /** The internal name of an inner class (see [org.objectweb.asm.Type.getInternalName]).  */
-    var name: String?,
+    val name: String
     /**
      * The internal name of the class to which the inner class belongs (see [ ][org.objectweb.asm.Type.getInternalName]). May be null.
      */
-    var outerName: String?,
+    val outerName: String?
     /**
      * The (simple) name of the inner class inside its enclosing class. Must be null if the
      * inner class is not the member of a class or interface (e.g. for local or anonymous classes).
      */
-    var innerName: String?,
+    val innerName: String?
     /**
      * The access flags of the inner class as originally declared in the source code from which the
      * class was compiled.
      */
-    var access: Int
-) {
+    val access: Int
+
     /**
      * Makes the given class visitor visit this inner class.
      *
@@ -72,4 +63,11 @@ class InnerClassNode
     fun accept(classVisitor: ClassVisitor) {
         classVisitor.visitInnerClass(name, outerName, innerName, access)
     }
+}
+
+interface MutableInnerClassNode : InnerClassNode {
+    override var name: String
+    override var outerName: String?
+    override var innerName: String?
+    override var access: Int
 }
