@@ -54,16 +54,16 @@ interface ModuleNode : Node {
             moduleVisitor.visitRequire(require.module, require.access, require.version)
         }
         exports.forEach { export ->
-            moduleVisitor.visitExport(export.packaze, export.access, *export.modules.toTypedArray())
+            moduleVisitor.visitExport(export.packaze, export.access, export.modules.toTypedArray())
         }
         opens.forEach { open ->
-            moduleVisitor.visitOpen(open.packaze, open.access, *open.modules.toTypedArray())
+            moduleVisitor.visitOpen(open.packaze, open.access, open.modules.toTypedArray())
         }
         uses.forEach { service ->
             moduleVisitor.visitUse(service)
         }
         provides.forEach { provide ->
-            moduleVisitor.visitProvide(provide.service, *provide.providers.toTypedArray())
+            moduleVisitor.visitProvide(provide.service, provide.providers.toTypedArray())
         }
     }
 }

@@ -726,11 +726,13 @@ interface MutableMethodNode : MethodNode, MethodVisitor {
     }
 }
 
+@JvmName("getLabelNodesLabel")
 private fun MutableMethodNode.getLabelNodes(objects: List<Label>): List<LabelNode> =
     objects.map {
         getLabelNode(it)
     }
 
+@JvmName("getLabelNodesAny")
 private fun MutableMethodNode.getLabelNodes(objects: List<Any>): List<Any> = objects.map {
     if (it is Label) {
         getLabelNode(it)
