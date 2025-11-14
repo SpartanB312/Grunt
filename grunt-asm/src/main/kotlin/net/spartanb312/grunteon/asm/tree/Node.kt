@@ -13,6 +13,33 @@ interface Node {
 
 @Suppress("FunctionName")
 interface NodeFactory {
+    fun ClassNode(
+        version: Int = -1,
+        access: Int = -1,
+        name: String = "",
+        signature: String? = null,
+        superName: String? = null,
+        interfaces: MutableList<String> = ArrayList(0),
+        sourceFile: String? = null,
+        sourceDebug: String? = null,
+        module: ModuleNode? = null,
+        outerClass: String? = null,
+        outerMethod: String? = null,
+        outerMethodDesc: String? = null,
+        visibleAnnotations: MutableList<AnnotationNode> = ArrayList(0),
+        invisibleAnnotations: MutableList<AnnotationNode> = ArrayList(0),
+        visibleTypeAnnotations: MutableList<TypeAnnotationNode> = ArrayList(0),
+        invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = ArrayList(0),
+        attrs: MutableList<Attribute> = ArrayList(0),
+        nestHostClass: String? = null,
+        nestMembers: MutableList<String> = ArrayList(0),
+        permittedSubclasses: MutableList<String> = ArrayList(0),
+        innerClasses: MutableList<InnerClassNode> = ArrayList(0),
+        recordComponents: MutableList<RecordComponentNode> = ArrayList(0),
+        fields: MutableList<FieldNode> = ArrayList(0),
+        methods: MutableList<MethodNode> = ArrayList(0)
+    ): MutableClassNode
+
     fun Annotation(
         desc: String = "",
         values: MutableList<Any> = ArrayList(0)
@@ -155,6 +182,61 @@ interface NodeFactory {
     ): MutableRecordComponentNode
 
     object Default : NodeFactory {
+        override fun ClassNode(
+            version: Int,
+            access: Int,
+            name: String,
+            signature: String?,
+            superName: String?,
+            interfaces: MutableList<String>,
+            sourceFile: String?,
+            sourceDebug: String?,
+            module: ModuleNode?,
+            outerClass: String?,
+            outerMethod: String?,
+            outerMethodDesc: String?,
+            visibleAnnotations: MutableList<AnnotationNode>,
+            invisibleAnnotations: MutableList<AnnotationNode>,
+            visibleTypeAnnotations: MutableList<TypeAnnotationNode>,
+            invisibleTypeAnnotations: MutableList<TypeAnnotationNode>,
+            attrs: MutableList<Attribute>,
+            nestHostClass: String?,
+            nestMembers: MutableList<String>,
+            permittedSubclasses: MutableList<String>,
+            innerClasses: MutableList<InnerClassNode>,
+            recordComponents: MutableList<RecordComponentNode>,
+            fields: MutableList<FieldNode>,
+            methods: MutableList<MethodNode>
+        ): MutableClassNode = object : MutableClassNode {
+            override val nodeFactory: NodeFactory
+                get() = this@Default
+
+            override var version: Int = version
+            override var access: Int = access
+            override var name: String = name
+            override var signature: String? = signature
+            override var superName: String? = superName
+            override val interfaces: MutableList<String> = interfaces
+            override var sourceFile: String? = sourceFile
+            override var sourceDebug: String? = sourceDebug
+            override var module: ModuleNode? = module
+            override var outerClass: String? = outerClass
+            override var outerMethod: String? = outerMethod
+            override var outerMethodDesc: String? = outerMethodDesc
+            override val visibleAnnotations: MutableList<AnnotationNode> = visibleAnnotations
+            override val invisibleAnnotations: MutableList<AnnotationNode> = invisibleAnnotations
+            override val visibleTypeAnnotations: MutableList<TypeAnnotationNode> = visibleTypeAnnotations
+            override val invisibleTypeAnnotations: MutableList<TypeAnnotationNode> = invisibleTypeAnnotations
+            override val attrs: MutableList<Attribute> = attrs
+            override var nestHostClass: String? = nestHostClass
+            override val nestMembers: MutableList<String> = nestMembers
+            override val permittedSubclasses: MutableList<String> = permittedSubclasses
+            override val innerClasses: MutableList<InnerClassNode> = innerClasses
+            override val recordComponents: MutableList<RecordComponentNode> = recordComponents
+            override val fields: MutableList<FieldNode> = fields
+            override val methods: MutableList<MethodNode> = methods
+        }
+
         override fun Annotation(
             desc: String,
             values: MutableList<Any>

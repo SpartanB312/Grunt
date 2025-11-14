@@ -355,7 +355,7 @@ interface ClassVisitor {
         }
     }
 
-    class ToOw2(val toOw2: ClassVisitor) : org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9) {
+    class ToOw2(val ow2: ClassVisitor) : org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9) {
         override fun visit(
             version: Int,
             access: Int,
@@ -364,11 +364,11 @@ interface ClassVisitor {
             superName: String?,
             interfaces: Array<String>?
         ) {
-            toOw2.visit(version, access, name, signature, superName, interfaces?.toList() ?: emptyList())
+            ow2.visit(version, access, name, signature, superName, interfaces?.toList() ?: emptyList())
         }
 
         override fun visitSource(source: String?, debug: String?) {
-            toOw2.visitSource(source, debug)
+            ow2.visitSource(source, debug)
         }
 
         override fun visitModule(
@@ -376,22 +376,22 @@ interface ClassVisitor {
             access: Int,
             version: String?
         ): org.objectweb.asm.ModuleVisitor? {
-            return toOw2.visitModule(name, access, version)?.let { ModuleVisitor.ToOw2(it) }
+            return ow2.visitModule(name, access, version)?.let { ModuleVisitor.ToOw2(it) }
         }
 
         override fun visitNestHost(nestHost: String) {
-            toOw2.visitNestHost(nestHost)
+            ow2.visitNestHost(nestHost)
         }
 
         override fun visitOuterClass(owner: String, name: String?, descriptor: String?) {
-            toOw2.visitOuterClass(owner, name, descriptor)
+            ow2.visitOuterClass(owner, name, descriptor)
         }
 
         override fun visitAnnotation(
             descriptor: String,
             visible: Boolean
         ): org.objectweb.asm.AnnotationVisitor? {
-            return toOw2.visitAnnotation(descriptor, visible)?.let { AnnotationVisitor.ToOw2(it) }
+            return ow2.visitAnnotation(descriptor, visible)?.let { AnnotationVisitor.ToOw2(it) }
         }
 
         override fun visitTypeAnnotation(
@@ -400,20 +400,20 @@ interface ClassVisitor {
             descriptor: String,
             visible: Boolean
         ): org.objectweb.asm.AnnotationVisitor? {
-            return toOw2.visitTypeAnnotation(typeRef, typePath, descriptor, visible)
+            return ow2.visitTypeAnnotation(typeRef, typePath, descriptor, visible)
                 ?.let { AnnotationVisitor.ToOw2(it) }
         }
 
         override fun visitAttribute(attribute: Attribute) {
-            toOw2.visitAttribute(attribute)
+            ow2.visitAttribute(attribute)
         }
 
         override fun visitNestMember(nestMember: String) {
-            toOw2.visitNestMember(nestMember)
+            ow2.visitNestMember(nestMember)
         }
 
         override fun visitPermittedSubclass(permittedSubclass: String) {
-            toOw2.visitPermittedSubclass(permittedSubclass)
+            ow2.visitPermittedSubclass(permittedSubclass)
         }
 
         override fun visitInnerClass(
@@ -422,7 +422,7 @@ interface ClassVisitor {
             innerName: String?,
             access: Int
         ) {
-            toOw2.visitInnerClass(name, outerName, innerName, access)
+            ow2.visitInnerClass(name, outerName, innerName, access)
         }
 
         override fun visitRecordComponent(
@@ -430,7 +430,7 @@ interface ClassVisitor {
             descriptor: String,
             signature: String?
         ): org.objectweb.asm.RecordComponentVisitor? {
-            return toOw2.visitRecordComponent(name, descriptor, signature)?.let { RecordComponentVisitor.ToOw2(it) }
+            return ow2.visitRecordComponent(name, descriptor, signature)?.let { RecordComponentVisitor.ToOw2(it) }
         }
 
         override fun visitField(
@@ -440,7 +440,7 @@ interface ClassVisitor {
             signature: String?,
             value: Any?
         ): org.objectweb.asm.FieldVisitor? {
-            return toOw2.visitField(access, name, descriptor, signature, value)?.let { FieldVisitor.ToOw2(it) }
+            return ow2.visitField(access, name, descriptor, signature, value)?.let { FieldVisitor.ToOw2(it) }
         }
 
         override fun visitMethod(
@@ -450,12 +450,12 @@ interface ClassVisitor {
             signature: String?,
             exceptions: Array<String>?
         ): org.objectweb.asm.MethodVisitor? {
-            return toOw2.visitMethod(access, name, descriptor, signature, exceptions?.toList())
+            return ow2.visitMethod(access, name, descriptor, signature, exceptions?.toList())
                 ?.let { MethodVisitor.ToOw2(it) }
         }
 
         override fun visitEnd() {
-            toOw2.visitEnd()
+            ow2.visitEnd()
         }
     }
 }

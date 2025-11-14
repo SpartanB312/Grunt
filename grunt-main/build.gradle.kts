@@ -13,7 +13,6 @@ repositories {
 }
 
 dependencies {
-    testImplementation(libs.junitAPI)
     testImplementation(kotlin("test"))
     testImplementation(project(":grunt-testcase"))
 

@@ -392,3 +392,23 @@ interface MutableClassNode : ClassNode, ClassVisitor {
         // Nothing to do.
     }
 }
+
+fun ClassNode.accept(cv: org.objectweb.asm.ClassVisitor) {
+    this.accept(ClassVisitor.FromOw2(cv))
+}
+
+fun org.objectweb.asm.tree.ClassNode.accept(classVisitor: ClassVisitor) {
+    this.accept(ClassVisitor.ToOw2(classVisitor))
+}
+
+fun org.objectweb.asm.tree.ClassNode.toGrunt(nodeFactory: NodeFactory): ClassNode {
+    val classNode = nodeFactory.ClassNode()
+    this.accept(classNode)
+    return classNode
+}
+
+fun ClassNode.toOw2(): org.objectweb.asm.tree.ClassNode {
+    val classNode = org.objectweb.asm.tree.ClassNode()
+    this.accept(classNode)
+    return classNode
+}

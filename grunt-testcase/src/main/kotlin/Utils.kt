@@ -4,6 +4,7 @@ import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.tree.ClassNode
 import java.io.File
+import java.nio.file.FileSystems
 import java.nio.file.Path
 import kotlin.io.path.*
 import kotlin.test.assertEquals
@@ -15,14 +16,20 @@ private val TEMP_DIR = Path(System.getProperty("java.io.tmpdir"), "grunteon-test
 private fun getCP(clazz: Class<*>) = clazz.protectionDomain.codeSource.location.toURI().toPath()
 
 private val TESTCASE_CP = getCP(OverlapInterface2To1::class.java)
+private val TESTCASE_ZIP_FS = if (TESTCASE_CP.extension != "jar") null else {
+    FileSystems.newFileSystem(TESTCASE_CP, mapOf<String, String>())
+}
+
 private val JUNIT_API_CP = getCP(Assertions::class.java)
 private val JAVA_EXE = ProcessHandle.current().info()
 private val JAVA_EXE_COMMAND = JAVA_EXE.command().get()
 
 fun getClassBytecodePath(clazz: Class<*>): Path {
-    return TESTCASE_CP
-        .resolve(clazz.packageName.split(".").joinToString("/"))
-        .resolve("${clazz.simpleName}.class")
+    val pkgPath = clazz.packageName.split(".").joinToString("/")
+    val fileName = "${clazz.simpleName}.class"
+
+    return TESTCASE_ZIP_FS?.getPath(pkgPath, fileName)
+        ?: TESTCASE_CP.resolve(pkgPath).resolve(fileName)
 }
 
 fun readClassNode(path: Path): ClassNode {
@@ -30,6 +37,10 @@ fun readClassNode(path: Path): ClassNode {
     val node = ClassNode()
     reader.accept(node, 0)
     return node
+}
+
+fun readClassNode(clazz: Class<*>): ClassNode {
+    return readClassNode(getClassBytecodePath(clazz))
 }
 
 fun writeClassNode(node: ClassNode): Path {
