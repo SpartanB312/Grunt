@@ -61,7 +61,7 @@ interface ClassVisitor {
         name: String,
         signature: String?,
         superName: String?,
-        interfaces: Array<String>?
+        interfaces: List<String>
     ) {
     }
 
@@ -258,9 +258,9 @@ interface ClassVisitor {
             name: String,
             signature: String?,
             superName: String?,
-            interfaces: Array<String>?
+            interfaces: List<String>
         ) {
-            ow2.visit(version, access, name, signature, superName, interfaces)
+            ow2.visit(version, access, name, signature, superName, interfaces.toTypedArray())
         }
 
         override fun visitSource(source: String?, debug: String?) {
@@ -364,7 +364,7 @@ interface ClassVisitor {
             superName: String?,
             interfaces: Array<String>?
         ) {
-            toOw2.visit(version, access, name, signature, superName, interfaces)
+            toOw2.visit(version, access, name, signature, superName, interfaces?.toList() ?: emptyList())
         }
 
         override fun visitSource(source: String?, debug: String?) {

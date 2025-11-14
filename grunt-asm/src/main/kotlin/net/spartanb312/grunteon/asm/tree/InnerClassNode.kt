@@ -27,7 +27,8 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
-import org.objectweb.asm.ClassVisitor
+import net.spartanb312.grunteon.asm.ClassVisitor
+
 
 /**
  * A node that represents an inner class. This inner class is not necessarily a member of the [ ] containing this object. More precisely, every class or interface C which is referenced

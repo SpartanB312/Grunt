@@ -47,7 +47,7 @@ interface NodeFactory {
         desc: String,
         signature: String?,
         exceptions: MutableList<String>,
-        parameters: MutableList<ParameterNode>,
+        parameters: MutableList<ParameterNode> = ArrayList(0),
         visibleAnnotations: MutableList<AnnotationNode> = ArrayList(0),
         invisibleAnnotations: MutableList<AnnotationNode> = ArrayList(0),
         visibleTypeAnnotations: MutableList<TypeAnnotationNode> = ArrayList(0),

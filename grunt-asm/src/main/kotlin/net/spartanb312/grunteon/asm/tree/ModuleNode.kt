@@ -27,8 +27,8 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 package net.spartanb312.grunteon.asm.tree
 
+import net.spartanb312.grunteon.asm.ClassVisitor
 import net.spartanb312.grunteon.asm.ModuleVisitor
-import org.objectweb.asm.ClassVisitor
 
 /** A node that represents a module declaration. */
 interface ModuleNode : Node {
@@ -46,9 +46,7 @@ interface ModuleNode : Node {
     fun accept(classVisitor: ClassVisitor) {
         val moduleVisitor = classVisitor.visitModule(name, access, version) ?: return
 
-        if (mainClass != null) {
-            moduleVisitor.visitMainClass(mainClass)
-        }
+        mainClass?.let { moduleVisitor.visitMainClass(it) }
         packages.forEach { packaze ->
             moduleVisitor.visitPackage(packaze)
         }
