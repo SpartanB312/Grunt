@@ -1,8 +1,7 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number
 
-import net.spartanb312.genesis.kotlin.extensions.INT
+import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
-import net.spartanb312.genesis.kotlin.extensions.toInsnNode
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.config.whenTrue
@@ -28,7 +27,6 @@ import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.IntInsnNode
 import org.objectweb.asm.tree.LdcInsnNode
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Basic number encryption
@@ -154,7 +152,6 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
         }
         val counter = reducibleScopeValue { MergeableCounter() }
         val shuffledListCache = localScopeValue { FastObjectArrayList<AbstractInsnNode>() }
-        val shit = AtomicBoolean()
         parForEachFiltered(buildFilterStrategy(config)) { classNode ->
             val counter = counter.local
             classNode.methods.asSequence()
