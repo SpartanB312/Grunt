@@ -53,7 +53,7 @@ class NameGenerator(private val dictionary: Dictionary) {
 
             // Generate a new one
             val newName = nextName()
-            methodOverloads.add(newName to ObjectOpenHashSet<String>().apply { add(desc) })
+            methodOverloads.add(newName to ObjectOpenHashSet.of(desc))
             actualNameCount++
             return newName
         }

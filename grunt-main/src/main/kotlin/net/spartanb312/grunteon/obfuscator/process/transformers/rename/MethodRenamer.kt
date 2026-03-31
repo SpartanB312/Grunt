@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.grunteon.obfuscator.Grunteon
@@ -124,27 +125,36 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
             val methodHierarchy = methodHierarchy.global
             val classHierarchy = methodHierarchy.classHierarchy
             val strategy = buildFilterStrategy(config)
-            val nonExcluded = instance.workRes.inputClassCollection
-                .filter {
-                    strategy.testClass(it)
-                            && !it.isAnnotation
-                            && (config.enums || !it.isEnum)
-                            && (config.interfaces || !it.isInterface)
+            // ClassHierarchy.build() sorts inputClassNodes by name and places them at
+            // classNodes[0..inputClassCount) before appending any looked-up library ancestors.
+            // Iterating that slice directly gives a deterministic name-sorted order with no
+            // secondary sort pass and no intermediate filtered-list allocation.
+            val inputClassCount = instance.workRes.inputClassCollection.size
+            val nonExcluded = IntArrayList(inputClassCount)
+            // BooleanArray keyed by class index replaces ObjectOpenHashSet<String>:
+            // owner.index lookup is a single array read vs. a string-hash probe on the hot path.
+            val nonExcludedFlags = BooleanArray(classHierarchy.classCount)
+            for (i in 0 until inputClassCount) {
+                val cn = classHierarchy.classNodes[i]
+                if (strategy.testClass(cn) && !cn.isAnnotation
+                    && (config.enums || !cn.isEnum)
+                    && (config.interfaces || !cn.isInterface)
+                ) {
+                    nonExcluded.add(i)
+                    nonExcludedFlags[i] = true
                 }
-                .sortedBy { it.name } // TODO: find a better way to keep naming deterministic without sorting
-
-            val nonExcludedNameSet = nonExcluded.mapTo(ObjectOpenHashSet()) { it.name }
+            }
 
             context(classHierarchy, methodHierarchy) {
                 Logger.info("    Splitting method groups...")
                 val blackList = IntOpenHashSet()
+                // Pre-size: at most one group per source method avoids frequent ArrayList resizes.
                 val relatedGroups =
-                    mutableListOf<Pair<MutableSet<MethodHierarchy.Entry>, MutableSet<String>>>() // as a family
+                    ArrayList<Pair<IntLinkedOpenHashSet, ObjectLinkedOpenHashSet<String>>>(methodHierarchy.sourceMethods.size)
                 val bridgeMethodSources = bridgeMethodSources.global
                 val inputClassMap = instance.workRes.inputClassMap // cache to avoid repeated property lookup
-                nonExcluded.forEach { classNode ->
-                    val classIndex = classHierarchy.findClass(classNode.name)
-                    if (classIndex == -1) throw Exception("你妈${classNode.name}死了，hierarchy里面找不到你妈")
+                nonExcluded.forEach { classIndex ->
+                    val classNode = classHierarchy.classNodes[classIndex]
                     val classEntry = ClassHierarchy.Entry(classIndex)
                     if (!classEntry.hasMissingDependency) {
                         val isEnum = classNode.isEnum
@@ -180,13 +190,14 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                                     Logger.trace("     - " + it.full)
                                 }
                             }
-                            // apply group
-                            blackList.addAll(IntArrayList.wrap(related.array))
-                            relatedGroups.add(
-                                List(related.size) { related[it] }.toMutableSet() to mutableSetOf(
-                                    methodEntry.desc
-                                )
-                            )
+                            // apply group – single pass avoids IntArrayList wrapper + intermediate List
+                            val entries = IntLinkedOpenHashSet(related.size * 2 + 1)
+                            for (i in 0 until related.size) {
+                                val idx = related.array[i]
+                                blackList.add(idx)
+                                entries.add(idx)
+                            }
+                            relatedGroups.add(entries to ObjectLinkedOpenHashSet.of(methodEntry.desc))
                         }
                     }
                 }
@@ -194,11 +205,15 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                 // Bind synthetic bridge method group
                 if (config.solveBridge) {
                     // Build a name-indexed map to avoid O(G) linear scan per bridge method
-                    val groupsByName = HashMap<String, MutableList<Int>>()
+                    val groupsByName = HashMap<String, MutableList<Int>>(relatedGroups.size * 2)
                     relatedGroups.forEachIndexed { index, sources ->
-                        groupsByName.getOrPut(sources.first.first().name) { mutableListOf() }.add(index)
+                        groupsByName.getOrPut(MethodHierarchy.Entry(sources.first.first()).name) { mutableListOf() }
+                            .add(index)
                     }
 
+                    // Cache parsed arg-type arrays per group index: Type.getArgumentTypes() re-parses
+                    // the descriptor string each call; a group targeted by N bridges only needs one parse.
+                    val firstArgTypesCache = arrayOfNulls<Array<Type>>(relatedGroups.size)
                     val standaloneSyntheticSources = mutableSetOf<MethodHierarchy.Entry>()
                     bridgeMethodSources.forEach { bridge ->
                         // Pre-parse bridge arg types once, outside the group search loop
@@ -210,7 +225,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                         if (candidateIndices != null) {
                             treeSearch@ for (groupIndex in candidateIndices) {
                                 val sources = relatedGroups[groupIndex]
-                                val first = sources.first.first()
+                                val first = MethodHierarchy.Entry(sources.first.first())
                                 // Try to link bridge method on override tree
                                 val inSameOverrideTree =
                                     first.owner.name == bridge.owner.name || classHierarchy.isSubType(
@@ -219,8 +234,10 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                                     )
                                 if (!inSameOverrideTree) continue
 
-                                // Fix: compare against first.desc, not bridge.desc
-                                val firstArgTypes = Type.getArgumentTypes(first.desc)
+                                // Cache parsed arg types per group; avoids re-parsing the same descriptor
+                                // when multiple bridge methods all target the same source group.
+                                val firstArgTypes = firstArgTypesCache[groupIndex]
+                                    ?: Type.getArgumentTypes(first.desc).also { firstArgTypesCache[groupIndex] = it }
                                 if (bridgeArgTypes.size != firstArgTypes.size) continue
 
                                 // Check each parameter: fType must be same or a subtype of bType
@@ -243,7 +260,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                                 if (descTypeMatch) {
                                     findCommon = true
                                     //println("Bridge link: ${first.full} and ${bridge.full}")
-                                    sources.first.add(bridge)
+                                    sources.first.add(bridge.index)
                                     sources.second.add(bridge.desc)
                                     break@treeSearch
                                 }
@@ -255,7 +272,9 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                         }
                     }
                     // Consider each standalone synthetic method as a standalone group (Kotlin and Scala compiler gen)
-                    standaloneSyntheticSources.forEach { relatedGroups.add(mutableSetOf(it) to mutableSetOf(it.desc)) }
+                    standaloneSyntheticSources.forEach {
+                        relatedGroups.add(IntLinkedOpenHashSet.of(it.index) to ObjectLinkedOpenHashSet.of(it.desc))
+                    }
                 }
 
                 Logger.info("    Generating mappings for method groups...")
@@ -269,7 +288,8 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                 relatedGroups.forEach outer@{ group ->
                     // Pre-size to avoid rehashing; each source contributes itself + its descendants
                     val checkSet = IntLinkedOpenHashSet(group.first.size * 4)
-                    group.first.forEach { source ->
+                    group.first.forEach { sourceIdx ->
+                        val source = MethodHierarchy.Entry(sourceIdx)
                         checkSet.add(source.owner.index)
                         // Disable up check for static and private fields TODO: check this
                         if ((!source.node.isStatic && !source.node.isPrivate) || !config.aggressiveShadowNames) {
@@ -280,7 +300,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                     }
                     val checkList = ClassHierarchy.EntryArray(checkSet.toIntArray())
                     checkList.forEach { owner ->
-                        if (!nonExcludedNameSet.contains(owner.classNode.name)) {
+                        if (!nonExcludedFlags[owner.index]) {
                             Logger.debug("${owner.classNode.name} is not included in working range. Discarded all group (${group.first.size} methods)")
                             checkList.forEach {
                                 Logger.trace(" - ${it.name}")
@@ -288,7 +308,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                             return@outer
                         }
                     }
-                    val first = group.first.first()
+                    val first = MethodHierarchy.Entry(group.first.first())
                     // Pre-convert to array once per group: avoids set-iterator overhead and per-iteration
                     // List allocation from group.second.map { newName + it } inside the name-search loop.
                     val groupDescs = group.second.toTypedArray()
@@ -322,7 +342,8 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                     }
                     // Apply to all affected
                     methodMappingCount += group.first.size
-                    group.first.forEach { sourceMethod ->
+                    group.first.forEach { sourceMethodIdx ->
+                        val sourceMethod = MethodHierarchy.Entry(sourceMethodIdx)
                         sourceAndOverridesMapping[sourceMethod.index] = newName
                         instance.nameMapping.putMethodMapping(
                             sourceMethod.owner.name,
