@@ -1,12 +1,12 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.optimize
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
-import net.spartanb312.grunteon.obfuscator.util.collection.toListFast
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
 
@@ -91,8 +91,8 @@ class ClassShrink : Transformer<ClassShrink.Config>(
             }
             if (config.unusedLabels) {
                 classNode.methods.forEach { methodNode ->
-                    val labels = mutableListOf<LabelNode>()
-                    methodNode.instructions.forEach { if (it is LabelNode) labels.add(it) }
+                    val labels =
+                        methodNode.instructions.filterTo(ObjectOpenHashSet()) { it is LabelNode }
                     methodNode.instructions.forEach { instruction ->
                         when (instruction) {
                             is JumpInsnNode -> labels.remove(instruction.label)
@@ -105,7 +105,6 @@ class ClassShrink : Transformer<ClassShrink.Config>(
                                 labels.remove(instruction.dflt)
                                 labels.removeAll(instruction.labels)
                             }
-
                             is FrameNode -> {
                                 instruction.local?.forEach { if (it is LabelNode) labels.remove(it) }
                                 instruction.stack?.forEach { if (it is LabelNode) labels.remove(it) }
@@ -127,12 +126,14 @@ class ClassShrink : Transformer<ClassShrink.Config>(
             }
             if (config.nopRemove) {
                 classNode.methods.forEach { methodNode ->
-                    methodNode.instructions.toListFast().asSequence()
-                        .filter { it.opcode == Opcodes.NOP }
-                        .forEach {
-                            methodNode.instructions.remove(it)
+                    methodNode.instructions.removeAll {
+                        if (it.opcode == Opcodes.NOP) {
                             nops.add()
+                            true
+                        } else {
+                            false
                         }
+                    }
                 }
             }
             if (config.methodSignatures) {
