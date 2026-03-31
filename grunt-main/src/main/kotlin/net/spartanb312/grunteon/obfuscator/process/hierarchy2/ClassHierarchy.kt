@@ -98,7 +98,7 @@ class ClassHierarchy(
         val fatherInfo = findClass(father)
         if (childInfo == -1 || fatherInfo == -1) return false
         assert(descendantsSet[fatherInfo].contains(childInfo) == ancestorsSet[childInfo].contains(fatherInfo))
-        return ancestorsSet[fatherInfo].contains(childInfo)
+        return descendantsSet[fatherInfo].contains(childInfo)
     }
 
     // common superclass

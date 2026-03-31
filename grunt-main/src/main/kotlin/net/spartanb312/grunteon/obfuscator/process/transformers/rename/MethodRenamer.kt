@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet
 import net.spartanb312.genesis.kotlin.extensions.*
@@ -271,9 +272,52 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                             standaloneSyntheticSources.add(bridge)
                         }
                     }
-                    // Consider each standalone synthetic method as a standalone group (Kotlin and Scala compiler gen)
-                    standaloneSyntheticSources.forEach {
-                        relatedGroups.add(IntLinkedOpenHashSet.of(it.index) to ObjectLinkedOpenHashSet.of(it.desc))
+                    // Consider standalone synthetic methods - group those whose owners are in an
+                    // ancestor-descendant relationship (same name+desc) so they all get the same
+                    // name and don't produce duplicate-mapping conflicts.
+                    val standaloneBySignature = Object2ObjectOpenHashMap<String, IntArrayList>()
+                    standaloneSyntheticSources.forEach { bridge ->
+                        standaloneBySignature.computeIfAbsent(bridge.name + bridge.desc) { IntArrayList() }
+                            .add(bridge.index)
+                    }
+                    standaloneBySignature.values.forEach { sameSignatureIndices ->
+                        val n = sameSignatureIndices.size
+                        // Local union-find to merge methods whose owners share a hierarchy edge
+                        val ufLocal = IntArray(n) { it }
+                        fun findLocal(x: Int): Int {
+                            var r = x
+                            while (ufLocal[r] != r) r = ufLocal[r]
+                            var c = x; while (c != r) {
+                                val nxt = ufLocal[c]; ufLocal[c] = r; c = nxt
+                            }
+                            return r
+                        }
+                        if (n > 1) {
+                            for (i in 0 until n) {
+                                val ownerI = MethodHierarchy.Entry(sameSignatureIndices.getInt(i)).owner.index
+                                for (j in i + 1 until n) {
+                                    val ownerJ = MethodHierarchy.Entry(sameSignatureIndices.getInt(j)).owner.index
+                                    if (classHierarchy.descendantsSet[ownerI].contains(ownerJ) ||
+                                        classHierarchy.descendantsSet[ownerJ].contains(ownerI)
+                                    ) {
+                                        val ri = findLocal(i);
+                                        val rj = findLocal(j)
+                                        if (ri != rj) ufLocal[rj] = ri
+                                    }
+                                }
+                            }
+                        }
+                        // Collect components and add one relatedGroups entry per component
+                        val components = Int2ObjectOpenHashMap<IntLinkedOpenHashSet>()
+                        for (i in 0 until n) {
+                            components.computeIfAbsent(findLocal(i)) { IntLinkedOpenHashSet() }
+                                .add(sameSignatureIndices.getInt(i))
+                        }
+                        components.values.forEach { group ->
+                            val descs = ObjectLinkedOpenHashSet<String>()
+                            group.forEach { idx -> descs.add(MethodHierarchy.Entry(idx).desc) }
+                            relatedGroups.add(group to descs)
+                        }
                     }
                 }
 
