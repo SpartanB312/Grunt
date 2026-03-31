@@ -141,6 +141,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                 val relatedGroups =
                     mutableListOf<Pair<MutableSet<MethodHierarchy.Entry>, MutableSet<String>>>() // as a family
                 val bridgeMethodSources = bridgeMethodSources.global
+                val inputClassMap = instance.workRes.inputClassMap // cache to avoid repeated property lookup
                 nonExcluded.forEach { classNode ->
                     val classIndex = classHierarchy.findClass(classNode.name)
                     if (classIndex == -1) throw Exception("你妈${classNode.name}死了，hierarchy里面找不到你妈")
@@ -166,14 +167,13 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                             if (config.solveBridge) {
                                 if (methodNode.isSynthetic || methodNode.isBridge) {
                                     bridgeMethodSources.add(methodEntry)
-                                    //println("Find bridge method ${methodEntry.full}")
                                     continue
                                 }
                             }
 
                             // Bind group
                             val related = methodEntry.connectedComponent
-                            if (related.any { !instance.workRes.inputClassMap.containsKey(it.owner.name) }) continue
+                            if (related.any { !inputClassMap.containsKey(it.owner.name) }) continue
                             if (related.size > 1) {
                                 Logger.debug("    Found multi source method group (${related.size} classes): ")
                                 related.forEach {
@@ -267,12 +267,12 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                 var methodMappingCount = 0
 
                 relatedGroups.forEach outer@{ group ->
-                    val checkSet = IntLinkedOpenHashSet()
+                    // Pre-size to avoid rehashing; each source contributes itself + its descendants
+                    val checkSet = IntLinkedOpenHashSet(group.first.size * 4)
                     group.first.forEach { source ->
                         checkSet.add(source.owner.index)
                         // Disable up check for static and private fields TODO: check this
                         if ((!source.node.isStatic && !source.node.isPrivate) || !config.aggressiveShadowNames) {
-                            // println("Disable up check for ${source.name}.${source.name}${source.desc}")
                             source.owner.descendants.forEach {
                                 checkSet.add(it.index)
                             }
@@ -289,36 +289,36 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                         }
                     }
                     val first = group.first.first()
-                    val namePrefix = "" // (if (randomKeywordPrefix) "$nextBadKeyword " else "") + prefix TODO: prefix
-                    val suffix = "" // TODO : suffix
+                    // Pre-convert to array once per group: avoids set-iterator overhead and per-iteration
+                    // List allocation from group.second.map { newName + it } inside the name-search loop.
+                    val groupDescs = group.second.toTypedArray()
                     val dic = nameGenerators[first.owner.index]
                     var newName: String
+                    // TODO: add prefix/suffix support here when needed
                     loop@ while (true) {
-                        newName = namePrefix + dic.nextName(config.heavyOverloads, first.desc) + suffix
-                        // Cache once per outer iteration instead of recomputing for every entry in checkList
-                        val nameWithDescList = group.second.map { newName + it }
+                        newName = dic.nextName(config.heavyOverloads, first.desc)
                         var keepThisName = true
                         run check@{
                             checkList.forEach { owner ->
-                                if (nameWithDescList.any { nameWithDesc ->
-                                        existedNameMap[owner.index].contains(nameWithDesc)
-                                    }) {
-                                    //if (nameWithDescList.size > 1) {
-                                    //    println(
-                                    //        "Bridge method desc collapse first=${first.desc}," +
-                                    //                " desc=${nameWithDescList.joinToString(", ")}"
-                                    //    )
-                                    //}
-                                    keepThisName = false
-                                    return@check
+                                val nameMap = existedNameMap[owner.index]
+                                for (desc in groupDescs) {
+                                    if (nameMap.contains(newName + desc)) {
+                                        keepThisName = false
+                                        return@check
+                                    }
                                 }
                             }
                         }
                         if (keepThisName) break
                     }
-                    val nameWithDesc = newName + first.desc
+                    // Register ALL descs (source + bridge) to prevent name collisions on bridge descriptors.
+                    // Previously only first.desc was registered, which allowed a later unrelated group to
+                    // reuse the same name with a bridge descriptor → duplicate name+desc in the same scope.
                     checkList.forEach { owner ->
-                        existedNameMap[owner.index].add(nameWithDesc)
+                        val nameMap = existedNameMap[owner.index]
+                        for (desc in groupDescs) {
+                            nameMap.add(newName + desc)
+                        }
                     }
                     // Apply to all affected
                     methodMappingCount += group.first.size
