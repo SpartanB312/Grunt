@@ -414,10 +414,21 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                                 sourceAndOverridesMapping[it.index] = newName
                             }
                         }
-                        sourceMethod.owner.descendants.forEach {
-                            val descendantName = it.name
+                        sourceMethod.owner.descendants.forEach { descendant ->
+                            // For static methods, skip descendants that declare their own version
+                            // of the method — those are independent and will get their own name
+                            // from their own source group.  We still propagate to descendants that
+                            // do NOT declare the method themselves, because mapMethodName() is a
+                            // flat lookup and any INVOKESTATIC child.method call sites (which the
+                            // Java compiler can emit when accessing an inherited static via the
+                            // child type) would go un-remapped without an explicit entry here.
+                            if (sourceMethod.node.isStatic &&
+                                descendant.classNode.methods.any { m ->
+                                    m.name == sourceMethod.name && m.desc == sourceMethod.desc
+                                }
+                            ) return@forEach
                             instance.nameMapping.putMethodMapping(
-                                descendantName,
+                                descendant.name,
                                 sourceMethod.name,
                                 sourceMethod.desc,
                                 newName
