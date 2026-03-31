@@ -337,7 +337,11 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                 val sourceAndOverridesMapping = sourceAndOverridesMapping.global
                 // share a same name in a group
                 val nameGenerators = Array(classHierarchy.classCount) { NameGenerator(dictionary) }
-                val existedNameMap = Array(classHierarchy.classCount) { ObjectOpenHashSet<String>() }
+                // Two-level map (name → descriptor set) replaces a flat Set<name+desc>.
+                // The inner set is only allocated/consulted when a name collision is possible,
+                // and – critically – no string concatenation is needed in the hot check loop.
+                val existedNameMap =
+                    Array(classHierarchy.classCount) { Object2ObjectOpenHashMap<String, ObjectOpenHashSet<String>>() }
                 var methodMappingCount = 0
 
                 relatedGroups.forEach outer@{ group ->
@@ -375,11 +379,15 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                         var keepThisName = true
                         run check@{
                             checkList.forEach { owner ->
-                                val nameMap = existedNameMap[owner.index]
-                                for (desc in groupDescs) {
-                                    if (nameMap.contains(newName + desc)) {
-                                        keepThisName = false
-                                        return@check
+                                // One name-level probe; only scan descs when the name is already taken.
+                                // This eliminates all string concatenation from the hot check loop.
+                                val takenDescs = existedNameMap[owner.index][newName]
+                                if (takenDescs != null) {
+                                    for (desc in groupDescs) {
+                                        if (takenDescs.contains(desc)) {
+                                            keepThisName = false
+                                            return@check
+                                        }
                                     }
                                 }
                             }
@@ -390,9 +398,10 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                     // Previously only first.desc was registered, which allowed a later unrelated group to
                     // reuse the same name with a bridge descriptor → duplicate name+desc in the same scope.
                     checkList.forEach { owner ->
-                        val nameMap = existedNameMap[owner.index]
+                        val descsForName = existedNameMap[owner.index]
+                            .computeIfAbsent(newName) { ObjectOpenHashSet(groupDescs.size * 2 + 1) }
                         for (desc in groupDescs) {
-                            nameMap.add(newName + desc)
+                            descsForName.add(desc)
                         }
                     }
                     // Apply to all affected
@@ -414,6 +423,13 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                                 sourceAndOverridesMapping[it.index] = newName
                             }
                         }
+                        // Hoist the static-method flag and its O(1) method-code lookup out of the
+                        // descendant loop. The old code called descendant.classNode.methods.any { }
+                        // which is O(methods-per-class) per descendant; the MethodHierarchy's
+                        // classNodeMethodCodeMethodLookup provides the same query in O(1).
+                        val srcIsStatic = sourceMethod.node.isStatic
+                        val srcMethodCode =
+                            if (srcIsStatic) methodHierarchy.methodToMethodCode[sourceMethod.index] else -1
                         sourceMethod.owner.descendants.forEach { descendant ->
                             // For static methods, skip descendants that declare their own version
                             // of the method — those are independent and will get their own name
@@ -422,10 +438,10 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                             // flat lookup and any INVOKESTATIC child.method call sites (which the
                             // Java compiler can emit when accessing an inherited static via the
                             // child type) would go un-remapped without an explicit entry here.
-                            if (sourceMethod.node.isStatic &&
-                                descendant.classNode.methods.any { m ->
-                                    m.name == sourceMethod.name && m.desc == sourceMethod.desc
-                                }
+                            if (srcIsStatic &&
+                                methodHierarchy.classNodeMethodCodeMethodLookup[descendant.index].containsKey(
+                                    srcMethodCode
+                                )
                             ) return@forEach
                             instance.nameMapping.putMethodMapping(
                                 descendant.name,
