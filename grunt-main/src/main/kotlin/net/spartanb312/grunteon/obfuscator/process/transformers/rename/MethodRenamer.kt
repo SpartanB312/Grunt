@@ -227,12 +227,15 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                             treeSearch@ for (groupIndex in candidateIndices) {
                                 val sources = relatedGroups[groupIndex]
                                 val first = MethodHierarchy.Entry(sources.first.first())
-                                // Try to link bridge method on override tree
-                                val inSameOverrideTree =
-                                    first.owner.name == bridge.owner.name || classHierarchy.isSubType(
-                                        bridge.owner.name,
-                                        first.owner.name
-                                    )
+                                // Try to link bridge method on override tree.
+                                // Check ALL sources in the group (not just the first) because the group
+                                // may contain sources from multiple branches of a diamond hierarchy, and
+                                // the bridge's owner may only be a subtype of one of them.
+                                val inSameOverrideTree = sources.first.any { sourceIdx ->
+                                    val srcOwnerName = MethodHierarchy.Entry(sourceIdx).owner.name
+                                    bridge.owner.name == srcOwnerName ||
+                                        classHierarchy.isSubType(bridge.owner.name, srcOwnerName)
+                                }
                                 if (!inSameOverrideTree) continue
 
                                 // Cache parsed arg types per group; avoids re-parsing the same descriptor
@@ -295,12 +298,20 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                         if (n > 1) {
                             for (i in 0 until n) {
                                 val ownerI = MethodHierarchy.Entry(sameSignatureIndices.getInt(i)).owner.index
+                                val descsI = classHierarchy.descendants[ownerI]
                                 for (j in i + 1 until n) {
                                     val ownerJ = MethodHierarchy.Entry(sameSignatureIndices.getInt(j)).owner.index
-                                    if (classHierarchy.descendantsSet[ownerI].contains(ownerJ) ||
-                                        classHierarchy.descendantsSet[ownerJ].contains(ownerI)
-                                    ) {
-                                        val ri = findLocal(i);
+                                    // Merge if one owner is ancestor/descendant of the other,
+                                    // OR if they share a common descendant (diamond inheritance:
+                                    // two sibling parents whose descendant overrides both cancel()s).
+                                    val shouldMerge = classHierarchy.descendantsSet[ownerI].contains(ownerJ) ||
+                                        classHierarchy.descendantsSet[ownerJ].contains(ownerI) ||
+                                        run {
+                                            val descsJSet = classHierarchy.descendantsSet[ownerJ]
+                                            descsI.any { descsJSet.contains(it) }
+                                        }
+                                    if (shouldMerge) {
+                                        val ri = findLocal(i)
                                         val rj = findLocal(j)
                                         if (ri != rj) ufLocal[rj] = ri
                                     }
