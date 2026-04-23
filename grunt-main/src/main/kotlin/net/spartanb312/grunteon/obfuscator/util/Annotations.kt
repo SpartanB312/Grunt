@@ -29,6 +29,7 @@ val DISABLER = arrayOf(
     DISABLE_ARITHMETIC_SUBSTITUTE,
     DISABLE_FIELD_PROXY,
     DISABLE_INVOKE_PROXY,
+    DISABLE_INVOKE_DISPATCHER,
     DISABLE_CONST_FLOW,
     DISABLE_CONTROL_FLOW,
     DISABLE_FLATTENING
@@ -41,10 +42,15 @@ val DISABLER = arrayOf(
 val IGNORE_FIELD_PROXY = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromFieldProxy;"
 val IGNORE_INVOKE_PROXY = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromInvokeProxy;"
 val IGNORE_INVOKE_DISPATCHER = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromInvokeDispatcher;"
+val IGNORE_JUNK_CODE = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromJunkCode;"
+val IGNORE_PARAMETER_SALT = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromParameterSalt;"
 
 val IGNORE = arrayOf(
     IGNORE_FIELD_PROXY,
-    IGNORE_INVOKE_PROXY
+    IGNORE_INVOKE_PROXY,
+    IGNORE_INVOKE_DISPATCHER,
+    IGNORE_JUNK_CODE,
+    IGNORE_PARAMETER_SALT
 )
 
 /**

@@ -4,10 +4,10 @@ plugins {
 
 repositories {
     mavenCentral()
+    maven("https://maven.noblesix.net/")
     google()
     maven("https://jitpack.io/")
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-    maven("https://maven.noblesix.net/")
 }
 
 val coroutineVersion: String = libs.versions.coroutine.get()

@@ -14,6 +14,7 @@ import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.init
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAnnotation
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Opcodes.RETURN
 import org.objectweb.asm.tree.*
 import java.lang.reflect.Modifier
@@ -46,7 +47,8 @@ class DeclaredFieldsExtract : Transformer<DeclaredFieldsExtract.Config>(
             if (classNode.isInterface) return@parForEachClassesFiltered // compile-time constant won't invoke <clinit>
             val counter = counter.local
             var clinit = classNode.methods.firstOrNull { it.name.equals("<clinit>") }
-            var init = classNode.methods.firstOrNull { it.name.equals("<init>") }
+            val inits = classNode.methods.filter { it.name.equals("<init>") }
+            val isAboveJava22 = classNode.version >= Opcodes.V22
             for (field in classNode.fields) {
                 if (field.value != null) {
                     if (Modifier.isStatic(field.access)) {
@@ -56,16 +58,19 @@ class DeclaredFieldsExtract : Transformer<DeclaredFieldsExtract.Config>(
                             classNode.methods.add(clinit)
                         }
                         clinit.instructions.insert(box(classNode, field))
-                    } else {
-                        if (init == null) {
-                            init = init()
+                        field.value = null
+                        counter.add()
+                    } else if (isAboveJava22) {
+                        if (inits.isEmpty()) {
+                            val init = init()
                             init.instructions.add(InsnNode(RETURN))
                             classNode.methods.add(init)
+                        } else inits.forEach {
+                            it.instructions.insert(box(classNode, field))
                         }
-                        init.instructions.insert(box(classNode, field))
+                        field.value = null
+                        counter.add()
                     }
-                    field.value = null
-                    counter.add()
                 }
             }
         }
