@@ -62,6 +62,8 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
     ) : TransformerConfig
 
     private lateinit var methodExPredicate: NamePredicates
+    context(instance: Grunteon)
+    val renameMapping get() = instance.nameMapping.revMappings
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
@@ -121,7 +123,6 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         }
 
         val metadata = ConcurrentHashMap<ClassNode, MetaData>()
-        val renameMapping = mutableMapOf<String, String>() // todo
         // Generate metadata for all included classes
         parForEachRenamedClassesFiltered(
             config.classFilter.buildFilterStrategy(),

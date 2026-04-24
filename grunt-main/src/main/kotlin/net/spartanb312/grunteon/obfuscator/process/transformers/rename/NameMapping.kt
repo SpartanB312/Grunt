@@ -16,6 +16,7 @@ class NameMapping : Remapper(Opcodes.ASM9) {
 
     private val classMappings = Object2ObjectOpenHashMap<String, ClassEntry>()
     private val indyMapping = ConcurrentHashMap<String, String>()
+    val revMappings = Object2ObjectOpenHashMap<String, String>()
 
     fun getMapping(old: String): String? {
         return classMappings.getOrDefault(old, null)?.new
@@ -50,6 +51,7 @@ class NameMapping : Remapper(Opcodes.ASM9) {
 
     fun putClassMapping(prev: String, new: String) {
         classMappings.computeIfAbsent(prev) { ClassEntry(prev) }.new = new
+        revMappings[new] = prev
     }
 
     fun putMethodMapping(owner: String, name: String, descriptor: String, newName: String) {
