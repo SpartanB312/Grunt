@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import net.spartanb312.grunteon.index.FILE_VERSION
 import net.spartanb312.grunteon.index.info.ClassInfo
 import net.spartanb312.grunteon.index.io.toJsonObj
 import java.io.File
@@ -56,6 +57,7 @@ private fun JsonObject.saveToFile(file: File) {
 
 fun Collection<ClassInfo>.saveToFile(file: File) {
     val obj = JsonObject()
+    obj.addProperty("version", FILE_VERSION)
     obj.add("classes", JsonArray().apply { this@saveToFile.forEach { add(it.toJsonObj()) } })
     obj.saveToFile(file)
 }

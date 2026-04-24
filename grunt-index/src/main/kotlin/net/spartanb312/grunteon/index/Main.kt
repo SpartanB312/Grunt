@@ -11,6 +11,8 @@ import java.io.File
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.jar.JarFile
 
+const val FILE_VERSION = "26.4.1" // year.month.version
+
 fun main(args: Array<String>) {
     val input = args[0]
     val name = input.removeSuffix(".jar")

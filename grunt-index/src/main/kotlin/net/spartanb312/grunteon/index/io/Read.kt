@@ -2,6 +2,7 @@ package net.spartanb312.grunteon.index.io
 
 import com.google.gson.JsonElement
 import com.google.gson.JsonParser
+import net.spartanb312.grunteon.index.FILE_VERSION
 import net.spartanb312.grunteon.index.info.ClassInfo
 import net.spartanb312.grunteon.index.info.FieldInfo
 import net.spartanb312.grunteon.index.info.MethodInfo
@@ -20,8 +21,12 @@ private val File.jsonMap: Map<String, JsonElement>
         return map
     }
 
-fun readFromFile(file: File): List<ClassInfo> {
+fun readFromFile(file: File, version: String = FILE_VERSION): List<ClassInfo> {
     val map = file.jsonMap
+    val versionRead = map["version"]!!.asString
+    val v1 = version.split(".").map { it.toInt() }.toIntArray()
+    val v2 = versionRead.split(".").map { it.toInt() }.toIntArray()
+    if (v2.isLessThan(v1)) throw Exception("Outdated version $versionRead, expect $version")
     return map["classes"]!!.asJsonArray.map { clazz ->
         val classObj = clazz.asJsonObject
         val classInfo = ClassInfo(
