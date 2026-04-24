@@ -5,11 +5,13 @@ include(":grunt-bootstrap")
 
 // Components
 include(":grunt-main")
+include(":grunt-index")
 include(":grunt-testcase")
 include(":grunt-yapyap")
 
 pluginManagement {
     repositories {
+        maven("https://maven.aliyun.com/repository/gradle-plugin")
         gradlePluginPortal()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }

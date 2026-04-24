@@ -8,13 +8,14 @@ import net.spartanb312.grunteon.index.io.saveToFile
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.tree.ClassNode
 import java.io.File
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.jar.JarFile
 
 fun main(args: Array<String>) {
     val input = args[0]
     val name = input.removeSuffix(".jar")
     val output = "$name.gi"
-    val classInfo = mutableListOf<ClassInfo>()
+    val classInfo = ConcurrentLinkedQueue<ClassInfo>()
     runBlocking {
         JarFile(File(input)).apply {
             entries().asSequence()
@@ -24,7 +25,7 @@ fun main(args: Array<String>) {
                         kotlin.runCatching {
                             ClassReader(getInputStream(it)).apply {
                                 val classNode = ClassNode()
-                                accept(classNode, ClassReader.EXPAND_FRAMES)
+                                accept(classNode, ClassReader.SKIP_CODE)
                                 classInfo.add(ClassInfo.parse(classNode))
                             }
                         }
