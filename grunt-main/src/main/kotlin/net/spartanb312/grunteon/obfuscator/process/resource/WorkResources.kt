@@ -5,9 +5,16 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
+import net.spartanb312.grunteon.index.info.ClassInfo
 import net.spartanb312.grunteon.obfuscator.util.Logger
+import net.spartanb312.grunteon.obfuscator.util.PHANTOM_CLASS
+import net.spartanb312.grunteon.obfuscator.util.PHANTOM_FIELD
+import net.spartanb312.grunteon.obfuscator.util.PHANTOM_METHOD
+import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.FieldNode
+import org.objectweb.asm.tree.MethodNode
 import java.net.URI
 import java.nio.file.FileSystemNotFoundException
 import java.nio.file.FileSystems
@@ -62,6 +69,22 @@ class WorkResources private constructor(
                 DUMMY_CLASSNODE
             }
         }.takeIf { it !== DUMMY_CLASSNODE }
+    }
+
+    fun addIndexedLibrary(classInfo: ClassInfo) {
+        val node = ClassNode()
+        node.access = classInfo.access
+        node.name = classInfo.name
+        node.superName = classInfo.superName
+        node.interfaces = classInfo.interfaces
+        node.methods = classInfo.methods.map {
+            MethodNode(it.access, it.name, it.desc, it.signature, null).appendAnnotation(PHANTOM_METHOD)
+        }
+        node.fields = classInfo.fields.map {
+            FieldNode(it.access, it.name, it.desc, it.signature, null).appendAnnotation(PHANTOM_FIELD)
+        }
+        node.appendAnnotation(PHANTOM_CLASS)
+        libraryClassMap[classInfo.name] = node
     }
 
     companion object {

@@ -27,6 +27,7 @@ fun readFromFile(file: File): List<ClassInfo> {
         val classInfo = ClassInfo(
             classObj["access"]!!.asInt,
             classObj["name"]!!.asString,
+            classObj["signature"]?.asString,
             classObj["superName"]?.asString,
             classObj["interfaces"]?.asJsonArray?.map { it.asString }
         )
@@ -36,6 +37,7 @@ fun readFromFile(file: File): List<ClassInfo> {
                 methodObj["access"]!!.asInt,
                 methodObj["name"]!!.asString,
                 methodObj["desc"]!!.asString,
+                methodObj["signature"]?.asString,
             )
         }
         classInfo.fields = classObj["fields"].asJsonArray.map { field ->
@@ -44,6 +46,7 @@ fun readFromFile(file: File): List<ClassInfo> {
                 fieldObj["access"]!!.asInt,
                 fieldObj["name"]!!.asString,
                 fieldObj["desc"]!!.asString,
+                fieldObj["signature"]?.asString,
             )
         }
         classInfo

@@ -5,6 +5,7 @@ import org.objectweb.asm.tree.ClassNode
 data class ClassInfo(
     val access: Int,
     val name: String,
+    val signature: String?,
     val superName: String?,
     val interfaces: List<String>?
 ) {
@@ -17,11 +18,12 @@ data class ClassInfo(
             return ClassInfo(
                 classNode.access,
                 classNode.name,
+                classNode.signature,
                 classNode.superName,
                 classNode.interfaces
             ).apply {
-                methods = classNode.methods.map { MethodInfo(it.access, it.name, it.desc) }
-                fields = classNode.fields.map { FieldInfo(it.access, it.name, it.desc) }
+                methods = classNode.methods.map { MethodInfo(it.access, it.name, it.desc, it.signature) }
+                fields = classNode.fields.map { FieldInfo(it.access, it.name, it.desc, it.signature) }
             }
         }
     }

@@ -64,8 +64,15 @@ val GENERATED_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/GeneratedCl
 val GENERATED_METHOD = "Lnet/spartanb312/grunteon/annotation/internal/GeneratedMethod;"
 val GENERATED_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/GeneratedField;"
 
+val PHANTOM_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/PhantomClass;"
+val PHANTOM_METHOD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomMethod;"
+val PHANTOM_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomField;"
+
 val INTERNAL = arrayOf(
     GENERATED_CLASS,
     GENERATED_METHOD,
-    GENERATED_FIELD
+    GENERATED_FIELD,
+    PHANTOM_CLASS,
+    PHANTOM_METHOD,
+    PHANTOM_FIELD
 )

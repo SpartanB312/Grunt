@@ -27,6 +27,7 @@ fun ClassInfo.toJsonObj(): JsonObject {
                     addProperty("access", it.access)
                     addProperty("name", it.name)
                     addProperty("desc", it.desc)
+                    if (it.signature != null) addProperty("signature", it.signature)
                 })
             }
         })
@@ -36,6 +37,7 @@ fun ClassInfo.toJsonObj(): JsonObject {
                     addProperty("access", it.access)
                     addProperty("name", it.name)
                     addProperty("desc", it.desc)
+                    if (it.signature != null) addProperty("signature", it.signature)
                 })
             }
         })
