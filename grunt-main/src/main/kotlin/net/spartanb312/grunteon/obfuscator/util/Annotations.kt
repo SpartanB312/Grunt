@@ -16,6 +16,7 @@ val DISABLE_ARITHMETIC_SUBSTITUTE = "Lnet/spartanb312/grunteon/annotation/disabl
 val DISABLE_FIELD_PROXY = "Lnet/spartanb312/grunteon/annotation/disable/DisableFieldProxy;"
 val DISABLE_INVOKE_PROXY = "Lnet/spartanb312/grunteon/annotation/disable/DisableInvokeProxy;"
 val DISABLE_INVOKE_DISPATCHER = "Lnet/spartanb312/grunteon/annotation/disable/DisableInvokeDispatcher;"
+val DISABLE_REFERENCE_OBF = "Lnet/spartanb312/grunteon/annotation/disable/DisableReferenceObfuscate;"
 
 // Controlflow
 val DISABLE_CONST_FLOW = "Lnet/spartanb312/grunteon/annotation/disable/DisableConstFlow;"
@@ -30,6 +31,7 @@ val DISABLER = arrayOf(
     DISABLE_FIELD_PROXY,
     DISABLE_INVOKE_PROXY,
     DISABLE_INVOKE_DISPATCHER,
+    DISABLE_REFERENCE_OBF,
     DISABLE_CONST_FLOW,
     DISABLE_CONTROL_FLOW,
     DISABLE_FLATTENING
@@ -44,13 +46,15 @@ val IGNORE_INVOKE_PROXY = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFr
 val IGNORE_INVOKE_DISPATCHER = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromInvokeDispatcher;"
 val IGNORE_JUNK_CODE = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromJunkCode;"
 val IGNORE_PARAMETER_SALT = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromParameterSalt;"
+val IGNORE_METADATA_TARGET = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromROMetadataGen;"
 
 val IGNORE = arrayOf(
     IGNORE_FIELD_PROXY,
     IGNORE_INVOKE_PROXY,
     IGNORE_INVOKE_DISPATCHER,
     IGNORE_JUNK_CODE,
-    IGNORE_PARAMETER_SALT
+    IGNORE_PARAMETER_SALT,
+    IGNORE_METADATA_TARGET
 )
 
 /**

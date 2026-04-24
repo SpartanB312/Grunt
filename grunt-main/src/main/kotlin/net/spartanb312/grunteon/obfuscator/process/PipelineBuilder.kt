@@ -180,6 +180,18 @@ fun parForEachClassesFiltered(
     }
 }
 
+context(_: PipelineBuilder)
+fun parForEachRenamedClassesFiltered(
+    strategy: FilterStrategy,
+    mapping: Map<String, String>, // obfName -> prevName
+    action: context(Grunteon, ScopeValueAccess) (ClassNode) -> Unit
+) {
+    parForEachClasses {
+        val prevName = mapping.getOrDefault(it.name, it.name)
+        if (strategy.testClass(it, prevName)) action(it)
+    }
+}
+
 context(pb: PipelineBuilder)
 fun <T> globalScopeValue(init: context(Grunteon) () -> T): ScopeValueKey.Global<T> {
     val key = GlobalScopeValueKeyImpl(init, pb.globalScopeValueKeys.size)
@@ -266,6 +278,7 @@ internal class WorkerContext {
                             java.util.function.Function { it.init(instance) }
                         )
                     }
+
                     is Instruction.InitReducible -> {
                         val key = pipelineBuilder.reducibleScopeValueKeys[inst.index]
                         reducible[inst.index] = reducibleKeys.computeIfAbsent(
@@ -273,6 +286,7 @@ internal class WorkerContext {
                             java.util.function.Function { it.init(instance) }
                         )
                     }
+
                     is Instruction.Seq -> {
                         flushParallelTasks()
                         val access = ScopeValueAccess(scopeValueGlobal)
@@ -281,11 +295,13 @@ internal class WorkerContext {
                         }
                         scopeValueGlobal.mergeToGlobal(access)
                     }
+
                     is Instruction.Pre -> {
                         val access = ScopeValueAccess(scopeValueGlobal)
                         inst.block.invoke(instance, access)
                         scopeValueGlobal.mergeToGlobal(access)
                     }
+
                     is Instruction.SeqForEach -> {
                         flushParallelTasks()
                         val access = ScopeValueAccess(scopeValueGlobal)
@@ -294,12 +310,15 @@ internal class WorkerContext {
                         }
                         scopeValueGlobal.mergeToGlobal(access)
                     }
+
                     is Instruction.ParForEach -> {
                         pendingParallelTasks.add(inst)
                     }
+
                     is Instruction.Post -> {
                         postTasks.add(inst)
                     }
+
                     is Instruction.Barrier -> {
                         flushParallelTasks()
                     }

@@ -64,6 +64,7 @@ class DeclaredFieldsExtract : Transformer<DeclaredFieldsExtract.Config>(
                         if (inits.isEmpty()) {
                             val init = init()
                             init.instructions.add(InsnNode(RETURN))
+                            init.instructions.insert(box(classNode, field))
                             classNode.methods.add(init)
                         } else inits.forEach {
                             it.instructions.insert(box(classNode, field))
