@@ -35,7 +35,7 @@ class Watermark : Transformer<Watermark.Config>(
         val fieldMark: Boolean = true,
         @SettingDesc(enText = "Add method watermark")
         val methodMark: Boolean = true
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {

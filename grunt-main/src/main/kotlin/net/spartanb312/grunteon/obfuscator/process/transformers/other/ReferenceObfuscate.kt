@@ -59,7 +59,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             "net/dummy/Class.method",
             "net/dummy/Class.method()V"
         )
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     private lateinit var methodExPredicate: NamePredicates
     context(instance: Grunteon)

@@ -39,7 +39,7 @@ class StringEqualsOptimize : Transformer<StringEqualsOptimize.Config>(
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc(enText = "Redirect equalsIgnoreCase()")
         val ignoreCase: Boolean = true
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {

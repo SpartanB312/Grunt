@@ -57,7 +57,7 @@ class KotlinClassShrink : Transformer<KotlinClassShrink.Config>(
         ),
         @SettingDesc(enText = "Replace LDC to avoid reference leaking")
         val replaceLDC: Boolean = true
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {

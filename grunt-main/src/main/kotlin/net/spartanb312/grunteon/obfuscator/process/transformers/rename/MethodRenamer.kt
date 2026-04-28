@@ -67,7 +67,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
         @SettingDesc(enText = "Shadow method names as much as possible")
         val aggressiveShadowNames: Boolean = true,
         val solveBridge: Boolean = true
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
@@ -159,7 +159,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                                     Logger.trace("     - " + it.full)
                                 }
                             }
-                            // apply group – single pass avoids IntArrayList wrapper + intermediate List
+                            // apply group �?single pass avoids IntArrayList wrapper + intermediate List
                             val relatedWrapped = IntArrayList.wrap(related.array)
                             val entries = IntLinkedOpenHashSet(relatedWrapped)
                             blackList.addAll(relatedWrapped)
@@ -305,9 +305,9 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                 val sourceAndOverridesMapping = sourceAndOverridesMapping.global
                 // share a same name in a group
                 val nameGenerators = Array(classHierarchy.classCount) { NameGenerator(dictionary) }
-                // Two-level map (name → descriptor set) replaces a flat Set<name+desc>.
+                // Two-level map (name �?descriptor set) replaces a flat Set<name+desc>.
                 // The inner set is only allocated/consulted when a name collision is possible,
-                // and – critically – no string concatenation is needed in the hot check loop.
+                // and �?critically �?no string concatenation is needed in the hot check loop.
                 val existedNameMap =
                     Array(classHierarchy.classCount) { Object2ObjectOpenHashMap<String, ObjectOpenHashSet<String>>() }
                 var methodMappingCount = 0
@@ -370,7 +370,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                     }
                     // Register ALL descs (source + bridge) to prevent name collisions on bridge descriptors.
                     // Previously only first.desc was registered, which allowed a later unrelated group to
-                    // reuse the same name with a bridge descriptor → duplicate name+desc in the same scope.
+                    // reuse the same name with a bridge descriptor �?duplicate name+desc in the same scope.
                     checkList.forEach { owner ->
                         val descsForName = existedNameMap[owner.index]
                             .computeIfAbsent(newName) { ObjectOpenHashSet(groupDescs.size * 2 + 1) }
@@ -406,7 +406,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                             if (srcIsStatic) methodHierarchy.methodToMethodCode[sourceMethod.index] else -1
                         sourceMethod.owner.descendants.forEach { descendant ->
                             // For static methods, skip descendants that declare their own version
-                            // of the method — those are independent and will get their own name
+                            // of the method �?those are independent and will get their own name
                             // from their own source group.  We still propagate to descendants that
                             // do NOT declare the method themselves, because mapMethodName() is a
                             // flat lookup and any INVOKESTATIC child.method call sites (which the

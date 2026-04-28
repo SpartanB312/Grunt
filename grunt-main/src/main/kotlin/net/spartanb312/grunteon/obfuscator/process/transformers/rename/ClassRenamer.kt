@@ -57,7 +57,7 @@ class ClassRenamer : Transformer<ClassRenamer.Config>(
         val corruptedName: Boolean = false,
         @SettingDesc(enText = "Class exclusion for corrupted name")
         val corruptedExclusion: List<String> = listOf()
-    ) : TransformerConfig {
+    ) : TransformerConfig() {
 
         val corruptExPredicate = buildClassNamePredicates(corruptedExclusion)
 

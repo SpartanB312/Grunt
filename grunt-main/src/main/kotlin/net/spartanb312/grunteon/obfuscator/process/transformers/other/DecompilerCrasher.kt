@@ -22,7 +22,7 @@ class DecompilerCrasher : Transformer<DecompilerCrasher.Config>(
     data class Config(
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         val blankString: Boolean = false
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     context(config: Config)
     private val String?.bigBrainSignature

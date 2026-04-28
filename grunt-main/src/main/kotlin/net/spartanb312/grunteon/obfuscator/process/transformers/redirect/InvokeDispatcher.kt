@@ -45,7 +45,7 @@ class InvokeDispatcher : Transformer<InvokeDispatcher.Config>(
             "net/dummy/Class.method",
             "net/dummy/Class.method()V"
         )
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     private lateinit var methodExPredicate: NamePredicates
 

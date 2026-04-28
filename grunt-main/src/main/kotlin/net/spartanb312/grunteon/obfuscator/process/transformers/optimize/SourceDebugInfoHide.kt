@@ -47,7 +47,7 @@ class SourceDebugInfoHide : Transformer<SourceDebugInfoHide.Config>(
         val lineNumbers: Boolean = true,
         @SettingDesc(enText = "Customize source names")
         val sourceNames: List<String> = listOf("")
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     enum class SourceFileAction(override val displayName: CharSequence) : DisplayEnum {
         Off("No operation"),

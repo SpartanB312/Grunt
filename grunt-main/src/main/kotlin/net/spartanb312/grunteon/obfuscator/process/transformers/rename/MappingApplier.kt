@@ -17,7 +17,7 @@ class MappingApplier : Transformer<MappingApplier.Config>(
     )
 ), MappingSource {
     // Dummy
-    class Config : TransformerConfig
+    class Config : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {

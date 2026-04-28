@@ -1,0 +1,71 @@
+package net.spartanb312.grunteon.obfuscator.process
+
+import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
+import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.ArithmeticSubstitute
+import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
+import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
+import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.DeclaredFieldsExtract
+import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.ParameterObfuscate
+import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.ClassShrink
+import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
+import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.EnumOptimize
+import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.KotlinClassShrink
+import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.SourceDebugInfoHide
+import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.StringEqualsOptimize
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.DecompilerCrasher
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.ShuffleMembers
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.Watermark
+import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.FieldAccessProxy
+import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.InvokeDispatcher
+import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.InvokeProxy
+import net.spartanb312.grunteon.obfuscator.process.transformers.rename.ClassRenamer
+import net.spartanb312.grunteon.obfuscator.process.transformers.rename.FieldRenamer
+import net.spartanb312.grunteon.obfuscator.process.transformers.rename.LocalVarRenamer
+import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MethodRenamer
+import kotlin.reflect.KClass
+
+data class TransformerRegistryEntry(
+    val configClass: KClass<out TransformerConfig>,
+    val createTransformer: () -> Transformer<*>,
+    val createConfig: () -> TransformerConfig,
+)
+
+object TransformerRegistry {
+    val entries: List<TransformerRegistryEntry> = listOf(
+        entry({ DeadCodeRemove() }, { DeadCodeRemove.Config() }),
+        entry({ EnumOptimize() }, { EnumOptimize.Config() }),
+        entry({ KotlinClassShrink() }, { KotlinClassShrink.Config() }),
+        entry({ ClassShrink() }, { ClassShrink.Config() }),
+        entry({ SourceDebugInfoHide() }, { SourceDebugInfoHide.Config() }),
+        entry({ StringEqualsOptimize() }, { StringEqualsOptimize.Config() }),
+        entry({ ArithmeticSubstitute() }, { ArithmeticSubstitute.Config() }),
+        entry({ NumberBasicEncrypt() }, { NumberBasicEncrypt.Config() }),
+        entry({ StringArrayedEncrypt() }, { StringArrayedEncrypt.Config() }),
+        entry({ DeclaredFieldsExtract() }, { DeclaredFieldsExtract.Config() }),
+        entry({ ParameterObfuscate() }, { ParameterObfuscate.Config() }),
+        entry({ InvokeDispatcher() }, { InvokeDispatcher.Config() }),
+        entry({ InvokeProxy() }, { InvokeProxy.Config() }),
+        entry({ FieldAccessProxy() }, { FieldAccessProxy.Config() }),
+        entry({ LocalVarRenamer() }, { LocalVarRenamer.Config() }),
+        entry({ ClassRenamer() }, { ClassRenamer.Config() }),
+        entry({ FieldRenamer() }, { FieldRenamer.Config() }),
+        entry({ MethodRenamer() }, { MethodRenamer.Config() }),
+        entry({ FakeSyntheticBridge() }, { FakeSyntheticBridge.Config() }),
+        entry({ DecompilerCrasher() }, { DecompilerCrasher.Config() }),
+        entry({ ShuffleMembers() }, { ShuffleMembers.Config() }),
+        entry({ Watermark() }, { Watermark.Config() }),
+        entry({ PostProcess() }, { PostProcess.Config() }),
+    )
+
+    fun find(config: TransformerConfig): TransformerRegistryEntry? {
+        return entries.firstOrNull { it.configClass == config::class }
+    }
+
+    private inline fun <reified C : TransformerConfig> entry(
+        noinline createTransformer: () -> Transformer<*>,
+        noinline createConfig: () -> C,
+    ): TransformerRegistryEntry {
+        return TransformerRegistryEntry(C::class, createTransformer, createConfig)
+    }
+}

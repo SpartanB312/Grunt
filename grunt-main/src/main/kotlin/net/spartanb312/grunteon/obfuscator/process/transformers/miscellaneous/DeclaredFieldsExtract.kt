@@ -34,7 +34,7 @@ class DeclaredFieldsExtract : Transformer<DeclaredFieldsExtract.Config>(
     @Serializable
     data class Config(
         val classFilter: ClassFilterConfig = ClassFilterConfig()
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {

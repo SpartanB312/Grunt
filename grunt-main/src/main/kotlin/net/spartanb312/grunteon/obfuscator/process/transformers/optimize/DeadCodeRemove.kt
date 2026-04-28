@@ -49,7 +49,7 @@ class DeadCodeRemove : Transformer<DeadCodeRemove.Config>(
         val pop2: Boolean = true,
         @SettingDesc(enText = "Remove fall through goto")
         val fallthrough: Boolean = true
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {

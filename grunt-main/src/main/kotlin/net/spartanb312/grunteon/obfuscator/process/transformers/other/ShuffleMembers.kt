@@ -23,7 +23,7 @@ class ShuffleMembers : Transformer<ShuffleMembers.Config>(
         val fields: Boolean = true,
         val annotations: Boolean = true,
         val exceptions: Boolean = true
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {

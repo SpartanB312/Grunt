@@ -1,4 +1,4 @@
-package net.spartanb312.grunteon.obfuscator.process.transformers.rename
+﻿package net.spartanb312.grunteon.obfuscator.process.transformers.rename
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet
@@ -50,7 +50,7 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
         val heavyOverloads: Boolean = true,
         val aggressiveShadowNames: Boolean = true,
         val excludedNames: List<String> = listOf("INSTANCE", "Companion")
-    ) : TransformerConfig {
+    ) : TransformerConfig() {
 
         // getter
         val malPrefix = prefix //(if (randomKeywordPrefix) "$nextBadKeyword " else "") + prefix
@@ -96,7 +96,7 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
                 val nameGenerators = mutableMapOf<ClassHierarchy.Entry, NameGenerator>()
                 nonExcluded.forEach { classNode ->
                     val classIndex = classHierarchy.findClass(classNode.name)
-                    if (classIndex == -1) throw Exception("你妈${classNode.name}死了，hierarchy里面找不到你妈")
+                    if (classIndex == -1) throw Exception("Class ${classNode.name} was not found in field hierarchy")
                     val classEntry = ClassHierarchy.Entry(classIndex)
                     if (!classEntry.hasMissingDependency) {
                         val dic = nameGenerators.getOrPut(classEntry) {

@@ -8,6 +8,7 @@ include(":grunt-main")
 include(":grunt-index")
 include(":grunt-testcase")
 include(":grunt-yapyap")
+include(":grunt-ui")
 
 pluginManagement {
     repositories {

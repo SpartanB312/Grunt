@@ -1,0 +1,207 @@
+package net.spartanb312.grunteon.ui
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import net.spartanb312.grunteon.obfuscator.ObfConfig
+
+@Composable
+fun GeneralPage(
+    config: ObfConfig,
+    onConfigChange: (ObfConfig) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val palette = LocalUiPalette.current
+    Column(
+        modifier = modifier.fillMaxSize().padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("General", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("Top-level ObfConfig options shared by every pipeline run.", color = palette.muted)
+        }
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Column(
+                modifier = Modifier.weight(1f).widthIn(min = 320.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
+                GeneralSection("Input / Output") {
+                    StringOption("Input jar", config.input) { onConfigChange(config.copy(input = it)) }
+                    StringOption("Output jar", config.output.orEmpty()) {
+                        onConfigChange(config.copy(output = it.ifBlank { null }))
+                    }
+                    StringListOption("Libraries", config.libs) { onConfigChange(config.copy(libs = it)) }
+                }
+                GeneralSection("Filters") {
+                    StringListOption("Global exclusions", config.exclusions) {
+                        onConfigChange(config.copy(exclusions = it))
+                    }
+                    StringListOption("Mixin exclusions", config.mixinExclusions) {
+                        onConfigChange(config.copy(mixinExclusions = it))
+                    }
+                }
+                GeneralSection("Random / Diagnostics") {
+                    BooleanOption("Controllable random", config.controllableRandom) {
+                        onConfigChange(config.copy(controllableRandom = it))
+                    }
+                    StringOption("Input seed", config.inputSeed) { onConfigChange(config.copy(inputSeed = it)) }
+                    BooleanOption("Dump mappings", config.dumpMappings) {
+                        onConfigChange(config.copy(dumpMappings = it))
+                    }
+                    BooleanOption("Profiler", config.profiler) { onConfigChange(config.copy(profiler = it)) }
+                    BooleanOption("Force compute max", config.forceComputeMax) {
+                        onConfigChange(config.copy(forceComputeMax = it))
+                    }
+                    BooleanOption("Missing dependency check", config.missingCheck) {
+                        onConfigChange(config.copy(missingCheck = it))
+                    }
+                }
+            }
+            Column(
+                modifier = Modifier.weight(1f).widthIn(min = 320.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
+                GeneralSection("Jar Output") {
+                    BooleanOption("Corrupt headers", config.corruptHeaders) {
+                        onConfigChange(config.copy(corruptHeaders = it))
+                    }
+                    BooleanOption("Corrupt CRC32", config.corruptCRC32) {
+                        onConfigChange(config.copy(corruptCRC32 = it))
+                    }
+                    BooleanOption("Remove time stamps", config.removeTimeStamps) {
+                        onConfigChange(config.copy(removeTimeStamps = it))
+                    }
+                    IntSliderOption("Compression level", config.compressionLevel, 0..9) {
+                        onConfigChange(config.copy(compressionLevel = it))
+                    }
+                    StringOption("Archive comment", config.archiveComment) {
+                        onConfigChange(config.copy(archiveComment = it))
+                    }
+                    StringListOption("Remove file prefixes", config.fileRemovePrefix) {
+                        onConfigChange(config.copy(fileRemovePrefix = it))
+                    }
+                    StringListOption("Remove file suffixes", config.fileRemoveSuffix) {
+                        onConfigChange(config.copy(fileRemoveSuffix = it))
+                    }
+                }
+                GeneralSection("Dictionary") {
+                    StringOption("Custom dictionary file", config.customDictionary) {
+                        onConfigChange(config.copy(customDictionary = it))
+                    }
+                    StringListOption("Custom incremental dictionary", config.customIncrementalDictionary) {
+                        onConfigChange(config.copy(customIncrementalDictionary = it))
+                    }
+                }
+            }
+            GeneralTipsPlaceholder(
+                modifier = Modifier.weight(1f).widthIn(min = 320.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun GeneralTipsPlaceholder(modifier: Modifier = Modifier) {
+    val palette = LocalUiPalette.current
+    Surface(
+        color = palette.panelAlt,
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, palette.stroke),
+        modifier = modifier.fillMaxWidth().heightIn(min = 180.dp)
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Tips", fontWeight = FontWeight.SemiBold)
+            Text("Reserved for contextual help.", color = palette.muted)
+        }
+    }
+}
+
+@Composable
+private fun GeneralSection(title: String, content: @Composable () -> Unit) {
+    val palette = LocalUiPalette.current
+    Surface(
+        color = palette.panelAlt,
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, palette.stroke),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            content()
+        }
+    }
+}
+
+@Composable
+private fun StringOption(label: String, value: String, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onChange,
+        label = { Text(label) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+    )
+}
+
+@Composable
+private fun StringListOption(label: String, value: List<String>, onChange: (List<String>) -> Unit) {
+    OutlinedTextField(
+        value = value.joinToString("\n"),
+        onValueChange = { text -> onChange(text.lines().filter { it.isNotBlank() }) },
+        label = { Text(label) },
+        modifier = Modifier.fillMaxWidth(),
+        minLines = 3,
+        maxLines = 8,
+    )
+}
+
+@Composable
+private fun BooleanOption(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Checkbox(checked = value, onCheckedChange = onChange)
+        Text(label)
+    }
+}
+
+@Composable
+private fun IntSliderOption(label: String, value: Int, range: IntRange, onChange: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label)
+            Text(value.toString())
+        }
+        Slider(
+            value = value.toFloat().coerceIn(range.first.toFloat(), range.last.toFloat()),
+            onValueChange = { onChange(it.toInt().coerceIn(range.first, range.last)) },
+            valueRange = range.first.toFloat()..range.last.toFloat(),
+            steps = (range.last - range.first - 1).coerceAtLeast(0)
+        )
+    }
+}

@@ -78,7 +78,7 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
             "net/dummy/Class.method",
             "net/dummy/Class.method()V"
         )
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     private lateinit var methodExPredicate: NamePredicates
 

@@ -1,30 +1,15 @@
 package net.spartanb312.grunteon.obfuscator.process
 
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
+import kotlinx.serialization.serializer
 import net.spartanb312.grunteon.obfuscator.lang.I18NDescriptorPath
-import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
-import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.ArithmeticSubstitute
-import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
-import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
-import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.DeclaredFieldsExtract
-import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.ParameterObfuscate
-import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.*
-import net.spartanb312.grunteon.obfuscator.process.transformers.other.DecompilerCrasher
-import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
-import net.spartanb312.grunteon.obfuscator.process.transformers.other.ShuffleMembers
-import net.spartanb312.grunteon.obfuscator.process.transformers.other.Watermark
-import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.FieldAccessProxy
-import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.InvokeDispatcher
-import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.InvokeProxy
-import net.spartanb312.grunteon.obfuscator.process.transformers.rename.ClassRenamer
-import net.spartanb312.grunteon.obfuscator.process.transformers.rename.FieldRenamer
-import net.spartanb312.grunteon.obfuscator.process.transformers.rename.LocalVarRenamer
-import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MethodRenamer
 import net.spartanb312.grunteon.obfuscator.util.filters.FilterStrategy
 import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
+import kotlin.reflect.KClass
 
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.PROPERTY)
@@ -43,33 +28,22 @@ annotation class IntRangeVal(val min: Int, val max: Int, val step: Int = 1)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class DecimalRangeVal(val min: Double, val max: Double, val step: Double)
 
-interface TransformerConfig {
+@Serializable
+abstract class TransformerConfig {
+    @SettingDesc("Enable this transformer config node")
+    var enabled: Boolean = true
+
     companion object {
+        @OptIn(InternalSerializationApi::class)
         val projectModule = SerializersModule {
             polymorphic(TransformerConfig::class) {
-                subclass(DeadCodeRemove.Config::class)
-                subclass(EnumOptimize.Config::class)
-                subclass(KotlinClassShrink.Config::class)
-                subclass(ClassShrink.Config::class)
-                subclass(SourceDebugInfoHide.Config::class)
-                subclass(StringEqualsOptimize.Config::class)
-                subclass(ArithmeticSubstitute.Config::class)
-                subclass(NumberBasicEncrypt.Config::class)
-                subclass(StringArrayedEncrypt.Config::class)
-                subclass(DeclaredFieldsExtract.Config::class)
-                subclass(ParameterObfuscate.Config::class)
-                subclass(InvokeDispatcher.Config::class)
-                subclass(InvokeProxy.Config::class)
-                subclass(FieldAccessProxy.Config::class)
-                subclass(LocalVarRenamer.Config::class)
-                subclass(ClassRenamer.Config::class)
-                subclass(FieldRenamer.Config::class)
-                subclass(MethodRenamer.Config::class)
-                subclass(FakeSyntheticBridge.Config::class)
-                subclass(DecompilerCrasher.Config::class)
-                subclass(ShuffleMembers.Config::class)
-                subclass(Watermark.Config::class)
-                subclass(PostProcess.Config::class)
+                TransformerRegistry.entries.forEach { entry ->
+                    @Suppress("UNCHECKED_CAST")
+                    subclass(
+                        entry.configClass as KClass<TransformerConfig>,
+                        entry.configClass.serializer()
+                    )
+                }
             }
         }
     }
@@ -88,7 +62,7 @@ data class ClassFilterConfig(
     val includeStrategy: List<String> = listOf(
         "**" // Include all
     )
-) : TransformerConfig {
+) {
     fun buildFilterStrategy(): FilterStrategy {
         return FilterStrategy(
             buildClassNamePredicates(includeStrategy),

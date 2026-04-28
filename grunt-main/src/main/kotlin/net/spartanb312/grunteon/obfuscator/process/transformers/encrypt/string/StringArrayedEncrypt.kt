@@ -49,7 +49,7 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
             "net/dummy/Class.method",
             "net/dummy/Class.method()V"
         )
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     private lateinit var methodExPredicate: NamePredicates
 

@@ -3,6 +3,7 @@ package net.spartanb312.grunteon.obfuscator
 import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerRegistry
 import net.spartanb312.grunteon.obfuscator.process.WorkerContext
 import net.spartanb312.grunteon.obfuscator.process.resource.JarDumper
 import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
@@ -16,7 +17,6 @@ import kotlin.io.path.Path
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
 import kotlin.io.path.walk
-import kotlin.reflect.full.primaryConstructor
 
 // Grunteon process instance
 class Grunteon(
@@ -74,9 +74,14 @@ class Grunteon(
 
             val workRes = WorkResources.read(inputRoot, libs.flatMap { resolvePath(it) })
 
-            val transformerAndConfig = config.transformerConfigs.mapTo(mutableListOf()) {
-                it.javaClass.declaringClass.kotlin.primaryConstructor!!.call() as Transformer<*> to it
-            }
+            val transformerAndConfig = config.transformerConfigs
+                .asSequence()
+                .filter { it.enabled }
+                .mapTo(mutableListOf()) { transformerConfig ->
+                    val entry = TransformerRegistry.find(transformerConfig)
+                        ?: throw IllegalArgumentException("Unregistered transformer config: ${transformerConfig::class.qualifiedName}")
+                    entry.createTransformer() to transformerConfig
+                }
 
             val transformerList = transformerAndConfig.map { it.first }
 

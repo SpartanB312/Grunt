@@ -40,7 +40,7 @@ class PostProcess : Transformer<PostProcess.Config>(
             "Main-Class:",
             "Launch-Entry:"
         )
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {

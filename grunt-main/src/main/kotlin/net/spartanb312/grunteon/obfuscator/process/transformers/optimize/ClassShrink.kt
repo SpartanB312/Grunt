@@ -45,7 +45,7 @@ class ClassShrink : Transformer<ClassShrink.Config>(
         val nopRemove: Boolean = true,
         @SettingDesc(enText = "Remove method signatures")
         val methodSignatures: Boolean = true
-    ) : TransformerConfig
+    ) : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
