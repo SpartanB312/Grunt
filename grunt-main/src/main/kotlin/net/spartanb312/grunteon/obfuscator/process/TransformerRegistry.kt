@@ -14,6 +14,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.SourceD
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.StringEqualsOptimize
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.DecompilerCrasher
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReferenceObfuscate
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.ShuffleMembers
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.Watermark
 import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.FieldAccessProxy
@@ -57,6 +58,7 @@ object TransformerRegistry {
         entry({ FieldRenamer() }, { FieldRenamer.Config() }),
         entry({ MethodRenamer() }, { MethodRenamer.Config() }),
         entry({ FakeSyntheticBridge() }, { FakeSyntheticBridge.Config() }),
+        entry({ ReferenceObfuscate() }, { ReferenceObfuscate.Config() }),
         entry({ DecompilerCrasher() }, { DecompilerCrasher.Config() }),
         entry({ ShuffleMembers() }, { ShuffleMembers.Config() }),
         entry({ Watermark() }, { Watermark.Config() }),

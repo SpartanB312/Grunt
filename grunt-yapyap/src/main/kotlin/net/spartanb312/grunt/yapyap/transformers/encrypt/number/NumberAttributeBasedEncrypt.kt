@@ -204,8 +204,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             "kind:number",
             "pool:$poolId",
             NumberAbeRuntime.shapeAttribute(
-                classNode.superName ?: "java/lang/Object",
-                classNode.interfaces?.toTypedArray() ?: emptyArray(),
+                (if (classNode.superName != null) 1 else 0) + (classNode.interfaces?.size ?: 0),
                 classNode.access,
                 classNode.isAnnotation,
                 classNode.isEnum,

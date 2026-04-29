@@ -10,6 +10,8 @@ import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
+import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
+import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
 import net.spartanb312.grunteon.obfuscator.util.extensions.hasAnnotation
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
@@ -29,7 +31,6 @@ import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
-import kotlin.random.Random
 
 @Transformer.Description(
     "process.other.reference_obfuscate.desc",
@@ -61,6 +62,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
     ) : TransformerConfig()
 
     private lateinit var methodExPredicate: NamePredicates
+
     context(instance: Grunteon)
     val renameMapping get() = instance.nameMapping.revMappings
 
@@ -149,18 +151,19 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                     IntArray(allMethods.size)
                 )
                 val existedMagic2 = mutableSetOf<Int>()
+                val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, "magic"))
                 allMethods.forEachIndexed { index, methodNode ->
-                    val magic1 = Random.nextInt(0x8, 0x800)
+                    val magic1 = randomGen.nextInt(0x8, 0x800)
                     // Generate unique magic2
                     var magic2: Int
                     while (true) {
-                        magic2 = Random.nextInt(0, 59557)
+                        magic2 = randomGen.nextInt(0, 59557)
                         if (!existedMagic2.contains(magic2)) {
                             existedMagic2.add(magic2)
                             break
                         }
                     }
-                    val data1 = 59557 * Random.nextInt(1186) + magic2
+                    val data1 = 59557 * randomGen.nextInt(1186) + magic2
                     val encryptedData1 = encrypt(data1.toString(), magic2)
                     val data2 = methodNode.name + "<>" + methodNode.desc
                     val encryptedData2 = encrypt(data2, magic1)
@@ -198,8 +201,9 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             val counter = counter.local
             val bsmName1 = massiveString
             val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
+            val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, "apply"))
             val decryptName = massiveString
-            val decryptKey = Random.nextInt()
+            val decryptKey = randomGen.nextInt()
             context(config, counter) {
                 if (shouldApply(classNode, bsmName1, bsmName2, decryptKey, metadata)) {
                     val decrypt = createDecryptMethod(decryptName, decryptKey)
@@ -234,9 +238,13 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
 
             }
         }
+        post {
+            Logger.info(" - ReferenceObfuscate:")
+            Logger.info("    Replaced ${counter.global.get()} invokes")
+        }
     }
 
-    context(counter: MergeableCounter, config: Config)
+    context(instance: Grunteon, counter: MergeableCounter, config: Config)
     private fun shouldApply(
         classNode: ClassNode,
         bsm1: String,
@@ -249,10 +257,11 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             .filter { !it.isAbstract && !it.isNative }
             .forEach { methodNode ->
                 if (!methodNode.hasAnnotation(DISABLE_REFERENCE_OBF)) {
+                    val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, methodNode.name, methodNode.desc))
                     methodNode.instructions.filter {
                         it is MethodInsnNode && it.opcode != Opcodes.INVOKESPECIAL
                     }.forEach { insnNode ->
-                        if (insnNode is MethodInsnNode && (0..99).random() < config.chance) {
+                        if (insnNode is MethodInsnNode && randomGen.nextFloat() < config.chance) {
                             val metadata = metadataMap.entries.find { (clazz, _) -> clazz.name == insnNode.owner }
                             val metadataKey = insnNode.name + "<>" + insnNode.desc
                             val index = metadata?.value?.d2?.indexOf(metadataKey) ?: -1
@@ -309,6 +318,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                             methodNode.instructions.remove(insnNode)
                             shouldApply = true
                             counter.add()
+                            //println("Applied on ${classNode.name}.${methodNode.name}${methodNode.desc}")
                         }
                     }
                 }

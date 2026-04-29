@@ -51,6 +51,7 @@ class PostProcess : Transformer<PostProcess.Config>(
         after(Category.Miscellaneous, "Post process should run after miscellaneous category")
         after(Category.Optimization, "Post process should run after optimization category")
         after(Category.Redirect, "Post process should run after redirect category")
+        after(Category.Renaming, "Post process should run after renaming category")
         after(Category.Other, "Post process should run after other category")
     }
 

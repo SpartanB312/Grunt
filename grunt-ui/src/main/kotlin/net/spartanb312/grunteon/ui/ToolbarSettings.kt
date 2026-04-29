@@ -23,7 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import net.spartanb312.grunteon.obfuscator.SUBTITLE
 import net.spartanb312.grunteon.obfuscator.VERSION
 import java.nio.file.Path as NioPath
@@ -41,7 +43,7 @@ fun TopToolbar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text("Grunteon", fontWeight = FontWeight.Bold)
+            Text("Grunteon", fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
             ToolbarTab(
                 label = "General",

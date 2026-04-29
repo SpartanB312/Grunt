@@ -55,46 +55,46 @@ public final class NumberAbeRuntime {
             byte[] encryptedBlob = encryptBlob(aesKey, plainBlob);
 
             return new String[]{
-                b64(parameters.toString().getBytes(StandardCharsets.UTF_8)),
-                b64(writeSecretKey(secretKey)),
-                b64(writeCipherText(cipherText)),
-                b64(encryptedBlob)
+                    b64(parameters.toString().getBytes(StandardCharsets.UTF_8)),
+                    b64(writeSecretKey(secretKey)),
+                    b64(writeCipherText(cipherText)),
+                    b64(encryptedBlob)
             };
         } catch (Exception e) {
             throw new IllegalStateException("Failed to build CP-ABE number pool", e);
         }
     }
 
-    public static Object[] init(
-        Class<?> owner,
-        String shapeSalt,
-        String parameters,
-        String secretKey,
-        String cipherText,
-        String encryptedBlob
+    /*public static Object[] init(
+            Class<?> owner,
+            String shapeSalt,
+            String parameters,
+            String secretKey,
+            String cipherText,
+            String encryptedBlob
     ) {
         try {
             Pairing pairing = readPairing(parameters);
             String runtimeShape = shapeAttribute(owner, shapeSalt);
             Element dataKey = decrypt(
-                pairing,
-                readSecretKey(pairing, decodeBase64(secretKey)),
-                readCipherText(pairing, decodeBase64(cipherText)),
-                runtimeShape
+                    pairing,
+                    readSecretKey(pairing, decodeBase64(secretKey)),
+                    readCipherText(pairing, decodeBase64(cipherText)),
+                    runtimeShape
             );
             byte[] plainBlob = decryptBlob(dataKey(dataKey), decodeBase64(encryptedBlob));
             return readNumberBlob(plainBlob);
         } catch (Exception e) {
             throw new ExceptionInInitializerError(e);
         }
-    }
+    }*/
 
     public static byte[] readResource(Class<?> anchor, String name) throws Exception {
         String normalized = name.startsWith("/") ? name.substring(1) : name;
         ClassLoader loader = anchor.getClassLoader();
         InputStream stream = loader == null
-            ? ClassLoader.getSystemResourceAsStream(normalized)
-            : loader.getResourceAsStream(normalized);
+                ? ClassLoader.getSystemResourceAsStream(normalized)
+                : loader.getResourceAsStream(normalized);
         if (stream == null) {
             throw new IllegalStateException("Missing CP-ABE number payload resource: " + name);
         }
@@ -121,35 +121,25 @@ public final class NumberAbeRuntime {
 
     public static String shapeAttribute(Class<?> owner, String salt) {
         Class<?> superClass = owner.getSuperclass();
-        String superName = superClass == null ? "java/lang/Object" : superClass.getName().replace('.', '/');
+        int ancestors = superClass == null ? 0 : 1;
         Class<?>[] interfaces = owner.getInterfaces();
-        String[] interfaceNames = new String[interfaces.length];
-        for (int i = 0; i < interfaces.length; i++) {
-            interfaceNames[i] = interfaces[i].getName().replace('.', '/');
-        }
-        return shapeAttribute(superName, interfaceNames, owner.getModifiers(), owner.isAnnotation(), owner.isEnum(), salt);
+        ancestors += interfaces.length;
+        return shapeAttribute(ancestors, owner.getModifiers(), owner.isAnnotation(), owner.isEnum(), salt);
     }
 
     public static String shapeAttribute(
-        String superName,
-        String[] interfaceNames,
-        int access,
-        boolean annotation,
-        boolean enumClass,
-        String salt
+            int ancestors,
+            int access,
+            boolean annotation,
+            boolean enumClass,
+            String salt
     ) {
         try {
-            String[] interfaces = interfaceNames.clone();
-            Arrays.sort(interfaces);
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             digest.update(Base64.getDecoder().decode(salt));
             digest.update((byte) 0);
-            digest.update(superName.getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) ancestors);
             digest.update((byte) 0);
-            for (String itf : interfaces) {
-                digest.update(itf.getBytes(StandardCharsets.UTF_8));
-                digest.update((byte) 0);
-            }
             digest.update(Integer.toString(stableAccess(access, annotation, enumClass)).getBytes(StandardCharsets.UTF_8));
             return "shape:" + hex(digest.digest(), 16);
         } catch (Exception e) {
@@ -158,14 +148,7 @@ public final class NumberAbeRuntime {
     }
 
     private static int stableAccess(int access, boolean annotation, boolean enumClass) {
-        int stable = access & (
-            Modifier.PUBLIC
-                | Modifier.PROTECTED
-                | Modifier.PRIVATE
-                | Modifier.FINAL
-                | Modifier.ABSTRACT
-                | Modifier.INTERFACE
-        );
+        int stable = access & (Modifier.ABSTRACT | Modifier.INTERFACE);
         if (annotation) stable |= 0x2000;
         if (enumClass) stable |= 0x4000;
         return stable;
