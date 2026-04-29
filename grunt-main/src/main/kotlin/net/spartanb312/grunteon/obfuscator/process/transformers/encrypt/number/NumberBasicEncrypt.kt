@@ -5,7 +5,6 @@ import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.DISABLE_NUMBER_ENCRYPT
 import net.spartanb312.grunteon.obfuscator.util.Logger
@@ -33,13 +32,13 @@ import org.objectweb.asm.tree.LdcInsnNode
 /**
  * Last update on 2026/03/25 by FluixCarvin
  */
+@Transformer.Description(
+    "process.encrypt.number.number_basic_encrypt.desc",
+    "Encrypt numbers via some basic methods"
+)
 class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
-    name = enText("process.encrypt.number.number_basic_encrypt", "NumberBasicEncrypt"),
-    category = Category.Encryption,
-    description = enText(
-        "process.encrypt.number.number_basic_encrypt.desc",
-        "Encrypt numbers via some basic methods"
-    )
+    "NumberBasicEncrypt",
+    Category.Encryption,
 ) {
 
     // TODO: hide chances when disabled

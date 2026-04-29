@@ -3,7 +3,6 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.optimize
 import kotlinx.serialization.Serializable
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.DISABLE_OPTIMIZER
@@ -17,13 +16,13 @@ import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import net.spartanb312.grunteon.obfuscator.util.interfaces.DisplayEnum
 import org.objectweb.asm.tree.LineNumberNode
 
+@Transformer.Description(
+    "process.optimize.source_debug_info_hide.desc",
+    "Remove source file information and line numbers"
+)
 class SourceDebugInfoHide : Transformer<SourceDebugInfoHide.Config>(
-    name = enText("process.optimize.source_debug_info_hide", "SourceDebugInfoHide"),
-    category = Category.Optimization,
-    description = enText(
-        "process.optimize.source_debug_info_hide.desc",
-        "Remove source file information and line numbers"
-    )
+    "SourceDebugInfoHide",
+    Category.Optimization,
 ) {
 
     init {

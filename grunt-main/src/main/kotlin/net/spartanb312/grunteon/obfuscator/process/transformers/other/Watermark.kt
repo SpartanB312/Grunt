@@ -6,19 +6,18 @@ import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.field
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
 
+@Transformer.Description(
+    "process.other.watermark.desc",
+    "Add watermarks"
+)
 class Watermark : Transformer<Watermark.Config>(
-    name = enText("process.other.watermark", "Watermark"),
-    category = Category.Other,
-    description = enText(
-        "process.other.watermark.desc",
-        "Add watermarks"
-    )
+    "Watermark",
+    Category.Other,
 ) {
     @Serializable
     data class Config(

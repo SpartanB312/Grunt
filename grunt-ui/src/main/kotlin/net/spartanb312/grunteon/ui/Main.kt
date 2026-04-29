@@ -60,6 +60,7 @@ fun App() {
     var page by remember { mutableStateOf(AppPage.Editor) }
     var fontScale by remember { mutableStateOf(DefaultFontScale) }
     var themeMode by remember { mutableStateOf(ThemeMode.Dark) }
+    var uiLogLevel by remember { mutableStateOf(UiLogLevel.Info) }
     var obfuscationRunning by remember { mutableStateOf(false) }
     val baseDensity = LocalDensity.current
     val palette = if (themeMode == ThemeMode.Dark) DarkPalette else LightPalette
@@ -89,14 +90,22 @@ fun App() {
 
     fun addNode(definition: TransformerDefinition) {
         val node = PipelineNode(nextNodeId++, definition.configFactory())
-        nodes.add(node)
+        val selectedIndex = selectedIndex()
+        if (selectedIndex != -1) {
+            nodes.add(selectedIndex + 1, node)
+        } else {
+            nodes.add(node)
+        }
         selectedNodeId = node.id
         status = "Added ${definition.label}"
     }
 
     fun updateSelectedConfig(config: net.spartanb312.grunteon.obfuscator.process.TransformerConfig) {
         val index = selectedIndex()
-        if (index != -1) nodes[index] = nodes[index].copy(config = config)
+        if (index != -1) {
+            val node = nodes[index]
+            nodes[index] = node.copy(config = config, revision = node.revision + 1)
+        }
     }
 
     fun reloadConfig() {
@@ -135,7 +144,7 @@ fun App() {
         Thread(
             {
                 val previousLogger = Logger
-                Logger = UiLogger("Grunteon", ::appendObfuscationLog)
+                Logger = UiLogger("Grunteon", uiLogLevel, ::appendObfuscationLog)
                 try {
                     Logger.info("Starting obfuscation with ${runConfig.transformerConfigs.count { it.enabled }} enabled transformer nodes")
                     val instance = Grunteon.create(runConfig)
@@ -157,7 +166,7 @@ fun App() {
                     }
                 }
             },
-            "Grunteon-Obfuscation"
+            "Obf-Main"
         ).apply {
             isDaemon = true
             start()
@@ -166,7 +175,7 @@ fun App() {
 
     if (editorReady) selectFallback()
 
-    val orderWarnings = remember(nodes.map { it.config::class to it.config.enabled }) {
+    val orderWarnings = remember(nodes.map { Triple(it.config::class, it.config.enabled, it.revision) }) {
         validateOrder(nodes, definitions)
     }
 
@@ -241,7 +250,10 @@ fun App() {
                 when (page) {
                     AppPage.General -> GeneralPage(
                         config = baseConfig,
+                        status = status,
                         onConfigChange = { baseConfig = it },
+                        onReload = ::reloadConfig,
+                        onSave = ::saveConfig,
                         modifier = Modifier.fillMaxSize()
                     )
 
@@ -291,9 +303,15 @@ fun App() {
                                         selectedNodeId = nodes.getOrNull(index)?.id ?: nodes.lastOrNull()?.id
                                     }
                                 },
-                                onToggle = { index ->
-                                    val node = nodes[index]
-                                    nodes[index] = node.copy(config = node.config.withEnabled(!node.config.enabled))
+                                onEnabledChange = { nodeId, enabled ->
+                                    val index = nodes.indexOfFirst { it.id == nodeId }
+                                    if (index != -1) {
+                                        val node = nodes[index]
+                                        nodes[index] = node.copy(
+                                            config = node.config.withEnabled(enabled),
+                                            revision = node.revision + 1
+                                        )
+                                    }
                                 },
                                 modifier = Modifier.weight(1f).fillMaxHeight()
                             )
@@ -319,6 +337,8 @@ fun App() {
                         onFontScaleChange = { fontScale = it },
                         themeMode = themeMode,
                         onThemeModeChange = { themeMode = it },
+                        uiLogLevel = uiLogLevel,
+                        onUiLogLevelChange = { uiLogLevel = it },
                         configPath = configPath,
                         status = status,
                         modifier = Modifier.fillMaxSize()

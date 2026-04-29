@@ -6,7 +6,6 @@ import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
@@ -21,13 +20,13 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
+@Transformer.Description(
+    "process.redirect.invoke_dispatcher.desc",
+    "Redirect multiple method invokes to a single dispatcher"
+)
 class InvokeDispatcher : Transformer<InvokeDispatcher.Config>(
-    name = enText("process.redirect.invoke_dispatcher", "InvokeDispatcher"),
-    category = Category.Redirect,
-    description = enText(
-        "process.redirect.invoke_dispatcher.desc",
-        "Redirect multiple method invokes to a single dispatcher"
-    )
+    "InvokeDispatcher",
+    Category.Redirect,
 ) {
     @Serializable
     data class Config(

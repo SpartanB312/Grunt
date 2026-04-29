@@ -4,7 +4,6 @@ import kotlinx.serialization.Serializable
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.DISABLE_ARITHMETIC_SUBSTITUTE
 import net.spartanb312.grunteon.obfuscator.util.Logger
@@ -24,13 +23,13 @@ import net.spartanb312.grunteon.obfuscator.util.numerical.replaceIOR
 import net.spartanb312.grunteon.obfuscator.util.numerical.replaceIXOR
 import org.objectweb.asm.Opcodes
 
+@Transformer.Description(
+    "process.encrypt.arithmetic_substitute.desc",
+    "Replace arithmetic ops to substitutions"
+)
 class ArithmeticSubstitute : Transformer<ArithmeticSubstitute.Config>(
-    name = enText("process.encrypt.arithmetic_substitute", "ArithmeticSubstitute"),
-    category = Category.Encryption,
-    description = enText(
-        "process.encrypt.arithmetic_substitute.desc",
-        "Replace arithmetic ops to substitutions"
-    )
+    "ArithmeticSubstitute",
+    Category.Encryption,
 ) {
     @Serializable
     data class Config(

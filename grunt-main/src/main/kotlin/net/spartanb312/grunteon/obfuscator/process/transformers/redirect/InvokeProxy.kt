@@ -6,7 +6,6 @@ import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
@@ -20,13 +19,13 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
+@Transformer.Description(
+    "process.redirect.invoke_proxy.desc",
+    "Redirect method invokes"
+)
 class InvokeProxy : Transformer<InvokeProxy.Config>(
-    name = enText("process.redirect.invoke_proxy", "InvokeProxy"),
-    category = Category.Redirect,
-    description = enText(
-        "process.redirect.invoke_proxy.desc",
-        "Redirect method invokes"
-    )
+    "InvokeProxy",
+    Category.Redirect,
 ) {
     @Serializable
     data class Config(

@@ -7,7 +7,6 @@ import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
@@ -23,13 +22,13 @@ import java.lang.reflect.Modifier
  * Last update on 2026/03/31 by FluixCarvin
  * @author jonesdevelopment
  */
+@Transformer.Description(
+    "process.miscellaneous.declared_fields_extract.desc",
+    "Extract field initialization to <init> or <clinit>"
+)
 class DeclaredFieldsExtract : Transformer<DeclaredFieldsExtract.Config>(
-    name = enText("process.miscellaneous.declared_fields_extract", "DeclaredFieldsExtract"),
-    category = Category.Miscellaneous,
-    description = enText(
-        "process.miscellaneous.declared_fields_extract.desc",
-        "Extract field initialization to <init> or <clinit>"
-    )
+    "DeclaredFieldsExtract",
+    Category.Miscellaneous,
 ) {
     @Serializable
     data class Config(

@@ -62,7 +62,7 @@ fun Header(
         }
         Text(status, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         OutlinedButton(onClick = onReload) { Text("Reload") }
-        Button(onClick = onSave) { Text("Save config.json") }
+        Button(onClick = onSave) { Text("Save config") }
     }
 }
 
@@ -146,7 +146,7 @@ fun PipelineStack(
     onMove: (Int, Int) -> Unit,
     onDuplicate: (Int) -> Unit,
     onDelete: (Int) -> Unit,
-    onToggle: (Int) -> Unit,
+    onEnabledChange: (Long, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalUiPalette.current
@@ -176,7 +176,7 @@ fun PipelineStack(
                         onMoveDown = { onMove(index, index + 1) },
                         onDuplicate = { onDuplicate(index) },
                         onDelete = { onDelete(index) },
-                        onToggle = { onToggle(index) },
+                        onEnabledChange = { enabled -> onEnabledChange(node.id, enabled) },
                     )
                     if (isVirtualMappingApplierPosition(index, nodes, definitions)) {
                         VirtualMappingApplier()
@@ -201,7 +201,7 @@ private fun PipelineNodeCard(
     onMoveDown: () -> Unit,
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
-    onToggle: () -> Unit,
+    onEnabledChange: (Boolean) -> Unit,
 ) {
     val palette = LocalUiPalette.current
     val borderColor = when {
@@ -222,7 +222,7 @@ private fun PipelineNodeCard(
                     Text(definition?.label ?: node.config::class.simpleName.orEmpty(), fontWeight = FontWeight.SemiBold)
                     Text(definition?.category?.name ?: "Unknown", color = palette.muted)
                 }
-                Switch(checked = node.config.enabled, onCheckedChange = { onToggle() })
+                Switch(checked = node.config.enabled, onCheckedChange = onEnabledChange)
             }
             if (warning != null) {
                 Text(warning, color = palette.warning, style = MaterialTheme.typography.bodySmall)

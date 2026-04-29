@@ -3,20 +3,19 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.other
 import kotlinx.serialization.Serializable
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.massiveBlankString
 import net.spartanb312.grunteon.obfuscator.util.massiveString
 
+@Transformer.Description(
+    "process.other.decompiler_crasher.desc",
+    "Crash decompilers"
+)
 class DecompilerCrasher : Transformer<DecompilerCrasher.Config>(
-    name = enText("process.other.decompiler_crasher", "DecompilerCrasher"),
-    category = Category.Other,
-    description = enText(
-        "process.other.decompiler_crasher.desc",
-        "Crash decompilers"
-    )
+    "DecompilerCrasher",
+    Category.Other,
 ) {
     @Serializable
     data class Config(

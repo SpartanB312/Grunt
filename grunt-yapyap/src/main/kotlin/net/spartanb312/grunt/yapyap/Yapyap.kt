@@ -11,6 +11,11 @@ import net.spartanb312.grunteon.obfuscator.plugin.registerTransformer
  * Grunteon enhancement extension package
  * license: PolyForm Strict License 1.0.0
  */
+
+const val PLUGIN_NAME = "Yapyap"
+const val PLUGIN_ID = "yapyap"
+const val PLUGIN_VERSION = "1.0"
+
 object Yapyap : GruntPlugin {
 
     override fun onEnable(context: PluginContext) {

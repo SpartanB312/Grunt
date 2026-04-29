@@ -8,7 +8,6 @@ import net.spartanb312.genesis.kotlin.field
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
@@ -26,13 +25,13 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
 import kotlin.random.Random
 
+@Transformer.Description(
+    "process.encrypt.string.string_arrayed_encrypt.desc",
+    "Encrypt string and replace ldc to array load"
+)
 class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
-    name = enText("process.encrypt.string.string_arrayed_encrypt", "StringBasicEncrypt"),
-    category = Category.Encryption,
-    description = enText(
-        "process.encrypt.string.string_arrayed_encrypt.desc",
-        "Encrypt string and replace ldc to array load"
-    )
+    "StringBasicEncrypt",
+    Category.Encryption,
 ) {
     @Serializable
     data class Config(

@@ -1,10 +1,9 @@
-﻿package net.spartanb312.grunteon.obfuscator.process.transformers.rename
+package net.spartanb312.grunteon.obfuscator.process.transformers.rename
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet
 import kotlinx.serialization.Serializable
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
@@ -19,13 +18,13 @@ import net.spartanb312.grunteon.obfuscator.util.extensions.isStatic
  * Last update on 2026/03/31 by FluixCarvin
  * TODO: Reflection remap
  */
+@Transformer.Description(
+    "process.rename.field_renamer.desc",
+    "Renaming fields"
+)
 class FieldRenamer : Transformer<FieldRenamer.Config>(
-    name = enText("process.rename.field_renamer", "FieldRenamer"),
-    category = Category.Renaming,
-    description = enText(
-        "process.rename.field_renamer.desc",
-        "Renaming fields"
-    )
+    "FieldRenamer",
+    Category.Renaming,
 ), MappingSource {
 
     init {

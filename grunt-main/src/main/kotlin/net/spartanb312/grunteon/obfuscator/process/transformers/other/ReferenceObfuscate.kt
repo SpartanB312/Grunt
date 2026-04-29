@@ -8,7 +8,6 @@ import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
@@ -32,13 +31,13 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.random.Random
 
+@Transformer.Description(
+    "process.other.reference_obfuscate.desc",
+    "Using invokedynamics to hide reference"
+)
 class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
-    name = enText("process.other.reference_obfuscate", "ReferenceObfuscate"),
-    category = Category.Other,
-    description = enText(
-        "process.other.reference_obfuscate.desc",
-        "Using invokedynamics to hide reference"
-    )
+    "ReferenceObfuscate",
+    Category.Other,
 ) {
 
     @Serializable

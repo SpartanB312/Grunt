@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import net.spartanb312.grunteon.obfuscator.SUBTITLE
+import net.spartanb312.grunteon.obfuscator.VERSION
 import java.nio.file.Path as NioPath
 
 @Composable
@@ -62,7 +64,7 @@ fun TopToolbar(
                 onClick = { onPageChange(AppPage.Settings) }
             )
             Spacer(Modifier.weight(1f))
-            Text("Font ${"%.0f".format(fontScale * 100)}%", color = palette.muted)
+            Text("$VERSION [${SUBTITLE}]", color = palette.muted)
         }
     }
 }
@@ -82,6 +84,8 @@ fun SettingsPage(
     onFontScaleChange: (Float) -> Unit,
     themeMode: ThemeMode,
     onThemeModeChange: (ThemeMode) -> Unit,
+    uiLogLevel: UiLogLevel,
+    onUiLogLevelChange: (UiLogLevel) -> Unit,
     configPath: NioPath,
     status: String,
     modifier: Modifier = Modifier,
@@ -119,6 +123,31 @@ fun SettingsPage(
                         OutlinedButton(onClick = { onFontScaleChange(0.9f) }) { Text("Small") }
                         OutlinedButton(onClick = { onFontScaleChange(DefaultFontScale) }) { Text("Default") }
                         OutlinedButton(onClick = { onFontScaleChange(1.15f) }) { Text("Large") }
+                    }
+                }
+            }
+            Surface(
+                color = palette.panelAlt,
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, palette.stroke),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Obfuscation Log Level", fontWeight = FontWeight.SemiBold)
+                        Text("Minimum logger level shown in the Obfuscation console.", color = palette.muted)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (uiLogLevel == UiLogLevel.Info) {
+                            Button(onClick = { onUiLogLevelChange(UiLogLevel.Info) }) { Text("INFO") }
+                        } else {
+                            OutlinedButton(onClick = { onUiLogLevelChange(UiLogLevel.Info) }) { Text("INFO") }
+                        }
+                        if (uiLogLevel == UiLogLevel.Debug) {
+                            Button(onClick = { onUiLogLevelChange(UiLogLevel.Debug) }) { Text("DEBUG") }
+                        } else {
+                            OutlinedButton(onClick = { onUiLogLevelChange(UiLogLevel.Debug) }) { Text("DEBUG") }
+                        }
                     }
                 }
             }

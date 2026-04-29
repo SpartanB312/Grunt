@@ -2,19 +2,18 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.rename
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import org.objectweb.asm.commons.ClassRemapper
 import org.objectweb.asm.tree.ClassNode
 
+@Transformer.Description(
+    "process.rename.mapping_applier.desc",
+    "Applying mappings"
+)
 class MappingApplier : Transformer<MappingApplier.Config>(
-    name = enText("process.rename.mapping_applier", "MappingApplier"),
-    category = Category.Renaming,
-    description = enText(
-        "process.rename.mapping_applier.desc",
-        "Applying mappings"
-    )
+    "MappingApplier",
+    Category.Renaming,
 ), MappingSource {
     // Dummy
     class Config : TransformerConfig()

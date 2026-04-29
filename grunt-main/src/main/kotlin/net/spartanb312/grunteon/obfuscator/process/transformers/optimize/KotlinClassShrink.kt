@@ -3,7 +3,6 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.optimize
 import kotlinx.serialization.Serializable
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.DISABLE_OPTIMIZER
@@ -18,13 +17,13 @@ import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.LdcInsnNode
 
+@Transformer.Description(
+    "process.optimize.kotlin_class_shrink.desc",
+    "Remove kotlin metadata and intrinsics check"
+)
 class KotlinClassShrink : Transformer<KotlinClassShrink.Config>(
-    name = enText("process.optimize.kotlin_class_shrink", "KotlinClassShrink"),
-    category = Category.Optimization,
-    description = enText(
-        "process.optimize.kotlin_class_shrink.desc",
-        "Remove kotlin metadata and intrinsics check"
-    )
+    "KotlinClassShrink",
+    Category.Optimization,
 ) {
 
     init {

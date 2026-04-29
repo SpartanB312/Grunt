@@ -1,15 +1,7 @@
 package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -46,7 +38,7 @@ fun ObfuscationPage(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Obfuscation", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Console output is cleared before each run.", color = palette.muted)
+                Text("Output information from work instance", color = palette.muted)
             }
             Surface(
                 color = palette.nestedPanel,

@@ -3,7 +3,6 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.optimize
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet
 import kotlinx.serialization.Serializable
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.DISABLE_OPTIMIZER
@@ -13,13 +12,13 @@ import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
 
+@Transformer.Description(
+    "process.optimize.class_shrink.desc",
+    "Shrinking classes by removing inner classes, unused labels, NOPs, method signatures"
+)
 class ClassShrink : Transformer<ClassShrink.Config>(
-    name = enText("process.optimize.class_shrink", "ClassShrink"),
-    category = Category.Optimization,
-    description = enText(
-        "process.optimize.class_shrink.desc",
-        "Shrinking classes by removing inner classes, unused labels, NOPs, method signatures"
-    )
+    "ClassShrink",
+    Category.Optimization,
 ) {
 
     init {

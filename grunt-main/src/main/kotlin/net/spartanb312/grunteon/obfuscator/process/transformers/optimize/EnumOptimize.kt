@@ -3,7 +3,6 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.optimize
 import kotlinx.serialization.Serializable
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.DISABLE_OPTIMIZER
@@ -16,13 +15,13 @@ import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.MethodInsnNode
 
+@Transformer.Description(
+    "process.optimize.enum_optimize.desc",
+    "Optimize enum values() calls"
+)
 class EnumOptimize : Transformer<EnumOptimize.Config>(
-    name = enText("process.optimize.enum_optimize", "EnumOptimize"),
-    category = Category.Optimization,
-    description = enText(
-        "process.optimize.enum_optimize.desc",
-        "Optimize enum values() calls"
-    )
+    "EnumOptimize",
+    Category.Optimization,
 ) {
 
     init {

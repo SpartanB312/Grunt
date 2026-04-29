@@ -10,7 +10,6 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet
 import kotlinx.serialization.Serializable
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
@@ -25,18 +24,18 @@ import org.objectweb.asm.Type
 
 /**
  * Last update on 2026/03/31 by FluixCarvin
- * Interface methods overlap √
- * Bridge methods link √
- * Invokedynamic remap √
+ * Interface methods overlap
+ * Bridge methods link
+ * Invokedynamic remap
  * TODO: Reflection remap
  */
+@Transformer.Description(
+    "process.rename.method_renamer.desc",
+    "Renaming methods"
+)
 class MethodRenamer : Transformer<MethodRenamer.Config>(
-    name = enText("process.rename.method_renamer", "MethodRenamer"),
-    category = Category.Renaming,
-    description = enText(
-        "process.rename.method_renamer.desc",
-        "Renaming methods"
-    )
+    "MethodRenamer",
+    Category.Renaming,
 ), MappingSource {
 
     init {

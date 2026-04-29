@@ -3,18 +3,17 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.other
 import kotlinx.serialization.Serializable
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 
+@Transformer.Description(
+    "process.other.shuffle_members.desc",
+    "Shuffle members in classes"
+)
 class ShuffleMembers : Transformer<ShuffleMembers.Config>(
-    name = enText("process.other.shuffle_members", "ShuffleMembers"),
-    category = Category.Other,
-    description = enText(
-        "process.other.shuffle_members.desc",
-        "Shuffle members in classes"
-    )
+    "ShuffleMembers",
+    Category.Other,
 ) {
     @Serializable
     data class Config(

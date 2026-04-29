@@ -1,14 +1,18 @@
 package net.spartanb312.grunt.yapyap.transformers.encrypt.number
 
+import it.unisa.dia.gas.jpbc.Pairing
+import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory
+import it.unisa.dia.gas.plaf.jpbc.pairing.a.TypeACurveGenerator
 import kotlinx.serialization.Serializable
-import net.spartanb312.genesis.kotlin.extensions.*
+import net.spartanb312.genesis.kotlin.extensions.INT
+import net.spartanb312.genesis.kotlin.extensions.PUBLIC
+import net.spartanb312.genesis.kotlin.extensions.STATIC
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.field
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.yapyap.runtime.NumberAbeRuntime
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.collection.FastObjectArrayList
@@ -21,27 +25,17 @@ import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 import net.spartanb312.grunteon.obfuscator.util.numerical.asInt
 import net.spartanb312.grunteon.obfuscator.util.numerical.asLong
-import it.unisa.dia.gas.jpbc.Pairing
-import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory
-import it.unisa.dia.gas.plaf.jpbc.pairing.a.TypeACurveGenerator
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
-import org.objectweb.asm.tree.AbstractInsnNode
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.FieldNode
-import org.objectweb.asm.tree.InsnList
-import org.objectweb.asm.tree.InsnNode
-import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.VarInsnNode
+import org.objectweb.asm.tree.*
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.SecureRandom
-import java.util.Base64
-import java.util.LinkedHashMap
+import java.util.*
 import java.util.zip.ZipFile
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
@@ -54,13 +48,13 @@ import kotlin.io.path.walk
  * The generated pool and runtime classes are marked with ABE_EXTERNAL_CLASS and
  * ABE_NUMBER_POOL_CLASS for identification, but they are embedded into the output jar.
  */
+@Transformer.Description(
+    "process.encrypt.number.number_attribute_based_encrypt.desc",
+    "Encrypt numbers using CP-ABE protected number pools"
+)
 class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Config>(
-    name = enText("process.encrypt.number.number_attribute_based_encrypt", "NumberAttributeBasedEncrypt"),
-    category = Category.Encryption,
-    description = enText(
-        "process.encrypt.number.number_attribute_based_encrypt.desc",
-        "Encrypt numbers using CP-ABE protected number pools"
-    )
+    "NumberAttributeBasedEncrypt",
+    Category.Encryption,
 ) {
 
     @Serializable
@@ -125,7 +119,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             val pool = collectPool(config, classNode, randomGen)
             if (pool.size < config.minPoolSize) return@parForEachClassesFiltered
 
-            println("Processing:${classNode.name}")
+            Logger.debug("   NumberABE: Processing ${classNode.name}")
 
             val companion = createPoolClass(config, classNode, randomGen, pool, generatedResources.local)
             replaceNumberLoads(pool, companion)
@@ -456,7 +450,25 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
     private data class GeneratedResource(
         val name: String,
         val content: ByteArray
-    )
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as GeneratedResource
+
+            if (name != other.name) return false
+            if (!content.contentEquals(other.content)) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = name.hashCode()
+            result = 31 * result + content.contentHashCode()
+            return result
+        }
+    }
 
     private class NumberPool {
         val ints = LinkedHashMap<Int, Int>()

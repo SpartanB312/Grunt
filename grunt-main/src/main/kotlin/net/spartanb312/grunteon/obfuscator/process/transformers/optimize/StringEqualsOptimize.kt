@@ -5,7 +5,6 @@ import kotlinx.serialization.Serializable
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
@@ -13,13 +12,13 @@ import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.match
 import org.objectweb.asm.tree.MethodInsnNode
 
+@Transformer.Description(
+    "process.optimize.string_equals_optimize.desc",
+    "Redirect string equals() and equalsIgnoreCase()"
+)
 class StringEqualsOptimize : Transformer<StringEqualsOptimize.Config>(
-    name = enText("process.optimize.string_equals_optimize", "StringEqualsOptimize"),
-    category = Category.Optimization,
-    description = enText(
-        "process.optimize.string_equals_optimize.desc",
-        "Redirect string equals() and equalsIgnoreCase()"
-    )
+    "StringEqualsOptimize",
+    Category.Optimization,
 ) {
 
     init {

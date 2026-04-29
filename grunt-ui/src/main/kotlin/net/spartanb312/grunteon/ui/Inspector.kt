@@ -60,7 +60,7 @@ fun Inspector(
                 return@Column
             }
             Text(definition?.label ?: node.config::class.simpleName.orEmpty(), style = MaterialTheme.typography.titleMedium)
-            Text(definition?.typeName ?: node.config::class.qualifiedName.orEmpty(), color = palette.muted, fontFamily = FontFamily.Monospace)
+            Text(definition?.description ?: node.config::class.qualifiedName.orEmpty(), color = palette.muted)
             Spacer(Modifier.height(12.dp))
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -108,19 +108,26 @@ private fun ConfigField(
     onChange: (Any?) -> Unit,
 ) {
     val palette = LocalUiPalette.current
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, fontWeight = FontWeight.SemiBold)
-        if (description != null) Text(description, color = palette.muted, style = MaterialTheme.typography.bodySmall)
-        when (value) {
-            is Boolean -> BooleanField(value, onChange)
-            is String -> StringField(value, onChange)
-            is Int -> IntField(value, property, onChange)
-            is Double -> DoubleField(value, property, onChange)
-            is Enum<*> -> EnumField(value, onChange)
-            is ClassFilterConfig -> NestedConfigField(value, onChange)
-            is List<*> -> ListField(value, onChange)
-            null -> ReadOnlyValue("null", "Nullable fields are not editable in this prototype.")
-            else -> ReadOnlyValue(value::class.simpleName ?: "Value", value.toString())
+    Surface(
+        color = palette.panelAlt,
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, palette.stroke),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(label, color = palette.text, fontWeight = FontWeight.SemiBold)
+            if (description != null) Text(description, color = palette.muted, style = MaterialTheme.typography.bodySmall)
+            when (value) {
+                is Boolean -> BooleanField(value, onChange)
+                is String -> StringField(value, onChange)
+                is Int -> IntField(value, property, onChange)
+                is Double -> DoubleField(value, property, onChange)
+                is Enum<*> -> EnumField(value, onChange)
+                is ClassFilterConfig -> ConfigEditor(value = value, onChange = onChange)
+                is List<*> -> ListField(value, onChange)
+                null -> ReadOnlyValue("null", "Nullable fields are not editable in this prototype.")
+                else -> ReadOnlyValue(value::class.simpleName ?: "Value", value.toString())
+            }
         }
     }
 }
@@ -212,7 +219,7 @@ private fun NestedConfigField(value: Any, onChange: (Any?) -> Unit) {
         border = BorderStroke(1.dp, palette.stroke),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ConfigEditor(value = value, onChange = onChange)
         }
     }
@@ -239,7 +246,7 @@ private fun ReadOnlyValue(label: String, text: String) {
     Surface(color = palette.nestedPanel, shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, palette.stroke)) {
         Column(Modifier.fillMaxWidth().padding(10.dp)) {
             Text(label, color = palette.muted)
-            Text(text, fontFamily = FontFamily.Monospace)
+            Text(text, color = palette.text, fontFamily = FontFamily.Monospace)
         }
     }
 }

@@ -1,8 +1,8 @@
 package net.spartanb312.grunteon.ui
 
-import net.spartanb312.grunteon.obfuscator.lang.Languages
 import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
+import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.TransformerRegistry
 import kotlin.reflect.KParameter
@@ -90,10 +90,17 @@ fun transformerDefinitions(): List<TransformerDefinition> {
             label = transformer.engName,
             typeName = entry.configClass.qualifiedName.orEmpty(),
             category = transformer.category,
-            description = transformer.description.findOrDefault(Languages.English),
+            description = transformer.descriptionText(),
             configClass = entry.configClass,
             configFactory = entry.createConfig,
             transformerPrototype = transformer,
         )
     }.sortedWith(compareBy<TransformerDefinition> { it.category.ordinal }.thenBy { it.label })
+}
+
+private fun Transformer<*>.descriptionText(): String {
+    return this::class.java
+        .getAnnotation(Transformer.Description::class.java)
+        ?.enText
+        .orEmpty()
 }

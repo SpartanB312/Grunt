@@ -6,7 +6,6 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import kotlinx.serialization.Serializable
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.ResourceSet
@@ -14,13 +13,13 @@ import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.extensions.removeAnnotation
 import java.nio.charset.StandardCharsets
 
+@Transformer.Description(
+    "process.other.post_process.desc",
+    "Post resource process. Manifest/YML/JSON remap"
+)
 class PostProcess : Transformer<PostProcess.Config>(
-    name = enText("process.other.post_process", "PostProcess"),
-    category = Category.PostProcess,
-    description = enText(
-        "process.other.post_process.desc",
-        "Post resource process. Manifest/YML/JSON remap"
-    )
+    "PostProcess",
+    Category.PostProcess,
 ) {
     @Serializable
     data class Config(

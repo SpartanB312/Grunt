@@ -4,7 +4,6 @@ import kotlinx.serialization.Serializable
 
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MethodRenamer
@@ -16,10 +15,13 @@ import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
 import org.objectweb.asm.Opcodes
 
+@Transformer.Description(
+    "process.other.fake_synthetic_bridge.desc",
+    "Insert fake synthetic bridge flag"
+)
 class FakeSyntheticBridge : Transformer<FakeSyntheticBridge.Config>(
-    name = enText("process.other.fake_synthetic_bridge", "FakeSyntheticBridge"),
-    category = Category.Other,
-    description = enText("process.other.fake_synthetic_bridge.desc", "Insert fake synthetic bridge flag")
+    "FakeSyntheticBridge",
+    Category.Other,
 ) {
     init {
         after(MethodRenamer::class.java, "FakeSyntheticBridge should run after MethodRenamer")

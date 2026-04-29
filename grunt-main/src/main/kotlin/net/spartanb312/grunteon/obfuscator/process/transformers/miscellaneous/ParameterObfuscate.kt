@@ -4,7 +4,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import kotlinx.serialization.Serializable
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
@@ -16,13 +15,13 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 import java.util.concurrent.ConcurrentHashMap
 
+@Transformer.Description(
+    "process.miscellaneous.parameter_obfuscate.desc",
+    "Obfuscate parameters to object type"
+)
 class ParameterObfuscate : Transformer<ParameterObfuscate.Config>(
-    name = enText("process.miscellaneous.parameter_obfuscate", "ParameterObfuscate"),
-    category = Category.Miscellaneous,
-    description = enText(
-        "process.miscellaneous.parameter_obfuscate.desc",
-        "Obfuscate parameters to object type"
-    )
+    "ParameterObfuscate",
+    Category.Miscellaneous,
 ) {
     @Serializable
     data class Config(

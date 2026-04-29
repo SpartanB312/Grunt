@@ -6,15 +6,14 @@ import net.spartanb312.grunteon.obfuscator.lang.MultiText
 import net.spartanb312.grunteon.obfuscator.pipeline.OrderRule
 
 abstract class Transformer<T : TransformerConfig>(
-    val name: MultiText,
-    val category: Category,
-    val description: MultiText
+    val name: String,
+    val category: Category
 ) {
-    val engName = name.getLang(Languages.English)
+    val engName = name
     val orderRules = mutableListOf<Pair<OrderRule, String>>()
 
     context(instance: Grunteon)
-    val transformerSeed get() = instance.obfConfig.baseSeed() + name.descriptor
+    val transformerSeed get() = instance.obfConfig.baseSeed() + name
 
     context(_: Grunteon)
     internal fun buildStageImpl(pipelineBuilder: PipelineBuilder, config: TransformerConfig) {
@@ -26,4 +25,9 @@ abstract class Transformer<T : TransformerConfig>(
 
     context(instance: Grunteon, _: PipelineBuilder)
     protected abstract fun buildStageImpl(config: T)
+
+    annotation class Description(
+        val key: String,
+        val enText: String,
+    )
 }

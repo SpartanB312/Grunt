@@ -6,7 +6,6 @@ import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.collection.FastObjectArrayList
@@ -21,13 +20,13 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
+@Transformer.Description(
+    "process.redirect.field_access_proxy.desc",
+    "Redirect get/put field operations to getter/setter"
+)
 class FieldAccessProxy : Transformer<FieldAccessProxy.Config>(
-    name = enText("process.redirect.field_access_proxy", "FieldAccessProxy"),
-    category = Category.Redirect,
-    description = enText(
-        "process.redirect.field_access_proxy.desc",
-        "Redirect get/put field operations to getter/setter"
-    )
+    "FieldAccessProxy",
+    Category.Redirect,
 ) {
     @Serializable
     data class Config(

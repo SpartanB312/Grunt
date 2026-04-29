@@ -3,7 +3,6 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.rename
 import kotlinx.serialization.Serializable
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.NameGenerator
@@ -19,13 +18,13 @@ import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 /**
  * Last update on 2026/03/31 by FluixCarvin
  */
+@Transformer.Description(
+    "process.rename.local_var_renamer.desc",
+    "Renaming local variables"
+)
 class LocalVarRenamer : Transformer<LocalVarRenamer.Config>(
-    name = enText("process.rename.local_var_renamer", "LocalVarRenamer"),
-    category = Category.Renaming,
-    description = enText(
-        "process.rename.local_var_renamer.desc",
-        "Renaming local variables"
-    )
+    "LocalVarRenamer",
+    Category.Renaming,
 ) {
 
     init {

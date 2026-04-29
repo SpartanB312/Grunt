@@ -42,6 +42,58 @@
     ],
     "transformerConfigs": [
         {
+            "type": "net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt.Config",
+            "enabled": true,
+            "classFilter": {
+                "excludeStrategy": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Event**"
+                ],
+                "includeStrategy": [
+                    "**"
+                ]
+            },
+            "carray": true,
+            "invokeDynamics": true,
+            "exclusion": [
+                "net/dummy/**",
+                "net/dummy/Class",
+                "net/dummy/Class.method",
+                "net/dummy/Class.method()V"
+            ]
+        },
+        {
+            "type": "net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt.Config",
+            "enabled": true,
+            "classFilter": {
+                "excludeStrategy": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Event**"
+                ],
+                "includeStrategy": [
+                    "**"
+                ]
+            },
+            "integer": true,
+            "integerChance": 1.0,
+            "long": true,
+            "longChance": 1.0,
+            "float": true,
+            "floatChance": 1.0,
+            "double": true,
+            "doubleChance": 1.0,
+            "maxInstructions": 16384,
+            "dynamicStrength": true,
+            "exclusion": [
+                "net/dummy/**",
+                "net/dummy/Class",
+                "net/dummy/Class.method",
+                "net/dummy/Class.method()V"
+            ]
+        },
+        {
             "type": "net.spartanb312.grunt.yapyap.transformers.encrypt.number.NumberAttributeBasedEncrypt.Config",
             "enabled": true,
             "classFilter": {
@@ -71,6 +123,118 @@
                 "net/dummy/Class.method",
                 "net/dummy/Class.method()V"
             ]
+        },
+        {
+            "type": "net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt.Config",
+            "enabled": true,
+            "classFilter": {
+                "excludeStrategy": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Event**"
+                ],
+                "includeStrategy": [
+                    "**"
+                ]
+            },
+            "carray": true,
+            "invokeDynamics": true,
+            "exclusion": [
+                "net/dummy/**",
+                "net/dummy/Class",
+                "net/dummy/Class.method",
+                "net/dummy/Class.method()V"
+            ]
+        },
+        {
+            "type": "net.spartanb312.grunteon.obfuscator.process.transformers.rename.LocalVarRenamer.Config",
+            "enabled": true,
+            "classFilter": {
+                "excludeStrategy": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Event**"
+                ],
+                "includeStrategy": [
+                    "**"
+                ]
+            },
+            "dictionary": "Alphabet",
+            "prefix": "‮",
+            "deleteASMInfo": false,
+            "exclusion": [
+                "net/dummy/**",
+                "net/dummy/Class",
+                "net/dummy/Class.method",
+                "net/dummy/Class.method()V"
+            ]
+        },
+        {
+            "type": "net.spartanb312.grunteon.obfuscator.process.transformers.rename.ClassRenamer.Config",
+            "enabled": true,
+            "classFilter": {
+                "excludeStrategy": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Event**"
+                ],
+                "includeStrategy": [
+                    "**"
+                ]
+            },
+            "dictionary": "Alphabet",
+            "parent": "net/spartanb312/obf/",
+            "prefix": "",
+            "reversed": false,
+            "shuffled": false,
+            "corruptedName": false,
+            "corruptedExclusion": [],
+            "corruptExPredicate": []
+        },
+        {
+            "type": "net.spartanb312.grunteon.obfuscator.process.transformers.rename.FieldRenamer.Config",
+            "enabled": true,
+            "classFilter": {
+                "excludeStrategy": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Event**"
+                ],
+                "includeStrategy": [
+                    "**"
+                ]
+            },
+            "dictionary": "Alphabet",
+            "prefix": "",
+            "reversed": false,
+            "shuffled": true,
+            "heavyOverloads": true,
+            "aggressiveShadowNames": true,
+            "excludedNames": [
+                "INSTANCE",
+                "Companion"
+            ],
+            "malPrefix": ""
+        },
+        {
+            "type": "net.spartanb312.grunteon.obfuscator.process.transformers.rename.MethodRenamer.Config",
+            "enabled": true,
+            "classFilter": {
+                "excludeStrategy": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Event**"
+                ],
+                "includeStrategy": [
+                    "**"
+                ]
+            },
+            "dictionary": "Alphabet",
+            "enums": true,
+            "interfaces": true,
+            "heavyOverloads": true,
+            "aggressiveShadowNames": true,
+            "solveBridge": true
         },
         {
             "type": "net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess.Config",

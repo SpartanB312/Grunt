@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,13 +24,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import net.spartanb312.grunteon.obfuscator.ObfConfig
 
 @Composable
 fun GeneralPage(
     config: ObfConfig,
+    status: String,
     onConfigChange: (ObfConfig) -> Unit,
+    onReload: () -> Unit,
+    onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalUiPalette.current
@@ -36,14 +42,23 @@ fun GeneralPage(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                "General",
-                style = MaterialTheme.typography.headlineSmall,
-                color = palette.text,
-                fontWeight = FontWeight.Bold
-            )
-            Text("Top-level ObfConfig options shared by every pipeline run.", color = palette.muted)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "General",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = palette.text,
+                    fontWeight = FontWeight.Bold
+                )
+                Text("Top-level ObfConfig options.", color = palette.muted)
+            }
+            Text(status, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            OutlinedButton(onClick = onReload) { Text("Reload") }
+            Button(onClick = onSave) { Text("Save config") }
         }
         Row(
             modifier = Modifier.fillMaxSize(),

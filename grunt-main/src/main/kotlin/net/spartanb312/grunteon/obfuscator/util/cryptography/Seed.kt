@@ -14,8 +14,9 @@ fun getSeed(vararg append: String): ByteArray {
 
 context(instance: Grunteon)
 fun Transformer<*>.getSeed(vararg append: String): ByteArray {
+    val index = instance.transformers.indexOfFirst { it.first == this }
     return MessageDigest.getInstance("SHA-256")
-        .digest(append.fold(transformerSeed, String::plus).toByteArray(StandardCharsets.UTF_8))
+        .digest((append.fold(transformerSeed, String::plus) + index).toByteArray(StandardCharsets.UTF_8))
 }
 
 @Suppress("FunctionName")

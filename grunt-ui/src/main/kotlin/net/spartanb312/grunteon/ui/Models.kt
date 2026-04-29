@@ -21,6 +21,7 @@ data class PipelineNode(
     val id: Long,
     val config: TransformerConfig,
     val collapsed: Boolean = false,
+    val revision: Long = 0,
 )
 
 data class ConfigLoadResult(

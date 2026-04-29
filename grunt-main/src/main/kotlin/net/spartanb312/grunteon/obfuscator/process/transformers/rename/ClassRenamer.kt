@@ -3,7 +3,6 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.rename
 import kotlinx.serialization.Serializable
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.NameGenerator
@@ -19,13 +18,13 @@ import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
  * TODO: Reflection remap
  * TODO: Resource remap
  */
+@Transformer.Description(
+    "process.rename.class_renamer.desc",
+    "Renaming classes"
+)
 class ClassRenamer : Transformer<ClassRenamer.Config>(
-    name = enText("process.rename.class_renamer", "ClassRenamer"),
-    category = Category.Renaming,
-    description = enText(
-        "process.rename.class_renamer.desc",
-        "Renaming classes"
-    )
+    "ClassRenamer",
+    Category.Renaming,
 ), MappingSource {
 
     init {

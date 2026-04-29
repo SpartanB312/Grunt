@@ -3,7 +3,6 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.optimize
 import kotlinx.serialization.Serializable
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.enText
 import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.DISABLE_OPTIMIZER
@@ -19,13 +18,13 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.JumpInsnNode
 
+@Transformer.Description(
+    "process.optimize.dead_code_remove.desc",
+    "Remove useless instruction sequences"
+)
 class DeadCodeRemove : Transformer<DeadCodeRemove.Config>(
-    name = enText("process.optimize.dead_code_remove", "DeadCodeRemove"),
-    category = Category.Optimization,
-    description = enText(
-        "process.optimize.dead_code_remove.desc",
-        "Remove useless instruction sequences"
-    )
+    "DeadCodeRemove",
+    Category.Optimization,
 ) {
 
     init {
