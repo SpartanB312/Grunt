@@ -29,10 +29,15 @@ data class TransformerRegistryEntry(
     val configClass: KClass<out TransformerConfig>,
     val createTransformer: () -> Transformer<*>,
     val createConfig: () -> TransformerConfig,
-)
+    val owner: String = "grunteon",
+) {
+    val transformerPrototype: Transformer<*> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        createTransformer()
+    }
+}
 
 object TransformerRegistry {
-    val entries: List<TransformerRegistryEntry> = listOf(
+    private val builtinEntries: List<TransformerRegistryEntry> = listOf(
         entry({ DeadCodeRemove() }, { DeadCodeRemove.Config() }),
         entry({ EnumOptimize() }, { EnumOptimize.Config() }),
         entry({ KotlinClassShrink() }, { KotlinClassShrink.Config() }),
@@ -58,14 +63,28 @@ object TransformerRegistry {
         entry({ PostProcess() }, { PostProcess.Config() }),
     )
 
+    private val pluginEntries = mutableListOf<TransformerRegistryEntry>()
+
+    val entries: List<TransformerRegistryEntry>
+        get() = builtinEntries + pluginEntries
+
+    fun register(entry: TransformerRegistryEntry) {
+        val existed = entries.firstOrNull { it.configClass == entry.configClass }
+        require(existed == null) {
+            "Transformer config ${entry.configClass.qualifiedName} is already registered by ${existed?.owner}"
+        }
+        pluginEntries += entry
+    }
+
     fun find(config: TransformerConfig): TransformerRegistryEntry? {
         return entries.firstOrNull { it.configClass == config::class }
     }
 
-    private inline fun <reified C : TransformerConfig> entry(
+    inline fun <reified C : TransformerConfig> entry(
         noinline createTransformer: () -> Transformer<*>,
         noinline createConfig: () -> C,
+        owner: String = "grunteon",
     ): TransformerRegistryEntry {
-        return TransformerRegistryEntry(C::class, createTransformer, createConfig)
+        return TransformerRegistryEntry(C::class, createTransformer, createConfig, owner)
     }
 }

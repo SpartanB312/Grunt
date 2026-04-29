@@ -15,6 +15,7 @@ fastutil = "8.5.18"
 apache-math3 = "3.6.1"
 apache-lang3 = "3.20.0"
 apache-commons-rng-simple = "1.6"
+jpbc = "2.0.0"
 
 [plugins]
 kotlinxSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
@@ -47,7 +48,12 @@ apache-math = { module = "org.apache.commons:commons-math3", version.ref = "apac
 apache-lang = { module = "org.apache.commons:commons-lang3", version.ref = "apache-lang3" }
 apache-rng-simple = { module = "org.apache.commons:commons-rng-simple", version.ref = "apache-commons-rng-simple" }
 
+# Pairing-based cryptography
+jpbc-api = { module = "com.github.emilianobonassi.jpbc:jpbc-api", version.ref = "jpbc" }
+jpbc-plaf = { module = "com.github.emilianobonassi.jpbc:jpbc-plaf", version.ref = "jpbc" }
+
 [bundles]
 asm = ["asm", "asm-tree", "asm-util", "asm-commons", "asm-analysis"]
 apache-common = ["apache-math", "apache-lang", "apache-rng-simple"]
 utils = ["fastutil", "gson"]
+jpbc = ["jpbc-api", "jpbc-plaf"]

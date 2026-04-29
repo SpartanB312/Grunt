@@ -14,7 +14,7 @@ data class TransformerDefinition(
     val description: String,
     val configClass: KClass<out TransformerConfig>,
     val configFactory: () -> TransformerConfig,
-    val transformerFactory: () -> Transformer<*>,
+    val transformerPrototype: Transformer<*>,
 )
 
 data class PipelineNode(

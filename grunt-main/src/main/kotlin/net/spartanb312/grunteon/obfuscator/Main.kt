@@ -2,6 +2,7 @@ package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.logging.SimpleLogger
+import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.io.path.Path
@@ -17,6 +18,7 @@ const val VERSION = "3.0.0"
 const val SUBTITLE = "build 260421"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
+// Local run
 fun main(args: Array<String>) {
     if ("--silent" !in args) {
         Logger = SimpleLogger(
@@ -39,6 +41,7 @@ fun main(args: Array<String>) {
     println("==========================================================")
 
     Logger.info("Initializing obfuscator...")
+    PluginManager.loadPlugins()
 
     val config = ObfConfig.read(Path("config.json"))
     val instance = Grunteon.create(config)

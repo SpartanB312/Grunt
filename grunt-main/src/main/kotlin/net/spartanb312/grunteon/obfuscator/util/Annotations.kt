@@ -64,6 +64,9 @@ val GENERATED_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/GeneratedCl
 val GENERATED_METHOD = "Lnet/spartanb312/grunteon/annotation/internal/GeneratedMethod;"
 val GENERATED_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/GeneratedField;"
 
+val ABE_EXTERNAL_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/AbeExternalClass;"
+val ABE_NUMBER_POOL_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/AbeNumberPoolClass;"
+
 val PHANTOM_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/PhantomClass;"
 val PHANTOM_METHOD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomMethod;"
 val PHANTOM_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomField;"
@@ -72,6 +75,8 @@ val INTERNAL = arrayOf(
     GENERATED_CLASS,
     GENERATED_METHOD,
     GENERATED_FIELD,
+    ABE_EXTERNAL_CLASS,
+    ABE_NUMBER_POOL_CLASS,
     PHANTOM_CLASS,
     PHANTOM_METHOD,
     PHANTOM_FIELD

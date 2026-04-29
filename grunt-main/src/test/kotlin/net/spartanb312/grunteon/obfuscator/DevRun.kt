@@ -18,6 +18,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.rename.ClassRena
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.FieldRenamer
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.LocalVarRenamer
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MethodRenamer
+import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.logging.SimpleLogger
 import java.util.*
@@ -35,8 +36,7 @@ fun main(args: Array<String>) {
     // TODO: Module scan
     // TODO: Module initialize
 
-    // TODO: Plugin scan
-    // TODO: Plugin initialize
+    PluginManager.loadPlugins()
 
     val queue = ArrayDeque<Double>()
     repeat(args.getOrNull(0)?.toIntOrNull() ?: 1) {

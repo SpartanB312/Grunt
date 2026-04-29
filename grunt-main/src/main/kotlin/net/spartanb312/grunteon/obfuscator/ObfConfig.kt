@@ -71,8 +71,8 @@ data class ObfConfig(
 
     companion object {
         @OptIn(ExperimentalSerializationApi::class)
-        private val JSON = Json {
-            serializersModule = TransformerConfig.projectModule
+        private fun json() = Json {
+            serializersModule = TransformerConfig.serializersModule()
             prettyPrint = true
             encodeDefaults = true
             prettyPrintIndent = "    "
@@ -80,11 +80,11 @@ data class ObfConfig(
         }
 
         fun read(path: Path): ObfConfig {
-            return JSON.decodeFromString(serializer(), path.readText())
+            return json().decodeFromString(serializer(), path.readText())
         }
 
         fun write(config: ObfConfig, path: Path) {
-            val jsonString = JSON.encodeToString(serializer(), config)
+            val jsonString = json().encodeToString(serializer(), config)
             path.writeText(jsonString)
         }
     }

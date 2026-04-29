@@ -67,7 +67,10 @@ sealed interface Instruction {
     class Pre(val block: context(Grunteon, ScopeValueAccess) () -> Unit) : Instruction
     class Post(val block: context(Grunteon, ScopeValueAccess) () -> Unit) : Instruction
     class SeqForEach(val block: context(Grunteon, ScopeValueAccess)  (classNode: ClassNode) -> Unit) : Instruction
-    class ParForEach(val block: context(Grunteon, ScopeValueAccess)  (classNode: ClassNode) -> Unit) : Instruction
+    class ParForEach(
+        val batchSize: Int,
+        val block: context(Grunteon, ScopeValueAccess)  (classNode: ClassNode) -> Unit
+    ) : Instruction
 }
 
 sealed interface ScopeValueKey<T> {
@@ -166,16 +169,21 @@ fun seqForEachClasses(block: context(Grunteon, ScopeValueAccess) (classNode: Cla
 }
 
 context(pb: PipelineBuilder)
-fun parForEachClasses(block: context(Grunteon, ScopeValueAccess) (classNode: ClassNode) -> Unit) {
-    pb.instructions += Instruction.ParForEach(block)
+fun parForEachClasses(
+    batchSize: Int = 32,
+    block: context(Grunteon, ScopeValueAccess
+    ) (classNode: ClassNode) -> Unit
+) {
+    pb.instructions += Instruction.ParForEach(batchSize, block)
 }
 
 context(_: PipelineBuilder)
 fun parForEachClassesFiltered(
     strategy: FilterStrategy,
+    batchSize: Int = 32,
     action: context(Grunteon, ScopeValueAccess) (ClassNode) -> Unit
 ) {
-    parForEachClasses {
+    parForEachClasses(batchSize) {
         if (strategy.testClass(it)) action(it)
     }
 }
@@ -235,12 +243,13 @@ internal class WorkerContext {
             suspend fun flushParallelTasks() {
                 if (!pendingParallelTasks.isEmpty) {
                     Logger.debug("Flushing ${pendingParallelTasks.size} parallel tasks...")
+                    val minBatchSize = pendingParallelTasks.minOfOrNull { it.batchSize } ?: 32
                     val tasks = pendingParallelTasks.toTypedArray()
                     pendingParallelTasks.clear()
                     val classArray = instance.workRes.inputClassCollection.toTypedArray()
                     val access = LWWSP.iterativeTask(
                         size = classArray.size,
-                        batchSize = 128,
+                        batchSize = minBatchSize,
                         newScope = { ScopeValueAccess(scopeValueGlobal) },
                         action = { start, end ->
                             for (i in start..<end) {

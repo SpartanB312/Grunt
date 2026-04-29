@@ -7,6 +7,7 @@ import com.google.gson.JsonPrimitive
 import kotlinx.serialization.Serializable
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.lang.enText
+import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.ResourceSet
 import net.spartanb312.grunteon.obfuscator.util.*
@@ -15,7 +16,7 @@ import java.nio.charset.StandardCharsets
 
 class PostProcess : Transformer<PostProcess.Config>(
     name = enText("process.other.post_process", "PostProcess"),
-    category = Category.Other,
+    category = Category.PostProcess,
     description = enText(
         "process.other.post_process.desc",
         "Post resource process. Manifest/YML/JSON remap"
@@ -41,6 +42,18 @@ class PostProcess : Transformer<PostProcess.Config>(
             "Launch-Entry:"
         )
     ) : TransformerConfig()
+
+    init {
+        after(Category.Encryption, "Post process should run after encryption category")
+        after(Category.Controlflow, "Post process should run after controlflow category")
+        after(Category.AntiDebug, "Post process should run after anti debug category")
+        after(Category.Authentication, "Post process should run after authentication category")
+        after(Category.Exploit, "Post process should run after exploit category")
+        after(Category.Miscellaneous, "Post process should run after miscellaneous category")
+        after(Category.Optimization, "Post process should run after optimization category")
+        after(Category.Redirect, "Post process should run after redirect category")
+        after(Category.Other, "Post process should run after other category")
+    }
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {

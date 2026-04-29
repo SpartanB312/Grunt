@@ -27,6 +27,7 @@ class WorkResources private constructor(
     val inputResourceSet: ResourceSet.Single,
     val libraryResourceSets: Map<String, ResourceSet.Single>,
     val allResourceSets: ResourceSet,
+    val generatedResources: MutableMap<String, ByteArray>,
     /**
      * Input classes in library input set, maps name to class node.
      * Also included in allClasses.
@@ -52,6 +53,10 @@ class WorkResources private constructor(
 
     fun addGeneratedClass(classNode: ClassNode) {
         inputClassMap[classNode.name] = classNode
+    }
+
+    fun addGeneratedResource(name: String, content: ByteArray) {
+        generatedResources[name] = content
     }
 
     fun getInputResource(name: String): ResourceSet.ResourceEntry? {
@@ -160,6 +165,7 @@ class WorkResources private constructor(
                 inputResourceSet = inputResourceSet,
                 libraryResourceSets = libraryResourceSets,
                 allResourceSets = allResourceSets,
+                generatedResources = Object2ObjectOpenHashMap(),
                 libraryClassMap = libraryClassMap,
                 inputClassMap = inputClassMap
             )

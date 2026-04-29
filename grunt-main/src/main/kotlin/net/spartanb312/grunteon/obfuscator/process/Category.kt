@@ -11,4 +11,5 @@ enum class Category(val desc: String) {
     Redirect("redirect"),
     Renaming("renaming"),
     Other("other"),
+    PostProcess("postprocess"),
 }

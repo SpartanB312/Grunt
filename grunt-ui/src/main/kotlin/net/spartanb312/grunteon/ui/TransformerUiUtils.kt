@@ -55,7 +55,7 @@ fun validateOrder(
 ): Map<Long, String> {
     val enabled = nodes.filter { it.config.enabled }
     val transformers = enabled.map { node ->
-        findDefinition(node.config, definitions)?.transformerFactory?.invoke()
+        findDefinition(node.config, definitions)?.transformerPrototype
     }
     val warnings = mutableMapOf<Long, String>()
     enabled.forEachIndexed { index, node ->
@@ -85,16 +85,15 @@ fun isVirtualMappingApplierPosition(
 
 fun transformerDefinitions(): List<TransformerDefinition> {
     return TransformerRegistry.entries.map { entry ->
-        val transformer = entry.createTransformer()
-        val config = entry.createConfig()
+        val transformer = entry.transformerPrototype
         TransformerDefinition(
             label = transformer.engName,
-            typeName = config::class.qualifiedName.orEmpty(),
+            typeName = entry.configClass.qualifiedName.orEmpty(),
             category = transformer.category,
             description = transformer.description.findOrDefault(Languages.English),
             configClass = entry.configClass,
             configFactory = entry.createConfig,
-            transformerFactory = entry.createTransformer,
+            transformerPrototype = transformer,
         )
     }.sortedWith(compareBy<TransformerDefinition> { it.category.ordinal }.thenBy { it.label })
 }

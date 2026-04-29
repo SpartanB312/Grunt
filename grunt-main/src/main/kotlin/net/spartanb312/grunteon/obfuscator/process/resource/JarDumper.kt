@@ -137,6 +137,9 @@ object JarDumper {
                         send(processZipEntry(entryName, byteArray))
                     }
                 }
+                instance.workRes.generatedResources.forEach { (name, content) ->
+                    if (!checkFileNameRemove(name)) send(processZipEntry(name, content))
+                }
             }
 
             withContext(Dispatchers.IO) {

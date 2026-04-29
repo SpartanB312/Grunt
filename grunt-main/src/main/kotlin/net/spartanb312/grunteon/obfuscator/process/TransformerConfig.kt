@@ -35,14 +35,16 @@ abstract class TransformerConfig {
 
     companion object {
         @OptIn(InternalSerializationApi::class)
-        val projectModule = SerializersModule {
-            polymorphic(TransformerConfig::class) {
-                TransformerRegistry.entries.forEach { entry ->
-                    @Suppress("UNCHECKED_CAST")
-                    subclass(
-                        entry.configClass as KClass<TransformerConfig>,
-                        entry.configClass.serializer()
-                    )
+        fun serializersModule(): SerializersModule {
+            return SerializersModule {
+                polymorphic(TransformerConfig::class) {
+                    TransformerRegistry.entries.forEach { entry ->
+                        @Suppress("UNCHECKED_CAST")
+                        subclass(
+                            entry.configClass as KClass<TransformerConfig>,
+                            entry.configClass.serializer()
+                        )
+                    }
                 }
             }
         }

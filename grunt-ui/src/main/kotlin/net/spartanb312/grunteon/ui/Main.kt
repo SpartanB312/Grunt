@@ -30,16 +30,20 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.ObfConfig
+import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import javax.swing.SwingUtilities
 
-fun main() = application {
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "Grunteon",
-        state = WindowState(width = 1440.dp, height = 860.dp),
-    ) {
-        App()
+fun main(args: Array<String>) {
+    if (!args.contains("--disablePlugin")) PluginManager.loadPlugins()
+    application {
+        Window(
+            onCloseRequest = ::exitApplication,
+            title = "Grunteon",
+            state = WindowState(width = 1440.dp, height = 860.dp),
+        ) {
+            App()
+        }
     }
 }
 
@@ -110,7 +114,8 @@ fun App() {
         )
         ObfConfig.write(output, configPath)
         baseConfig = output
-        status = "Saved ${output.transformerConfigs.size} transformer nodes to ${configPath.toAbsolutePath().normalize()}"
+        status =
+            "Saved ${output.transformerConfigs.size} transformer nodes to ${configPath.toAbsolutePath().normalize()}"
     }
 
     fun currentConfig(): ObfConfig = baseConfig.copy(transformerConfigs = nodes.map { it.config })
@@ -174,12 +179,20 @@ fun App() {
                 darkColorScheme(
                     background = palette.background,
                     surface = palette.panel,
+                    surfaceVariant = palette.panelAlt,
+                    onBackground = palette.text,
+                    onSurface = palette.text,
+                    onSurfaceVariant = palette.muted,
                     primary = palette.accent,
                 )
             } else {
                 lightColorScheme(
                     background = palette.background,
                     surface = palette.panel,
+                    surfaceVariant = palette.panelAlt,
+                    onBackground = palette.text,
+                    onSurface = palette.text,
+                    onSurfaceVariant = palette.muted,
                     primary = palette.accent,
                 )
             }
