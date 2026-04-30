@@ -60,11 +60,20 @@ fun MethodNode.appendAnnotation(annotation: String): MethodNode {
 }
 
 fun MethodNode.removeAnnotation(annotation: String) {
-    invisibleAnnotations?.toList()?.forEach {
-        if (it.desc == annotation) invisibleAnnotations.remove(it)
+    invisibleAnnotations?.removeIf {
+        it.desc == annotation
     }
-    visibleAnnotations?.toList()?.forEach {
-        if (it.desc == annotation) visibleAnnotations.remove(it)
+    visibleAnnotations?.removeIf {
+        it.desc == annotation
+    }
+}
+
+fun MethodNode.removeAnnotations(annotations: Set<String>) {
+    invisibleAnnotations?.removeIf {
+        it.desc in annotations
+    }
+    visibleAnnotations?.removeIf {
+        it.desc in annotations
     }
 }
 
