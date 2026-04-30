@@ -6,7 +6,7 @@ import net.spartanb312.grunt.yapyap.annotation.ABE_STRING_POOL_CLASS
 import net.spartanb312.grunt.yapyap.annotation.DISABLE_NUMBER_ABE
 import net.spartanb312.grunt.yapyap.annotation.DISABLE_STRING_ABE
 import net.spartanb312.grunt.yapyap.transformers.encrypt.number.NumberAttributeBasedEncrypt
-import net.spartanb312.grunt.yapyap.transformers.encrypt.number.NumberMathematicalEncrypt
+import net.spartanb312.grunt.yapyap.transformers.encrypt.number.NumberSPECKEncrypt
 import net.spartanb312.grunt.yapyap.transformers.encrypt.string.StringAttributeBasedEncrypt
 import net.spartanb312.grunteon.obfuscator.plugin.GruntPlugin
 import net.spartanb312.grunteon.obfuscator.plugin.PluginContext
@@ -37,8 +37,8 @@ object Yapyap : GruntPlugin {
             createConfig = { NumberAttributeBasedEncrypt.Config() }
         )
         context.registerTransformer(
-            createTransformer = { NumberMathematicalEncrypt() },
-            createConfig = { NumberMathematicalEncrypt.Config() }
+            createTransformer = { NumberSPECKEncrypt() },
+            createConfig = { NumberSPECKEncrypt.Config() }
         )
         context.registerTransformer(
             createTransformer = { StringAttributeBasedEncrypt() },
