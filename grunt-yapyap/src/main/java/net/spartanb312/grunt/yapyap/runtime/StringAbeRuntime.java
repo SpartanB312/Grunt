@@ -12,21 +12,12 @@ import net.spartanb312.grunt.yapyap.annotation.DisableStringABE;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @DisableNumberABE
 @DisableStringABE
@@ -44,14 +35,45 @@ public final class StringAbeRuntime {
         return buildPool(policyAttributes, strings, rBits, qBits, true);
     }
 
-    public static String[] buildPool(String[] policyAttributes, String[] strings, int rBits, int qBits, boolean useNative) {
+    public static String[] buildPool(
+        String[] policyAttributes,
+        String[] strings,
+        int rBits,
+        int qBits,
+        boolean useNative
+    ) {
+        return buildPool(policyAttributes, strings, useNative, buildParams(rBits, qBits));
+    }
+
+    /**
+     * Generate curve parameters once. The returned object is thread-safe / read-only and
+     * can be passed to multiple concurrent {@link #buildPool} calls to avoid re-running the
+     * expensive {@link TypeACurveGenerator#generate()} (Miller-Rabin primality tests) for
+     * every class pool.
+     */
+    public static PairingParameters buildParams(int rBits, int qBits) {
+        return new TypeACurveGenerator(rBits, qBits).generate();
+    }
+
+    /**
+     * Build a CP-ABE string pool using pre-computed curve parameters.
+     * Using a shared {@link PairingParameters} instance across many calls avoids re-running
+     * the expensive curve-generation phase for each class.
+     */
+    public static String[] buildPool(
+        String[] policyAttributes,
+        String[] strings,
+        boolean useNative,
+        PairingParameters sharedParams
+    ) {
         try {
             byte[] plainBlob = writeStringBlob(strings);
 
             PairingFactory.getInstance().setUsePBCWhenPossible(useNative);
-            TypeACurveGenerator generator = new TypeACurveGenerator(rBits, qBits);
-            PairingParameters parameters = generator.generate();
-            Pairing pairing = PairingFactory.getPairing(parameters);
+            // Each call gets its own Pairing instance (JPBC is not thread-safe).
+            // But PairingParameters is safe to share – getPairing() is just the expensive
+            // group initialisation, not Miller-Rabin prime generation.
+            Pairing pairing = PairingFactory.getPairing(sharedParams);
 
             Element g = pairing.getG1().newRandomElement().getImmutable();
             Element alpha = pairing.getZr().newRandomElement().getImmutable();
@@ -60,17 +82,25 @@ public final class StringAbeRuntime {
             Element h = g.duplicate().powZn(beta).getImmutable();
             Element eggAlpha = pairing.pairing(g, g).powZn(alpha).getImmutable();
 
-            SecretKey secretKey = keyGen(pairing, g, gAlpha, beta, policyAttributes);
-            CipherText cipherText = encrypt(pairing, g, h, eggAlpha, policyAttributes);
+            // Pre-compute hashToG1 ONCE per attribute and reuse in both keyGen and encrypt.
+            // Previously both methods called hashToG1 independently, doubling the cost of
+            // the most expensive operation (EC point from hash ≈ full scalar multiplication).
+            Map<String, Element> g1Cache = new HashMap<>();
+            for (String attr : policyAttributes) {
+                g1Cache.put(attr, hashToG1(pairing, attr));
+            }
+
+            SecretKey secretKey = keyGen(pairing, g, gAlpha, beta, policyAttributes, g1Cache);
+            CipherText cipherText = encrypt(pairing, g, h, eggAlpha, policyAttributes, g1Cache);
             byte[] aesKey = dataKey(cipherText.message);
             byte[] encryptedBlob = encryptBlob(aesKey, plainBlob);
 
             return new String[]{
-                    useNative ? "pbc:true" : "pbc:false",
-                    b64(parameters.toString().getBytes(StandardCharsets.UTF_8)),
-                    b64(writeSecretKey(secretKey)),
-                    b64(writeCipherText(cipherText)),
-                    b64(encryptedBlob)
+                useNative ? "pbc:true" : "pbc:false",
+                b64(sharedParams.toString().getBytes(StandardCharsets.UTF_8)),
+                b64(writeSecretKey(secretKey)),
+                b64(writeCipherText(cipherText)),
+                b64(encryptedBlob)
             };
         } catch (Exception e) {
             throw new IllegalStateException("Failed to build CP-ABE string pool", e);
@@ -81,8 +111,8 @@ public final class StringAbeRuntime {
         String normalized = name.startsWith("/") ? name.substring(1) : name;
         ClassLoader loader = anchor.getClassLoader();
         InputStream stream = loader == null
-                ? ClassLoader.getSystemResourceAsStream(normalized)
-                : loader.getResourceAsStream(normalized);
+            ? ClassLoader.getSystemResourceAsStream(normalized)
+            : loader.getResourceAsStream(normalized);
         if (stream == null) {
             throw new IllegalStateException("Missing CP-ABE string payload resource: " + name);
         }
@@ -120,11 +150,11 @@ public final class StringAbeRuntime {
     }
 
     public static String shapeAttribute(
-            int ancestors,
-            int access,
-            boolean annotation,
-            boolean enumClass,
-            String salt
+        int ancestors,
+        int access,
+        boolean annotation,
+        boolean enumClass,
+        String salt
     ) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -158,21 +188,35 @@ public final class StringAbeRuntime {
         return PairingFactory.getPairing(parameters);
     }
 
-    private static SecretKey keyGen(Pairing pairing, Element g, Element gAlpha, Element beta, String[] attributes) {
+    private static SecretKey keyGen(
+        Pairing pairing,
+        Element g,
+        Element gAlpha,
+        Element beta,
+        String[] attributes,
+        Map<String, Element> g1Cache
+    ) {
         Element r = pairing.getZr().newRandomElement().getImmutable();
         Element betaInverse = beta.duplicate().invert().getImmutable();
         Element d = gAlpha.duplicate().mul(g.duplicate().powZn(r)).powZn(betaInverse).getImmutable();
         Map<String, Element[]> components = new HashMap<>();
         for (String attr : attributes) {
             Element rj = pairing.getZr().newRandomElement().getImmutable();
-            Element dj = g.duplicate().powZn(r).mul(hashToG1(pairing, attr).powZn(rj)).getImmutable();
+            Element dj = g.duplicate().powZn(r).mul(g1Cache.get(attr).duplicate().powZn(rj)).getImmutable();
             Element djp = g.duplicate().powZn(rj).getImmutable();
             components.put(attr, new Element[]{dj, djp});
         }
         return new SecretKey(d, components);
     }
 
-    private static CipherText encrypt(Pairing pairing, Element g, Element h, Element eggAlpha, String[] attributes) {
+    private static CipherText encrypt(
+        Pairing pairing,
+        Element g,
+        Element h,
+        Element eggAlpha,
+        String[] attributes,
+        Map<String, Element> g1Cache
+    ) {
         Element s = pairing.getZr().newRandomElement().getImmutable();
         Element message = pairing.getGT().newRandomElement().getImmutable();
         Element cTilde = message.duplicate().mul(eggAlpha.duplicate().powZn(s)).getImmutable();
@@ -186,7 +230,7 @@ public final class StringAbeRuntime {
         for (int i = 0; i < attributes.length; i++) {
             Element share = evalPolynomial(pairing, coefficients, i + 1);
             Element cy = g.duplicate().powZn(share).getImmutable();
-            Element cyp = hashToG1(pairing, attributes[i]).powZn(share).getImmutable();
+            Element cyp = g1Cache.get(attributes[i]).duplicate().powZn(share).getImmutable();
             leaves.add(new CipherLeaf(attributes[i], cy, cyp));
         }
         return new CipherText(message, cTilde, c, leaves);

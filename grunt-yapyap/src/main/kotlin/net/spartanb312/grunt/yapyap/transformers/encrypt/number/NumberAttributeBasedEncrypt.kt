@@ -1,13 +1,12 @@
 package net.spartanb312.grunt.yapyap.transformers.encrypt.number
 
 import it.unisa.dia.gas.jpbc.Pairing
+import it.unisa.dia.gas.jpbc.PairingParameters
 import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory
 import it.unisa.dia.gas.plaf.jpbc.pairing.a.TypeACurveGenerator
 import it.unisa.dia.gas.plaf.jpbc.pbc.PBCPairingFactory
 import kotlinx.serialization.Serializable
-import net.spartanb312.genesis.kotlin.extensions.INT
-import net.spartanb312.genesis.kotlin.extensions.PUBLIC
-import net.spartanb312.genesis.kotlin.extensions.STATIC
+import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.field
 import net.spartanb312.genesis.kotlin.instructions
@@ -118,6 +117,13 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         }
         val runtimeNeeded = reducibleScopeValue { MergeableCounter() }
 
+        // Generate curve parameters ONCE for the whole transformer run.
+        // TypeACurveGenerator.generate() runs Miller-Rabin primality tests which accounts
+        // for a significant fraction of per-pool CPU time. Sharing read-only parameters
+        // across all parallel buildPool calls eliminates this repeated cost.
+        // Each parallel task still creates its own Pairing instance (JPBC is not thread-safe).
+        val sharedParams = NumberAbeRuntime.buildParams(config.rBits, config.qBits)
+
         parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), 1) { classNode ->
             if (classNode.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@parForEachClassesFiltered
             if (classNode.isExcluded(DISABLE_NUMBER_ABE)) return@parForEachClassesFiltered
@@ -129,7 +135,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
 
             Logger.debug("   NumberABE: Processing ${classNode.name}")
 
-            val companion = createPoolClass(config, classNode, randomGen, pool, generatedResources.local)
+            val companion = createPoolClass(config, classNode, randomGen, pool, generatedResources.local, sharedParams)
             replaceNumberLoads(pool, companion)
             generatedPools.local.add(companion)
             counter.local.add(pool.size)
@@ -197,7 +203,8 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         classNode: ClassNode,
         randomGen: UniformRandomProvider,
         pool: NumberPool,
-        generatedResources: MutableList<GeneratedResource>
+        generatedResources: MutableList<GeneratedResource>,
+        sharedParams: PairingParameters
     ): ClassNode {
         val companionName = "${classNode.name}\$NumberABE_${randomGen.getRandomString(8)}"
         val intField = poolField(randomGen.getRandomString(12), "[I")
@@ -220,7 +227,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
                 shapeSalt
             )
         )
-        val payload = NumberAbeRuntime.buildPool(attributes, pool.toBlob(), config.rBits, config.qBits, config.useNative)
+        val payload = NumberAbeRuntime.buildPool(attributes, pool.toBlob(), config.useNative, sharedParams)
         val payloadResourceName = "META-INF/grunt-abe/${randomGen.getRandomString(16)}.bin"
         generatedResources.add(GeneratedResource(payloadResourceName, payload.toResourcePayload()))
 

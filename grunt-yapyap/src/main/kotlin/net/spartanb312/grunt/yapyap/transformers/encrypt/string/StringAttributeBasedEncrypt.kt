@@ -1,13 +1,12 @@
 package net.spartanb312.grunt.yapyap.transformers.encrypt.string
 
 import it.unisa.dia.gas.jpbc.Pairing
+import it.unisa.dia.gas.jpbc.PairingParameters
 import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory
 import it.unisa.dia.gas.plaf.jpbc.pairing.a.TypeACurveGenerator
 import it.unisa.dia.gas.plaf.jpbc.pbc.PBCPairingFactory
 import kotlinx.serialization.Serializable
-import net.spartanb312.genesis.kotlin.extensions.INT
-import net.spartanb312.genesis.kotlin.extensions.PUBLIC
-import net.spartanb312.genesis.kotlin.extensions.STATIC
+import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.field
 import net.spartanb312.genesis.kotlin.instructions
@@ -108,6 +107,13 @@ class StringAttributeBasedEncrypt : Transformer<StringAttributeBasedEncrypt.Conf
         }
         val runtimeNeeded = reducibleScopeValue { MergeableCounter() }
 
+        // Generate curve parameters ONCE for the whole transformer run.
+        // TypeACurveGenerator.generate() runs Miller-Rabin primality tests which accounts
+        // for a significant fraction of per-pool CPU time. Sharing read-only parameters
+        // across all parallel buildPool calls eliminates this repeated cost.
+        // Each parallel task still creates its own Pairing instance (JPBC is not thread-safe).
+        val sharedParams = StringAbeRuntime.buildParams(config.rBits, config.qBits)
+
         parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), 1) { classNode ->
             if (classNode.isExcluded(DISABLE_STRING_ENCRYPT)) return@parForEachClassesFiltered
             if (classNode.isExcluded(DISABLE_STRING_ABE)) return@parForEachClassesFiltered
@@ -119,7 +125,7 @@ class StringAttributeBasedEncrypt : Transformer<StringAttributeBasedEncrypt.Conf
 
             Logger.debug("   StringABE: Processing ${classNode.name}")
 
-            val companion = createPoolClass(config, classNode, randomGen, pool, generatedResources.local)
+            val companion = createPoolClass(config, classNode, randomGen, pool, generatedResources.local, sharedParams)
             replaceStringLoads(pool, companion)
             generatedPools.local.add(companion)
             counter.local.add(pool.size)
@@ -179,7 +185,8 @@ class StringAttributeBasedEncrypt : Transformer<StringAttributeBasedEncrypt.Conf
         classNode: ClassNode,
         randomGen: UniformRandomProvider,
         pool: StringPool,
-        generatedResources: MutableList<GeneratedResource>
+        generatedResources: MutableList<GeneratedResource>,
+        sharedParams: PairingParameters
     ): ClassNode {
         val companionName = "${classNode.name}\$StringABE_${randomGen.getRandomString(8)}"
         val stringField = poolField(randomGen.getRandomString(12), "[Ljava/lang/String;")
@@ -200,7 +207,7 @@ class StringAttributeBasedEncrypt : Transformer<StringAttributeBasedEncrypt.Conf
             )
         )
         val strings = pool.strings.keys.toTypedArray()
-        val payload = StringAbeRuntime.buildPool(attributes, strings, config.rBits, config.qBits, config.useNative)
+        val payload = StringAbeRuntime.buildPool(attributes, strings, config.useNative, sharedParams)
         val payloadResourceName = "META-INF/grunt-abe/${randomGen.getRandomString(16)}.bin"
         generatedResources.add(GeneratedResource(payloadResourceName, payload.toResourcePayload()))
 
