@@ -30,18 +30,20 @@ import java.util.Map;
 
 @DisableNumberABE
 @DisableStringABE
-public final class NumberAbeRuntime {
+public final class StringAbeRuntime {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final int GCM_NONCE_BYTES = 12;
     private static final int GCM_TAG_BITS = 128;
     private static final int AES_KEY_BYTES = 16;
 
-    private NumberAbeRuntime() {
+    private StringAbeRuntime() {
     }
 
-    public static String[] buildPool(String[] policyAttributes, byte[] plainBlob, int rBits, int qBits) {
+    public static String[] buildPool(String[] policyAttributes, String[] strings, int rBits, int qBits) {
         try {
+            byte[] plainBlob = writeStringBlob(strings);
+
             TypeACurveGenerator generator = new TypeACurveGenerator(rBits, qBits);
             PairingParameters parameters = generator.generate();
             Pairing pairing = PairingFactory.getPairing(parameters);
@@ -65,33 +67,9 @@ public final class NumberAbeRuntime {
                     b64(encryptedBlob)
             };
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to build CP-ABE number pool", e);
+            throw new IllegalStateException("Failed to build CP-ABE string pool", e);
         }
     }
-
-    /*public static Object[] init(
-            Class<?> owner,
-            String shapeSalt,
-            String parameters,
-            String secretKey,
-            String cipherText,
-            String encryptedBlob
-    ) {
-        try {
-            Pairing pairing = readPairing(parameters);
-            String runtimeShape = shapeAttribute(owner, shapeSalt);
-            Element dataKey = decrypt(
-                    pairing,
-                    readSecretKey(pairing, decodeBase64(secretKey)),
-                    readCipherText(pairing, decodeBase64(cipherText)),
-                    runtimeShape
-            );
-            byte[] plainBlob = decryptBlob(dataKey(dataKey), decodeBase64(encryptedBlob));
-            return readNumberBlob(plainBlob);
-        } catch (Exception e) {
-            throw new ExceptionInInitializerError(e);
-        }
-    }*/
 
     public static byte[] readResource(Class<?> anchor, String name) throws Exception {
         String normalized = name.startsWith("/") ? name.substring(1) : name;
@@ -100,7 +78,7 @@ public final class NumberAbeRuntime {
                 ? ClassLoader.getSystemResourceAsStream(normalized)
                 : loader.getResourceAsStream(normalized);
         if (stream == null) {
-            throw new IllegalStateException("Missing CP-ABE number payload resource: " + name);
+            throw new IllegalStateException("Missing CP-ABE string payload resource: " + name);
         }
         try (InputStream input = stream; ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[8192];
@@ -350,17 +328,27 @@ public final class NumberAbeRuntime {
         return Arrays.copyOf(digest, AES_KEY_BYTES);
     }
 
-    public static Object[] readNumberBlob(byte[] plainBlob) throws Exception {
+    private static byte[] writeStringBlob(String[] strings) throws Exception {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        DataOutputStream data = new DataOutputStream(output);
+        data.writeInt(strings.length);
+        for (String s : strings) {
+            byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+            data.writeInt(bytes.length);
+            data.write(bytes);
+        }
+        return output.toByteArray();
+    }
+
+    public static String[] readStringBlob(byte[] plainBlob) throws Exception {
         DataInputStream data = new DataInputStream(new ByteArrayInputStream(plainBlob));
-        int[] ints = new int[data.readInt()];
-        for (int i = 0; i < ints.length; i++) ints[i] = data.readInt();
-        long[] longs = new long[data.readInt()];
-        for (int i = 0; i < longs.length; i++) longs[i] = data.readLong();
-        float[] floats = new float[data.readInt()];
-        for (int i = 0; i < floats.length; i++) floats[i] = Float.intBitsToFloat(data.readInt());
-        double[] doubles = new double[data.readInt()];
-        for (int i = 0; i < doubles.length; i++) doubles[i] = Double.longBitsToDouble(data.readLong());
-        return new Object[]{ints, longs, floats, doubles};
+        int count = data.readInt();
+        String[] strings = new String[count];
+        for (int i = 0; i < count; i++) {
+            byte[] bytes = readBytes(data);
+            strings[i] = new String(bytes, StandardCharsets.UTF_8);
+        }
+        return strings;
     }
 
     private static String b64(byte[] bytes) {

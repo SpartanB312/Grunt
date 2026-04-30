@@ -12,11 +12,14 @@ abstract class Transformer<T : TransformerConfig>(
     val engName = name
     val orderRules = mutableListOf<Pair<OrderRule, String>>()
 
-    context(instance: Grunteon)
-    val transformerSeed get() = instance.obfConfig.baseSeed() + name
+    var index = -1; private set
 
-    context(_: Grunteon)
+    context(instance: Grunteon)
+    val transformerSeed: String get() = instance.obfConfig.baseSeed() + name + index
+
+    context(instance: Grunteon)
     internal fun buildStageImpl(pipelineBuilder: PipelineBuilder, config: TransformerConfig) {
+        index = instance.transformers.indexOfFirst { it.first == this }
         context(pipelineBuilder) {
             @Suppress("UNCHECKED_CAST")
             buildStageImpl(config as T)

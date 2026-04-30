@@ -23,7 +23,7 @@ val DISABLE_CONST_FLOW = "Lnet/spartanb312/grunteon/annotation/disable/DisableCo
 val DISABLE_CONTROL_FLOW = "Lnet/spartanb312/grunteon/annotation/disable/DisableControlFlow;"
 val DISABLE_FLATTENING = "Lnet/spartanb312/grunteon/annotation/disable/DisableFlattening;"
 
-val DISABLER = arrayOf(
+val DISABLER = mutableSetOf(
     DISABLE_OPTIMIZER,
     DISABLE_NUMBER_ENCRYPT,
     DISABLE_STRING_ENCRYPT,
@@ -48,7 +48,7 @@ val IGNORE_JUNK_CODE = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromJ
 val IGNORE_PARAMETER_SALT = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromParameterSalt;"
 val IGNORE_METADATA_TARGET = "Lnet/spartanb312/grunteon/annotation/ignore/ExcludeFromROMetadataGen;"
 
-val IGNORE = arrayOf(
+val IGNORE = mutableSetOf(
     IGNORE_FIELD_PROXY,
     IGNORE_INVOKE_PROXY,
     IGNORE_INVOKE_DISPATCHER,
@@ -64,19 +64,14 @@ val GENERATED_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/GeneratedCl
 val GENERATED_METHOD = "Lnet/spartanb312/grunteon/annotation/internal/GeneratedMethod;"
 val GENERATED_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/GeneratedField;"
 
-val ABE_EXTERNAL_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/AbeExternalClass;"
-val ABE_NUMBER_POOL_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/AbeNumberPoolClass;"
-
 val PHANTOM_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/PhantomClass;"
 val PHANTOM_METHOD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomMethod;"
 val PHANTOM_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomField;"
 
-val INTERNAL = arrayOf(
+val INTERNAL = mutableSetOf(
     GENERATED_CLASS,
     GENERATED_METHOD,
     GENERATED_FIELD,
-    ABE_EXTERNAL_CLASS,
-    ABE_NUMBER_POOL_CLASS,
     PHANTOM_CLASS,
     PHANTOM_METHOD,
     PHANTOM_FIELD

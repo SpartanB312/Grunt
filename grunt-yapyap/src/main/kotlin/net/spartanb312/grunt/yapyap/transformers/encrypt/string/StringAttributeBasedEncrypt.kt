@@ -1,4 +1,4 @@
-package net.spartanb312.grunt.yapyap.transformers.encrypt.number
+package net.spartanb312.grunt.yapyap.transformers.encrypt.string
 
 import it.unisa.dia.gas.jpbc.Pairing
 import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory
@@ -12,10 +12,10 @@ import net.spartanb312.genesis.kotlin.field
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunt.yapyap.annotation.ABE_EXTERNAL_CLASS
-import net.spartanb312.grunt.yapyap.annotation.ABE_NUMBER_POOL_CLASS
+import net.spartanb312.grunt.yapyap.annotation.ABE_STRING_POOL_CLASS
 import net.spartanb312.grunt.yapyap.annotation.DISABLE_NUMBER_ABE
 import net.spartanb312.grunt.yapyap.annotation.DISABLE_STRING_ABE
-import net.spartanb312.grunt.yapyap.runtime.NumberAbeRuntime
+import net.spartanb312.grunt.yapyap.runtime.StringAbeRuntime
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
@@ -27,8 +27,6 @@ import net.spartanb312.grunteon.obfuscator.util.filters.NamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
-import net.spartanb312.grunteon.obfuscator.util.numerical.asInt
-import net.spartanb312.grunteon.obfuscator.util.numerical.asLong
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.Opcodes
@@ -47,17 +45,17 @@ import kotlin.io.path.pathString
 import kotlin.io.path.walk
 
 /**
- * Encrypt numbers with a real CP-ABE KEM and an AES-GCM encrypted number pool.
+ * Encrypt strings with a real CP-ABE KEM and an AES-GCM encrypted string pool.
  *
  * The generated pool and runtime classes are marked with ABE_EXTERNAL_CLASS and
- * ABE_NUMBER_POOL_CLASS for identification, but they are embedded into the output jar.
+ * ABE_STRING_POOL_CLASS for identification, but they are embedded into the output jar.
  */
 @Transformer.Description(
-    "process.encrypt.number.number_attribute_based_encrypt.desc",
-    "Encrypt numbers using CP-ABE protected number pools"
+    "process.encrypt.string.string_attribute_based_encrypt.desc",
+    "Encrypt strings using CP-ABE protected string pools"
 )
-class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Config>(
-    "NumberAttributeBasedEncrypt",
+class StringAttributeBasedEncrypt : Transformer<StringAttributeBasedEncrypt.Config>(
+    "StringAttributeBasedEncrypt",
     Category.Encryption,
 ) {
 
@@ -65,21 +63,13 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
     data class Config(
         @SettingDesc(enText = "Specify class include/exclude rules")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Encrypt integers")
-        val integer: Boolean = true,
-        @SettingDesc(enText = "Encrypt longs")
-        val long: Boolean = true,
-        @SettingDesc(enText = "Encrypt floats")
-        val float: Boolean = true,
-        @SettingDesc(enText = "Encrypt doubles")
-        val double: Boolean = true,
-        @SettingDesc(enText = "Number encrypt rate. Range: 0.0..1.0")
+        @SettingDesc(enText = "String encrypt rate. Range: 0.0..1.0")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         val chance: Double = 1.0,
         @SettingDesc(enText = "Minimum constants required before generating a CP-ABE pool")
-        val minPoolSize: Int = 4,
+        val minPoolSize: Int = 2,
         @SettingDesc(enText = "Maximum constants per CP-ABE pool")
-        val maxPoolSize: Int = 1024,
+        val maxPoolSize: Int = 512,
         @SettingDesc(enText = "The upper limit of instruction count for a Method")
         val maxInstructions: Int = 16384,
         @SettingDesc(enText = "jPBC Type A subgroup order bits")
@@ -116,18 +106,18 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         val runtimeNeeded = reducibleScopeValue { MergeableCounter() }
 
         parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), 1) { classNode ->
-            if (classNode.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@parForEachClassesFiltered
-            if (classNode.isExcluded(DISABLE_NUMBER_ABE)) return@parForEachClassesFiltered
+            if (classNode.isExcluded(DISABLE_STRING_ENCRYPT)) return@parForEachClassesFiltered
+            if (classNode.isExcluded(DISABLE_STRING_ABE)) return@parForEachClassesFiltered
             if (classNode.version < Opcodes.V1_5) return@parForEachClassesFiltered
 
-            val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, "number-abe"))
+            val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, "string-abe"))
             val pool = collectPool(config, classNode, randomGen)
             if (pool.size < config.minPoolSize) return@parForEachClassesFiltered
 
-            Logger.debug("   NumberABE: Processing ${classNode.name}")
+            Logger.debug("   StringABE: Processing ${classNode.name}")
 
             val companion = createPoolClass(config, classNode, randomGen, pool, generatedResources.local)
-            replaceNumberLoads(pool, companion)
+            replaceStringLoads(pool, companion)
             generatedPools.local.add(companion)
             counter.local.add(pool.size)
             runtimeNeeded.local.add()
@@ -146,9 +136,9 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         }
 
         post {
-            Logger.info(" - NumberAttributeBasedEncrypt:")
-            Logger.info("    Encrypted ${counter.global.get()} numbers")
-            Logger.info("    Generated ${generatedPools.global.size} CP-ABE number pool classes")
+            Logger.info(" - StringAttributeBasedEncrypt:")
+            Logger.info("    Encrypted ${counter.global.get()} strings")
+            Logger.info("    Generated ${generatedPools.global.size} CP-ABE string pool classes")
         }
     }
 
@@ -156,33 +146,25 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         config: Config,
         classNode: ClassNode,
         randomGen: UniformRandomProvider
-    ): NumberPool {
-        val pool = NumberPool()
+    ): StringPool {
+        val pool = StringPool()
         classNode.methods.toList().asSequence()
             .filter { !it.isAbstract && !it.isNative }
             .forEach { method ->
-                if (method.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@forEach
-                if (method.isExcluded(DISABLE_NUMBER_ABE)) return@forEach
+                if (method.isExcluded(DISABLE_STRING_ENCRYPT)) return@forEach
+                if (method.isExcluded(DISABLE_STRING_ABE)) return@forEach
                 if (method.instructions == null || method.instructions.size() >= config.maxInstructions) return@forEach
                 if (methodExPredicate.matchedAnyBy(methodFullDesc(classNode, method))) return@forEach
 
                 method.instructions.toList().forEach { instruction ->
                     if (pool.size >= config.maxPoolSize) return@forEach
                     if (randomGen.nextFloat() > config.chance) return@forEach
-                    if (config.integer) instruction.getIntValue()?.let {
-                        pool.addInt(method, instruction, it)
+
+                    if (instruction is LdcInsnNode && instruction.cst is String) {
+                        val value = instruction.cst as String
+                        if (value.isEmpty()) return@forEach
+                        pool.addString(method, instruction, value)
                         return@forEach
-                    }
-                    if (config.long) instruction.getLongValue()?.let {
-                        pool.addLong(method, instruction, it)
-                        return@forEach
-                    }
-                    if (config.float) instruction.getFloatValue()?.let {
-                        pool.addFloat(method, instruction, it)
-                        return@forEach
-                    }
-                    if (config.double) instruction.getDoubleValue()?.let {
-                        pool.addDouble(method, instruction, it)
                     }
                 }
             }
@@ -193,23 +175,20 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         config: Config,
         classNode: ClassNode,
         randomGen: UniformRandomProvider,
-        pool: NumberPool,
+        pool: StringPool,
         generatedResources: MutableList<GeneratedResource>
     ): ClassNode {
-        val companionName = "${classNode.name}\$NumberABE_${randomGen.getRandomString(8)}"
-        val intField = poolField(randomGen.getRandomString(12), "[I")
-        val longField = poolField(randomGen.getRandomString(12), "[J")
-        val floatField = poolField(randomGen.getRandomString(12), "[F")
-        val doubleField = poolField(randomGen.getRandomString(12), "[D")
+        val companionName = "${classNode.name}\$StringABE_${randomGen.getRandomString(8)}"
+        val stringField = poolField(randomGen.getRandomString(12), "[Ljava/lang/String;")
         val shapeSalt = randomBytesB64(16)
         val poolId = randomBytesB64(16)
         val buildId = randomBytesB64(16)
         val attributes = arrayOf(
             "app:${config.appId}",
             "build:$buildId",
-            "kind:number",
+            "kind:string",
             "pool:$poolId",
-            NumberAbeRuntime.shapeAttribute(
+            StringAbeRuntime.shapeAttribute(
                 (if (classNode.superName != null) 1 else 0) + (classNode.interfaces?.size ?: 0),
                 classNode.access,
                 classNode.isAnnotation,
@@ -217,7 +196,8 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
                 shapeSalt
             )
         )
-        val payload = NumberAbeRuntime.buildPool(attributes, pool.toBlob(), config.rBits, config.qBits)
+        val strings = pool.strings.keys.toTypedArray()
+        val payload = StringAbeRuntime.buildPool(attributes, strings, config.rBits, config.qBits)
         val payloadResourceName = "META-INF/grunt-abe/${randomGen.getRandomString(16)}.bin"
         generatedResources.add(GeneratedResource(payloadResourceName, payload.toResourcePayload()))
 
@@ -225,29 +205,20 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             visit(classNode.version, Opcodes.ACC_PUBLIC, companionName, null, "java/lang/Object", null)
             appendAnnotation(GENERATED_CLASS)
             appendAnnotation(ABE_EXTERNAL_CLASS)
-            appendAnnotation(ABE_NUMBER_POOL_CLASS)
+            appendAnnotation(ABE_STRING_POOL_CLASS)
             appendAnnotation(DISABLE_STRING_ABE)
             appendAnnotation(DISABLE_NUMBER_ABE)
-            fields.add(intField)
-            fields.add(longField)
-            fields.add(floatField)
-            fields.add(doubleField)
+            fields.add(stringField)
             methods.add(
                 createClinit(
                     classNode,
                     name,
                     shapeSalt,
                     payloadResourceName,
-                    intField,
-                    longField,
-                    floatField,
-                    doubleField
+                    stringField
                 )
             )
-            pool.intField = intField
-            pool.longField = longField
-            pool.floatField = floatField
-            pool.doubleField = doubleField
+            pool.stringField = stringField
         }
     }
 
@@ -259,13 +230,10 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         companionName: String,
         shapeSalt: String,
         payloadResourceName: String,
-        intField: FieldNode,
-        longField: FieldNode,
-        floatField: FieldNode,
-        doubleField: FieldNode
+        stringField: FieldNode
     ): MethodNode = method(STATIC, "<clinit>", "()V") {
         INSTRUCTIONS {
-            // runtimeShape = NumberAbeRuntime.shapeAttribute(Target.class, shapeSalt)
+            // runtimeShape = StringAbeRuntime.shapeAttribute(Target.class, shapeSalt)
             LDC(Type.getType("L${owner.name};"))
             LDC(shapeSalt)
             INVOKESTATIC(
@@ -275,14 +243,14 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             )
             ASTORE(0)
 
-            // payload = NumberAbeRuntime.readPayload(NumberAbeRuntime.readResource(Target.class, payloadResourceName))
+            // payload = StringAbeRuntime.readPayload(StringAbeRuntime.readResource(Target.class, payloadResourceName))
             LDC(Type.getType("L${owner.name};"))
             LDC(payloadResourceName)
             INVOKESTATIC(RUNTIME_NAME, "readResource", "(Ljava/lang/Class;Ljava/lang/String;)[B")
             INVOKESTATIC(RUNTIME_NAME, "readPayload", "([B)[Ljava/lang/String;")
             ASTORE(8)
 
-            // pairing = NumberAbeRuntime.readPairing(parameters)
+            // pairing = StringAbeRuntime.readPairing(parameters)
             ALOAD(8)
             ICONST_0
             AALOAD
@@ -293,7 +261,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             )
             ASTORE(1)
 
-            // secretKey = NumberAbeRuntime.readSecretKey(pairing, base64(secretKey))
+            // secretKey = StringAbeRuntime.readSecretKey(pairing, base64(secretKey))
             ALOAD(1)
             ALOAD(8)
             ICONST_1
@@ -306,7 +274,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             )
             ASTORE(2)
 
-            // cipherText = NumberAbeRuntime.readCipherText(pairing, base64(cipherText))
+            // cipherText = StringAbeRuntime.readCipherText(pairing, base64(cipherText))
             ALOAD(1)
             ALOAD(8)
             ICONST_2
@@ -319,7 +287,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             )
             ASTORE(3)
 
-            // dataKeyElement = NumberAbeRuntime.decrypt(pairing, secretKey, cipherText, runtimeShape)
+            // dataKeyElement = StringAbeRuntime.decrypt(pairing, secretKey, cipherText, runtimeShape)
             ALOAD(1)
             ALOAD(2)
             ALOAD(3)
@@ -332,12 +300,12 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             )
             ASTORE(4)
 
-            // aesKey = NumberAbeRuntime.dataKey(dataKeyElement)
+            // aesKey = StringAbeRuntime.dataKey(dataKeyElement)
             ALOAD(4)
             INVOKESTATIC(RUNTIME_NAME, "dataKey", "($ELEMENT_DESC)[B")
             ASTORE(5)
 
-            // plainBlob = NumberAbeRuntime.decryptBlob(aesKey, base64(encryptedBlob))
+            // plainBlob = StringAbeRuntime.decryptBlob(aesKey, base64(encryptedBlob))
             ALOAD(5)
             ALOAD(8)
             ICONST_3
@@ -346,56 +314,28 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             INVOKESTATIC(RUNTIME_NAME, "decryptBlob", "([B[B)[B")
             ASTORE(6)
 
-            // values = NumberAbeRuntime.readNumberBlob(plainBlob)
+            // strings = StringAbeRuntime.readStringBlob(plainBlob)
             ALOAD(6)
-            INVOKESTATIC(RUNTIME_NAME, "readNumberBlob", "([B)[Ljava/lang/Object;")
-            ASTORE(7)
-
-            ALOAD(7)
-            ICONST_0
-            AALOAD
-            CHECKCAST("[I")
-            PUTSTATIC(companionName, intField.name, intField.desc)
-            ALOAD(7)
-            ICONST_1
-            AALOAD
-            CHECKCAST("[J")
-            PUTSTATIC(companionName, longField.name, longField.desc)
-            ALOAD(7)
-            ICONST_2
-            AALOAD
-            CHECKCAST("[F")
-            PUTSTATIC(companionName, floatField.name, floatField.desc)
-            ALOAD(7)
-            ICONST_3
-            AALOAD
-            CHECKCAST("[D")
-            PUTSTATIC(companionName, doubleField.name, doubleField.desc)
+            INVOKESTATIC(RUNTIME_NAME, "readStringBlob", "([B)[Ljava/lang/String;")
+            PUTSTATIC(companionName, stringField.name, stringField.desc)
             RETURN
         }
     }.appendAnnotation(GENERATED_METHOD)
 
-    private fun replaceNumberLoads(pool: NumberPool, companion: ClassNode) {
+    private fun replaceStringLoads(pool: StringPool, companion: ClassNode) {
         pool.replacements.forEach { replacement ->
-            val replacementInsns = when (replacement.kind) {
-                NumberKind.INT -> poolLoad(companion.name, pool.intField, replacement.index, Opcodes.IALOAD)
-                NumberKind.LONG -> poolLoad(companion.name, pool.longField, replacement.index, Opcodes.LALOAD)
-                NumberKind.FLOAT -> poolLoad(companion.name, pool.floatField, replacement.index, Opcodes.FALOAD)
-                NumberKind.DOUBLE -> poolLoad(companion.name, pool.doubleField, replacement.index, Opcodes.DALOAD)
+            val replacementInsns = instructions {
+                GETSTATIC(companion.name, pool.stringField.name, pool.stringField.desc)
+                INT(replacement.index)
+                AALOAD
             }
             replacement.method.instructions.insertBefore(replacement.instruction, replacementInsns)
             replacement.method.instructions.remove(replacement.instruction)
         }
     }
 
-    private fun poolLoad(owner: String, field: FieldNode, index: Int, arrayLoadOpcode: Int): InsnList = instructions {
-        GETSTATIC(owner, field.name, field.desc)
-        INT(index)
-        +InsnNode(arrayLoadOpcode)
-    }
-
     private fun addRuntimeClasses(instance: Grunteon) {
-        addClassesFromCodeSource(instance, NumberAbeRuntime::class.java, RUNTIME_PACKAGE)
+        addClassesFromCodeSource(instance, StringAbeRuntime::class.java, RUNTIME_PACKAGE)
         addClassesFromCodeSource(instance, Pairing::class.java, JPBC_PACKAGE)
         addClassesFromCodeSource(instance, PairingFactory::class.java, JPBC_PACKAGE)
         addClassesFromCodeSource(instance, TypeACurveGenerator::class.java, JPBC_PACKAGE)
@@ -442,17 +382,9 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         return Base64.getEncoder().encodeToString(bytes)
     }
 
-    private enum class NumberKind {
-        INT,
-        LONG,
-        FLOAT,
-        DOUBLE
-    }
-
     private data class Replacement(
         val method: MethodNode,
         val instruction: AbstractInsnNode,
-        val kind: NumberKind,
         val index: Int
     )
 
@@ -479,59 +411,27 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         }
     }
 
-    private class NumberPool {
-        val ints = LinkedHashMap<Int, Int>()
-        val longs = LinkedHashMap<Long, Int>()
-        val floats = LinkedHashMap<Float, Int>()
-        val doubles = LinkedHashMap<Double, Int>()
+    private class StringPool {
+        val strings = LinkedHashMap<String, Int>()
         val replacements = mutableListOf<Replacement>()
-        lateinit var intField: FieldNode
-        lateinit var longField: FieldNode
-        lateinit var floatField: FieldNode
-        lateinit var doubleField: FieldNode
+        lateinit var stringField: FieldNode
 
         val size get() = replacements.size
 
-        fun addInt(method: MethodNode, instruction: AbstractInsnNode, value: Int) {
-            replacements.add(Replacement(method, instruction, NumberKind.INT, ints.getOrPut(value) { ints.size }))
-        }
-
-        fun addLong(method: MethodNode, instruction: AbstractInsnNode, value: Long) {
-            replacements.add(Replacement(method, instruction, NumberKind.LONG, longs.getOrPut(value) { longs.size }))
-        }
-
-        fun addFloat(method: MethodNode, instruction: AbstractInsnNode, value: Float) {
-            replacements.add(Replacement(method, instruction, NumberKind.FLOAT, floats.getOrPut(value) { floats.size }))
-        }
-
-        fun addDouble(method: MethodNode, instruction: AbstractInsnNode, value: Double) {
+        fun addString(method: MethodNode, instruction: AbstractInsnNode, value: String) {
             replacements.add(
                 Replacement(
                     method,
                     instruction,
-                    NumberKind.DOUBLE,
-                    doubles.getOrPut(value) { doubles.size })
+                    strings.getOrPut(value) { strings.size }
+                )
             )
-        }
-
-        fun toBlob(): ByteArray {
-            val output = ByteArrayOutputStream()
-            val data = DataOutputStream(output)
-            data.writeInt(ints.size)
-            ints.keys.forEach(data::writeInt)
-            data.writeInt(longs.size)
-            longs.keys.forEach(data::writeLong)
-            data.writeInt(floats.size)
-            floats.keys.forEach { data.writeInt(it.asInt()) }
-            data.writeInt(doubles.size)
-            doubles.keys.forEach { data.writeLong(it.asLong()) }
-            return output.toByteArray()
         }
     }
 
     companion object {
         private val SECURE_RANDOM = SecureRandom()
-        private const val RUNTIME_NAME = "net/spartanb312/grunt/yapyap/runtime/NumberAbeRuntime"
+        private const val RUNTIME_NAME = "net/spartanb312/grunt/yapyap/runtime/StringAbeRuntime"
         private const val PAIRING_DESC = "Lit/unisa/dia/gas/jpbc/Pairing;"
         private const val ELEMENT_DESC = "Lit/unisa/dia/gas/jpbc/Element;"
         private const val SECRET_KEY_DESC = "L$RUNTIME_NAME\$SecretKey;"
