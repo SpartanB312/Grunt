@@ -3,6 +3,7 @@ package net.spartanb312.grunt.yapyap.transformers.encrypt.number
 import it.unisa.dia.gas.jpbc.Pairing
 import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory
 import it.unisa.dia.gas.plaf.jpbc.pairing.a.TypeACurveGenerator
+import it.unisa.dia.gas.plaf.jpbc.pbc.PBCPairingFactory
 import kotlinx.serialization.Serializable
 import net.spartanb312.genesis.kotlin.extensions.INT
 import net.spartanb312.genesis.kotlin.extensions.PUBLIC
@@ -86,6 +87,8 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         val rBits: Int = 256,
         @SettingDesc(enText = "jPBC Type A base field bits")
         val qBits: Int = 1536,
+        @SettingDesc(enText = "Use jPBC PBC native backend when available")
+        val useNative: Boolean = true,
         @SettingDesc(enText = "Project/application CP-ABE attribute")
         val appId: String = "grunt-yapyap",
         @SettingDesc(enText = "Specify method exclusions.")
@@ -141,7 +144,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
                 instance.workRes.addGeneratedResource(it.name, it.content)
             }
             if (runtimeNeeded.global.get() > 0) {
-                addRuntimeClasses(instance)
+                addRuntimeClasses(instance, config.useNative)
             }
         }
 
@@ -217,7 +220,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
                 shapeSalt
             )
         )
-        val payload = NumberAbeRuntime.buildPool(attributes, pool.toBlob(), config.rBits, config.qBits)
+        val payload = NumberAbeRuntime.buildPool(attributes, pool.toBlob(), config.rBits, config.qBits, config.useNative)
         val payloadResourceName = "META-INF/grunt-abe/${randomGen.getRandomString(16)}.bin"
         generatedResources.add(GeneratedResource(payloadResourceName, payload.toResourcePayload()))
 
@@ -282,21 +285,26 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             INVOKESTATIC(RUNTIME_NAME, "readPayload", "([B)[Ljava/lang/String;")
             ASTORE(8)
 
-            // pairing = NumberAbeRuntime.readPairing(parameters)
+            // pairing = NumberAbeRuntime.readPairing(parameters, useNative)
+            ALOAD(8)
+            ICONST_1
+            AALOAD
             ALOAD(8)
             ICONST_0
             AALOAD
+            LDC("pbc:true")
+            INVOKEVIRTUAL("java/lang/String", "equals", "(Ljava/lang/Object;)Z")
             INVOKESTATIC(
                 RUNTIME_NAME,
                 "readPairing",
-                "(Ljava/lang/String;)$PAIRING_DESC"
+                "(Ljava/lang/String;Z)$PAIRING_DESC"
             )
             ASTORE(1)
 
             // secretKey = NumberAbeRuntime.readSecretKey(pairing, base64(secretKey))
             ALOAD(1)
             ALOAD(8)
-            ICONST_1
+            ICONST_2
             AALOAD
             INVOKESTATIC(RUNTIME_NAME, "decodeBase64", "(Ljava/lang/String;)[B")
             INVOKESTATIC(
@@ -309,7 +317,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             // cipherText = NumberAbeRuntime.readCipherText(pairing, base64(cipherText))
             ALOAD(1)
             ALOAD(8)
-            ICONST_2
+            ICONST_3
             AALOAD
             INVOKESTATIC(RUNTIME_NAME, "decodeBase64", "(Ljava/lang/String;)[B")
             INVOKESTATIC(
@@ -340,7 +348,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             // plainBlob = NumberAbeRuntime.decryptBlob(aesKey, base64(encryptedBlob))
             ALOAD(5)
             ALOAD(8)
-            ICONST_3
+            ICONST_4
             AALOAD
             INVOKESTATIC(RUNTIME_NAME, "decodeBase64", "(Ljava/lang/String;)[B")
             INVOKESTATIC(RUNTIME_NAME, "decryptBlob", "([B[B)[B")
@@ -394,11 +402,21 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         +InsnNode(arrayLoadOpcode)
     }
 
-    private fun addRuntimeClasses(instance: Grunteon) {
+    private fun addRuntimeClasses(instance: Grunteon, useNative: Boolean) {
         addClassesFromCodeSource(instance, NumberAbeRuntime::class.java, RUNTIME_PACKAGE)
         addClassesFromCodeSource(instance, Pairing::class.java, JPBC_PACKAGE)
         addClassesFromCodeSource(instance, PairingFactory::class.java, JPBC_PACKAGE)
         addClassesFromCodeSource(instance, TypeACurveGenerator::class.java, JPBC_PACKAGE)
+        if (useNative) {
+            addClassesFromCodeSource(instance, PBCPairingFactory::class.java, JPBC_PACKAGE)
+            addOptionalClassesFromCodeSource(instance, "com.sun.jna.Native", "com/sun/jna/")
+        }
+    }
+
+    private fun addOptionalClassesFromCodeSource(instance: Grunteon, anchorName: String, packagePrefix: String) {
+        runCatching {
+            addClassesFromCodeSource(instance, Class.forName(anchorName), packagePrefix)
+        }
     }
 
     private fun addClassesFromCodeSource(instance: Grunteon, anchor: Class<*>, packagePrefix: String) {

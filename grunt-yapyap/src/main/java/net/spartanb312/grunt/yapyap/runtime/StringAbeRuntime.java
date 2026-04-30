@@ -41,9 +41,14 @@ public final class StringAbeRuntime {
     }
 
     public static String[] buildPool(String[] policyAttributes, String[] strings, int rBits, int qBits) {
+        return buildPool(policyAttributes, strings, rBits, qBits, true);
+    }
+
+    public static String[] buildPool(String[] policyAttributes, String[] strings, int rBits, int qBits, boolean useNative) {
         try {
             byte[] plainBlob = writeStringBlob(strings);
 
+            PairingFactory.getInstance().setUsePBCWhenPossible(useNative);
             TypeACurveGenerator generator = new TypeACurveGenerator(rBits, qBits);
             PairingParameters parameters = generator.generate();
             Pairing pairing = PairingFactory.getPairing(parameters);
@@ -61,6 +66,7 @@ public final class StringAbeRuntime {
             byte[] encryptedBlob = encryptBlob(aesKey, plainBlob);
 
             return new String[]{
+                    useNative ? "pbc:true" : "pbc:false",
                     b64(parameters.toString().getBytes(StandardCharsets.UTF_8)),
                     b64(writeSecretKey(secretKey)),
                     b64(writeCipherText(cipherText)),
@@ -101,6 +107,10 @@ public final class StringAbeRuntime {
         return result;
     }
 
+    public static boolean useNativePayload(String[] payload) {
+        return payload.length > 0 && "pbc:true".equals(payload[0]);
+    }
+
     public static String shapeAttribute(Class<?> owner, String salt) {
         Class<?> superClass = owner.getSuperclass();
         int ancestors = superClass == null ? 0 : 1;
@@ -137,6 +147,11 @@ public final class StringAbeRuntime {
     }
 
     public static Pairing readPairing(String encodedParameters) throws Exception {
+        return readPairing(encodedParameters, true);
+    }
+
+    public static Pairing readPairing(String encodedParameters, boolean useNative) throws Exception {
+        PairingFactory.getInstance().setUsePBCWhenPossible(useNative);
         String text = new String(decodeBase64(encodedParameters), StandardCharsets.UTF_8);
         PropertiesParameters parameters = new PropertiesParameters();
         parameters.load(new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)));

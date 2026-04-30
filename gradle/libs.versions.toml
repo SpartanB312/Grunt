@@ -51,9 +51,10 @@ apache-rng-simple = { module = "org.apache.commons:commons-rng-simple", version.
 # Pairing-based cryptography
 jpbc-api = { module = "com.github.emilianobonassi.jpbc:jpbc-api", version.ref = "jpbc" }
 jpbc-plaf = { module = "com.github.emilianobonassi.jpbc:jpbc-plaf", version.ref = "jpbc" }
+jpbc-pbc = { module = "com.github.emilianobonassi.jpbc:jpbc-pbc", version.ref = "jpbc" }
 
 [bundles]
 asm = ["asm", "asm-tree", "asm-util", "asm-commons", "asm-analysis"]
 apache-common = ["apache-math", "apache-lang", "apache-rng-simple"]
 utils = ["fastutil", "gson"]
-jpbc = ["jpbc-api", "jpbc-plaf"]
+jpbc = ["jpbc-api", "jpbc-plaf", "jpbc-pbc"]

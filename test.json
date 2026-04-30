@@ -42,6 +42,34 @@
     ],
     "transformerConfigs": [
         {
+            "type": "net.spartanb312.grunt.yapyap.transformers.encrypt.string.StringAttributeBasedEncrypt.Config",
+            "enabled": true,
+            "classFilter": {
+                "excludeStrategy": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Event**"
+                ],
+                "includeStrategy": [
+                    "**"
+                ]
+            },
+            "chance": 1.0,
+            "minPoolSize": 2,
+            "maxPoolSize": 512,
+            "maxInstructions": 16384,
+            "rBits": 256,
+            "qBits": 1536,
+            "useNative": false,
+            "appId": "grunt-yapyap",
+            "exclusion": [
+                "net/dummy/**",
+                "net/dummy/Class",
+                "net/dummy/Class.method",
+                "net/dummy/Class.method()V"
+            ]
+        },
+        {
             "type": "net.spartanb312.grunt.yapyap.transformers.encrypt.number.NumberAttributeBasedEncrypt.Config",
             "enabled": true,
             "classFilter": {
@@ -64,6 +92,7 @@
             "maxInstructions": 16384,
             "rBits": 256,
             "qBits": 1536,
+            "useNative": false,
             "appId": "grunt-yapyap",
             "exclusion": [
                 "net/dummy/**",
