@@ -10,7 +10,7 @@ import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.ResourceSet
 import net.spartanb312.grunteon.obfuscator.util.*
-import net.spartanb312.grunteon.obfuscator.util.extensions.removeAnnotation
+import net.spartanb312.grunteon.obfuscator.util.extensions.removeAnnotations
 import java.nio.charset.StandardCharsets
 
 @Transformer.Description(
@@ -72,9 +72,9 @@ class PostProcess : Transformer<PostProcess.Config>(
             val include = filter.testClass(classNode)
             // annotations
             if (include) {
-                annotationList.forEach { classNode.removeAnnotation(it) }
-                classNode.fields.forEach { field -> annotationList.forEach { field.removeAnnotation(it) } }
-                classNode.methods.forEach { method -> annotationList.forEach { method.removeAnnotation(it) } }
+                classNode.removeAnnotations(annotationList)
+                classNode.fields.forEach { field -> field.removeAnnotations(annotationList) }
+                classNode.methods.forEach { method -> method.removeAnnotations(annotationList) }
             }
             // dummy insns
             classNode.methods.forEach { method ->

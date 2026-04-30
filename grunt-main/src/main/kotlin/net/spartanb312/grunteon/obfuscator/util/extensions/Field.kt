@@ -27,11 +27,20 @@ fun FieldNode.appendAnnotation(annotation: String): FieldNode {
 }
 
 fun FieldNode.removeAnnotation(annotation: String) {
-    invisibleAnnotations?.toList()?.forEach {
-        if (it.desc == annotation) invisibleAnnotations.remove(it)
+    invisibleAnnotations?.removeIf {
+        it.desc == annotation
     }
-    visibleAnnotations?.toList()?.forEach {
-        if (it.desc == annotation) visibleAnnotations.remove(it)
+    visibleAnnotations?.removeIf {
+        it.desc == annotation
+    }
+}
+
+fun FieldNode.removeAnnotations(annotations: Set<String>) {
+    invisibleAnnotations?.removeIf {
+        it.desc in annotations
+    }
+    visibleAnnotations?.removeIf {
+        it.desc in annotations
     }
 }
 

@@ -79,18 +79,18 @@ class ClassRenamer : Transformer<ClassRenamer.Config>(
             val dictionary = NameGenerator.getDictionary(config.dictionary)
             val nameGenerator = NameGenerator(dictionary)
             val randomGen = Xoshiro256PPRandom(getSeed("Global"))
-            val classes = if (config.shuffled) instance.workRes.inputClassCollection.shuffled(randomGen)
-            else instance.workRes.inputClassCollection
-            var counter = 0
-            classes.asSequence()
+            val counter = instance.workRes.inputClassCollection.asSequence()
                 .filter { strategy.testClass(it) }
-                .forEach { clazz ->
+                .run {
+                    if (config.shuffled) this.shuffled(randomGen) else this
+                }
+                .onEach { clazz ->
                     instance.nameMapping.putClassMapping(
                         clazz.name,
                         config.parent + config.malNamePrefix(clazz.name) + config.reversePrefix + config.prefix + nameGenerator.nextName()
                     )
-                    counter++
                 }
+                .count()
             Logger.info("    Generated mapping for ${counter} classes")
         }
     }

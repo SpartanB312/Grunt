@@ -28,6 +28,16 @@ inline fun <reified T> MutableList<T>.shuffle(rnd: UniformRandomProvider) {
     }
 }
 
+fun <T> Sequence<T>.shuffled(random: UniformRandomProvider): Sequence<T> = sequence {
+    val buffer = toMutableList()
+    while (buffer.isNotEmpty()) {
+        val j = random.nextInt(buffer.size)
+        val last = buffer.removeLast()
+        val value = if (j < buffer.size) buffer.set(j, last) else last
+        yield(value)
+    }
+}
+
 fun <T> swap(arr: Array<T>, i: Int, j: Int) {
     val tmp = arr[i]
     arr[i] = arr[j]
