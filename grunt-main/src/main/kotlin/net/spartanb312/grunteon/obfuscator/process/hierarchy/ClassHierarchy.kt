@@ -372,7 +372,7 @@ class ClassHierarchy(
             assert(classCount >= realClassCount)
             assert(classNames.size == classCount)
 
-            parents = parents.copyOf(classCount) { emptyIntArray }
+            parents = Array(classCount) { if (it < parents.size) parents[it] else emptyIntArray }
 
             val children = Array(classCount) { IntArrayList() }
             val ancestors = Array(classCount) { IntArrayList(parents[it]) }

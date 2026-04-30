@@ -1,9 +1,11 @@
-package net.spartanb312.grunteon.obfuscator
+package net.spartanb312.grunt.yapyap
 
+import net.spartanb312.grunt.yapyap.transformers.encrypt.number.NumberAttributeBasedEncrypt
+import net.spartanb312.grunt.yapyap.transformers.encrypt.string.StringAttributeBasedEncrypt
+import net.spartanb312.grunteon.obfuscator.Grunteon
+import net.spartanb312.grunteon.obfuscator.ObfConfig
+import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
-import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.ArithmeticSubstitute
-import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
-import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.DeclaredFieldsExtract
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.ParameterObfuscate
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.*
@@ -18,7 +20,6 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.rename.ClassRena
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.FieldRenamer
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.LocalVarRenamer
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MethodRenamer
-import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.logging.SimpleLogger
 import java.util.*
@@ -36,11 +37,13 @@ fun main(args: Array<String>) {
     // TODO: Module scan
     // TODO: Module initialize
 
+    PluginManager.loadPlugin(Yapyap)
     PluginManager.loadPlugins()
 
     val queue = ArrayDeque<Double>()
     repeat(args.getOrNull(0)?.toIntOrNull() ?: 1) {
         val config = ObfConfig(
+            output = null,
             transformerConfigs = listOf(
                 // Optimize
                 DeadCodeRemove.Config(),
@@ -50,9 +53,12 @@ fun main(args: Array<String>) {
                 SourceDebugInfoHide.Config(),
                 StringEqualsOptimize.Config(),
                 // Encrypt
-                ArithmeticSubstitute.Config(),
-                NumberBasicEncrypt.Config(),
-                StringArrayedEncrypt.Config(),
+                // ArithmeticSubstitute.Config(),
+                // NumberBasicEncrypt.Config(),
+                // StringArrayedEncrypt.Config(),
+                NumberAttributeBasedEncrypt.Config(),
+                // NumberMathematicalEncrypt.Config(),
+                StringAttributeBasedEncrypt.Config(),
                 // Misc
                 DeclaredFieldsExtract.Config(),
                 ParameterObfuscate.Config(),
