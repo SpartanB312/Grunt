@@ -60,6 +60,9 @@ class InvokeProxy : Transformer<InvokeProxy.Config>(
             val counter = counter.local
             if (classNode.isExcluded(DISABLE_INVOKE_PROXY)) return@parForEachClassesFiltered
             classNode.methods.toList().asSequence()
+                .runIf(classNode.isEnum) {
+                    filterNot { it.isStatic && it.name in ENUM_METHOD_EXCLUDES }
+                }
                 .filter { !it.isAbstract && !it.isNative && !it.isInitializer }
                 .forEach { method ->
                     if (method.isExcluded(DISABLE_INVOKE_PROXY)) return@forEach
@@ -179,4 +182,11 @@ class InvokeProxy : Transformer<InvokeProxy.Config>(
         }
     }
 
+    companion object {
+        private val ENUM_METHOD_EXCLUDES = setOf(
+            "values",
+            "valueOf",
+            "getEntries"
+        )
+    }
 }
