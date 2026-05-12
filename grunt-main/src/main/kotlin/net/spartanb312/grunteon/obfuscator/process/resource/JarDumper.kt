@@ -27,6 +27,12 @@ object JarDumper {
     @OptIn(ExperimentalCoroutinesApi::class)
     context(instance: Grunteon)
     fun dumpJar(outputFile: Path) {
+        dumpJar(PathResourceOutput(outputFile))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    context(instance: Grunteon)
+    fun dumpJar(output: ResourceOutput) {
         val config = instance.obfConfig
 
         fun checkFileNameRemove(name: String): Boolean {
@@ -34,17 +40,16 @@ object JarDumper {
                     || config.fileRemoveSuffix.any { name.endsWith(it) }
         }
 
-        Logger.info("Dumping jar to $outputFile")
-        if (outputFile.exists()) Logger.warn("Existing output file will be overridden!")
-        outputFile.absolute().parent.createDirectories()
-        val directOut = outputFile.outputStream().buffered(65536)
+        Logger.info("Dumping jar to ${output.description}")
+        if (output.exists()) Logger.warn("Existing output file will be overridden!")
+        val directOut = output.openOutputStream().buffered(65536)
         // Corrupt header
         if (config.corruptHeaders) {
             Logger.info("Corrupting jar header...")
             val random = Xoshiro256PPRandom(
                 getSeed(
                     config.input,
-                    outputFile.name,
+                    output.fileName,
                     "corruptHeader",
                 )
             )
@@ -79,17 +84,15 @@ object JarDumper {
                 // Writing class
                 if (config.missingCheck) hierarchy.printMissing()
                 launch {
-                    instance.workRes.inputResourceSet.root.walk()
-                        .filter { !it.isDirectory() }
+                    instance.workRes.inputResourceSet.files()
                         .filter { it.extension != "class" }
                         .filterNot { checkFileNameRemove(it.name) }
                         .forEach {
                             launch {
-                                val existedCache = instance.workRes.inputResourceSet.cache[it.pathString]
                                 send(
                                     processZipEntry(
-                                        it.pathString.removePrefix("/"),
-                                        existedCache?.get()?.content ?: it.readBytes()
+                                        instance.workRes.inputResourceSet.entryName(it),
+                                        instance.workRes.inputResourceSet.readFile(it)
                                     )
                                 )
                             }
@@ -152,17 +155,16 @@ object JarDumper {
                         val random = Xoshiro256PPRandom(
                             getSeed(
                                 config.input,
-                                outputFile.name,
+                                output.fileName,
                                 "corruptCRC32",
                             )
                         )
                         zipOut.corruptCRC32(random)
                     }
 
-                    instance.workRes.inputResourceSet.root.walk()
-                        .filter { it.isDirectory() }
+                    instance.workRes.inputResourceSet.directories()
                         .forEach {
-                            val zipEntry = ZipEntry(it.pathString.removePrefix("/") + "/")
+                            val zipEntry = ZipEntry(instance.workRes.inputResourceSet.entryName(it) + "/")
                             if (config.removeTimeStamps) zipEntry.time = 0
                             zipOut.putNextEntry(zipEntry)
                             zipOut.closeEntry()

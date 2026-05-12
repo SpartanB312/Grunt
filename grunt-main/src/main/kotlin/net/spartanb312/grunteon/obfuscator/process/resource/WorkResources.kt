@@ -119,15 +119,29 @@ class WorkResources private constructor(
 
         @OptIn(ExperimentalCoroutinesApi::class)
         fun read(input: Path, libs: List<Path> = emptyList()): WorkResources {
+            return read(
+                input = PathResourceInput(input),
+                libs = libs
+                    .map { PathResourceInput(it) }
+                    .flatMap { it.expandJarInputs() }
+            )
+        }
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun read(input: ResourceInput, libs: List<ResourceInput> = emptyList()): WorkResources {
+            val inputPath = input.resolvePath()
+            val libraryPaths = libs.map { it to it.resolvePath() }
             Logger.info("Reading...")
-            Logger.info("Input: ${input.absolutePathString()}")
-            require(input.exists()) { "Input file does not exist: ${input.absolutePathString()}" }
+            Logger.info("Input: ${input.description}")
+            require(inputPath.exists()) { "Input file does not exist: ${input.description}" }
             Logger.debug("Libraries:")
-            libs.forEach {
-                Logger.debug(" - ${it.absolutePathString()}")
+            libraryPaths.forEach { (library, _) ->
+                Logger.debug(" - ${library.description}")
             }
-            val inputResourceSet = ResourceSet.Single(resolvePath(input))
-            val libraryResourceSets = libs.associate { it.pathString to ResourceSet.Single(resolvePath(it)) }
+            val inputResourceSet = ResourceSet.Single(resolvePath(inputPath))
+            val libraryResourceSets = libraryPaths.associate { (library, path) ->
+                library.description to ResourceSet.Single(resolvePath(path))
+            }
             val allResourceSetList = listOf(inputResourceSet) + libraryResourceSets.values
             val allResourceSets = ResourceSet.Composite(allResourceSetList)
 

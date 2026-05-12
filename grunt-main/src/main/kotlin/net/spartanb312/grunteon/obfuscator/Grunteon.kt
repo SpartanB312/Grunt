@@ -6,21 +6,18 @@ import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.TransformerRegistry
 import net.spartanb312.grunteon.obfuscator.process.WorkerContext
 import net.spartanb312.grunteon.obfuscator.process.resource.JarDumper
+import net.spartanb312.grunteon.obfuscator.process.resource.ObfuscationIO
 import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MappingApplier
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MappingSource
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.NameMapping
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
-import java.nio.file.Path
-import kotlin.io.path.Path
-import kotlin.io.path.extension
-import kotlin.io.path.isDirectory
-import kotlin.io.path.walk
 
 // Grunteon process instance
 class Grunteon(
     val obfConfig: ObfConfig,
+    val io: ObfuscationIO,
     val workRes: WorkResources,
     val transformers: List<Pair<Transformer<*>, TransformerConfig>>,
 ) {
@@ -45,9 +42,12 @@ class Grunteon(
         }
 
         // TODO: make this optional
-        val outputPath = obfConfig.output?.let { Path(it) }
-        if (outputPath != null) {
-            JarDumper.dumpJar(outputPath)
+        val output = io.output
+        if (output != null) {
+            JarDumper.dumpJar(output)
+        }
+        if (obfConfig.dumpMappings) {
+            io.mappingsOutput?.let { nameMapping.dump(it) }
         }
     }
 
@@ -56,23 +56,13 @@ class Grunteon(
 
     companion object {
         fun create(config: ObfConfig): Grunteon {
+            return create(config, ObfuscationIO.fromConfig(config))
+        }
+
+        fun create(config: ObfConfig, io: ObfuscationIO): Grunteon {
             Logger.info("Executing obfuscating job...")
 
-            val inputRoot = Path(config.input)
-            val libs = config.libs.map { Path(it) }
-
-            fun resolvePath(path: Path): List<Path> {
-                return if (path.isDirectory()) {
-                    path.walk()
-                        .filter { !it.isDirectory() && it.extension == "jar" }
-                        .map { it }
-                        .toList()
-                } else {
-                    listOf(path)
-                }
-            }
-
-            val workRes = WorkResources.read(inputRoot, libs.flatMap { resolvePath(it) })
+            val workRes = WorkResources.read(io.input, io.libraries)
 
             val transformerAndConfig = config.transformerConfigs
                 .asSequence()
@@ -99,6 +89,7 @@ class Grunteon(
 
             return Grunteon(
                 obfConfig = config,
+                io = io,
                 workRes = workRes,
                 transformers = transformerAndConfig
             )
