@@ -1,0 +1,12 @@
+services:
+  redis:
+    image: redis:8-alpine
+    container_name: grunteon-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - grunteon-redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+volumes:
+  grunteon-redis-data:

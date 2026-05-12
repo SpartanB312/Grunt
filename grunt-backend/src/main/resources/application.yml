@@ -1,0 +1,22 @@
+server:
+  port: 8080
+  servlet:
+    multipart:
+      max-file-size: 512MB
+      max-request-size: 2048MB
+
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+grunteon:
+  backend:
+    work-dir: work/backend-jobs
+    queue-key: "grunteon:jobs:queue"
+    job-key-prefix: "grunteon:jobs:"
+    worker-concurrency: 2
+    worker-java-options:
+      - "-Xmx4G"
+    worker-timeout-seconds: 0

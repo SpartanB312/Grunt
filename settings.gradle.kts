@@ -9,6 +9,7 @@ include(":grunt-index")
 include(":grunt-testcase")
 include(":grunt-yapyap")
 include(":grunt-ui")
+include(":grunt-backend")
 
 pluginManagement {
     repositories {

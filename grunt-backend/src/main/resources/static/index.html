@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Grunteon Backend</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="shell">
+    <section class="workspace" aria-label="Grunteon job workspace">
+        <div class="upload-panel">
+            <div class="brand-row">
+                <div>
+                    <h1>Grunteon Backend</h1>
+                    <p class="muted">Redis queue / isolated worker JVMs</p>
+                </div>
+                <span id="apiStatus" class="status-pill neutral">Checking</span>
+            </div>
+
+            <form id="uploadForm" class="upload-form">
+                <label class="file-field">
+                    <span>Config JSON</span>
+                    <input id="configFile" name="config" type="file" accept=".json,application/json" required>
+                    <strong id="configName">No file selected</strong>
+                </label>
+
+                <label class="file-field">
+                    <span>Input JAR</span>
+                    <input id="inputFile" name="input" type="file" accept=".jar,application/java-archive" required>
+                    <strong id="inputName">No file selected</strong>
+                </label>
+
+                <label class="file-field">
+                    <span>Dependency JARs</span>
+                    <input id="libsFile" name="libs" type="file" accept=".jar,application/java-archive" multiple>
+                    <strong id="libsName">No files selected</strong>
+                </label>
+
+                <div class="progress-wrap" aria-label="Upload progress">
+                    <div id="uploadProgress" class="progress-bar"></div>
+                </div>
+
+                <div id="formMessage" class="message" role="status"></div>
+
+                <button id="submitButton" class="primary-button" type="submit">
+                    <span class="button-icon">+</span>
+                    <span>Submit Job</span>
+                </button>
+            </form>
+        </div>
+
+        <div class="jobs-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Jobs</h2>
+                    <p class="muted">Queued, running, and completed uploads</p>
+                </div>
+                <button id="refreshButton" class="secondary-button" type="button">Refresh</button>
+            </div>
+
+            <div class="table-frame">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Job ID</th>
+                        <th>Status</th>
+                        <th>Updated</th>
+                        <th>Result</th>
+                    </tr>
+                    </thead>
+                    <tbody id="jobsBody">
+                    <tr>
+                        <td colspan="4" class="empty">No jobs yet</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

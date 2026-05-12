@@ -1,0 +1,362 @@
+:root {
+    color-scheme: light;
+    --bg: #f5f7f8;
+    --panel: #ffffff;
+    --panel-soft: #f9fbfb;
+    --text: #182024;
+    --muted: #68757c;
+    --line: #dfe6e8;
+    --accent: #167a68;
+    --accent-strong: #0e5f51;
+    --danger: #b33a3a;
+    --warn: #9a6a10;
+    --ok: #1b7759;
+    --neutral: #596874;
+    --shadow: 0 14px 32px rgba(16, 34, 42, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+.shell {
+    width: min(1180px, calc(100vw - 32px));
+    margin: 0 auto;
+    padding: 32px 0;
+}
+
+.workspace {
+    display: grid;
+    grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.upload-panel,
+.jobs-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.upload-panel {
+    padding: 22px;
+}
+
+.jobs-panel {
+    overflow: hidden;
+}
+
+.brand-row,
+.panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.panel-header {
+    padding: 22px 22px 16px;
+}
+
+h1,
+h2,
+p {
+    margin: 0;
+}
+
+h1 {
+    font-size: 26px;
+    line-height: 1.15;
+    letter-spacing: 0;
+}
+
+h2 {
+    font-size: 20px;
+    line-height: 1.2;
+    letter-spacing: 0;
+}
+
+.muted {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 82px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.status-pill.neutral {
+    color: var(--neutral);
+    background: #f2f5f7;
+}
+
+.status-pill.ok {
+    color: var(--ok);
+    background: #edf8f3;
+}
+
+.status-pill.danger {
+    color: var(--danger);
+    background: #fbefef;
+}
+
+.upload-form {
+    display: grid;
+    gap: 14px;
+    margin-top: 24px;
+}
+
+.file-field {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    background: var(--panel-soft);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+}
+
+.file-field span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.file-field strong {
+    min-height: 22px;
+    overflow: hidden;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-field input {
+    width: 100%;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.progress-wrap {
+    width: 100%;
+    height: 8px;
+    overflow: hidden;
+    background: #e5ecef;
+    border-radius: 999px;
+}
+
+.progress-bar {
+    width: 0;
+    height: 100%;
+    background: var(--accent);
+    transition: width 160ms ease;
+}
+
+.message {
+    min-height: 22px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.message.error {
+    color: var(--danger);
+}
+
+.primary-button,
+.download-button,
+.secondary-button {
+    border: 0;
+    cursor: pointer;
+}
+
+.primary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 18px;
+    color: #ffffff;
+    background: var(--accent);
+    border-radius: 6px;
+    font-weight: 800;
+}
+
+.primary-button:hover {
+    background: var(--accent-strong);
+}
+
+.primary-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
+.button-icon {
+    display: inline-grid;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 999px;
+    line-height: 1;
+}
+
+.secondary-button {
+    display: inline-flex;
+    min-width: 82px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    color: var(--text);
+    background: #eef3f4;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.secondary-button:hover {
+    background: #e2ebed;
+}
+
+.table-frame {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    min-width: 620px;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 13px 16px;
+    border-top: 1px solid var(--line);
+    text-align: left;
+    vertical-align: middle;
+}
+
+th {
+    color: var(--muted);
+    background: var(--panel-soft);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+td {
+    font-size: 14px;
+}
+
+.job-id {
+    max-width: 270px;
+    overflow: hidden;
+    font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status-text {
+    display: inline-flex;
+    min-width: 76px;
+    justify-content: center;
+    padding: 5px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.status-text.queued {
+    color: var(--neutral);
+    background: #eef3f6;
+}
+
+.status-text.running {
+    color: var(--warn);
+    background: #fbf4df;
+}
+
+.status-text.success {
+    color: var(--ok);
+    background: #eaf7f1;
+}
+
+.status-text.failed {
+    color: var(--danger);
+    background: #faeeee;
+}
+
+.download-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 88px;
+    height: 32px;
+    padding: 0 12px;
+    color: #ffffff;
+    background: var(--text);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.download-button:hover {
+    background: #2a363c;
+}
+
+.empty {
+    height: 150px;
+    color: var(--muted);
+    text-align: center;
+}
+
+.error-line {
+    display: block;
+    max-width: 320px;
+    overflow: hidden;
+    color: var(--danger);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+    .shell {
+        width: min(100vw - 20px, 680px);
+        padding: 16px 0;
+    }
+
+    .workspace {
+        grid-template-columns: 1fr;
+    }
+}
