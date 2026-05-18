@@ -2,11 +2,16 @@ package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 data class UiPalette(
@@ -52,6 +57,16 @@ val LocalUiPalette = staticCompositionLocalOf { DarkPalette }
 
 const val BaseFontScale = 0.85f
 const val DefaultFontScale = 1.0f
+val UiCornerRadius: Dp = 6.dp
+val UiPanelShape = RoundedCornerShape(UiCornerRadius)
+val UiControlShape = RoundedCornerShape(UiCornerRadius)
+val UiShapes = Shapes(
+    extraSmall = UiControlShape,
+    small = UiControlShape,
+    medium = UiPanelShape,
+    large = UiPanelShape,
+    extraLarge = UiPanelShape,
+)
 
 enum class ThemeMode {
     Dark,
@@ -61,12 +76,70 @@ enum class ThemeMode {
 @Composable
 fun PanelSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val palette = LocalUiPalette.current
+    FramedSurface(color = palette.panel, modifier = modifier, content = content)
+}
+
+@Composable
+fun SectionSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val palette = LocalUiPalette.current
+    FramedSurface(color = palette.panelAlt, modifier = modifier, content = content)
+}
+
+@Composable
+fun NestedSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val palette = LocalUiPalette.current
+    FramedSurface(color = palette.nestedPanel, modifier = modifier, content = content)
+}
+
+@Composable
+fun FramedSurface(
+    color: Color,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val palette = LocalUiPalette.current
     Surface(
-        color = palette.panel,
-        shape = RoundedCornerShape(8.dp),
+        color = color,
+        shape = UiPanelShape,
         border = BorderStroke(1.dp, palette.stroke),
         modifier = modifier
     ) {
+        content()
+    }
+}
+
+@Composable
+fun UiButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    Button(onClick = onClick, modifier = modifier, enabled = enabled, shape = UiControlShape) {
+        content()
+    }
+}
+
+@Composable
+fun UiOutlinedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    OutlinedButton(onClick = onClick, modifier = modifier, enabled = enabled, shape = UiControlShape) {
+        content()
+    }
+}
+
+@Composable
+fun UiTextButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    TextButton(onClick = onClick, modifier = modifier, enabled = enabled, shape = UiControlShape) {
         content()
     }
 }

@@ -1,13 +1,16 @@
 package net.spartanb312.grunteon.ui
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,12 +43,7 @@ fun ObfuscationPage(
                 Text("Obfuscation", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("Output information from work instance", color = palette.muted)
             }
-            Surface(
-                color = palette.nestedPanel,
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, palette.stroke),
-                modifier = Modifier.fillMaxWidth().weight(1f)
-            ) {
+            NestedSurface(Modifier.fillMaxWidth().weight(1f)) {
                 Column(
                     modifier = Modifier.fillMaxSize().padding(12.dp).verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(3.dp)
@@ -59,12 +57,7 @@ fun ObfuscationPage(
                     }
                 }
             }
-            Surface(
-                color = palette.panelAlt,
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, palette.stroke),
-                modifier = Modifier.fillMaxWidth().height(120.dp)
-            ) {
+            SectionSurface(Modifier.fillMaxWidth().height(120.dp)) {
                 Box(Modifier.fillMaxSize().padding(12.dp)) {
                     Text("Reserved", color = palette.muted)
                     Row(
@@ -73,7 +66,7 @@ fun ObfuscationPage(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (running) Text("Running...", color = palette.muted)
-                        Button(onClick = onObfuscate, enabled = !running) {
+                        UiButton(onClick = onObfuscate, enabled = !running) {
                             Text("Obfuscate")
                         }
                     }

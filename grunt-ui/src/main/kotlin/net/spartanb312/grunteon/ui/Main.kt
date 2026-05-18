@@ -204,7 +204,8 @@ fun App() {
                     onSurfaceVariant = palette.muted,
                     primary = palette.accent,
                 )
-            }
+            },
+            shapes = UiShapes,
         ) {
             Column(
                 modifier = Modifier
