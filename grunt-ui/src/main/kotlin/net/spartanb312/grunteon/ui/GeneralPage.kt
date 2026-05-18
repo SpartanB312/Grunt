@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
@@ -69,10 +70,20 @@ fun GeneralPage(
                         verticalArrangement = Arrangement.spacedBy(18.dp)
                     ) {
                         GeneralSection("Input / Output") {
-                            StringOption("Input jar", config.input) { onConfigChange(config.copy(input = it)) }
-                            StringOption("Output jar", config.output.orEmpty()) {
-                                onConfigChange(config.copy(output = it.ifBlank { null }))
-                            }
+                            PathOption(
+                                label = "Input jar",
+                                value = config.input,
+                                onChange = { onConfigChange(config.copy(input = it)) },
+                                onBrowse = { chooseInputPath(config.input)?.toString() }
+                            )
+                            PathOption(
+                                label = "Output jar",
+                                value = config.output.orEmpty(),
+                                onChange = {
+                                    onConfigChange(config.copy(output = it.ifBlank { null }))
+                                },
+                                onBrowse = { chooseOutputPath(config.output.orEmpty())?.toString() }
+                            )
                             StringListOption("Libraries", config.libs) { onConfigChange(config.copy(libs = it)) }
                         }
                         GeneralSection("Filters") {
@@ -176,6 +187,34 @@ private fun StringOption(label: String, value: String, onChange: (String) -> Uni
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
+}
+
+@Composable
+private fun PathOption(
+    label: String,
+    value: String,
+    onChange: (String) -> Unit,
+    onBrowse: () -> String?,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            label = { Text(label) },
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+        )
+        UiOutlinedButton(
+            onClick = { onBrowse()?.let(onChange) },
+            modifier = Modifier.width(96.dp)
+        ) {
+            Text("Browse")
+        }
+    }
 }
 
 @Composable
