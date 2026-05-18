@@ -1,6 +1,5 @@
 package net.spartanb312.grunteon.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,15 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -57,8 +52,8 @@ fun GeneralPage(
                 Text("Top-level ObfConfig options.", color = palette.muted)
             }
             Text(status, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            OutlinedButton(onClick = onReload) { Text("Reload") }
-            Button(onClick = onSave) { Text("Save config") }
+            UiOutlinedButton(onClick = onReload) { Text("Reload") }
+            UiButton(onClick = onSave) { Text("Save config") }
         }
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -153,12 +148,7 @@ fun GeneralPage(
 @Composable
 private fun GeneralTipsPlaceholder(modifier: Modifier = Modifier) {
     val palette = LocalUiPalette.current
-    Surface(
-        color = palette.panelAlt,
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, palette.stroke),
-        modifier = modifier.fillMaxWidth().heightIn(min = 180.dp)
-    ) {
+    SectionSurface(modifier.fillMaxWidth().heightIn(min = 180.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Tips", color = palette.text, fontWeight = FontWeight.SemiBold)
             Text("Reserved for contextual help.", color = palette.muted)
@@ -169,12 +159,7 @@ private fun GeneralTipsPlaceholder(modifier: Modifier = Modifier) {
 @Composable
 private fun GeneralSection(title: String, content: @Composable () -> Unit) {
     val palette = LocalUiPalette.current
-    Surface(
-        color = palette.panelAlt,
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, palette.stroke),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    SectionSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(title, color = palette.text, fontWeight = FontWeight.SemiBold)
             content()

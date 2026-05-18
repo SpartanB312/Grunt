@@ -1,6 +1,5 @@
 package net.spartanb312.grunteon.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,20 +9,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.spartanb312.grunteon.obfuscator.SUBTITLE
@@ -74,9 +68,9 @@ fun TopToolbar(
 @Composable
 private fun ToolbarTab(label: String, selected: Boolean, onClick: () -> Unit) {
     if (selected) {
-        Button(onClick = onClick) { Text(label) }
+        UiButton(onClick = onClick) { Text(label) }
     } else {
-        OutlinedButton(onClick = onClick) { Text(label) }
+        UiOutlinedButton(onClick = onClick) { Text(label) }
     }
 }
 
@@ -102,12 +96,7 @@ fun SettingsPage(
                 Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("Workspace preferences for the editor prototype.", color = palette.muted)
             }
-            Surface(
-                color = palette.panelAlt,
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, palette.stroke),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            SettingsSection {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -122,18 +111,13 @@ fun SettingsPage(
                         valueRange = 0.8f..1.3f,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { onFontScaleChange(0.9f) }) { Text("Small") }
-                        OutlinedButton(onClick = { onFontScaleChange(DefaultFontScale) }) { Text("Default") }
-                        OutlinedButton(onClick = { onFontScaleChange(1.15f) }) { Text("Large") }
+                        UiOutlinedButton(onClick = { onFontScaleChange(0.9f) }) { Text("Small") }
+                        UiOutlinedButton(onClick = { onFontScaleChange(DefaultFontScale) }) { Text("Default") }
+                        UiOutlinedButton(onClick = { onFontScaleChange(1.15f) }) { Text("Large") }
                     }
                 }
             }
-            Surface(
-                color = palette.panelAlt,
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, palette.stroke),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            SettingsSection {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Obfuscation Log Level", fontWeight = FontWeight.SemiBold)
@@ -141,46 +125,36 @@ fun SettingsPage(
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (uiLogLevel == UiLogLevel.Info) {
-                            Button(onClick = { onUiLogLevelChange(UiLogLevel.Info) }) { Text("INFO") }
+                            UiButton(onClick = { onUiLogLevelChange(UiLogLevel.Info) }) { Text("INFO") }
                         } else {
-                            OutlinedButton(onClick = { onUiLogLevelChange(UiLogLevel.Info) }) { Text("INFO") }
+                            UiOutlinedButton(onClick = { onUiLogLevelChange(UiLogLevel.Info) }) { Text("INFO") }
                         }
                         if (uiLogLevel == UiLogLevel.Debug) {
-                            Button(onClick = { onUiLogLevelChange(UiLogLevel.Debug) }) { Text("DEBUG") }
+                            UiButton(onClick = { onUiLogLevelChange(UiLogLevel.Debug) }) { Text("DEBUG") }
                         } else {
-                            OutlinedButton(onClick = { onUiLogLevelChange(UiLogLevel.Debug) }) { Text("DEBUG") }
+                            UiOutlinedButton(onClick = { onUiLogLevelChange(UiLogLevel.Debug) }) { Text("DEBUG") }
                         }
                     }
                 }
             }
-            Surface(
-                color = palette.panelAlt,
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, palette.stroke),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            SettingsSection {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Theme", fontWeight = FontWeight.SemiBold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (themeMode == ThemeMode.Dark) {
-                            Button(onClick = { onThemeModeChange(ThemeMode.Dark) }) { Text("Dark") }
+                            UiButton(onClick = { onThemeModeChange(ThemeMode.Dark) }) { Text("Dark") }
                         } else {
-                            OutlinedButton(onClick = { onThemeModeChange(ThemeMode.Dark) }) { Text("Dark") }
+                            UiOutlinedButton(onClick = { onThemeModeChange(ThemeMode.Dark) }) { Text("Dark") }
                         }
                         if (themeMode == ThemeMode.Light) {
-                            Button(onClick = { onThemeModeChange(ThemeMode.Light) }) { Text("Light") }
+                            UiButton(onClick = { onThemeModeChange(ThemeMode.Light) }) { Text("Light") }
                         } else {
-                            OutlinedButton(onClick = { onThemeModeChange(ThemeMode.Light) }) { Text("Light") }
+                            UiOutlinedButton(onClick = { onThemeModeChange(ThemeMode.Light) }) { Text("Light") }
                         }
                     }
                 }
             }
-            Surface(
-                color = palette.panelAlt,
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, palette.stroke),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            SettingsSection {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Config", fontWeight = FontWeight.SemiBold)
                     Text(configPath.toAbsolutePath().normalize().toString(), fontFamily = FontFamily.Monospace)
@@ -189,4 +163,9 @@ fun SettingsPage(
             }
         }
     }
+}
+
+@Composable
+private fun SettingsSection(content: @Composable () -> Unit) {
+    SectionSurface(Modifier.fillMaxWidth(), content = content)
 }

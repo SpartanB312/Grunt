@@ -1,6 +1,5 @@
 package net.spartanb312.grunteon.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,15 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -108,12 +104,7 @@ private fun ConfigField(
     onChange: (Any?) -> Unit,
 ) {
     val palette = LocalUiPalette.current
-    Surface(
-        color = palette.panelAlt,
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, palette.stroke),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    SectionSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(label, color = palette.text, fontWeight = FontWeight.SemiBold)
             if (description != null) Text(description, color = palette.muted, style = MaterialTheme.typography.bodySmall)
@@ -123,7 +114,7 @@ private fun ConfigField(
                 is Int -> IntField(value, property, onChange)
                 is Double -> DoubleField(value, property, onChange)
                 is Enum<*> -> EnumField(value, onChange)
-                is ClassFilterConfig -> ConfigEditor(value = value, onChange = onChange)
+                is ClassFilterConfig -> NestedConfigField(value = value, onChange = onChange)
                 is List<*> -> ListField(value, onChange)
                 null -> ReadOnlyValue("null", "Nullable fields are not editable in this prototype.")
                 else -> ReadOnlyValue(value::class.simpleName ?: "Value", value.toString())
@@ -193,7 +184,7 @@ private fun EnumField(value: Enum<*>, onChange: (Any?) -> Unit) {
     var expanded by remember(value::class) { mutableStateOf(false) }
     val constants = value::class.java.enumConstants.orEmpty()
     Box {
-        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+        UiOutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
             Text(value.name)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -212,13 +203,7 @@ private fun EnumField(value: Enum<*>, onChange: (Any?) -> Unit) {
 
 @Composable
 private fun NestedConfigField(value: Any, onChange: (Any?) -> Unit) {
-    val palette = LocalUiPalette.current
-    Surface(
-        color = palette.nestedPanel,
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, palette.stroke),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    NestedSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ConfigEditor(value = value, onChange = onChange)
         }
@@ -243,7 +228,7 @@ private fun ListField(value: List<*>, onChange: (Any?) -> Unit) {
 @Composable
 private fun ReadOnlyValue(label: String, text: String) {
     val palette = LocalUiPalette.current
-    Surface(color = palette.nestedPanel, shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, palette.stroke)) {
+    NestedSurface {
         Column(Modifier.fillMaxWidth().padding(10.dp)) {
             Text(label, color = palette.muted)
             Text(text, color = palette.text, fontFamily = FontFamily.Monospace)

@@ -13,17 +13,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,8 +56,8 @@ fun Header(
             )
         }
         Text(status, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        OutlinedButton(onClick = onReload) { Text("Reload") }
-        Button(onClick = onSave) { Text("Save config") }
+        UiOutlinedButton(onClick = onReload) { Text("Reload") }
+        UiButton(onClick = onSave) { Text("Save config") }
     }
 }
 
@@ -114,12 +109,7 @@ fun TransformerLibrary(
 @Composable
 private fun LibraryItem(definition: TransformerDefinition, onAdd: (TransformerDefinition) -> Unit) {
     val palette = LocalUiPalette.current
-    Surface(
-        color = palette.panelAlt,
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, palette.stroke),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    SectionSurface(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -129,7 +119,7 @@ private fun LibraryItem(definition: TransformerDefinition, onAdd: (TransformerDe
                 Text(definition.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(definition.description, color = palette.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            OutlinedButton(onClick = { onAdd(definition) }) {
+            UiOutlinedButton(onClick = { onAdd(definition) }) {
                 Text("Add")
             }
         }
@@ -211,7 +201,7 @@ private fun PipelineNodeCard(
     }
     Card(
         colors = CardDefaults.cardColors(containerColor = if (selected) palette.selectedPanel else palette.panelAlt),
-        shape = RoundedCornerShape(8.dp),
+        shape = UiPanelShape,
         border = BorderStroke(1.dp, borderColor),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onSelect)
     ) {
@@ -230,10 +220,10 @@ private fun PipelineNodeCard(
                 Text(definition?.description ?: node.config::class.qualifiedName.orEmpty(), color = palette.muted)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onMoveUp, enabled = canMoveUp) { Text("Up") }
-                OutlinedButton(onClick = onMoveDown, enabled = canMoveDown) { Text("Down") }
-                OutlinedButton(onClick = onDuplicate) { Text("Duplicate") }
-                TextButton(onClick = onDelete) { Text("Delete") }
+                UiOutlinedButton(onClick = onMoveUp, enabled = canMoveUp) { Text("Up") }
+                UiOutlinedButton(onClick = onMoveDown, enabled = canMoveDown) { Text("Down") }
+                UiOutlinedButton(onClick = onDuplicate) { Text("Duplicate") }
+                UiTextButton(onClick = onDelete) { Text("Delete") }
             }
         }
     }
@@ -242,12 +232,7 @@ private fun PipelineNodeCard(
 @Composable
 private fun VirtualMappingApplier() {
     val palette = LocalUiPalette.current
-    Surface(
-        color = palette.nestedPanel,
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, palette.stroke),
-        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp)
-    ) {
+    NestedSurface(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp)) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("MappingApplier", color = palette.muted, fontFamily = FontFamily.Monospace)
             Spacer(Modifier.width(10.dp))
