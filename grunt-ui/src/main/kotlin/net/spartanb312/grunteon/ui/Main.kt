@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -28,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
+import io.github.vinceglb.filekit.FileKit
+import kotlinx.coroutines.launch
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.ObfConfig
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
@@ -35,6 +38,7 @@ import net.spartanb312.grunteon.obfuscator.util.Logger
 import javax.swing.SwingUtilities
 
 fun main(args: Array<String>) {
+    FileKit.init(appId = "Grunteon")
     if (!args.contains("--disablePlugin")) PluginManager.loadPlugins()
     application {
         Window(
@@ -62,6 +66,7 @@ fun App() {
     var themeMode by remember { mutableStateOf(ThemeMode.Dark) }
     var uiLogLevel by remember { mutableStateOf(UiLogLevel.Info) }
     var obfuscationRunning by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     val baseDensity = LocalDensity.current
     val palette = if (themeMode == ThemeMode.Dark) DarkPalette else LightPalette
     val nodes = remember { mutableStateListOf<PipelineNode>() }
@@ -217,24 +222,28 @@ fun App() {
                     WelcomeScreen(
                         status = status,
                         onOpenConfig = {
-                            val path = chooseConfigPath()
-                            if (path != null) {
-                                val loaded = loadConfig(path)
-                                if (loaded.success) {
-                                    openWorkspace(loaded.config, loaded.path, loaded.message)
-                                } else {
-                                    status = loaded.message
+                            coroutineScope.launch {
+                                val path = chooseConfigPath()
+                                if (path != null) {
+                                    val loaded = loadConfig(path)
+                                    if (loaded.success) {
+                                        openWorkspace(loaded.config, loaded.path, loaded.message)
+                                    } else {
+                                        status = loaded.message
+                                    }
                                 }
                             }
                         },
                         onNewConfig = {
-                            val path = chooseNewConfigPath()
-                            if (path != null) {
-                                openWorkspace(
-                                    config = ObfConfig(),
-                                    path = path,
-                                    message = "New config. Save will write to ${path.toAbsolutePath().normalize()}"
-                                )
+                            coroutineScope.launch {
+                                val path = chooseNewConfigPath()
+                                if (path != null) {
+                                    openWorkspace(
+                                        config = ObfConfig(),
+                                        path = path,
+                                        message = "New config. Save will write to ${path.toAbsolutePath().normalize()}"
+                                    )
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxSize()

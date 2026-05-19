@@ -1,15 +1,22 @@
 package net.spartanb312.grunteon.ui
 
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
+import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.openDirectoryPicker
+import io.github.vinceglb.filekit.dialogs.openFilePicker
+import io.github.vinceglb.filekit.dialogs.openFileSaver
+import io.github.vinceglb.filekit.path
 import net.spartanb312.grunteon.obfuscator.ObfConfig
 import java.nio.file.Path as NioPath
-import javax.swing.JFileChooser
-import javax.swing.filechooser.FileNameExtensionFilter
 import kotlin.io.path.Path
 import kotlin.io.path.absolute
 import kotlin.io.path.extension
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.name
+import kotlin.io.path.nameWithoutExtension
 
 fun loadConfig(path: NioPath): ConfigLoadResult {
     return runCatching {
@@ -34,62 +41,51 @@ fun defaultConfigPath(): NioPath {
     return locateProjectRoot().resolve("config.json")
 }
 
-fun chooseConfigPath(): NioPath? {
-    val chooser = JFileChooser(defaultConfigPath().parent.toFile()).apply {
-        dialogTitle = "Open existed config"
-        fileFilter = FileNameExtensionFilter("JSON config files", "json")
-    }
-    return if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-        chooser.selectedFile.toPath()
-    } else {
-        null
-    }
+suspend fun chooseConfigPath(): NioPath? {
+    return FileKit.openFilePicker(
+        type = FileKitType.File("json"),
+        directory = defaultConfigPath().parent.toPlatformFile(),
+        dialogSettings = fileDialogSettings("Open existed config"),
+    )?.toNioPath()
 }
 
-fun chooseNewConfigPath(): NioPath? {
-    val chooser = JFileChooser(defaultConfigPath().parent.toFile()).apply {
-        dialogTitle = "New config"
-        selectedFile = defaultConfigPath().toFile()
-        fileFilter = FileNameExtensionFilter("JSON config files", "json")
-    }
-    return if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
-        val selected = chooser.selectedFile.toPath()
-        if (selected.fileName.toString().contains(".")) selected else selected.resolveSibling("${selected.fileName}.json")
-    } else {
-        null
-    }
+suspend fun chooseNewConfigPath(): NioPath? {
+    val defaultPath = defaultConfigPath()
+    return FileKit.openFileSaver(
+        suggestedName = defaultPath.nameWithoutExtension,
+        defaultExtension = "json",
+        allowedExtensions = setOf("json"),
+        directory = defaultPath.parent.toPlatformFile(),
+        dialogSettings = fileDialogSettings("New config"),
+    )?.toNioPath()?.ensureExtension("json")
 }
 
-fun chooseInputPath(currentValue: String): NioPath? {
+suspend fun chooseInputPath(currentValue: String): NioPath? {
     val initialPath = resolveChooserPath(currentValue, Path("input.jar"))
-    val chooser = JFileChooser(initialChooserDirectory(initialPath).toFile()).apply {
-        dialogTitle = "Select input jar or directory"
-        selectedFile = initialPath.toFile()
-        fileSelectionMode = JFileChooser.FILES_AND_DIRECTORIES
-        fileFilter = FileNameExtensionFilter("Jar or Zip files", "jar", "zip")
-    }
-    return if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-        chooser.selectedFile.toPath()
-    } else {
-        null
-    }
+    return FileKit.openFilePicker(
+        type = FileKitType.File("jar", "zip"),
+        directory = initialChooserDirectory(initialPath).toPlatformFile(),
+        dialogSettings = fileDialogSettings("Select input jar"),
+    )?.toNioPath()
 }
 
-fun chooseOutputPath(currentValue: String): NioPath? {
+suspend fun chooseInputDirectory(currentValue: String): NioPath? {
+    val initialPath = resolveChooserPath(currentValue, Path("input.jar"))
+    return FileKit.openDirectoryPicker(
+        directory = initialChooserDirectory(initialPath).toPlatformFile(),
+        dialogSettings = fileDialogSettings("Select input directory"),
+    )?.toNioPath()
+}
+
+suspend fun chooseOutputPath(currentValue: String): NioPath? {
     val initialPath = resolveChooserPath(currentValue, Path("output.jar"))
-    val chooser = JFileChooser(initialChooserDirectory(initialPath).toFile()).apply {
-        dialogTitle = "Select output jar"
-        selectedFile = initialPath.toFile()
-        fileSelectionMode = JFileChooser.FILES_ONLY
-        fileFilter = FileNameExtensionFilter("Jar files", "jar")
-    }
-    return if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
-        chooser.selectedFile.toPath().let { selected ->
-            if (selected.extension.isBlank()) selected.resolveSibling("${selected.name}.jar") else selected
-        }
-    } else {
-        null
-    }
+    return FileKit.openFileSaver(
+        suggestedName = initialPath.nameWithoutExtension,
+        defaultExtension = "jar",
+        allowedExtensions = setOf("jar"),
+        directory = initialChooserDirectory(initialPath).toPlatformFile(),
+        dialogSettings = fileDialogSettings("Select output jar"),
+    )?.toNioPath()?.ensureExtension("jar")
 }
 
 private fun locateProjectRoot(): NioPath {
@@ -113,4 +109,16 @@ private fun initialChooserDirectory(path: NioPath): NioPath {
         path.parent?.exists() == true -> path.parent
         else -> defaultConfigPath().parent
     }.normalize()
+}
+
+private fun NioPath.toPlatformFile(): PlatformFile = PlatformFile(toFile())
+
+private fun PlatformFile.toNioPath(): NioPath = Path(path)
+
+private fun fileDialogSettings(title: String): FileKitDialogSettings {
+    return FileKitDialogSettings(title = title)
+}
+
+private fun NioPath.ensureExtension(extension: String): NioPath {
+    return if (this.extension.isBlank()) resolveSibling("$name.$extension") else this
 }

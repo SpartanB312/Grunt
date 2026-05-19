@@ -15,6 +15,7 @@ repositories {
 dependencies {
     implementation(project(":grunt-main"))
 
+    implementation(libs.filekit.dialogs)
     implementation(libs.kotlinReflect)
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)

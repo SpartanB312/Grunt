@@ -17,11 +17,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import net.spartanb312.grunteon.obfuscator.ObfConfig
 
 @Composable
@@ -74,7 +76,8 @@ fun GeneralPage(
                                 label = "Input jar",
                                 value = config.input,
                                 onChange = { onConfigChange(config.copy(input = it)) },
-                                onBrowse = { chooseInputPath(config.input)?.toString() }
+                                onBrowse = { chooseInputPath(config.input)?.toString() },
+                                onBrowseDirectory = { chooseInputDirectory(config.input)?.toString() },
                             )
                             PathOption(
                                 label = "Output jar",
@@ -194,8 +197,10 @@ private fun PathOption(
     label: String,
     value: String,
     onChange: (String) -> Unit,
-    onBrowse: () -> String?,
+    onBrowse: suspend () -> String?,
+    onBrowseDirectory: (suspend () -> String?)? = null,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -209,10 +214,18 @@ private fun PathOption(
             singleLine = true,
         )
         UiOutlinedButton(
-            onClick = { onBrowse()?.let(onChange) },
-            modifier = Modifier.width(96.dp)
+            onClick = { coroutineScope.launch { onBrowse()?.let(onChange) } },
+            modifier = Modifier.width(if (onBrowseDirectory == null) 96.dp else 72.dp)
         ) {
-            Text("Browse")
+            Text(if (onBrowseDirectory == null) "Browse" else "File")
+        }
+        if (onBrowseDirectory != null) {
+            UiOutlinedButton(
+                onClick = { coroutineScope.launch { onBrowseDirectory()?.let(onChange) } },
+                modifier = Modifier.width(72.dp)
+            ) {
+                Text("Dir")
+            }
         }
     }
 }
