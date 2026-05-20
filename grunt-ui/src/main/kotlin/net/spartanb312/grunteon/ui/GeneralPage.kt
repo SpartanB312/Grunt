@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
@@ -16,11 +17,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import net.spartanb312.grunteon.obfuscator.ObfConfig
 
 @Composable
@@ -69,10 +72,21 @@ fun GeneralPage(
                         verticalArrangement = Arrangement.spacedBy(18.dp)
                     ) {
                         GeneralSection("Input / Output") {
-                            StringOption("Input jar", config.input) { onConfigChange(config.copy(input = it)) }
-                            StringOption("Output jar", config.output.orEmpty()) {
-                                onConfigChange(config.copy(output = it.ifBlank { null }))
-                            }
+                            PathOption(
+                                label = "Input jar",
+                                value = config.input,
+                                onChange = { onConfigChange(config.copy(input = it)) },
+                                onBrowse = { chooseInputPath(config.input)?.toString() },
+                                onBrowseDirectory = { chooseInputDirectory(config.input)?.toString() },
+                            )
+                            PathOption(
+                                label = "Output jar",
+                                value = config.output.orEmpty(),
+                                onChange = {
+                                    onConfigChange(config.copy(output = it.ifBlank { null }))
+                                },
+                                onBrowse = { chooseOutputPath(config.output.orEmpty())?.toString() }
+                            )
                             StringListOption("Libraries", config.libs) { onConfigChange(config.copy(libs = it)) }
                         }
                         GeneralSection("Filters") {
@@ -176,6 +190,44 @@ private fun StringOption(label: String, value: String, onChange: (String) -> Uni
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
+}
+
+@Composable
+private fun PathOption(
+    label: String,
+    value: String,
+    onChange: (String) -> Unit,
+    onBrowse: suspend () -> String?,
+    onBrowseDirectory: (suspend () -> String?)? = null,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            label = { Text(label) },
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+        )
+        UiOutlinedButton(
+            onClick = { coroutineScope.launch { onBrowse()?.let(onChange) } },
+            modifier = Modifier.width(if (onBrowseDirectory == null) 96.dp else 72.dp)
+        ) {
+            Text(if (onBrowseDirectory == null) "Browse" else "File")
+        }
+        if (onBrowseDirectory != null) {
+            UiOutlinedButton(
+                onClick = { coroutineScope.launch { onBrowseDirectory()?.let(onChange) } },
+                modifier = Modifier.width(72.dp)
+            ) {
+                Text("Dir")
+            }
+        }
+    }
 }
 
 @Composable

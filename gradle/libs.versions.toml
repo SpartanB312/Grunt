@@ -3,6 +3,7 @@ kotlin = "2.3.21"
 kotlinxSerialization = "1.11.0"
 kotlinDSL = "6.6.4"
 coroutine = "1.10.2"
+filekit = "0.14.1"
 
 compose = "1.9.1"
 compose-fluent = "v0.1.0"
@@ -27,6 +28,7 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlinDSLGradlePlugin = { module = "org.gradle.kotlin.kotlin-dsl:org.gradle.kotlin.kotlin-dsl.gradle.plugin", version.ref = "kotlinDSL" }
 kotlinReflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekit" }
 
 junitAPI = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
 kotlinxSerializationCore = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
