@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator.process
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.IrRoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.ArithmeticSubstitute
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
@@ -47,6 +48,7 @@ object TransformerRegistry {
         entry({ SourceDebugInfoHide() }, { SourceDebugInfoHide.Config() }),
         entry({ StringEqualsOptimize() }, { StringEqualsOptimize.Config() }),
         entry({ MethodInliner() }, { MethodInliner.Config() }),
+        entry({ IrRoundTrip() }, { IrRoundTrip.Config() }),
         entry({ ArithmeticSubstitute() }, { ArithmeticSubstitute.Config() }),
         entry({ NumberBasicEncrypt() }, { NumberBasicEncrypt.Config() }),
         entry({ StringArrayedEncrypt() }, { StringArrayedEncrypt.Config() }),

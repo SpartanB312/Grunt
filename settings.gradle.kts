@@ -5,6 +5,7 @@ include(":grunt-bootstrap")
 
 // Components
 include(":grunt-main")
+include(":grunt-ir")
 include(":grunt-index")
 include(":grunt-testcase")
 include(":grunt-yapyap")
