@@ -141,6 +141,49 @@ class ControlflowFlatteningTransformerTest {
     }
 
     @Test
+    fun skipsDefaultMethodsAfterControlflowFlatteningTransformer() {
+        val input = createTempFile("grunteon-controlflow-flattening-default-input", ".jar")
+        val output = createTempFile("grunteon-controlflow-flattening-default-output", ".jar")
+        try {
+            JarOutputStream(input.outputStream()).use { jar ->
+                jar.putNextEntry(JarEntry("example/DefaultCase.class"))
+                jar.write(defaultHelperBranchClass())
+                jar.closeEntry()
+            }
+
+            val instance = Grunteon.create(
+                ObfConfig(
+                    input = input.pathString,
+                    output = output.pathString,
+                    dumpMappings = false,
+                    transformerConfigs = listOf(ControlflowFlattening.Config())
+                )
+            )
+
+            context(instance.workRes, instance) {
+                instance.execute()
+            }
+
+            ZipFile(output.toFile()).use { zip ->
+                val entry = zip.getEntry("example/DefaultCase.class")
+                assertNotNull(entry)
+                val bytes = zip.getInputStream(entry).use { it.readBytes() }
+                val classNode = ClassNode()
+                ClassReader(bytes).accept(classNode, 0)
+                val defaultMethod = classNode.methods.single { it.name == "choose\$default" }
+                val hasFlatteningSwitch = defaultMethod.instructions.toArray().any {
+                    it.opcode == Opcodes.LOOKUPSWITCH || it.opcode == Opcodes.TABLESWITCH
+                }
+
+                assertFalse(hasFlatteningSwitch)
+            }
+        } finally {
+            input.deleteIfExists()
+            output.deleteIfExists()
+        }
+    }
+
+    @Test
     fun skipsUninitializedObjectFlowAfterControlflowFlatteningTransformer() {
         val input = createTempFile("grunteon-controlflow-flattening-uninit-input", ".jar")
         val output = createTempFile("grunteon-controlflow-flattening-uninit-output", ".jar")
@@ -183,6 +226,57 @@ class ControlflowFlatteningTransformerTest {
         }
     }
 
+    @Test
+    fun skipsMethodsOverInstructionBudgetAfterControlflowFlatteningTransformer() {
+        val input = createTempFile("grunteon-controlflow-flattening-budget-input", ".jar")
+        val output = createTempFile("grunteon-controlflow-flattening-budget-output", ".jar")
+        try {
+            JarOutputStream(input.outputStream()).use { jar ->
+                jar.putNextEntry(JarEntry("example/BudgetCase.class"))
+                jar.write(budgetBranchClass())
+                jar.closeEntry()
+            }
+
+            val instance = Grunteon.create(
+                ObfConfig(
+                    input = input.pathString,
+                    output = output.pathString,
+                    dumpMappings = false,
+                    transformerConfigs = listOf(
+                        ControlflowFlattening.Config(
+                            maxInstructions = 5,
+                            maxBasicBlocks = 0,
+                            maxLocals = 0,
+                            maxEstimatedDispatcherArgs = 0,
+                            logBudgetSkips = false
+                        )
+                    )
+                )
+            )
+
+            context(instance.workRes, instance) {
+                instance.execute()
+            }
+
+            ZipFile(output.toFile()).use { zip ->
+                val entry = zip.getEntry("example/BudgetCase.class")
+                assertNotNull(entry)
+                val bytes = zip.getInputStream(entry).use { it.readBytes() }
+                val classNode = ClassNode()
+                ClassReader(bytes).accept(classNode, 0)
+                val method = classNode.methods.single { it.name == "choose" }
+                val hasFlatteningSwitch = method.instructions.toArray().any {
+                    it.opcode == Opcodes.LOOKUPSWITCH || it.opcode == Opcodes.TABLESWITCH
+                }
+
+                assertFalse(hasFlatteningSwitch)
+            }
+        } finally {
+            input.deleteIfExists()
+            output.deleteIfExists()
+        }
+    }
+
     private fun syntheticBranchClass(): ByteArray {
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
         writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "example/SyntheticCase", null, "java/lang/Object", null)
@@ -208,6 +302,82 @@ class ControlflowFlatteningTransformerTest {
             visitVarInsn(Opcodes.ILOAD, 0)
             visitJumpInsn(Opcodes.IFEQ, falseLabel)
             visitInsn(Opcodes.ICONST_1)
+            visitInsn(Opcodes.IRETURN)
+            visitLabel(falseLabel)
+            visitInsn(Opcodes.ICONST_0)
+            visitInsn(Opcodes.IRETURN)
+            visitMaxs(0, 0)
+            visitEnd()
+        }
+
+        writer.visitEnd()
+        return writer.toByteArray()
+    }
+
+    private fun defaultHelperBranchClass(): ByteArray {
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "example/DefaultCase", null, "java/lang/Object", null)
+
+        writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null).apply {
+            visitCode()
+            visitVarInsn(Opcodes.ALOAD, 0)
+            visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+            visitInsn(Opcodes.RETURN)
+            visitMaxs(0, 0)
+            visitEnd()
+        }
+
+        writer.visitMethod(
+            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            "choose\$default",
+            "(I)I",
+            null,
+            null
+        ).apply {
+            val falseLabel = Label()
+            visitCode()
+            visitVarInsn(Opcodes.ILOAD, 0)
+            visitJumpInsn(Opcodes.IFEQ, falseLabel)
+            visitInsn(Opcodes.ICONST_1)
+            visitInsn(Opcodes.IRETURN)
+            visitLabel(falseLabel)
+            visitInsn(Opcodes.ICONST_0)
+            visitInsn(Opcodes.IRETURN)
+            visitMaxs(0, 0)
+            visitEnd()
+        }
+
+        writer.visitEnd()
+        return writer.toByteArray()
+    }
+
+    private fun budgetBranchClass(): ByteArray {
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "example/BudgetCase", null, "java/lang/Object", null)
+
+        writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null).apply {
+            visitCode()
+            visitVarInsn(Opcodes.ALOAD, 0)
+            visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+            visitInsn(Opcodes.RETURN)
+            visitMaxs(0, 0)
+            visitEnd()
+        }
+
+        writer.visitMethod(
+            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            "choose",
+            "(I)I",
+            null,
+            null
+        ).apply {
+            val falseLabel = Label()
+            visitCode()
+            visitVarInsn(Opcodes.ILOAD, 0)
+            visitJumpInsn(Opcodes.IFEQ, falseLabel)
+            visitVarInsn(Opcodes.ILOAD, 0)
+            visitInsn(Opcodes.ICONST_1)
+            visitInsn(Opcodes.IADD)
             visitInsn(Opcodes.IRETURN)
             visitLabel(falseLabel)
             visitInsn(Opcodes.ICONST_0)

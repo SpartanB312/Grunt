@@ -56,7 +56,10 @@ class TransformerConfigEnabledSmokeTest {
                 ),
                 path
             )
-            assertContains(path.readText(), "ControlflowFlattening.Config")
+            val text = path.readText()
+            assertContains(text, "ControlflowFlattening.Config")
+            assertContains(text, "\"skipSyntheticBridgeMethods\": true")
+            assertContains(text, "\"skipDefaultMethods\": true")
             assertIs<ControlflowFlattening.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()
