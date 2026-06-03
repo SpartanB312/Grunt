@@ -10,6 +10,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.ClassSh
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.EnumOptimize
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.KotlinClassShrink
+import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.MethodInliner
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.SourceDebugInfoHide
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.StringEqualsOptimize
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.DecompilerCrasher
@@ -45,6 +46,7 @@ object TransformerRegistry {
         entry({ ClassShrink() }, { ClassShrink.Config() }),
         entry({ SourceDebugInfoHide() }, { SourceDebugInfoHide.Config() }),
         entry({ StringEqualsOptimize() }, { StringEqualsOptimize.Config() }),
+        entry({ MethodInliner() }, { MethodInliner.Config() }),
         entry({ ArithmeticSubstitute() }, { ArithmeticSubstitute.Config() }),
         entry({ NumberBasicEncrypt() }, { NumberBasicEncrypt.Config() }),
         entry({ StringArrayedEncrypt() }, { StringArrayedEncrypt.Config() }),
