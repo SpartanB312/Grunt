@@ -139,7 +139,7 @@ class IrControlFlowFlattener(
             val args = buildList {
                 add(IrIntLiteral(targetCase, IrI32Type))
                 for (carrier in carriers) {
-                    add(targetValues[carrier.targetArg.id] ?: carrier.dispatchArg)
+                    add(targetValues[carrier.targetArg.id] ?: defaultValue(carrier.targetArg.type))
                 }
             }
             return IrSuccessor(dispatcher, args)

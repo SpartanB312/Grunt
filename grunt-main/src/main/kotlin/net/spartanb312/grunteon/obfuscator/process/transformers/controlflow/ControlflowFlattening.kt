@@ -19,10 +19,20 @@ import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
+import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
+import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
+import net.spartanb312.grunteon.obfuscator.util.extensions.isSynthetic
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
+import org.objectweb.asm.tree.JumpInsnNode
+import org.objectweb.asm.tree.LookupSwitchInsnNode
+import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.TableSwitchInsnNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
+import java.util.concurrent.atomic.AtomicInteger
 
 @Transformer.Description(
     "process.controlflow.controlflow_flattening.desc",
@@ -41,6 +51,12 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val verifyExportedMethod: Boolean = true,
         @SettingDesc(enText = "Skip methods with exception handler regions")
         val skipExceptionRegions: Boolean = true,
+        @SettingDesc(enText = "Skip instance constructors because JVM uninitializedThis cannot be dispatched safely")
+        val skipConstructors: Boolean = true,
+        @SettingDesc(enText = "Skip compiler-generated synthetic and bridge methods")
+        val skipSyntheticMethods: Boolean = true,
+        @SettingDesc(enText = "Skip methods where uninitialized NEW objects cross control flow")
+        val skipUninitializedObjectFlow: Boolean = true,
         @SettingDesc(enText = "Keep going when one method cannot be flattened")
         val ignoreFailures: Boolean = false
     ) : TransformerConfig()
@@ -50,10 +66,19 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val methodCounter = reducibleScopeValue { MergeableCounter() }
         val skippedCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
-
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        val count = AtomicInteger(0)
+        parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), 1) { classNode ->
             val transformedMethods = classNode.methods.map { methodNode ->
                 if (methodNode.isAbstract || methodNode.isNative) {
+                    methodNode
+                } else if (config.skipConstructors && methodNode.isInitializer) {
+                    skippedCounter.local.add()
+                    methodNode
+                } else if (config.skipSyntheticMethods && methodNode.isCompilerGeneratedHelper) {
+                    skippedCounter.local.add()
+                    methodNode
+                } else if (config.skipUninitializedObjectFlow && methodNode.hasUninitializedObjectAcrossControlFlow()) {
+                    skippedCounter.local.add()
                     methodNode
                 } else {
                     runCatching {
@@ -81,6 +106,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                     )
                 }
             }
+            println("[${count.getAndIncrement()}]Flattened ${classNode.name}")
             classNode.methods.clear()
             classNode.methods.addAll(transformedMethods)
         }
@@ -93,6 +119,28 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 Logger.warn("    Failed ${failureCounter.global.get()} methods")
             }
         }
+    }
+
+    private val MethodNode.isCompilerGeneratedHelper: Boolean
+        get() = isSynthetic || isBridge || name.endsWith("\$default")
+
+    private fun MethodNode.hasUninitializedObjectAcrossControlFlow(): Boolean {
+        val insns = instructions?.toArray() ?: return false
+        for (startIndex in insns.indices) {
+            if (insns[startIndex].opcode != Opcodes.NEW) continue
+
+            for (index in startIndex + 1 until insns.size) {
+                val insn = insns[index]
+                if (insn.opcode < 0) continue
+                if (insn.isControlFlowTransfer()) return true
+                if (insn is MethodInsnNode && insn.opcode == Opcodes.INVOKESPECIAL && insn.name == "<init>") break
+            }
+        }
+        return false
+    }
+
+    private fun AbstractInsnNode.isControlFlowTransfer(): Boolean {
+        return this is JumpInsnNode || this is TableSwitchInsnNode || this is LookupSwitchInsnNode
     }
 
     private fun MethodNode.flattenControlFlow(

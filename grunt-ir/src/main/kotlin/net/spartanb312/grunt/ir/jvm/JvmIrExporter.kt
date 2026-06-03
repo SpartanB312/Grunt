@@ -751,10 +751,15 @@ class JvmIrExporter(
                     if (localIndex != null) {
                         slots[arg] = localIndex
                         reserve(localIndex, arg.type)
-                    } else {
-                        slots[arg] = allocate(arg.type)
                     }
                 }
+            }
+            for (block in function.blocks) {
+                for (arg in block.args) {
+                    if (arg !in slots) slots[arg] = allocate(arg.type)
+                }
+            }
+            for (block in function.blocks) {
                 for (instruction in block.instructions) {
                     instruction.result?.let { slots[it] = allocate(it.type) }
                 }
