@@ -137,7 +137,8 @@ data class IrArrayLoadInstruction(
     override val result: IrInstructionResult,
     val array: IrValue,
     val index: IrValue,
-    override val effect: IrEffect = IrEffect.ReadMemory.copy(mayThrow = true)
+    override val effect: IrEffect = IrEffect.ReadMemory.copy(mayThrow = true),
+    val elementType: IrType? = null
 ) : IrInstruction {
     override val operands get() = listOf(array, index)
 }
@@ -147,7 +148,8 @@ data class IrArrayStoreInstruction(
     val array: IrValue,
     val index: IrValue,
     val value: IrValue,
-    override val effect: IrEffect = IrEffect.WriteMemory.copy(mayThrow = true)
+    override val effect: IrEffect = IrEffect.WriteMemory.copy(mayThrow = true),
+    val elementType: IrType? = null
 ) : IrInstruction {
     override val result: IrInstructionResult? = null
     override val operands get() = listOf(array, index, value)

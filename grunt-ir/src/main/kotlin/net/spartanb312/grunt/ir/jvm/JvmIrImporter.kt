@@ -350,17 +350,25 @@ class JvmIrImporter(
             Opcodes.D2L -> convert(block, state, IrI64Type)
             Opcodes.D2F -> convert(block, state, IrF32Type)
             Opcodes.I2B -> convert(block, state, IrI8Type)
-            Opcodes.I2C -> convert(block, state, IrI16Type)
+            Opcodes.I2C -> convert(block, state, IrCharType)
             Opcodes.I2S -> convert(block, state, IrI16Type)
             Opcodes.LCMP, Opcodes.FCMPL, Opcodes.FCMPG, Opcodes.DCMPL, Opcodes.DCMPG -> compare3(block, state, insn.opcode)
             Opcodes.IALOAD -> arrayLoad(block, state, IrI32Type)
             Opcodes.LALOAD -> arrayLoad(block, state, IrI64Type)
             Opcodes.FALOAD -> arrayLoad(block, state, IrF32Type)
             Opcodes.DALOAD -> arrayLoad(block, state, IrF64Type)
-            Opcodes.AALOAD -> arrayLoad(block, state, IrRefType())
-            Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD -> arrayLoad(block, state, IrI32Type)
-            Opcodes.IASTORE, Opcodes.LASTORE, Opcodes.FASTORE, Opcodes.DASTORE,
-            Opcodes.AASTORE, Opcodes.BASTORE, Opcodes.CASTORE, Opcodes.SASTORE -> arrayStore(block, state)
+            Opcodes.AALOAD -> arrayLoad(block, state, null)
+            Opcodes.BALOAD -> arrayLoad(block, state, IrI32Type, IrI8Type)
+            Opcodes.CALOAD -> arrayLoad(block, state, IrI32Type, IrCharType)
+            Opcodes.SALOAD -> arrayLoad(block, state, IrI32Type, IrI16Type)
+            Opcodes.IASTORE -> arrayStore(block, state, IrI32Type)
+            Opcodes.LASTORE -> arrayStore(block, state, IrI64Type)
+            Opcodes.FASTORE -> arrayStore(block, state, IrF32Type)
+            Opcodes.DASTORE -> arrayStore(block, state, IrF64Type)
+            Opcodes.AASTORE -> arrayStore(block, state)
+            Opcodes.BASTORE -> arrayStore(block, state, IrI8Type)
+            Opcodes.CASTORE -> arrayStore(block, state, IrCharType)
+            Opcodes.SASTORE -> arrayStore(block, state, IrI16Type)
             Opcodes.ARRAYLENGTH -> arrayLength(block, state)
             Opcodes.ATHROW -> block.terminator = IrThrowTerminator(state.pop())
             Opcodes.MONITORENTER -> monitor(block, state, "monitor.enter")
@@ -700,19 +708,28 @@ class JvmIrImporter(
         state.push(result)
     }
 
-    private fun arrayLoad(block: IrBlock, state: FrameState, type: IrType) {
+    private fun arrayLoad(block: IrBlock, state: FrameState, type: IrType?, elementType: IrType? = type) {
         val index = state.pop()
         val array = state.pop()
-        val result = result(type, "aload")
-        block.append(IrArrayLoadInstruction(result, array, index))
+        val result = result(type ?: arrayLoadResultType(array.type), "aload")
+        block.append(IrArrayLoadInstruction(result, array, index, elementType = elementType))
         state.push(result)
     }
 
-    private fun arrayStore(block: IrBlock, state: FrameState) {
+    private fun arrayLoadResultType(arrayType: IrType): IrType {
+        val type = arrayType as? IrArrayType ?: return IrRefType()
+        return if (type.dimensions == 1) {
+            type.elementType
+        } else {
+            IrArrayType(type.elementType, type.dimensions - 1, type.nullable)
+        }
+    }
+
+    private fun arrayStore(block: IrBlock, state: FrameState, elementType: IrType? = null) {
         val value = state.pop()
         val index = state.pop()
         val array = state.pop()
-        block.append(IrArrayStoreInstruction(array, index, value))
+        block.append(IrArrayStoreInstruction(array, index, value, elementType = elementType))
     }
 
     private fun arrayLength(block: IrBlock, state: FrameState) {
@@ -805,12 +822,12 @@ class JvmIrImporter(
 
     private fun newArrayElementType(operand: Int): IrType {
         return when (operand) {
-            Opcodes.T_BOOLEAN -> IrI32Type
-            Opcodes.T_CHAR -> IrI32Type
+            Opcodes.T_BOOLEAN -> IrBoolType
+            Opcodes.T_CHAR -> IrCharType
             Opcodes.T_FLOAT -> IrF32Type
             Opcodes.T_DOUBLE -> IrF64Type
-            Opcodes.T_BYTE -> IrI32Type
-            Opcodes.T_SHORT -> IrI32Type
+            Opcodes.T_BYTE -> IrI8Type
+            Opcodes.T_SHORT -> IrI16Type
             Opcodes.T_INT -> IrI32Type
             Opcodes.T_LONG -> IrI64Type
             else -> IrUnknownType

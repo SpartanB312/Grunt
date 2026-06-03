@@ -34,6 +34,11 @@ data object IrI16Type : IrIntegerType {
     override val displayName = "i16"
 }
 
+data object IrCharType : IrIntegerType {
+    override val bits = 16
+    override val displayName = "char"
+}
+
 data object IrI32Type : IrIntegerType {
     override val bits = 32
     override val displayName = "i32"

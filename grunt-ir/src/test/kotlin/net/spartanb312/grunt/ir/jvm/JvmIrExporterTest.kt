@@ -6,10 +6,13 @@ import org.objectweb.asm.Handle
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.InsnNode
+import org.objectweb.asm.tree.IntInsnNode
 import org.objectweb.asm.tree.JumpInsnNode
 import org.objectweb.asm.tree.LabelNode
 import org.objectweb.asm.tree.LdcInsnNode
+import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.TypeInsnNode
 import org.objectweb.asm.tree.VarInsnNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
@@ -72,5 +75,189 @@ class JvmIrExporterTest {
 
         Analyzer(BasicInterpreter()).analyze("example/Test", exported)
         assertTrue(hasCondy)
+    }
+
+    @Test
+    fun preservesReferenceCastOnRoundTrip() {
+        val method = MethodNode(
+            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            "castToString",
+            "(Ljava/lang/Object;)Ljava/lang/String;",
+            null,
+            null
+        ).apply {
+            instructions = InsnList().apply {
+                add(VarInsnNode(Opcodes.ALOAD, 0))
+                add(TypeInsnNode(Opcodes.CHECKCAST, "java/lang/String"))
+                add(InsnNode(Opcodes.ARETURN))
+            }
+            maxLocals = 1
+            maxStack = 1
+        }
+        val imported = JvmIrImporter().import("example/Test", method)
+
+        val exported = JvmIrExporter(imported.metadata).export(imported.function)
+        val hasCheckcast = exported.instructions.toArray().any {
+            it is TypeInsnNode && it.opcode == Opcodes.CHECKCAST && it.desc == "java/lang/String"
+        }
+
+        Analyzer(BasicInterpreter()).analyze("example/Test", exported)
+        assertTrue(hasCheckcast)
+    }
+
+    @Test
+    fun preservesPrimitiveByteArrayTypeOnRoundTrip() {
+        val method = MethodNode(
+            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            "readBytes",
+            "(Ljavax/sound/sampled/AudioInputStream;I)I",
+            null,
+            null
+        ).apply {
+            instructions = InsnList().apply {
+                add(VarInsnNode(Opcodes.ILOAD, 1))
+                add(IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_BYTE))
+                add(VarInsnNode(Opcodes.ASTORE, 2))
+                add(VarInsnNode(Opcodes.ALOAD, 0))
+                add(VarInsnNode(Opcodes.ALOAD, 2))
+                add(InsnNode(Opcodes.ICONST_0))
+                add(VarInsnNode(Opcodes.ILOAD, 1))
+                add(
+                    MethodInsnNode(
+                        Opcodes.INVOKEVIRTUAL,
+                        "javax/sound/sampled/AudioInputStream",
+                        "read",
+                        "([BII)I",
+                        false
+                    )
+                )
+                add(InsnNode(Opcodes.IRETURN))
+            }
+            maxLocals = 3
+            maxStack = 4
+        }
+        val imported = JvmIrImporter().import("example/Test", method)
+
+        val exported = JvmIrExporter(imported.metadata).export(imported.function)
+        val hasByteArrayAllocation = exported.instructions.toArray().any {
+            it is IntInsnNode && it.opcode == Opcodes.NEWARRAY && it.operand == Opcodes.T_BYTE
+        }
+
+        Analyzer(BasicInterpreter()).analyze("example/Test", exported)
+        assertTrue(hasByteArrayAllocation)
+    }
+
+    @Test
+    fun preservesPrimitiveArrayLoadOpcodesWhenArrayTypeIsErasedOnRoundTrip() {
+        val cases = listOf(
+            "[B" to Opcodes.BALOAD,
+            "[C" to Opcodes.CALOAD,
+            "[S" to Opcodes.SALOAD,
+            "[I" to Opcodes.IALOAD
+        )
+
+        for ((descriptor, opcode) in cases) {
+            val method = MethodNode(
+                Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+                "load$opcode",
+                "($descriptor" + "I)I",
+                null,
+                null
+            ).apply {
+                instructions = InsnList().apply {
+                    add(VarInsnNode(Opcodes.ALOAD, 0))
+                    add(VarInsnNode(Opcodes.ILOAD, 1))
+                    add(InsnNode(opcode))
+                    add(InsnNode(Opcodes.IRETURN))
+                }
+                maxLocals = 2
+                maxStack = 2
+            }
+            val imported = JvmIrImporter().import("example/Test", method)
+
+            val exported = JvmIrExporter(imported.metadata).export(imported.function)
+            val actualOpcode = exported.instructions.toArray()
+                .map { it.opcode }
+                .single { it in listOf(Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD, Opcodes.IALOAD) }
+
+            Analyzer(BasicInterpreter()).analyze("example/Test", exported)
+            assertEquals(opcode, actualOpcode, "$descriptor load opcode")
+        }
+    }
+
+    @Test
+    fun preservesPrimitiveArrayStoreOpcodesWhenArrayTypeIsErasedOnRoundTrip() {
+        val cases = listOf(
+            "[B" to Opcodes.BASTORE,
+            "[C" to Opcodes.CASTORE,
+            "[S" to Opcodes.SASTORE,
+            "[I" to Opcodes.IASTORE
+        )
+
+        for ((descriptor, opcode) in cases) {
+            val method = MethodNode(
+                Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+                "store$opcode",
+                "($descriptor" + "II)V",
+                null,
+                null
+            ).apply {
+                instructions = InsnList().apply {
+                    add(VarInsnNode(Opcodes.ALOAD, 0))
+                    add(VarInsnNode(Opcodes.ILOAD, 1))
+                    add(VarInsnNode(Opcodes.ILOAD, 2))
+                    add(InsnNode(opcode))
+                    add(InsnNode(Opcodes.RETURN))
+                }
+                maxLocals = 3
+                maxStack = 3
+            }
+            val imported = JvmIrImporter().import("example/Test", method)
+
+            val exported = JvmIrExporter(imported.metadata).export(imported.function)
+            val actualOpcode = exported.instructions.toArray()
+                .map { it.opcode }
+                .single { it in listOf(Opcodes.BASTORE, Opcodes.CASTORE, Opcodes.SASTORE, Opcodes.IASTORE) }
+
+            Analyzer(BasicInterpreter()).analyze("example/Test", exported)
+            assertEquals(opcode, actualOpcode, "$descriptor store opcode")
+        }
+    }
+
+    @Test
+    fun preservesPrimitiveMultidimensionalArrayLoadsUpToFiveDimensionsOnRoundTrip() {
+        for (dimensions in 2..5) {
+            val arrayDescriptor = "[".repeat(dimensions) + "I"
+            val method = MethodNode(
+                Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+                "get${dimensions}d",
+                "($arrayDescriptor${"I".repeat(dimensions)})I",
+                null,
+                null
+            ).apply {
+                instructions = InsnList().apply {
+                    add(VarInsnNode(Opcodes.ALOAD, 0))
+                    for (index in 1 until dimensions) {
+                        add(VarInsnNode(Opcodes.ILOAD, index))
+                        add(InsnNode(Opcodes.AALOAD))
+                    }
+                    add(VarInsnNode(Opcodes.ILOAD, dimensions))
+                    add(InsnNode(Opcodes.IALOAD))
+                    add(InsnNode(Opcodes.IRETURN))
+                }
+                maxLocals = dimensions + 1
+                maxStack = 2
+            }
+            val imported = JvmIrImporter().import("example/Test", method)
+
+            val exported = JvmIrExporter(imported.metadata).export(imported.function)
+            val actualArrayLoads = exported.instructions.toArray()
+                .map { it.opcode }
+                .filter { it == Opcodes.AALOAD || it == Opcodes.IALOAD }
+            val expectedArrayLoads = List(dimensions - 1) { Opcodes.AALOAD } + Opcodes.IALOAD
+
+            Analyzer(BasicInterpreter()).analyze("example/Test", exported)
+            assertEquals(expectedArrayLoads, actualArrayLoads, "${dimensions}D array load sequence")
+        }
     }
 }

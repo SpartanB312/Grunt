@@ -146,14 +146,16 @@ class IrTextImporter {
             "array-load" -> IrArrayLoadInstruction(
                 requireResult(result, op),
                 value(record.field("array"), values),
-                value(record.field("index"), values),
-                effect
+                value(record.fieldOrNull("array-index") ?: record.fieldLast("index"), values),
+                effect,
+                record.fieldOrNull("element")?.asString()?.let(::type)
             )
             "array-store" -> IrArrayStoreInstruction(
                 value(record.field("array"), values),
-                value(record.field("index"), values),
+                value(record.fieldOrNull("array-index") ?: record.fieldLast("index"), values),
                 value(record.field("value"), values),
-                effect
+                effect,
+                record.fieldOrNull("element")?.asString()?.let(::type)
             )
             "call" -> IrCallInstruction(
                 result,
@@ -430,6 +432,20 @@ class IrTextImporter {
 
     private fun IrSExpr.asAtomOrNull(): String? = (this as? IrSExpr.Atom)?.value
 
+    private fun IrSExpr.ListValue.fieldLast(name: String): IrSExpr {
+        for (item in items.asReversed()) {
+            val list = item as? IrSExpr.ListValue ?: continue
+            if (list.items.firstOrNull()?.atomOrNull() != name) continue
+            val rest = list.items.drop(1)
+            return when (rest.size) {
+                0 -> IrSExpr.ListValue(emptyList())
+                1 -> rest.first()
+                else -> IrSExpr.ListValue(rest)
+            }
+        }
+        error("Missing field '$name' in ${headAtom ?: "list"}")
+    }
+
     private fun blockId(value: String) = IrBlockId(value.removePrefix("b").toInt())
 
     private fun valueId(value: String) = IrValueId(value.removePrefix("%").toInt())
@@ -457,6 +473,7 @@ private class IrTextTypeParser {
             "bool" -> IrBoolType
             "i8" -> IrI8Type
             "i16" -> IrI16Type
+            "char" -> IrCharType
             "i32" -> IrI32Type
             "i64" -> IrI64Type
             "f32" -> IrF32Type

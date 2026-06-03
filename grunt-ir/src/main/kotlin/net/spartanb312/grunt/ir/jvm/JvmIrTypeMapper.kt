@@ -28,10 +28,10 @@ class JvmIrTypeMapper(
     fun type(asmType: Type): IrType {
         return when (asmType.sort) {
             Type.VOID -> IrVoidType
-            Type.BOOLEAN,
-            Type.CHAR,
-            Type.BYTE,
-            Type.SHORT -> IrI32Type
+            Type.BOOLEAN -> IrBoolType
+            Type.CHAR -> IrCharType
+            Type.BYTE -> IrI8Type
+            Type.SHORT -> IrI16Type
             Type.INT -> IrI32Type
             Type.FLOAT -> IrF32Type
             Type.LONG -> IrI64Type

@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.IrRoundTrip
 import kotlin.io.path.createTempFile
 import kotlin.io.path.deleteIfExists
@@ -40,6 +41,23 @@ class TransformerConfigEnabledSmokeTest {
             )
             assertContains(path.readText(), "IrRoundTrip.Config")
             assertIs<IrRoundTrip.Config>(ObfConfig.read(path).transformerConfigs.single())
+        } finally {
+            path.deleteIfExists()
+        }
+    }
+
+    @Test
+    fun roundTripsControlflowFlatteningConfig() {
+        val path = createTempFile("grunteon-controlflow-flattening-config", ".json")
+        try {
+            ObfConfig.write(
+                ObfConfig(
+                    transformerConfigs = listOf(ControlflowFlattening.Config())
+                ),
+                path
+            )
+            assertContains(path.readText(), "ControlflowFlattening.Config")
+            assertIs<ControlflowFlattening.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()
         }

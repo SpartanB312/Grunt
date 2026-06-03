@@ -62,10 +62,12 @@ class IrStrictPrinter {
                 "(field ${field(instruction.field)}) (receiver ${nullableValue(instruction.receiver)}) (value ${value(instruction.value)})"
             }
             is IrArrayLoadInstruction -> {
-                "$result(array ${value(instruction.array)}) (index ${value(instruction.index)})"
+                "$result(array ${value(instruction.array)}) (array-index ${value(instruction.index)})" +
+                    element(instruction.elementType)
             }
             is IrArrayStoreInstruction -> {
-                "(array ${value(instruction.array)}) (index ${value(instruction.index)}) (value ${value(instruction.value)})"
+                "(array ${value(instruction.array)}) (array-index ${value(instruction.index)}) " +
+                    "(value ${value(instruction.value)})${element(instruction.elementType)}"
             }
             is IrCallInstruction -> {
                 "$result(target ${callable(instruction.target)}) (dispatch ${instruction.dispatch.id}) (args ${values(instruction.args)})"
@@ -88,6 +90,10 @@ class IrStrictPrinter {
         }
 
         return "(inst (index $index) (op ${instruction.strictOp}) $body (effect ${effect(instruction.effect)}))"
+    }
+
+    private fun element(type: IrType?): String {
+        return type?.let { " (element ${type(it)})" } ?: ""
     }
 
     private fun terminator(terminator: IrTerminator): String {

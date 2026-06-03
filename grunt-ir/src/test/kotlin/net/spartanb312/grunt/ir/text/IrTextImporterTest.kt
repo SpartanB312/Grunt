@@ -1,5 +1,7 @@
 package net.spartanb312.grunt.ir.text
 
+import net.spartanb312.grunt.ir.core.IrArrayLoadInstruction
+import net.spartanb312.grunt.ir.core.IrI8Type
 import net.spartanb312.grunt.ir.core.IrVerifier
 import net.spartanb312.grunt.ir.export.IrStrictPrinter
 import net.spartanb312.grunt.ir.export.IrTextExporter
@@ -43,5 +45,31 @@ class IrTextImporterTest {
         assertEquals(function.symbol.name, parsed.symbol.name)
         assertEquals(function.blocks.size, parsed.blocks.size)
         assertTrue(IrStrictPrinter().print(parsed).startsWith("(grunt-ir (version 1))"))
+    }
+
+    @Test
+    fun preservesArrayElementTypeHint() {
+        val method = MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "loadByte", "([BI)I", null, null).apply {
+            instructions = InsnList().apply {
+                add(VarInsnNode(Opcodes.ALOAD, 0))
+                add(VarInsnNode(Opcodes.ILOAD, 1))
+                add(InsnNode(Opcodes.BALOAD))
+                add(InsnNode(Opcodes.IRETURN))
+            }
+            maxLocals = 2
+            maxStack = 2
+        }
+        val function = JvmIrImporter().import("example/Test", method).function
+        val output = IrTextExporter().export(function, Files.createTempDirectory("grunt-ir-importer").resolve("loadByte"))
+
+        val text = Files.readString(output)
+        val parsed = IrTextImporter().read(output)
+        val arrayLoad = parsed.blocks
+            .flatMap { it.instructions }
+            .filterIsInstance<IrArrayLoadInstruction>()
+            .single()
+
+        assertTrue(text.contains("(element \"i8\")"))
+        assertEquals(IrI8Type, arrayLoad.elementType)
     }
 }

@@ -75,7 +75,7 @@ class JvmIrExporter(
             is IrCompareInstruction -> emitCompare(out, instruction, state)
             is IrConvertInstruction -> {
                 load(out, instruction.value, state)
-                conversionOpcode(instruction.value.type, instruction.targetType)?.let { out.add(InsnNode(it)) }
+                emitConversion(out, instruction)
                 storeResult(out, instruction.result, state)
             }
             is IrLoadFieldInstruction -> {
@@ -97,14 +97,14 @@ class JvmIrExporter(
             is IrArrayLoadInstruction -> {
                 load(out, instruction.array, state)
                 load(out, instruction.index, state)
-                out.add(InsnNode(arrayLoadOpcode(instruction.result.type)))
+                out.add(InsnNode(arrayLoadOpcode(instruction.elementType ?: arrayElementType(instruction.array.type), instruction.result.type)))
                 storeResult(out, instruction.result, state)
             }
             is IrArrayStoreInstruction -> {
                 load(out, instruction.array, state)
                 load(out, instruction.index, state)
                 load(out, instruction.value, state)
-                out.add(InsnNode(arrayStoreOpcode(instruction.value.type)))
+                out.add(InsnNode(arrayStoreOpcode(instruction.elementType ?: arrayElementType(instruction.array.type), instruction.value.type)))
             }
             is IrCallInstruction -> emitCall(out, instruction, state)
             is IrResolveDynamicValueInstruction -> {
@@ -378,6 +378,7 @@ class JvmIrExporter(
             IrBoolType -> out.add(IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_BOOLEAN))
             IrI8Type -> out.add(IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_BYTE))
             IrI16Type -> out.add(IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_SHORT))
+            IrCharType -> out.add(IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_CHAR))
             IrI32Type -> out.add(IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_INT))
             IrI64Type -> out.add(IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_LONG))
             IrF32Type -> out.add(IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_FLOAT))
@@ -508,6 +509,7 @@ class JvmIrExporter(
             IrBoolType -> "Z"
             IrI8Type -> "B"
             IrI16Type -> "S"
+            IrCharType -> "C"
             IrI32Type -> "I"
             IrI64Type -> "J"
             IrF32Type -> "F"
@@ -568,33 +570,56 @@ class JvmIrExporter(
     private fun conversionOpcode(from: IrType, to: IrType): Int? {
         if (from == to) return null
         return when (from) {
-            IrI32Type, IrI16Type, IrI8Type, IrBoolType -> when (to) {
+            IrI32Type, IrI16Type, IrI8Type, IrBoolType, IrCharType -> when (to) {
                 IrI64Type -> Opcodes.I2L
                 IrF32Type -> Opcodes.I2F
                 IrF64Type -> Opcodes.I2D
                 IrI8Type -> Opcodes.I2B
                 IrI16Type -> Opcodes.I2S
+                IrCharType -> Opcodes.I2C
                 else -> null
             }
             IrI64Type -> when (to) {
-                IrI32Type, IrI16Type, IrI8Type, IrBoolType -> Opcodes.L2I
+                IrI32Type, IrI16Type, IrI8Type, IrBoolType, IrCharType -> Opcodes.L2I
                 IrF32Type -> Opcodes.L2F
                 IrF64Type -> Opcodes.L2D
                 else -> null
             }
             IrF32Type -> when (to) {
-                IrI32Type, IrI16Type, IrI8Type, IrBoolType -> Opcodes.F2I
+                IrI32Type, IrI16Type, IrI8Type, IrBoolType, IrCharType -> Opcodes.F2I
                 IrI64Type -> Opcodes.F2L
                 IrF64Type -> Opcodes.F2D
                 else -> null
             }
             IrF64Type -> when (to) {
-                IrI32Type, IrI16Type, IrI8Type, IrBoolType -> Opcodes.D2I
+                IrI32Type, IrI16Type, IrI8Type, IrBoolType, IrCharType -> Opcodes.D2I
                 IrI64Type -> Opcodes.D2L
                 IrF32Type -> Opcodes.D2F
                 else -> null
             }
             else -> null
+        }
+    }
+
+    private fun emitConversion(out: InsnList, instruction: IrConvertInstruction) {
+        when (instruction.kind) {
+            IrConvertKind.Numeric,
+            IrConvertKind.Bitcast -> {
+                conversionOpcode(instruction.value.type, instruction.targetType)?.let { out.add(InsnNode(it)) }
+            }
+            IrConvertKind.ReferenceCast -> {
+                out.add(TypeInsnNode(Opcodes.CHECKCAST, checkcastOperand(instruction.targetType)))
+            }
+        }
+    }
+
+    private fun checkcastOperand(type: IrType): String {
+        return when (type) {
+            is IrRefType -> refInternalName(type)
+            is IrArrayType -> descriptor(type)
+            IrNullType,
+            IrUnknownType -> "java/lang/Object"
+            else -> error("CHECKCAST target must be a reference type, got ${type.displayName}")
         }
     }
 
@@ -629,8 +654,12 @@ class JvmIrExporter(
         }
     }
 
-    private fun arrayLoadOpcode(type: IrType): Int {
-        return when (type) {
+    private fun arrayLoadOpcode(elementType: IrType?, resultType: IrType): Int {
+        return when (elementType ?: resultType) {
+            IrBoolType,
+            IrI8Type -> Opcodes.BALOAD
+            IrCharType -> Opcodes.CALOAD
+            IrI16Type -> Opcodes.SALOAD
             IrI64Type -> Opcodes.LALOAD
             IrF32Type -> Opcodes.FALOAD
             IrF64Type -> Opcodes.DALOAD
@@ -639,13 +668,26 @@ class JvmIrExporter(
         }
     }
 
-    private fun arrayStoreOpcode(type: IrType): Int {
-        return when (type) {
+    private fun arrayStoreOpcode(elementType: IrType?, valueType: IrType): Int {
+        return when (elementType ?: valueType) {
+            IrBoolType,
+            IrI8Type -> Opcodes.BASTORE
+            IrCharType -> Opcodes.CASTORE
+            IrI16Type -> Opcodes.SASTORE
             IrI64Type -> Opcodes.LASTORE
             IrF32Type -> Opcodes.FASTORE
             IrF64Type -> Opcodes.DASTORE
             is IrRefType, is IrArrayType, IrNullType, IrUnknownType -> Opcodes.AASTORE
             else -> Opcodes.IASTORE
+        }
+    }
+
+    private fun arrayElementType(type: IrType): IrType? {
+        val arrayType = type as? IrArrayType ?: return null
+        return if (arrayType.dimensions == 1) {
+            arrayType.elementType
+        } else {
+            IrArrayType(arrayType.elementType, arrayType.dimensions - 1, arrayType.nullable)
         }
     }
 
