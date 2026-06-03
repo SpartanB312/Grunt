@@ -6,6 +6,8 @@ This project is under development starting from November 2025. The alpha test wi
 
 Feel free to join our Discord server for suggestions: https://discord.gg/ysB2fMfeYW
 
+QQ-chat group: 554702632
+
 ## Features
 
 Working in progress. The following is a list of features that have been completed or are currently being developed in
