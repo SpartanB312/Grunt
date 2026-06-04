@@ -41,8 +41,109 @@ class JvmIrExporter(
 
         emitExceptionRegions(method, function, state)
         method.maxLocals = state.nextLocal + options.computeMaxsPadding
-        method.maxStack = 64
+        method.maxStack = maxOf(64, estimateMaxStack(function))
         return method
+    }
+
+    private fun estimateMaxStack(function: IrFunction): Int {
+        var maxStack = if (function.exceptionRegions.isEmpty()) 0 else 1
+        for (block in function.blocks) {
+            if (stateStartsWithException(block, function)) maxStack = maxOf(maxStack, 1)
+            for (instruction in block.instructions) {
+                maxStack = maxOf(maxStack, estimateMaxStack(instruction))
+            }
+            maxStack = maxOf(maxStack, estimateMaxStack(block.terminator))
+        }
+        return maxStack
+    }
+
+    private fun stateStartsWithException(block: IrBlock, function: IrFunction): Boolean {
+        return function.exceptionRegions.any { it.handler == block }
+    }
+
+    private fun estimateMaxStack(instruction: IrInstruction): Int {
+        return when (instruction) {
+            is IrUnaryInstruction -> when {
+                instruction.op == IrUnaryOp.BitNot && instruction.value.type == IrI64Type ->
+                    stackSize(instruction.value.type) + stackSize(IrI64Type)
+                else -> maxOf(stackSize(instruction.value.type), stackSize(instruction.result.type))
+            }
+            is IrBinaryInstruction -> maxOf(
+                stackSize(instruction.lhs.type) + stackSize(instruction.rhs.type),
+                stackSize(instruction.result.type)
+            )
+            is IrCompareInstruction -> maxOf(
+                stackSize(instruction.lhs.type) + stackSize(instruction.rhs.type),
+                stackSize(instruction.result.type)
+            )
+            is IrConvertInstruction -> maxOf(
+                stackSize(instruction.value.type),
+                stackSize(instruction.targetType),
+                stackSize(instruction.result.type)
+            )
+            is IrLoadFieldInstruction -> {
+                val field = fieldMetadata(instruction.field)
+                val fieldStack = Type.getType(field.desc).size
+                if (field.isStatic) fieldStack else maxOf(stackSizeOrZero(instruction.receiver?.type), fieldStack)
+            }
+            is IrStoreFieldInstruction -> stackSizeOrZero(instruction.receiver?.type) + stackSize(instruction.value.type)
+            is IrArrayLoadInstruction -> maxOf(
+                stackSize(instruction.array.type) + stackSize(instruction.index.type),
+                stackSize(instruction.result.type)
+            )
+            is IrArrayStoreInstruction -> stackSize(instruction.array.type) + stackSize(instruction.index.type) + stackSize(
+                instruction.value.type
+            )
+            is IrCallInstruction -> maxOf(sumStackSize(instruction.args), stackSizeOrZero(instruction.result?.type))
+            is IrResolveDynamicValueInstruction -> stackSize(instruction.result.type)
+            is IrDynamicCallInstruction -> maxOf(
+                sumStackSize(instruction.args),
+                stackSizeOrZero(instruction.result?.type)
+            )
+            is IrAllocateInstruction -> maxOf(sumStackSize(instruction.args), stackSize(instruction.result.type))
+            is IrIntrinsicInstruction -> estimateMaxStack(instruction)
+            is IrBarrierInstruction -> 0
+        }
+    }
+
+    private fun estimateMaxStack(instruction: IrIntrinsicInstruction): Int {
+        val argsStack = sumStackSize(instruction.args)
+        val resultStack = stackSizeOrZero(instruction.result?.type)
+        return when {
+            instruction.intrinsic.name.startsWith("jvm.opcode.") -> maxOf(argsStack, resultStack, 4)
+            else -> maxOf(argsStack, resultStack)
+        }
+    }
+
+    private fun estimateMaxStack(terminator: IrTerminator): Int {
+        return when (terminator) {
+            is IrJumpTerminator -> estimatePassArgsMaxStack(terminator.target)
+            is IrBranchTerminator -> maxOf(
+                stackSize(terminator.condition.type),
+                estimatePassArgsMaxStack(terminator.trueTarget),
+                estimatePassArgsMaxStack(terminator.falseTarget)
+            )
+            is IrSwitchTerminator -> maxOf(
+                stackSize(terminator.value.type),
+                estimatePassArgsMaxStack(terminator.defaultTarget),
+                terminator.cases.maxOfOrNull { estimatePassArgsMaxStack(it.target) } ?: 0
+            )
+            is IrReturnTerminator -> stackSizeOrZero(terminator.value?.type)
+            is IrThrowTerminator -> stackSize(terminator.exception.type)
+            IrUnreachableTerminator -> 1
+        }
+    }
+
+    private fun estimatePassArgsMaxStack(successor: IrSuccessor): Int {
+        return successor.args.maxOfOrNull { stackSize(it.type) } ?: 0
+    }
+
+    private fun sumStackSize(values: Iterable<IrValue>): Int {
+        return values.sumOf { stackSize(it.type) }
+    }
+
+    private fun stackSizeOrZero(type: IrType?): Int {
+        return if (type == null) 0 else stackSize(type)
     }
 
     private fun emitBlockPrologue(out: InsnList, block: IrBlock, state: ExportState) {

@@ -4,16 +4,7 @@ import net.spartanb312.grunt.ir.core.IrVerifier
 import org.objectweb.asm.ConstantDynamic
 import org.objectweb.asm.Handle
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.InsnList
-import org.objectweb.asm.tree.InsnNode
-import org.objectweb.asm.tree.IntInsnNode
-import org.objectweb.asm.tree.JumpInsnNode
-import org.objectweb.asm.tree.LabelNode
-import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
-import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.TypeInsnNode
-import org.objectweb.asm.tree.VarInsnNode
+import org.objectweb.asm.tree.*
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 import kotlin.test.Test
@@ -145,6 +136,29 @@ class JvmIrExporterTest {
 
         Analyzer(BasicInterpreter()).analyze("example/Test", exported)
         assertTrue(hasByteArrayAllocation)
+    }
+
+    @Test
+    fun exportsMethodsWhoseCallStackExceedsDefaultExporterStackCap() {
+        val argCount = 70
+        val descriptor = "(${"I".repeat(argCount)})I"
+        val method = MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "wideCall", descriptor, null, null).apply {
+            instructions = InsnList().apply {
+                repeat(argCount) { index ->
+                    add(VarInsnNode(Opcodes.ILOAD, index))
+                }
+                add(MethodInsnNode(Opcodes.INVOKESTATIC, "example/Test", "sink", descriptor, false))
+                add(InsnNode(Opcodes.IRETURN))
+            }
+            maxLocals = argCount
+            maxStack = argCount
+        }
+        val imported = JvmIrImporter().import("example/Test", method)
+
+        val exported = JvmIrExporter(imported.metadata).export(imported.function)
+
+        assertTrue(exported.maxStack >= argCount)
+        Analyzer(BasicInterpreter()).analyze("example/Test", exported)
     }
 
     @Test
