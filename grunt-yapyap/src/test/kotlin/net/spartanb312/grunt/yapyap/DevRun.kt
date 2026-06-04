@@ -1,18 +1,21 @@
 package net.spartanb312.grunt.yapyap
 
 import net.spartanb312.grunt.yapyap.transformers.encrypt.number.NumberAttributeBasedEncrypt
+import net.spartanb312.grunt.yapyap.transformers.encrypt.number.NumberSPECKEncrypt
 import net.spartanb312.grunt.yapyap.transformers.encrypt.string.StringAttributeBasedEncrypt
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.ObfConfig
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.IrRoundTrip
+import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.ArithmeticSubstitute
+import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
+import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.DeclaredFieldsExtract
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.ParameterObfuscate
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.*
-import net.spartanb312.grunteon.obfuscator.process.transformers.other.DecompilerCrasher
-import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
-import net.spartanb312.grunteon.obfuscator.process.transformers.other.ShuffleMembers
-import net.spartanb312.grunteon.obfuscator.process.transformers.other.Watermark
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.*
 import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.FieldAccessProxy
 import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.InvokeDispatcher
 import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.InvokeProxy
@@ -30,7 +33,7 @@ import kotlin.time.measureTime
 fun main(args: Array<String>) {
     if ("--silent" !in args) {
         Logger = SimpleLogger(
-            "Grunteon"
+            "Grunteon", debug = { true }
         )
     }
 
@@ -43,7 +46,7 @@ fun main(args: Array<String>) {
     val queue = ArrayDeque<Double>()
     repeat(args.getOrNull(0)?.toIntOrNull() ?: 1) {
         val config = ObfConfig(
-            output = null,
+//            output = null,
             transformerConfigs = listOf(
                 // Optimize
                 DeadCodeRemove.Config(),
@@ -52,17 +55,20 @@ fun main(args: Array<String>) {
                 ClassShrink.Config(),
                 SourceDebugInfoHide.Config(),
                 StringEqualsOptimize.Config(),
+                MethodInliner.Config(),
                 // Encrypt
-                // ArithmeticSubstitute.Config(),
-                // NumberBasicEncrypt.Config(),
-                // StringArrayedEncrypt.Config(),
+                ArithmeticSubstitute.Config(),
+                NumberBasicEncrypt.Config(),
+                StringArrayedEncrypt.Config(),
                 NumberAttributeBasedEncrypt.Config(),
-                // NumberMathematicalEncrypt.Config(),
+                NumberSPECKEncrypt.Config(),
                 StringAttributeBasedEncrypt.Config(),
                 // Misc
                 DeclaredFieldsExtract.Config(),
                 ParameterObfuscate.Config(),
                 // Controlflow
+                ControlflowFlattening.Config(),
+                IrRoundTrip.Config(),
                 // Redirect
                 InvokeDispatcher.Config(),
                 InvokeProxy.Config(),
@@ -75,6 +81,7 @@ fun main(args: Array<String>) {
                 // Other
                 FakeSyntheticBridge.Config(),
                 DecompilerCrasher.Config(),
+                ReferenceObfuscate.Config(),
                 ShuffleMembers.Config(),
                 Watermark.Config(),
                 // Post
