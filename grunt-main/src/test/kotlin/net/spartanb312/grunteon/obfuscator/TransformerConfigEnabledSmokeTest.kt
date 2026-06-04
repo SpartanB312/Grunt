@@ -2,7 +2,7 @@ package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.IrRoundTrip
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.SSARoundTrip
 import kotlin.io.path.createTempFile
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.readText
@@ -30,17 +30,17 @@ class TransformerConfigEnabledSmokeTest {
     }
 
     @Test
-    fun roundTripsIrRoundTripConfig() {
-        val path = createTempFile("grunteon-ir-roundtrip-config", ".json")
+    fun roundTripsSsaRoundTripConfig() {
+        val path = createTempFile("grunteon-ssa-roundtrip-config", ".json")
         try {
             ObfConfig.write(
                 ObfConfig(
-                    transformerConfigs = listOf(IrRoundTrip.Config())
+                    transformerConfigs = listOf(SSARoundTrip.Config())
                 ),
                 path
             )
-            assertContains(path.readText(), "IrRoundTrip.Config")
-            assertIs<IrRoundTrip.Config>(ObfConfig.read(path).transformerConfigs.single())
+            assertContains(path.readText(), "SsaRoundTrip.Config")
+            assertIs<SSARoundTrip.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()
         }

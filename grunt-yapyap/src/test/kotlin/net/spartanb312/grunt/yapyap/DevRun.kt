@@ -8,7 +8,7 @@ import net.spartanb312.grunteon.obfuscator.ObfConfig
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.IrRoundTrip
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.SSARoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.ArithmeticSubstitute
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
@@ -68,7 +68,7 @@ fun main(args: Array<String>) {
                 ParameterObfuscate.Config(),
                 // Controlflow
                 ControlflowFlattening.Config(),
-                IrRoundTrip.Config(),
+                SSARoundTrip.Config(),
                 // Redirect
                 InvokeDispatcher.Config(),
                 InvokeProxy.Config(),

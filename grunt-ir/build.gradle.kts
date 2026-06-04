@@ -14,5 +14,5 @@ dependencies {
 }
 
 application {
-    mainClass = "net.spartanb312.grunt.ir.MainKt"
+    mainClass = "net.spartanb312.grunt.ir.ssa.MainKt"
 }

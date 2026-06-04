@@ -1,11 +1,11 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow
 
 import kotlinx.serialization.Serializable
-import net.spartanb312.grunt.ir.jvm.JvmIrExportOptions
-import net.spartanb312.grunt.ir.jvm.JvmIrExporter
-import net.spartanb312.grunt.ir.jvm.JvmIrImporter
-import net.spartanb312.grunt.ir.transform.IrControlFlowFlattenOptions
-import net.spartanb312.grunt.ir.transform.IrControlFlowFlattener
+import net.spartanb312.grunt.ir.ssa.jvm.JvmSSAExportOptions
+import net.spartanb312.grunt.ir.ssa.jvm.JvmSSAExporter
+import net.spartanb312.grunt.ir.ssa.jvm.JvmSSAImporter
+import net.spartanb312.grunt.ir.ssa.transform.SSARegionControlFlowFlattenOptions
+import net.spartanb312.grunt.ir.ssa.transform.SSARegionControlFlowFlattener
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
@@ -36,8 +36,6 @@ import org.objectweb.asm.tree.TableSwitchInsnNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 @Transformer.Description(
@@ -55,8 +53,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc(enText = "Verify each exported method with ASM BasicInterpreter")
         val verifyExportedMethod: Boolean = true,
-        @SettingDesc(enText = "Skip methods with exception handler regions")
-        val skipExceptionRegions: Boolean = true,
+        @SettingDesc(enText = "Skip exception protected/handler regions")
+        val skipExceptionRegions: Boolean = false,
         @SettingDesc(enText = "Skip instance constructors because JVM uninitializedThis cannot be dispatched safely")
         val skipConstructors: Boolean = true,
         @SettingDesc(enText = "Skip synthetic and bridge methods")
@@ -67,12 +65,18 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val skipUninitializedObjectFlow: Boolean = true,
         @SettingDesc(enText = "Maximum executable instructions before skipping; 0 disables this limit")
         val maxInstructions: Int = 1000,
-        @SettingDesc(enText = "Maximum estimated basic blocks before skipping; 0 disables this limit")
-        val maxBasicBlocks: Int = 60,
+        @SettingDesc(enText = "Maximum estimated method basic blocks before skipping; 0 disables this limit")
+        val maxBasicBlocks: Int = 0,
         @SettingDesc(enText = "Maximum JVM local slots before skipping; 0 disables this limit")
         val maxLocals: Int = 64,
-        @SettingDesc(enText = "Maximum estimated flattened dispatcher argument pressure before skipping; 0 disables this limit")
+        @SettingDesc(enText = "Minimum basic blocks in one flattened region")
+        val minRegionBlocks: Int = 2,
+        @SettingDesc(enText = "Maximum basic blocks in one flattened region")
+        val maxRegionBlocks: Int = 8,
+        @SettingDesc(enText = "Maximum estimated region dispatcher argument pressure before skipping that region; 0 disables this limit")
         val maxEstimatedDispatcherArgs: Int = 64,
+        @SettingDesc(enText = "Parallel class processing batch size")
+        val parallelBatchSize: Int = 16,
         @SettingDesc(enText = "Log methods skipped by the control-flow flattening budget")
         val logBudgetSkips: Boolean = true,
         @SettingDesc(enText = "Keep going when one method cannot be flattened")
@@ -88,6 +92,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             startTime.set(System.currentTimeMillis())
         }
         val methodCounter = reducibleScopeValue { MergeableCounter() }
+        val regionCounter = reducibleScopeValue { MergeableCounter() }
+        val skippedRegionCounter = reducibleScopeValue { MergeableCounter() }
         val skippedCounter = reducibleScopeValue { MergeableCounter() }
         val budgetSkippedCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
@@ -107,7 +113,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             isDaemon = true
             start()
         }*/
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), 1) { classNode ->
+        parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), config.parallelBatchSize.coerceAtLeast(1)) { classNode ->
             val transformedMethods = classNode.methods.map { methodNode ->
                 if (methodNode.isAbstract || methodNode.isNative) {
                     methodNode
@@ -139,13 +145,25 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                             methodNode.flattenControlFlow(
                                 classNode.name,
                                 config.verifyExportedMethod,
-                                config.skipExceptionRegions
+                                config.skipExceptionRegions,
+                                config.minRegionBlocks,
+                                config.maxRegionBlocks,
+                                config.maxEstimatedDispatcherArgs
                             )
                         }
                         watchDog.remove(nameKey)
                         flattened.fold(
                             onSuccess = { result ->
-                                if (result.changed) methodCounter.local.add() else skippedCounter.local.add()
+                                if (result.changed) {
+                                    methodCounter.local.add()
+                                    regionCounter.local.add(result.flattenedRegions)
+                                } else {
+                                    skippedCounter.local.add()
+                                    if (config.logBudgetSkips && result.reason != null) {
+                                        Logger.debug("ControlflowFlattening IR skipped $nameKey: ${result.reason}")
+                                    }
+                                }
+                                skippedRegionCounter.local.add(result.skippedRegions)
                                 result.method
                             },
                             onFailure = {
@@ -175,7 +193,11 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         post {
             //finished.set(true)
             Logger.info(" - ControlflowFlattening:")
-            Logger.info("    Flattened ${methodCounter.global.get()} methods through SSA IR")
+            Logger.info("    Flattened ${methodCounter.global.get()} methods through region SSA IR")
+            Logger.info("    Flattened ${regionCounter.global.get()} regions")
+            if (skippedRegionCounter.global.get() != 0) {
+                Logger.info("    Skipped ${skippedRegionCounter.global.get()} regions")
+            }
             Logger.info("    Skipped ${skippedCounter.global.get()} methods")
             if (budgetSkippedCounter.global.get() != 0) {
                 Logger.info("    Budget-skipped ${budgetSkippedCounter.global.get()} methods")
@@ -218,14 +240,11 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             return "locals=$maxLocals > ${config.maxLocals}"
         }
 
-        val basicBlocks = estimateBasicBlocks(insns)
-        if (config.maxBasicBlocks > 0 && basicBlocks > config.maxBasicBlocks) {
-            return "blocks=$basicBlocks > ${config.maxBasicBlocks}"
-        }
-
-        val estimatedDispatcherArgs = basicBlocks * maxLocals.coerceAtLeast(1)
-        if (config.maxEstimatedDispatcherArgs > 0 && estimatedDispatcherArgs > config.maxEstimatedDispatcherArgs) {
-            return "dispatcherArgs~$estimatedDispatcherArgs > ${config.maxEstimatedDispatcherArgs}"
+        if (config.maxBasicBlocks > 0) {
+            val basicBlocks = estimateBasicBlocks(insns)
+            if (basicBlocks > config.maxBasicBlocks) {
+                return "blocks=$basicBlocks > ${config.maxBasicBlocks}"
+            }
         }
         return null
     }
@@ -291,19 +310,29 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
     private fun MethodNode.flattenControlFlow(
         ownerInternalName: String,
         verify: Boolean,
-        skipExceptionRegions: Boolean
+        skipExceptionRegions: Boolean,
+        minRegionBlocks: Int,
+        maxRegionBlocks: Int,
+        maxDispatcherArgs: Int
     ): FlattenedMethod {
-        val imported = JvmIrImporter().import(ownerInternalName, this)
-        val result = IrControlFlowFlattener(
-            IrControlFlowFlattenOptions(skipExceptionRegions = skipExceptionRegions)
+        val imported = JvmSSAImporter().import(ownerInternalName, this)
+        val minBlocks = minRegionBlocks.coerceAtLeast(1)
+        val maxBlocks = maxRegionBlocks.coerceAtLeast(minBlocks)
+        val result = SSARegionControlFlowFlattener(
+            SSARegionControlFlowFlattenOptions(
+                skipExceptionRegions = skipExceptionRegions,
+                minRegionBlocks = minBlocks,
+                maxRegionBlocks = maxBlocks,
+                maxDispatcherArgs = maxDispatcherArgs
+            )
         ).flatten(imported.function)
         if (!result.changed) {
-            return FlattenedMethod(this, changed = false)
+            return FlattenedMethod(this, changed = false, skippedRegions = result.skippedRegions, reason = result.reason)
         }
 
-        val exported = JvmIrExporter(
+        val exported = JvmSSAExporter(
             imported.metadata,
-            JvmIrExportOptions(
+            JvmSSAExportOptions(
                 access = access,
                 signature = signature,
                 exceptions = exceptions?.toList() ?: emptyList()
@@ -312,7 +341,12 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
 
         copyMethodMetadataTo(exported)
         if (verify) Analyzer(BasicInterpreter()).analyze(ownerInternalName, exported)
-        return FlattenedMethod(exported, changed = true)
+        return FlattenedMethod(
+            exported,
+            changed = true,
+            flattenedRegions = result.flattenedRegions,
+            skippedRegions = result.skippedRegions
+        )
     }
 
     private fun MethodNode.copyMethodMetadataTo(target: MethodNode) {
@@ -331,6 +365,9 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
 
     private data class FlattenedMethod(
         val method: MethodNode,
-        val changed: Boolean
+        val changed: Boolean,
+        val flattenedRegions: Int = 0,
+        val skippedRegions: Int = 0,
+        val reason: String? = null
     )
 }
