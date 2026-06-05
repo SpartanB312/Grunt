@@ -2,7 +2,7 @@
 
 Grunteon is the third generation of Grunt. A high concurrency JVM bytecode obfuscator framework written in kotlin.
 
-This project is under development starting from November 2025. The alpha test will commence in April
+This project is under development starting from November 2025. 
 
 Feel free to join our Discord server for suggestions: https://discord.gg/ysB2fMfeYW
 
@@ -15,13 +15,33 @@ the near future
 
 ### Framework
 
-* [ ] Config system (migrating)
-* [X] Resource management
+* [X] Parallel pipeline
 * [X] Filter system
-* [X] Parallel execution pipeline
-* [ ] Module system 
-* [ ] Plugin system
-* [ ] UI with I18N (Jetpack Compose)
+* [X] Compose based UI
+* [X] SSA-IR / Flow-IR
+* [ ] Native cpp Codegen
+
+### Controlflow flattening
+
+* [X] Verifier
+* [X] Dispatcher protect
+* [X] Bogus jump/loop
+* [X] Shuffle blocks
+* [ ] Junk code
+
+### Controlflow obfuscate
+
+* [ ] Bogus conditional jump
+* [ ] Mangled conditional jump
+* [ ] Reversed conditional jump
+* [ ] Table switch multi jump
+* [ ] Trapped switch case
+* [ ] Switch extractor
+* [ ] Mutate conditional jump
+* [ ] Chaos switch multi jump
+* [ ] Controlflow flattening
+* [ ] Anti simulation
+* [ ] Junk code
 
 ### Encrypt
 
@@ -36,7 +56,6 @@ the near future
 * [X] Parameter obfuscation
 * [ ] Trash class generator
 * [ ] HardwareID authenticator
-* [ ] Native candidate
 * [ ] Anti debug
 
 ### Optimize
@@ -45,31 +64,17 @@ the near future
 * [X] Dead code remove
 * [X] Enum optimize
 * [X] Kotlin class shrinking
+* [X] Method inliner
 * [X] Source debug info hide
 * [X] String equals optimize
-* [ ] Method inliner
 
-### Renaming
+### Other
 
-* [X] Class renamer
-* [X] Field renamer
-* [X] Method renamer
-* [X] Localvar renamer
-* [ ] Mixin renamer
-
-### Controlflow
-
-* [ ] Bogus conditional jump
-* [ ] Mangled conditional jump
-* [ ] Reversed conditional jump
-* [ ] Table switch multi jump
-* [ ] Trapped switch case
-* [ ] Switch extractor
-* [ ] Mutate conditional jump
-* [ ] Chaos switch multi jump
-* [ ] Controlflow flattening
-* [ ] Anti simulation
-* [ ] Junk code
+* [X] Decompiler crasher
+* [X] Fake synthetic bridge
+* [X] Reference obfuscate
+* [X] Shuffle members
+* [X] Watermark
 
 ### Redirect
 
@@ -77,14 +82,14 @@ the near future
 * [X] Invoke proxy
 * [X] Invoke dispatcher
 
-### Other
+### Rename
 
-* [X] Decompiler crasher
-* [X] Fake synthetic bridge
-* [X] Shuffle members
-* [X] Watermarks
-* [ ] Reference obfuscation
-* [X] Post process
+* [X] Class renamer
+* [X] Field renamer
+* [X] Method renamer
+* [X] LocalVar renamer
+* [ ] Mixin renamer
+
 
 ## License
 
