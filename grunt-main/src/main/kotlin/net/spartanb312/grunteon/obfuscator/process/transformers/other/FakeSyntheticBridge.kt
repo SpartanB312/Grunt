@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.after
+import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MethodRenamer
 import net.spartanb312.grunteon.obfuscator.util.Logger
@@ -25,6 +26,7 @@ class FakeSyntheticBridge : Transformer<FakeSyntheticBridge.Config>(
 ) {
     init {
         after(MethodRenamer::class.java, "FakeSyntheticBridge should run after MethodRenamer")
+        before(ReferenceObfuscate::class.java, "FakeSyntheticBridge should run before ReferenceObfuscate")
     }
 
     @Serializable

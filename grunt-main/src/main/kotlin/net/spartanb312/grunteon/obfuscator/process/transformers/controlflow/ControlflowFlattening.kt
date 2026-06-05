@@ -72,6 +72,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val minStateOpsPerCase: Int = 2,
         @SettingDesc(enText = "Maximum arithmetic state operations used to compute a dispatcher case key")
         val maxStateOpsPerCase: Int = 5,
+        @SettingDesc(enText = "Shuffle physical layout order of Flow blocks selected into the flattened region")
+        val shuffleRegionBlocks: Boolean = false,
         @SettingDesc(enText = "Maximum executable JVM instructions before importing Flow IR; 0 disables this limit")
         val maxExecutableInstructions: Int = 0,
         @SettingDesc(enText = "Maximum imported Flow blocks before flattening; 0 disables this limit")
@@ -211,7 +213,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 maxDispatcherIslands = config.maxDispatcherIslands,
                 fakeCasesPerDispatcher = config.fakeCasesPerDispatcher,
                 minStateOpsPerCase = config.minStateOpsPerCase,
-                maxStateOpsPerCase = config.maxStateOpsPerCase
+                maxStateOpsPerCase = config.maxStateOpsPerCase,
+                shuffleRegionBlocks = config.shuffleRegionBlocks
             ),
             randomGen
         ).flatten(imported.method)

@@ -38,7 +38,8 @@ data class FlowControlFlowFlattenOptions(
     val maxDispatcherIslands: Int = 0,
     val fakeCasesPerDispatcher: Int = 1,
     val minStateOpsPerCase: Int = 2,
-    val maxStateOpsPerCase: Int = 5
+    val maxStateOpsPerCase: Int = 5,
+    val shuffleRegionBlocks: Boolean = false
 )
 
 data class FlowControlFlowFlattenResult(
@@ -278,7 +279,14 @@ class FlowControlFlowFlattener(
             connectBridge(method, bridge, dispatcherBlocks.getValue(entry.dispatcher), ids)
         }
 
-        rewriteLayout(method, plan.methodEntry?.target, dispatcherBlocks.values.toList(), bridgeBlocks, fakeBlocks)
+        rewriteLayout(
+            method,
+            plan.methodEntry?.target,
+            plan.regionBlocks,
+            dispatcherBlocks.values.toList(),
+            bridgeBlocks,
+            fakeBlocks
+        )
     }
 
     private fun createCaseKeyPool(size: Int): List<Int> {
@@ -674,31 +682,71 @@ class FlowControlFlowFlattener(
     private fun rewriteLayout(
         method: FlowMethod,
         oldEntry: FlowBlock?,
+        regionBlocks: List<FlowBlock>,
         dispatchers: List<FlowBlock>,
         bridges: List<FlowBlock>,
         fakeBlocks: List<FakeCaseBlock>
     ) {
-        val oldOrder = method.layoutOrder()
+        val insertedBlocks = (dispatchers + bridges + fakeBlocks.map { it.block }).toSet()
+        val oldOrder = method.layoutOrder().filter { it !in insertedBlocks }
+        val regionSet = regionBlocks.toSet()
+        val reorderedRegionBlocks = if (options.shuffleRegionBlocks) {
+            shuffleBlocks(oldOrder.filter { it in regionSet })
+        } else {
+            oldOrder.filter { it in regionSet }
+        }
         val fallthroughFakes = fakeBlocks
             .filter { it.fallthroughTarget != null }
             .groupBy { it.fallthroughTarget }
         val placedFakes = mutableSetOf<FlowBlock>()
         val newOrder = mutableListOf<FlowBlock>()
-        if (oldEntry != null && method.entry != oldEntry) {
-            method.entry?.let { newOrder += it }
-        }
-        for (block in oldOrder) {
+
+        fun addWithFallthroughFakes(block: FlowBlock) {
             for (fakeBlock in fallthroughFakes[block].orEmpty()) {
                 newOrder += fakeBlock.block
                 placedFakes += fakeBlock.block
             }
             newOrder += block
         }
+
+        if (oldEntry != null && method.entry != oldEntry) {
+            method.entry?.let { newOrder += it }
+        }
+        if (options.shuffleRegionBlocks) {
+            var insertedRegion = false
+            for (block in oldOrder) {
+                if (block in regionSet) {
+                    if (!insertedRegion) {
+                        insertedRegion = true
+                        reorderedRegionBlocks.forEach(::addWithFallthroughFakes)
+                    }
+                } else {
+                    addWithFallthroughFakes(block)
+                }
+            }
+        } else {
+            oldOrder.forEach(::addWithFallthroughFakes)
+        }
         newOrder += dispatchers
-        newOrder += bridges.filter { it != method.entry }
         newOrder += fakeBlocks.map { it.block }.filter { it !in placedFakes }
+        newOrder += bridges.filter { it != method.entry }
         method.layout.order.clear()
         method.layout.order += newOrder.distinct()
+    }
+
+    private fun shuffleBlocks(blocks: List<FlowBlock>): List<FlowBlock> {
+        if (blocks.size < 2) return blocks
+        val result = blocks.toMutableList()
+        for (index in result.lastIndex downTo 1) {
+            val swapIndex = random.nextInt(index + 1)
+            val value = result[index]
+            result[index] = result[swapIndex]
+            result[swapIndex] = value
+        }
+        if (result == blocks) {
+            result += result.removeAt(0)
+        }
+        return result
     }
 
     private fun skipReason(method: FlowMethod): String {

@@ -83,6 +83,7 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"fakeCasesPerDispatcher\": 1")
             assertContains(text, "\"minStateOpsPerCase\": 2")
             assertContains(text, "\"maxStateOpsPerCase\": 5")
+            assertContains(text, "\"shuffleRegionBlocks\": false")
             assertIs<ControlflowFlattening.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()

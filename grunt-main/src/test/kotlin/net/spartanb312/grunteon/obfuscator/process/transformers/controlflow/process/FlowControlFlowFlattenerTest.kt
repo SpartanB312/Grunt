@@ -83,6 +83,29 @@ class FlowControlFlowFlattenerTest {
         Analyzer(BasicInterpreter()).analyze(Owner, exported)
     }
 
+    @Test
+    fun shufflesFlattenedRegionBlocksWhenEnabled() {
+        val imported = JvmFlowImporter().import(Owner, linearMethod())
+        val originalRegionOrder = imported.method.layout.order.toList()
+        val result = FlowControlFlowFlattener(
+            FlowControlFlowFlattenOptions(
+                minFlattenedBlocks = 2,
+                fakeCasesPerDispatcher = 0,
+                shuffleRegionBlocks = true
+            ),
+            testRandom("shuffle")
+        ).flatten(imported.method)
+
+        assertTrue(result.changed, result.reason ?: "not changed")
+        val shuffledRegionOrder = imported.method.layout.order.filter { it in originalRegionOrder }
+        assertEquals(originalRegionOrder.toSet(), shuffledRegionOrder.toSet())
+        assertTrue(shuffledRegionOrder != originalRegionOrder)
+        FlowVerifier.verify(imported.method).requireValid()
+
+        val exported = JvmFlowExporter(imported.metadata).export(imported.method)
+        Analyzer(BasicInterpreter()).analyze(Owner, exported)
+    }
+
     private fun linearMethod(): MethodNode {
         val first = LabelNode()
         val second = LabelNode()
