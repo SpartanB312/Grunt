@@ -154,4 +154,23 @@ class JvmFlowImporterTest {
         assertEquals(FlowFrameValue.Object("java/lang/StringBuilder"), flow.blocks[1].entryFrame.locals.single())
         assertEquals(FlowFrameValue.Object("java/lang/Runnable"), flow.blocks[2].entryFrame.locals.single())
     }
+
+    @Test
+    fun importsMethodsWithStaleMaxStackAfterPriorTransforms() {
+        val method = MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "stale", "()V", null, null).apply {
+            instructions = InsnList().apply {
+                add(InsnNode(Opcodes.ICONST_0))
+                add(InsnNode(Opcodes.ICONST_1))
+                add(InsnNode(Opcodes.IADD))
+                add(InsnNode(Opcodes.POP))
+                add(InsnNode(Opcodes.RETURN))
+            }
+            maxLocals = 0
+            maxStack = 1
+        }
+
+        val flow = JvmFlowImporter().import("example/Test", method).method
+
+        assertTrue(FlowVerifier.verify(flow).isValid)
+    }
 }

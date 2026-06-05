@@ -4,8 +4,6 @@ import kotlinx.serialization.Serializable
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExportOptions
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
-import net.spartanb312.grunt.ir.flow.transform.FlowControlFlowFlattenOptions
-import net.spartanb312.grunt.ir.flow.transform.FlowControlFlowFlattener
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
@@ -17,14 +15,19 @@ import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
 import net.spartanb312.grunteon.obfuscator.process.post
 import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
 import net.spartanb312.grunteon.obfuscator.process.seq
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattenOptions
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattener
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
+import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
+import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
 import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
 import net.spartanb312.grunteon.obfuscator.util.extensions.isSynthetic
 import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
+import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
@@ -63,6 +66,12 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val maxFlattenedBlocks: Int = 0,
         @SettingDesc(enText = "Maximum verifier-frame dispatcher islands in the maximal region; 0 allows all islands")
         val maxDispatcherIslands: Int = 0,
+        @SettingDesc(enText = "Bogus switch cases inserted into each dispatcher island")
+        val fakeCasesPerDispatcher: Int = 1,
+        @SettingDesc(enText = "Minimum arithmetic state operations used to compute a dispatcher case key")
+        val minStateOpsPerCase: Int = 2,
+        @SettingDesc(enText = "Maximum arithmetic state operations used to compute a dispatcher case key")
+        val maxStateOpsPerCase: Int = 5,
         @SettingDesc(enText = "Maximum executable JVM instructions before importing Flow IR; 0 disables this limit")
         val maxExecutableInstructions: Int = 0,
         @SettingDesc(enText = "Maximum imported Flow blocks before flattening; 0 disables this limit")
@@ -89,6 +98,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val dispatcherCounter = reducibleScopeValue { MergeableCounter() }
         val bridgeCounter = reducibleScopeValue { MergeableCounter() }
         val edgeCounter = reducibleScopeValue { MergeableCounter() }
+        val fakeCaseCounter = reducibleScopeValue { MergeableCounter() }
         val skippedCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
 
@@ -105,7 +115,10 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                         methodNode
                     } else {
                         runCatching {
-                            methodNode.flattenControlFlow(classNode.name, config)
+                            val randomGen = Xoshiro256PPRandom(
+                                getSeed(classNode.name, methodNode.name, methodNode.desc, "FlowControlFlowFlattening")
+                            )
+                            methodNode.flattenControlFlow(classNode.name, config, randomGen)
                         }.fold(
                             onSuccess = { result ->
                                 if (result.changed) {
@@ -115,6 +128,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                                     dispatcherCounter.local.add(result.dispatcherIslands)
                                     bridgeCounter.local.add(result.stateBridges)
                                     edgeCounter.local.add(result.rewrittenEdges)
+                                    fakeCaseCounter.local.add(result.fakeCases)
                                 } else {
                                     skippedCounter.local.add()
                                     if (config.logSkips) Logger.debug("ControlflowFlattening skipped $nameKey: ${result.reason}")
@@ -152,6 +166,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             Logger.info("    Created ${dispatcherCounter.global.get()} dispatcher islands")
             Logger.info("    Created ${bridgeCounter.global.get()} state bridges")
             Logger.info("    Rewritten ${edgeCounter.global.get()} incoming edges")
+            Logger.info("    Created ${fakeCaseCounter.global.get()} fake dispatcher cases")
             Logger.info("    Skipped ${skippedCounter.global.get()} methods")
             if (failureCounter.global.get() != 0) {
                 Logger.warn("    Failed ${failureCounter.global.get()} methods")
@@ -176,7 +191,11 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         return instructions?.toArray()?.count { it.opcode >= 0 } ?: 0
     }
 
-    private fun MethodNode.flattenControlFlow(ownerInternalName: String, config: Config): FlattenedMethod {
+    private fun MethodNode.flattenControlFlow(
+        ownerInternalName: String,
+        config: Config,
+        randomGen: UniformRandomProvider
+    ): FlattenedMethod {
         val imported = JvmFlowImporter().import(ownerInternalName, this)
         if (config.maxFlowBlocks > 0 && imported.method.blocks.size > config.maxFlowBlocks) {
             return FlattenedMethod(this, changed = false, reason = "flowBlocks=${imported.method.blocks.size} > ${config.maxFlowBlocks}")
@@ -189,8 +208,12 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 includeUninitializedFrames = config.includeUninitializedFrames,
                 minFlattenedBlocks = config.minFlattenedBlocks,
                 maxFlattenedBlocks = config.maxFlattenedBlocks,
-                maxDispatcherIslands = config.maxDispatcherIslands
-            )
+                maxDispatcherIslands = config.maxDispatcherIslands,
+                fakeCasesPerDispatcher = config.fakeCasesPerDispatcher,
+                minStateOpsPerCase = config.minStateOpsPerCase,
+                maxStateOpsPerCase = config.maxStateOpsPerCase
+            ),
+            randomGen
         ).flatten(imported.method)
         if (!result.changed) {
             return FlattenedMethod(this, changed = false, reason = result.reason)
@@ -217,7 +240,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             flattenedBlocks = result.flattenedBlocks,
             dispatcherIslands = result.dispatcherIslands,
             stateBridges = result.stateBridges,
-            rewrittenEdges = result.rewrittenEdges
+            rewrittenEdges = result.rewrittenEdges,
+            fakeCases = result.fakeCases
         )
     }
 
@@ -243,6 +267,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val dispatcherIslands: Int = 0,
         val stateBridges: Int = 0,
         val rewrittenEdges: Int = 0,
+        val fakeCases: Int = 0,
         val reason: String? = null
     )
 }

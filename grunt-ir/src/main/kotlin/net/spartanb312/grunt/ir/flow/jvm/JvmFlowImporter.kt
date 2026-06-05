@@ -24,6 +24,7 @@ import net.spartanb312.grunt.ir.flow.core.FlowUnreachableJump
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.AbstractInsnNode
+import org.objectweb.asm.tree.IincInsnNode
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.JumpInsnNode
 import org.objectweb.asm.tree.LabelNode
@@ -31,6 +32,7 @@ import org.objectweb.asm.tree.LookupSwitchInsnNode
 import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.TableSwitchInsnNode
 import org.objectweb.asm.tree.TryCatchBlockNode
+import org.objectweb.asm.tree.VarInsnNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 import org.objectweb.asm.tree.analysis.BasicValue
@@ -41,6 +43,9 @@ class JvmFlowImporter(
 ) {
     fun import(ownerInternalName: String, method: MethodNode): JvmFlowImportResult {
         context.metadata.capture(method)
+        val localSlots = analysisMaxLocals(method)
+        context.metadata.maxLocals = maxOf(context.metadata.maxLocals, localSlots)
+        context.metadata.maxStack = maxOf(context.metadata.maxStack, analysisMaxStack(method))
 
         if (method.instructions == null || method.instructions.size() == 0) {
             val block = FlowBlock(context.ids.blockId(), jump = FlowUnreachableJump)
@@ -49,7 +54,7 @@ class JvmFlowImporter(
                 name = method.name,
                 desc = method.desc,
                 blocks = mutableListOf(block),
-                locals = FlowLocalPool(method.maxLocals)
+                locals = FlowLocalPool(localSlots)
             )
             flow.entry = block
             return JvmFlowImportResult(flow, context.metadata)
@@ -64,7 +69,7 @@ class JvmFlowImporter(
                 name = method.name,
                 desc = method.desc,
                 blocks = mutableListOf(block),
-                locals = FlowLocalPool(method.maxLocals)
+                locals = FlowLocalPool(localSlots)
             )
             flow.entry = block
             return JvmFlowImportResult(flow, context.metadata)
@@ -78,7 +83,7 @@ class JvmFlowImporter(
             name = method.name,
             desc = method.desc,
             blocks = blocks,
-            locals = FlowLocalPool(method.maxLocals)
+            locals = FlowLocalPool(localSlots)
         )
         flow.entry = blockInfos.first().block
 
@@ -95,11 +100,18 @@ class JvmFlowImporter(
     }
 
     private fun analyze(ownerInternalName: String, method: MethodNode): Array<Frame<BasicValue>?> {
+        val oldMaxLocals = method.maxLocals
+        val oldMaxStack = method.maxStack
         return try {
+            method.maxLocals = analysisMaxLocals(method)
+            method.maxStack = analysisMaxStack(method)
             @Suppress("UNCHECKED_CAST")
             Analyzer<BasicValue>(PreciseFlowInterpreter()).analyze(ownerInternalName, method) as Array<Frame<BasicValue>?>
         } catch (t: Throwable) {
             throw IllegalStateException("Failed to analyze ${ownerInternalName}.${method.name}${method.desc}", t)
+        } finally {
+            method.maxLocals = oldMaxLocals
+            method.maxStack = oldMaxStack
         }
     }
 
@@ -416,6 +428,38 @@ class JvmFlowImporter(
 
     private fun cloneInstruction(insn: AbstractInsnNode): AbstractInsnNode {
         return insn.clone(emptyMap<LabelNode, LabelNode>())
+    }
+
+    private fun analysisMaxLocals(method: MethodNode): Int {
+        var max = argumentLocalSlots(method.access, method.desc)
+        method.instructions?.toArray()?.forEach { insn ->
+            when (insn) {
+                is VarInsnNode -> max = maxOf(max, insn.`var` + localSizeForOpcode(insn.opcode))
+                is IincInsnNode -> max = maxOf(max, insn.`var` + 1)
+            }
+        }
+        return maxOf(method.maxLocals, max)
+    }
+
+    private fun analysisMaxStack(method: MethodNode): Int {
+        val instructionCount = method.instructions?.size() ?: 0
+        return maxOf(method.maxStack, instructionCount + 16, 64)
+    }
+
+    private fun argumentLocalSlots(access: Int, desc: String): Int {
+        var slots = if (access and Opcodes.ACC_STATIC == 0) 1 else 0
+        Type.getArgumentTypes(desc).forEach { slots += it.size }
+        return slots
+    }
+
+    private fun localSizeForOpcode(opcode: Int): Int {
+        return when (opcode) {
+            Opcodes.LLOAD,
+            Opcodes.DLOAD,
+            Opcodes.LSTORE,
+            Opcodes.DSTORE -> 2
+            else -> 1
+        }
     }
 
     private fun unsupported(info: BlockInfo, name: String): Nothing {

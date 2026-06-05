@@ -1,0 +1,810 @@
+package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process
+
+import net.spartanb312.grunt.ir.flow.core.FlowBlock
+import net.spartanb312.grunt.ir.flow.core.FlowBlockId
+import net.spartanb312.grunt.ir.flow.core.FlowBlockKind
+import net.spartanb312.grunt.ir.flow.core.FlowBytecodeSlice
+import net.spartanb312.grunt.ir.flow.core.FlowEdge
+import net.spartanb312.grunt.ir.flow.core.FlowEdgeFlag
+import net.spartanb312.grunt.ir.flow.core.FlowEdgeId
+import net.spartanb312.grunt.ir.flow.core.FlowEdgeSemantics
+import net.spartanb312.grunt.ir.flow.core.FlowExceptionRegion
+import net.spartanb312.grunt.ir.flow.core.FlowFrame
+import net.spartanb312.grunt.ir.flow.core.FlowFrameValue
+import net.spartanb312.grunt.ir.flow.core.FlowGotoJump
+import net.spartanb312.grunt.ir.flow.core.FlowGotoMode
+import net.spartanb312.grunt.ir.flow.core.FlowJumpInput
+import net.spartanb312.grunt.ir.flow.core.FlowMethod
+import net.spartanb312.grunt.ir.flow.core.FlowPort
+import net.spartanb312.grunt.ir.flow.core.FlowSwitchJump
+import net.spartanb312.grunt.ir.flow.core.FlowThrowJump
+import net.spartanb312.grunt.ir.flow.core.FlowVerifier
+import net.spartanb312.grunt.ir.flow.core.categorySize
+import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
+import org.apache.commons.rng.UniformRandomProvider
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.InsnNode
+import org.objectweb.asm.tree.IntInsnNode
+import org.objectweb.asm.tree.LdcInsnNode
+import org.objectweb.asm.tree.MethodInsnNode
+import org.objectweb.asm.tree.VarInsnNode
+
+data class FlowControlFlowFlattenOptions(
+    val includeMethodEntry: Boolean = true,
+    val includeExceptionBlocks: Boolean = true,
+    val includeUninitializedFrames: Boolean = false,
+    val minFlattenedBlocks: Int = 2,
+    val maxFlattenedBlocks: Int = 0,
+    val maxDispatcherIslands: Int = 0,
+    val fakeCasesPerDispatcher: Int = 1,
+    val minStateOpsPerCase: Int = 2,
+    val maxStateOpsPerCase: Int = 5
+)
+
+data class FlowControlFlowFlattenResult(
+    val changed: Boolean,
+    val flattenedRegions: Int = 0,
+    val flattenedBlocks: Int = 0,
+    val dispatcherIslands: Int = 0,
+    val stateBridges: Int = 0,
+    val rewrittenEdges: Int = 0,
+    val fakeCases: Int = 0,
+    val reason: String? = null
+)
+
+/**
+ * The pass first builds the largest safe Flow region it can for the method,
+ * then splits that maximal region into verifier-frame dispatcher islands.
+ * This keeps coverage high without forcing incompatible stack/local frames
+ * through one JVM switch entry frame.
+ */
+class FlowControlFlowFlattener(
+    private val options: FlowControlFlowFlattenOptions = FlowControlFlowFlattenOptions(),
+    private val random: UniformRandomProvider = Xoshiro256PPRandom(DefaultSeed)
+) {
+    fun flatten(method: FlowMethod): FlowControlFlowFlattenResult {
+        val plan = plan(method) ?: return FlowControlFlowFlattenResult(
+            changed = false,
+            reason = skipReason(method)
+        )
+        apply(method, plan)
+        return FlowControlFlowFlattenResult(
+            changed = true,
+            flattenedRegions = 1,
+            flattenedBlocks = plan.regionBlocks.size,
+            dispatcherIslands = plan.dispatchers.size,
+            stateBridges = plan.normalEdgeEntries.size + plan.handlerEntries.size + if (plan.methodEntry != null) 1 else 0,
+            rewrittenEdges = plan.normalEdgeEntries.size,
+            fakeCases = plan.dispatchers.sumOf { it.fakeCases.size }
+        )
+    }
+
+    private fun plan(method: FlowMethod): FlattenPlan? {
+        val regionBlocks = selectMaximalRegion(method)
+        if (regionBlocks.size < options.minFlattenedBlocks.coerceAtLeast(2)) return null
+
+        val stateSlot = method.locals.nextSlot
+        val regionSet = regionBlocks.toSet()
+        val dispatchers = regionBlocks
+            .groupBy { it.entryFrame }
+            .map { (frame, blocks) ->
+                val fakeCaseCount = options.fakeCasesPerDispatcher.coerceAtLeast(0)
+                val keys = createCaseKeyPool(blocks.size + fakeCaseCount)
+                val statePrograms = createStateTransformChain(keys.take(blocks.size), blocks.size)
+                val dispatcherKeyByBlock = blocks
+                    .zip(keys.take(blocks.size))
+                    .associate { (block, key) -> block to key }
+                DispatcherPlan(
+                    frame = frame.withLocal(stateSlot, FlowFrameValue.Int),
+                    blocks = blocks,
+                    keyByBlock = dispatcherKeyByBlock,
+                    stateProgramByBlock = blocks
+                        .zip(statePrograms)
+                        .associate { (block, program) -> block to program },
+                    fakeCases = createFakeCasePlans(blocks, keys.drop(blocks.size), keys.toSet())
+                )
+            }
+        val keyByBlock = dispatchers
+            .flatMap { it.keyByBlock.entries }
+            .associate { it.key to it.value }
+
+        val normalEntries = mutableListOf<EdgeEntryPlan>()
+        for (edge in method.edges) {
+            val target = edge.to
+            if (target !in regionSet) continue
+            val sourceFrame = runCatching { FlowVerifier.frameAfterJump(edge.from) }.getOrNull() ?: return null
+            normalEntries += EdgeEntryPlan(
+                edge = edge,
+                target = target,
+                entryFrame = sourceFrame,
+                dispatcher = dispatchers.first { target in it.blocks }
+            )
+        }
+
+        val methodEntry = method.entry
+            ?.takeIf { it in regionSet && options.includeMethodEntry }
+            ?.let { entry ->
+                DirectEntryPlan(
+                    target = entry,
+                    entryFrame = entry.entryFrame,
+                    dispatcher = dispatchers.first { entry in it.blocks },
+                    kind = FlowBlockKind.RegionEntry
+                )
+            }
+
+        val handlerEntries = method.exceptionRegions
+            .asSequence()
+            .map { it.handler }
+            .distinct()
+            .filter { it in regionSet }
+            .map { handler ->
+                DirectEntryPlan(
+                    target = handler,
+                    entryFrame = handler.entryFrame,
+                    dispatcher = dispatchers.first { handler in it.blocks },
+                    kind = FlowBlockKind.RegionEntry
+                )
+            }
+            .toList()
+
+        return FlattenPlan(
+            stateSlot = stateSlot,
+            regionBlocks = regionBlocks,
+            dispatchers = dispatchers,
+            keyByBlock = keyByBlock,
+            normalEdgeEntries = normalEntries,
+            methodEntry = methodEntry,
+            handlerEntries = handlerEntries
+        )
+    }
+
+    private fun selectMaximalRegion(method: FlowMethod): List<FlowBlock> {
+        val reachable = reachableBlocks(method)
+        val exceptionBlocks = if (options.includeExceptionBlocks) {
+            emptySet()
+        } else {
+            method.exceptionRegions.flatMapTo(mutableSetOf()) { it.protectedBlocks + it.handler }
+        }
+
+        val eligible = method.layoutOrder()
+            .filter { block ->
+                block in reachable &&
+                    block !in exceptionBlocks &&
+                    block.kind.isFlattenableOriginalKind() &&
+                    (options.includeMethodEntry || block != method.entry) &&
+                    (options.includeUninitializedFrames || !block.entryFrame.hasUninitialized())
+            }
+
+        if (eligible.isEmpty()) return emptyList()
+
+        val limitedByDispatcher = if (options.maxDispatcherIslands > 0) {
+            val allowedFrames = eligible
+                .groupBy { it.entryFrame }
+                .entries
+                .sortedByDescending { it.value.size }
+                .take(options.maxDispatcherIslands)
+                .mapTo(mutableSetOf()) { it.key }
+            eligible.filter { it.entryFrame in allowedFrames }
+        } else {
+            eligible
+        }
+
+        return if (options.maxFlattenedBlocks > 0) {
+            limitedByDispatcher.take(options.maxFlattenedBlocks)
+        } else {
+            limitedByDispatcher
+        }
+    }
+
+    private fun apply(method: FlowMethod, plan: FlattenPlan) {
+        val ids = MutableFlowIds(method)
+        val state = method.locals.allocate(FlowFrameValue.Int)
+        require(state.index == plan.stateSlot) {
+            "Unexpected Flow local allocation: planned ${plan.stateSlot}, got ${state.index}"
+        }
+
+        val dispatcherBlocks = plan.dispatchers.associateWith { dispatcher ->
+            createDispatcher(dispatcher, plan.stateSlot, ids)
+        }
+        val bridgeBlocks = mutableListOf<FlowBlock>()
+        val fakeBlocks = mutableListOf<FakeCaseBlock>()
+
+        for ((dispatcher, block) in dispatcherBlocks) {
+            method.addBlock(block)
+            for ((target, key) in dispatcher.keyByBlock) {
+                method.addEdge(
+                    FlowEdge(
+                        id = ids.edge(),
+                        from = block,
+                        port = FlowPort.Case(key),
+                        to = target,
+                        semantics = FlowEdgeSemantics.Dispatcher,
+                        flags = mutableSetOf(FlowEdgeFlag.Inserted)
+                    )
+                )
+            }
+            for (fakeCase in dispatcher.fakeCases) {
+                val fakeBlock = createFakeCaseBlock(fakeCase, dispatcher, plan.stateSlot, ids)
+                fakeBlocks += FakeCaseBlock(fakeBlock, fakeCase.fallthroughTarget)
+                method.addBlock(fakeBlock)
+                method.addEdge(
+                    FlowEdge(
+                        id = ids.edge(),
+                        from = block,
+                        port = FlowPort.Case(fakeCase.key),
+                        to = fakeBlock,
+                        semantics = FlowEdgeSemantics.Bogus,
+                        flags = mutableSetOf(FlowEdgeFlag.Inserted)
+                    )
+                )
+                connectFakeCase(method, fakeBlock, fakeCase, dispatcherBlocks.getValue(dispatcher), ids)
+            }
+            method.addEdge(
+                FlowEdge(
+                    id = ids.edge(),
+                    from = block,
+                    port = FlowPort.Default,
+                    to = dispatcher.blocks.first(),
+                    semantics = FlowEdgeSemantics.Dispatcher,
+                    flags = mutableSetOf(FlowEdgeFlag.Inserted)
+                )
+            )
+        }
+
+        for (entry in plan.normalEdgeEntries) {
+            val bridge = createStateBridge(entry.target, entry.entryFrame, plan, entry.dispatcher, ids, FlowBlockKind.StateSet)
+            bridgeBlocks += bridge
+            method.addBlock(bridge)
+            entry.edge.to = bridge
+            entry.edge.flags += FlowEdgeFlag.Inserted
+            connectBridge(method, bridge, dispatcherBlocks.getValue(entry.dispatcher), ids)
+        }
+
+        val handlerBridgeByTarget = mutableMapOf<FlowBlock, FlowBlock>()
+        for (entry in plan.handlerEntries) {
+            val bridge = createStateBridge(entry.target, entry.entryFrame, plan, entry.dispatcher, ids, entry.kind)
+            bridgeBlocks += bridge
+            method.addBlock(bridge)
+            handlerBridgeByTarget[entry.target] = bridge
+            connectBridge(method, bridge, dispatcherBlocks.getValue(entry.dispatcher), ids)
+        }
+        rewriteExceptionHandlers(method.exceptionRegions, handlerBridgeByTarget)
+
+        plan.methodEntry?.let { entry ->
+            val bridge = createStateBridge(entry.target, entry.entryFrame, plan, entry.dispatcher, ids, entry.kind)
+            bridgeBlocks += bridge
+            method.addBlock(bridge)
+            method.entry = bridge
+            connectBridge(method, bridge, dispatcherBlocks.getValue(entry.dispatcher), ids)
+        }
+
+        rewriteLayout(method, plan.methodEntry?.target, dispatcherBlocks.values.toList(), bridgeBlocks, fakeBlocks)
+    }
+
+    private fun createCaseKeyPool(size: Int): List<Int> {
+        if (size <= 0) return emptyList()
+        val start = nextCaseKeyWindowStart(size)
+        val keys = MutableList(size) { offset -> start + offset }
+        for (index in keys.lastIndex downTo 1) {
+            val swapIndex = random.nextInt(index + 1)
+            val value = keys[index]
+            keys[index] = keys[swapIndex]
+            keys[swapIndex] = value
+        }
+        return keys
+    }
+
+    private fun nextCaseKeyWindowStart(size: Int): Int {
+        val offsetBound = Int.MAX_VALUE.toLong() - Int.MIN_VALUE.toLong() - size.toLong() + 1L
+        var start = (Int.MIN_VALUE.toLong() + ((random.nextLong() ushr 1) % offsetBound)).toInt()
+        while (start == 1) {
+            start = (Int.MIN_VALUE.toLong() + ((random.nextLong() ushr 1) % offsetBound)).toInt()
+        }
+        return start
+    }
+
+    private fun createStateTransformChain(keys: List<Int>, realCaseCount: Int): List<StateProgram> {
+        if (keys.isEmpty()) return emptyList()
+        val budgets = createStateOperationBudgets(realCaseCount)
+        return keys.mapIndexed { index, key ->
+            createStateProgram(key, budgets.getOrElse(index) { normalizedMinStateOps() })
+        }
+    }
+
+    private fun createStateOperationBudgets(realCaseCount: Int): List<Int> {
+        if (realCaseCount <= 0) return emptyList()
+        val minOps = normalizedMinStateOps()
+        val maxOps = normalizedMaxStateOps(minOps)
+        val budgets = MutableList(realCaseCount) {
+            minOps + random.nextInt(maxOps - minOps + 1)
+        }
+        if (budgets.sum() <= realCaseCount) {
+            budgets[random.nextInt(budgets.size)] += realCaseCount - budgets.sum() + 1
+        }
+        return budgets
+    }
+
+    private fun normalizedMinStateOps(): Int {
+        return options.minStateOpsPerCase.coerceAtLeast(1)
+    }
+
+    private fun normalizedMaxStateOps(minOps: Int): Int {
+        return options.maxStateOpsPerCase.coerceAtLeast(minOps)
+    }
+
+    private fun createFakeCasePlans(blocks: List<FlowBlock>, fakeKeys: List<Int>, usedKeys: Set<Int>): List<FakeCasePlan> {
+        if (fakeKeys.isEmpty() || blocks.isEmpty()) return emptyList()
+
+        return fakeKeys.map { key ->
+            val exit = when (random.nextInt(3)) {
+                0 -> FakeCaseExit.ScrambleState(createBogusStateProgram(usedKeys))
+                1 -> FakeCaseExit.ThrowNull
+                else -> FakeCaseExit.RealBranch(
+                    target = blocks[random.nextInt(blocks.size)],
+                    fallthrough = random.nextBoolean()
+                )
+            }
+            FakeCasePlan(key, exit)
+        }
+    }
+
+    private fun createBogusStateProgram(usedKeys: Set<Int>): StateProgram {
+        val minOps = normalizedMinStateOps()
+        val maxOps = normalizedMaxStateOps(minOps)
+        repeat(32) {
+            val target = nextNonZeroInt()
+            if (target !in usedKeys) {
+                return createStateProgram(target, minOps + random.nextInt(maxOps - minOps + 1))
+            }
+        }
+        var fallbackTarget = usedKeys.fold(0x13579BDF) { acc, key -> acc xor key }.let { if (it == 0) 1 else it }
+        while (fallbackTarget in usedKeys || fallbackTarget == 0) {
+            fallbackTarget += 0x1F123BB5
+        }
+        return createStateProgram(fallbackTarget, minOps)
+    }
+
+    private fun createStateProgram(target: Int, operationCount: Int): StateProgram {
+        val count = operationCount.coerceAtLeast(1)
+        repeat(64) {
+            val baseKey = nextNonZeroInt()
+            if (baseKey == target) return@repeat
+            val operations = mutableListOf<StateOp>()
+            var value = baseKey
+            repeat(count - 1) {
+                val op = createRandomStateOp(value)
+                operations += op
+                value = op.apply(value)
+            }
+            if (value == target) return@repeat
+            operations += createFinalStateOp(value, target)
+            val output = operations.fold(baseKey) { current, op -> op.apply(current) }
+            if (output == target) {
+                return StateProgram(baseKey, operations, target)
+            }
+        }
+
+        val baseKey = target xor nextNonZeroInt()
+        return StateProgram(
+            baseKey = baseKey,
+            operations = listOf(StateOp.XorConst(baseKey xor target)),
+            output = target
+        )
+    }
+
+    private fun createRandomStateOp(value: Int): StateOp {
+        return when (random.nextInt(6)) {
+            0 -> StateOp.AddConst(nextNonZeroInt())
+            1 -> StateOp.SubConst(nextNonZeroInt())
+            2 -> StateOp.XorConst(nextNonZeroInt())
+            3 -> StateOp.MulConst(nextOddInt())
+            4 -> StateOp.DivConst(nextDivisor(value))
+            else -> StateOp.MaxConst(nextNonZeroInt())
+        }
+    }
+
+    private fun createFinalStateOp(value: Int, target: Int): StateOp {
+        return when (random.nextInt(3)) {
+            0 -> StateOp.AddConst(target - value)
+            1 -> StateOp.SubConst(value - target)
+            else -> StateOp.XorConst(value xor target)
+        }
+    }
+
+    private fun createFakeCaseBlock(
+        fakeCase: FakeCasePlan,
+        dispatcher: DispatcherPlan,
+        stateSlot: Int,
+        ids: MutableFlowIds
+    ): FlowBlock {
+        val body = FlowBytecodeSlice(mutableListOf(InsnNode(Opcodes.NOP)))
+        val jump = when (val exit = fakeCase.exit) {
+            is FakeCaseExit.ScrambleState -> {
+                body.instructions += emitStateProgram(exit.program, stateSlot).instructions
+                FlowGotoJump(FlowGotoMode.Synthetic)
+            }
+            FakeCaseExit.ThrowNull -> {
+                for (value in dispatcher.frame.stack.asReversed()) {
+                    body.instructions += InsnNode(if (value.categorySize == 2) Opcodes.POP2 else Opcodes.POP)
+                }
+                FlowThrowJump(
+                    FlowJumpInput.Generated(
+                        code = FlowBytecodeSlice(mutableListOf(InsnNode(Opcodes.ACONST_NULL))),
+                        produced = listOf(FlowFrameValue.Null)
+                    )
+                )
+            }
+            is FakeCaseExit.RealBranch -> FlowGotoJump(
+                if (exit.fallthrough) FlowGotoMode.Fallthrough else FlowGotoMode.ExplicitGoto
+            )
+        }
+        val bodyExitFrame = if (fakeCase.exit == FakeCaseExit.ThrowNull) {
+            dispatcher.frame.copy(stack = emptyList())
+        } else {
+            dispatcher.frame
+        }
+        return FlowBlock(
+            id = ids.block(),
+            kind = FlowBlockKind.Bogus,
+            body = body,
+            jump = jump,
+            entryFrame = dispatcher.frame,
+            bodyExitFrame = bodyExitFrame
+        )
+    }
+
+    private fun connectFakeCase(
+        method: FlowMethod,
+        fakeBlock: FlowBlock,
+        fakeCase: FakeCasePlan,
+        dispatcherBlock: FlowBlock,
+        ids: MutableFlowIds
+    ) {
+        val (target, semantics, flags) = when (val exit = fakeCase.exit) {
+            is FakeCaseExit.ScrambleState -> Triple(
+                dispatcherBlock,
+                FlowEdgeSemantics.Dispatcher,
+                mutableSetOf(FlowEdgeFlag.Inserted)
+            )
+            FakeCaseExit.ThrowNull -> return
+            is FakeCaseExit.RealBranch -> Triple(
+                exit.target,
+                FlowEdgeSemantics.Bogus,
+                mutableSetOf(FlowEdgeFlag.Inserted).also {
+                    if (exit.fallthrough) it += FlowEdgeFlag.LayoutSensitive
+                }
+            )
+        }
+        method.addEdge(
+            FlowEdge(
+                id = ids.edge(),
+                from = fakeBlock,
+                port = FlowPort.Next,
+                to = target,
+                semantics = semantics,
+                flags = flags
+            )
+        )
+    }
+
+    private fun emitStateProgram(program: StateProgram, slot: Int): FlowBytecodeSlice {
+        val instructions = mutableListOf(pushInt(program.baseKey))
+        for (op in program.operations) {
+            op.emitTo(instructions)
+        }
+        instructions += VarInsnNode(Opcodes.ISTORE, slot)
+        return FlowBytecodeSlice(instructions)
+    }
+
+    private fun pushInt(value: Int) = when (value) {
+        -1 -> InsnNode(Opcodes.ICONST_M1)
+        0 -> InsnNode(Opcodes.ICONST_0)
+        1 -> InsnNode(Opcodes.ICONST_1)
+        2 -> InsnNode(Opcodes.ICONST_2)
+        3 -> InsnNode(Opcodes.ICONST_3)
+        4 -> InsnNode(Opcodes.ICONST_4)
+        5 -> InsnNode(Opcodes.ICONST_5)
+        in Byte.MIN_VALUE..Byte.MAX_VALUE -> IntInsnNode(Opcodes.BIPUSH, value)
+        in Short.MIN_VALUE..Short.MAX_VALUE -> IntInsnNode(Opcodes.SIPUSH, value)
+        else -> LdcInsnNode(value)
+    }
+
+    private fun nextNonZeroInt(): Int {
+        var value = random.nextInt()
+        while (value == 0) value = random.nextInt()
+        return value
+    }
+
+    private fun nextOddInt(): Int {
+        return nextNonZeroInt() or 1
+    }
+
+    private fun nextDivisor(value: Int): Int {
+        var divisor = 2 + random.nextInt(15)
+        while (divisor == 0 || value == Int.MIN_VALUE && divisor == -1) {
+            divisor = 2 + random.nextInt(15)
+        }
+        return divisor
+    }
+
+    private fun StateOp.emitTo(instructions: MutableList<org.objectweb.asm.tree.AbstractInsnNode>) {
+        when (this) {
+            is StateOp.AddConst -> {
+                instructions += pushInt(value)
+                instructions += InsnNode(Opcodes.IADD)
+            }
+            is StateOp.SubConst -> {
+                instructions += pushInt(value)
+                instructions += InsnNode(Opcodes.ISUB)
+            }
+            is StateOp.XorConst -> {
+                instructions += pushInt(value)
+                instructions += InsnNode(Opcodes.IXOR)
+            }
+            is StateOp.MulConst -> {
+                instructions += pushInt(value)
+                instructions += InsnNode(Opcodes.IMUL)
+            }
+            is StateOp.DivConst -> {
+                instructions += pushInt(value)
+                instructions += InsnNode(Opcodes.IDIV)
+            }
+            is StateOp.MaxConst -> {
+                instructions += pushInt(value)
+                instructions += MethodInsnNode(Opcodes.INVOKESTATIC, "java/lang/Math", "max", "(II)I", false)
+            }
+        }
+    }
+
+    private fun FlowFrame.withLocal(index: Int, value: FlowFrameValue): FlowFrame {
+        val locals = locals.toMutableList()
+        while (locals.size <= index) locals += FlowFrameValue.Top
+        locals[index] = value
+        return copy(locals = locals)
+    }
+
+    private fun FlowFrame.withPushed(value: FlowFrameValue): FlowFrame {
+        return copy(stack = stack + value)
+    }
+
+    private fun FlowFrame.hasUninitialized(): Boolean {
+        return (locals.asSequence() + stack.asSequence()).any {
+            it == FlowFrameValue.UninitializedThis || it is FlowFrameValue.UninitializedNew
+        }
+    }
+
+    private fun FlowBlockKind.isFlattenableOriginalKind(): Boolean {
+        return this == FlowBlockKind.Original ||
+            this == FlowBlockKind.Split ||
+            this == FlowBlockKind.Bogus
+    }
+
+    private fun FlowMethod.layoutOrder(): List<FlowBlock> {
+        return (layout.order.ifEmpty { blocks }).filter { it in blocks }
+    }
+
+    private fun reachableBlocks(method: FlowMethod): Set<FlowBlock> {
+        val entry = method.entry ?: return emptySet()
+        val visited = linkedSetOf<FlowBlock>()
+        val queue = ArrayDeque<FlowBlock>()
+        queue.addLast(entry)
+        while (queue.isNotEmpty()) {
+            val block = queue.removeFirst()
+            if (!visited.add(block)) continue
+            for (successor in method.allSuccessors(block)) {
+                if (successor !in visited) queue.addLast(successor)
+            }
+        }
+        return visited
+    }
+
+    private fun createDispatcher(
+        plan: DispatcherPlan,
+        stateSlot: Int,
+        ids: MutableFlowIds
+    ): FlowBlock {
+        val keyPorts = linkedMapOf<Int, FlowPort>()
+        plan.keyByBlock.values.associateWithTo(keyPorts) { FlowPort.Case(it) }
+        for (fakeCase in plan.fakeCases) {
+            keyPorts[fakeCase.key] = FlowPort.Case(fakeCase.key)
+        }
+        return FlowBlock(
+            id = ids.block(),
+            kind = FlowBlockKind.Dispatcher,
+            body = FlowBytecodeSlice(mutableListOf(VarInsnNode(Opcodes.ILOAD, stateSlot))),
+            jump = FlowSwitchJump(
+                input = FlowJumpInput.StackConsumed(listOf(FlowFrameValue.Int)),
+                keyPorts = keyPorts,
+                defaultPort = FlowPort.Default
+            ),
+            entryFrame = plan.frame,
+            bodyExitFrame = plan.frame.withPushed(FlowFrameValue.Int)
+        )
+    }
+
+    private fun createStateBridge(
+        target: FlowBlock,
+        entryFrame: FlowFrame,
+        plan: FlattenPlan,
+        dispatcher: DispatcherPlan,
+        ids: MutableFlowIds,
+        kind: FlowBlockKind
+    ): FlowBlock {
+        return FlowBlock(
+            id = ids.block(),
+            kind = kind,
+            body = emitStateProgram(dispatcher.stateProgramByBlock.getValue(target), plan.stateSlot),
+            jump = FlowGotoJump(FlowGotoMode.Synthetic),
+            entryFrame = entryFrame,
+            bodyExitFrame = entryFrame.withLocal(plan.stateSlot, FlowFrameValue.Int)
+        ).also {
+            require(dispatcher.blocks.contains(target)) {
+                "Target ${target.id} is not in dispatcher island"
+            }
+        }
+    }
+
+    private fun connectBridge(
+        method: FlowMethod,
+        bridge: FlowBlock,
+        dispatcher: FlowBlock,
+        ids: MutableFlowIds
+    ) {
+        method.addEdge(
+            FlowEdge(
+                id = ids.edge(),
+                from = bridge,
+                port = FlowPort.Next,
+                to = dispatcher,
+                semantics = FlowEdgeSemantics.Dispatcher,
+                flags = mutableSetOf(FlowEdgeFlag.Inserted)
+            )
+        )
+    }
+
+    private fun rewriteExceptionHandlers(
+        regions: List<FlowExceptionRegion>,
+        bridgeByHandler: Map<FlowBlock, FlowBlock>
+    ) {
+        for (region in regions) {
+            region.handler = bridgeByHandler[region.handler] ?: region.handler
+        }
+    }
+
+    private fun rewriteLayout(
+        method: FlowMethod,
+        oldEntry: FlowBlock?,
+        dispatchers: List<FlowBlock>,
+        bridges: List<FlowBlock>,
+        fakeBlocks: List<FakeCaseBlock>
+    ) {
+        val oldOrder = method.layoutOrder()
+        val fallthroughFakes = fakeBlocks
+            .filter { it.fallthroughTarget != null }
+            .groupBy { it.fallthroughTarget }
+        val placedFakes = mutableSetOf<FlowBlock>()
+        val newOrder = mutableListOf<FlowBlock>()
+        if (oldEntry != null && method.entry != oldEntry) {
+            method.entry?.let { newOrder += it }
+        }
+        for (block in oldOrder) {
+            for (fakeBlock in fallthroughFakes[block].orEmpty()) {
+                newOrder += fakeBlock.block
+                placedFakes += fakeBlock.block
+            }
+            newOrder += block
+        }
+        newOrder += dispatchers
+        newOrder += bridges.filter { it != method.entry }
+        newOrder += fakeBlocks.map { it.block }.filter { it !in placedFakes }
+        method.layout.order.clear()
+        method.layout.order += newOrder.distinct()
+    }
+
+    private fun skipReason(method: FlowMethod): String {
+        val eligible = selectMaximalRegion(method).size
+        return if (eligible == 0) {
+            "no Flow blocks are eligible for flattening"
+        } else {
+            "eligible Flow blocks $eligible < ${options.minFlattenedBlocks.coerceAtLeast(2)}"
+        }
+    }
+
+    private data class FlattenPlan(
+        val stateSlot: Int,
+        val regionBlocks: List<FlowBlock>,
+        val dispatchers: List<DispatcherPlan>,
+        val keyByBlock: Map<FlowBlock, Int>,
+        val normalEdgeEntries: List<EdgeEntryPlan>,
+        val methodEntry: DirectEntryPlan?,
+        val handlerEntries: List<DirectEntryPlan>
+    )
+
+    private data class DispatcherPlan(
+        val frame: FlowFrame,
+        val blocks: List<FlowBlock>,
+        val keyByBlock: Map<FlowBlock, Int>,
+        val stateProgramByBlock: Map<FlowBlock, StateProgram>,
+        val fakeCases: List<FakeCasePlan>
+    )
+
+    private data class EdgeEntryPlan(
+        val edge: FlowEdge,
+        val target: FlowBlock,
+        val entryFrame: FlowFrame,
+        val dispatcher: DispatcherPlan
+    )
+
+    private data class DirectEntryPlan(
+        val target: FlowBlock,
+        val entryFrame: FlowFrame,
+        val dispatcher: DispatcherPlan,
+        val kind: FlowBlockKind
+    )
+
+    private data class FakeCasePlan(
+        val key: Int,
+        val exit: FakeCaseExit
+    ) {
+        val fallthroughTarget: FlowBlock?
+            get() = (exit as? FakeCaseExit.RealBranch)?.takeIf { it.fallthrough }?.target
+    }
+
+    private sealed interface FakeCaseExit {
+        data class ScrambleState(val program: StateProgram) : FakeCaseExit
+        data object ThrowNull : FakeCaseExit
+        data class RealBranch(val target: FlowBlock, val fallthrough: Boolean) : FakeCaseExit
+    }
+
+    private data class StateProgram(
+        val baseKey: Int,
+        val operations: List<StateOp>,
+        val output: Int
+    )
+
+    private sealed interface StateOp {
+        fun apply(value: Int): Int
+
+        data class AddConst(val value: Int) : StateOp {
+            override fun apply(value: Int) = value + this.value
+        }
+
+        data class SubConst(val value: Int) : StateOp {
+            override fun apply(value: Int) = value - this.value
+        }
+
+        data class XorConst(val value: Int) : StateOp {
+            override fun apply(value: Int) = value xor this.value
+        }
+
+        data class MulConst(val value: Int) : StateOp {
+            override fun apply(value: Int) = value * this.value
+        }
+
+        data class DivConst(val value: Int) : StateOp {
+            override fun apply(value: Int) = value / this.value
+        }
+
+        data class MaxConst(val value: Int) : StateOp {
+            override fun apply(value: Int) = maxOf(value, this.value)
+        }
+    }
+
+    private data class FakeCaseBlock(
+        val block: FlowBlock,
+        val fallthroughTarget: FlowBlock?
+    )
+
+    private class MutableFlowIds(method: FlowMethod) {
+        private var nextBlock = (method.blocks.maxOfOrNull { it.id.value } ?: -1) + 1
+        private var nextEdge = (method.edges.maxOfOrNull { it.id.value } ?: -1) + 1
+
+        fun block() = FlowBlockId(nextBlock++)
+
+        fun edge() = FlowEdgeId(nextEdge++)
+    }
+
+    private companion object {
+        val DefaultSeed = ByteArray(32) { index -> (index + 1).toByte() }
+    }
+}
