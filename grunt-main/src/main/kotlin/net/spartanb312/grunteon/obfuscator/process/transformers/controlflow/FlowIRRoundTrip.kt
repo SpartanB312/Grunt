@@ -1,9 +1,8 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow
 
 import kotlinx.serialization.Serializable
-import net.spartanb312.grunt.ir.ssa.jvm.JvmSSAExportOptions
-import net.spartanb312.grunt.ir.ssa.jvm.JvmSSAExporter
-import net.spartanb312.grunt.ir.ssa.jvm.JvmSSAImporter
+import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
+import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
@@ -12,8 +11,8 @@ import net.spartanb312.grunteon.obfuscator.process.SettingDesc
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
-import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
 import net.spartanb312.grunteon.obfuscator.process.post
+import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
@@ -23,11 +22,11 @@ import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 
 @Transformer.Description(
-    "process.controlflow.ssa_round_trip.desc",
-    "Round-trip methods through Grunt SSA IR"
+    "process.controlflow.flow_ir_round_trip.desc",
+    "Round-trip methods through Grunt Flow IR"
 )
-class SSARoundTrip : Transformer<SSARoundTrip.Config>(
-    "SSARoundTrip",
+class FlowIRRoundTrip : Transformer<FlowIRRoundTrip.Config>(
+    "FlowIRRoundTrip",
     Category.Controlflow,
 ) {
 
@@ -66,7 +65,7 @@ class SSARoundTrip : Transformer<SSARoundTrip.Config>(
                                     it
                                 )
                             }
-                            Logger.warn("SsaRoundTrip skipped ${classNode.name}.${methodNode.name}${methodNode.desc}: ${it.message}")
+                            Logger.warn("FlowIRRoundTrip skipped ${classNode.name}.${methodNode.name}${methodNode.desc}: ${it.message}")
                             methodNode
                         }
                     )
@@ -77,8 +76,8 @@ class SSARoundTrip : Transformer<SSARoundTrip.Config>(
         }
 
         post {
-            Logger.info(" - SsaRoundTrip:")
-            Logger.info("    Round-tripped ${methodCounter.global.get()} methods through SSA IR")
+            Logger.info(" - FlowIRRoundTrip:")
+            Logger.info("    Round-tripped ${methodCounter.global.get()} methods through Flow IR")
             if (failureCounter.global.get() != 0) {
                 Logger.warn("    Skipped ${failureCounter.global.get()} methods")
             }
@@ -86,15 +85,8 @@ class SSARoundTrip : Transformer<SSARoundTrip.Config>(
     }
 
     private fun MethodNode.roundTrip(ownerInternalName: String, verify: Boolean): MethodNode {
-        val imported = JvmSSAImporter().import(ownerInternalName, this)
-        val exported = JvmSSAExporter(
-            imported.metadata,
-            JvmSSAExportOptions(
-                access = access,
-                signature = signature,
-                exceptions = exceptions?.toList() ?: emptyList()
-            )
-        ).export(imported.function)
+        val imported = JvmFlowImporter().import(ownerInternalName, this)
+        val exported = JvmFlowExporter(imported.metadata).export(imported.method)
 
         copyMethodMetadataTo(exported)
         if (verify) Analyzer(BasicInterpreter()).analyze(ownerInternalName, exported)

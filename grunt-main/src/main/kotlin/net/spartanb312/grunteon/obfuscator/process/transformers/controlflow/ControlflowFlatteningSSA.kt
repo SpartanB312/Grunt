@@ -42,8 +42,8 @@ import java.util.concurrent.atomic.AtomicLong
     "process.controlflow.controlflow_flattening.desc",
     "Flatten method control flow through Grunt SSA IR"
 )
-class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
-    "ControlflowFlattening",
+class ControlflowFlatteningSSA : Transformer<ControlflowFlatteningSSA.Config>(
+    "ControlflowFlatteningSSA",
     Category.Controlflow,
 ) {
 

@@ -1,7 +1,8 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlatteningSSA
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.FlowIRRoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.SSARoundTrip
 import kotlin.io.path.createTempFile
 import kotlin.io.path.deleteIfExists
@@ -39,8 +40,25 @@ class TransformerConfigEnabledSmokeTest {
                 ),
                 path
             )
-            assertContains(path.readText(), "SsaRoundTrip.Config")
+            assertContains(path.readText(), "SSARoundTrip.Config")
             assertIs<SSARoundTrip.Config>(ObfConfig.read(path).transformerConfigs.single())
+        } finally {
+            path.deleteIfExists()
+        }
+    }
+
+    @Test
+    fun roundTripsFlowIrRoundTripConfig() {
+        val path = createTempFile("grunteon-flow-ir-roundtrip-config", ".json")
+        try {
+            ObfConfig.write(
+                ObfConfig(
+                    transformerConfigs = listOf(FlowIRRoundTrip.Config())
+                ),
+                path
+            )
+            assertContains(path.readText(), "FlowIRRoundTrip.Config")
+            assertIs<FlowIRRoundTrip.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()
         }
@@ -52,7 +70,7 @@ class TransformerConfigEnabledSmokeTest {
         try {
             ObfConfig.write(
                 ObfConfig(
-                    transformerConfigs = listOf(ControlflowFlattening.Config())
+                    transformerConfigs = listOf(ControlflowFlatteningSSA.Config())
                 ),
                 path
             )
@@ -60,7 +78,7 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "ControlflowFlattening.Config")
             assertContains(text, "\"skipSyntheticBridgeMethods\": true")
             assertContains(text, "\"skipDefaultMethods\": true")
-            assertIs<ControlflowFlattening.Config>(ObfConfig.read(path).transformerConfigs.single())
+            assertIs<ControlflowFlatteningSSA.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()
         }

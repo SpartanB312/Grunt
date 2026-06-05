@@ -1,7 +1,7 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlatteningSSA
 import net.spartanb312.grunteon.testcase.Asserts
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
@@ -19,7 +19,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 
-class ControlflowFlatteningTransformerTest {
+class ControlflowFlatteningSSATransformerTest {
     @Test
     fun dumpsClassAfterControlflowFlatteningTransformer() {
         val output = createTempFile("grunteon-controlflow-flattening", ".jar")
@@ -30,7 +30,7 @@ class ControlflowFlatteningTransformerTest {
                     output = output.pathString,
                     dumpMappings = false,
                     transformerConfigs = listOf(
-                        ControlflowFlattening.Config(
+                        ControlflowFlatteningSSA.Config(
                             classFilter = ClassFilterConfig(
                                 includeStrategy = listOf("net/spartanb312/grunteon/testcase/Asserts"),
                                 excludeStrategy = emptyList()
@@ -65,7 +65,7 @@ class ControlflowFlatteningTransformerTest {
                     output = output.pathString,
                     dumpMappings = false,
                     transformerConfigs = listOf(
-                        ControlflowFlattening.Config(
+                        ControlflowFlatteningSSA.Config(
                             classFilter = ClassFilterConfig(
                                 includeStrategy = listOf("net/spartanb312/grunteon/testcase/Asserts"),
                                 excludeStrategy = emptyList()
@@ -113,7 +113,7 @@ class ControlflowFlatteningTransformerTest {
                     input = input.pathString,
                     output = output.pathString,
                     dumpMappings = false,
-                    transformerConfigs = listOf(ControlflowFlattening.Config())
+                    transformerConfigs = listOf(ControlflowFlatteningSSA.Config())
                 )
             )
 
@@ -156,7 +156,7 @@ class ControlflowFlatteningTransformerTest {
                     input = input.pathString,
                     output = output.pathString,
                     dumpMappings = false,
-                    transformerConfigs = listOf(ControlflowFlattening.Config())
+                    transformerConfigs = listOf(ControlflowFlatteningSSA.Config())
                 )
             )
 
@@ -199,7 +199,7 @@ class ControlflowFlatteningTransformerTest {
                     input = input.pathString,
                     output = output.pathString,
                     dumpMappings = false,
-                    transformerConfigs = listOf(ControlflowFlattening.Config())
+                    transformerConfigs = listOf(ControlflowFlatteningSSA.Config())
                 )
             )
 
@@ -243,7 +243,7 @@ class ControlflowFlatteningTransformerTest {
                     output = output.pathString,
                     dumpMappings = false,
                     transformerConfigs = listOf(
-                        ControlflowFlattening.Config(
+                        ControlflowFlatteningSSA.Config(
                             maxInstructions = 5,
                             maxBasicBlocks = 0,
                             maxLocals = 0,
