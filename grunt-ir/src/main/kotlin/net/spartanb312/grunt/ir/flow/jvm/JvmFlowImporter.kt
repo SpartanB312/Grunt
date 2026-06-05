@@ -22,6 +22,7 @@ import net.spartanb312.grunt.ir.flow.core.FlowSwitchJump
 import net.spartanb312.grunt.ir.flow.core.FlowThrowJump
 import net.spartanb312.grunt.ir.flow.core.FlowUnreachableJump
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.Type
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.JumpInsnNode
@@ -96,7 +97,7 @@ class JvmFlowImporter(
     private fun analyze(ownerInternalName: String, method: MethodNode): Array<Frame<BasicValue>?> {
         return try {
             @Suppress("UNCHECKED_CAST")
-            Analyzer(BasicInterpreter()).analyze(ownerInternalName, method) as Array<Frame<BasicValue>?>
+            Analyzer<BasicValue>(PreciseFlowInterpreter()).analyze(ownerInternalName, method) as Array<Frame<BasicValue>?>
         } catch (t: Throwable) {
             throw IllegalStateException("Failed to analyze ${ownerInternalName}.${method.name}${method.desc}", t)
         }
@@ -426,4 +427,35 @@ class JvmFlowImporter(
         val end: Int,
         val block: FlowBlock
     )
+
+    private class PreciseFlowInterpreter : BasicInterpreter(Opcodes.ASM9) {
+        override fun newValue(type: Type?): BasicValue? {
+            if (type == null) return BasicValue.UNINITIALIZED_VALUE
+            return when (type.sort) {
+                Type.VOID -> null
+                Type.BOOLEAN,
+                Type.CHAR,
+                Type.BYTE,
+                Type.SHORT,
+                Type.INT -> BasicValue.INT_VALUE
+                Type.FLOAT -> BasicValue.FLOAT_VALUE
+                Type.LONG -> BasicValue.LONG_VALUE
+                Type.DOUBLE -> BasicValue.DOUBLE_VALUE
+                Type.ARRAY,
+                Type.OBJECT -> BasicValue(type)
+                else -> BasicValue(type)
+            }
+        }
+
+        override fun merge(value1: BasicValue, value2: BasicValue): BasicValue {
+            if (value1 == value2) return value1
+            if (value1 == BasicValue.UNINITIALIZED_VALUE || value2 == BasicValue.UNINITIALIZED_VALUE) {
+                return BasicValue.UNINITIALIZED_VALUE
+            }
+            if (value1.isReference && value2.isReference) {
+                return BasicValue.REFERENCE_VALUE
+            }
+            return BasicValue.UNINITIALIZED_VALUE
+        }
+    }
 }

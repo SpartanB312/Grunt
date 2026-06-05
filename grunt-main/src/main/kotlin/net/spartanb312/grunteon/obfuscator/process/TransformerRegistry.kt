@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator.process
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlatteningSSA
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.FlowIRRoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.SSARoundTrip
@@ -50,6 +51,7 @@ object TransformerRegistry {
         entry({ SourceDebugInfoHide() }, { SourceDebugInfoHide.Config() }),
         entry({ StringEqualsOptimize() }, { StringEqualsOptimize.Config() }),
         entry({ MethodInliner() }, { MethodInliner.Config() }),
+        entry({ ControlflowFlattening() }, { ControlflowFlattening.Config() }),
         entry({ ControlflowFlatteningSSA() }, { ControlflowFlatteningSSA.Config() }),
         entry({ FlowIRRoundTrip() }, { FlowIRRoundTrip.Config() }),
         entry({ SSARoundTrip() }, { SSARoundTrip.Config() }),

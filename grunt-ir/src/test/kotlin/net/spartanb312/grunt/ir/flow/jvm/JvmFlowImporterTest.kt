@@ -1,5 +1,6 @@
 package net.spartanb312.grunt.ir.flow.jvm
 
+import net.spartanb312.grunt.ir.flow.core.FlowFrameValue
 import net.spartanb312.grunt.ir.flow.core.FlowGotoJump
 import net.spartanb312.grunt.ir.flow.core.FlowIfJump
 import net.spartanb312.grunt.ir.flow.core.FlowPort
@@ -7,11 +8,13 @@ import net.spartanb312.grunt.ir.flow.core.FlowReturnJump
 import net.spartanb312.grunt.ir.flow.core.FlowSwitchJump
 import net.spartanb312.grunt.ir.flow.core.FlowVerifier
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.FieldInsnNode
 import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.JumpInsnNode
 import org.objectweb.asm.tree.LabelNode
 import org.objectweb.asm.tree.LookupSwitchInsnNode
+import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.TryCatchBlockNode
 import org.objectweb.asm.tree.VarInsnNode
@@ -118,5 +121,37 @@ class JvmFlowImporterTest {
         assertEquals(1, flow.exceptionRegions.size)
         assertEquals("java/lang/Throwable", flow.exceptionRegions.single().catchType?.internalName)
         assertTrue(flow.exceptionRegions.single().protectedBlocks.isNotEmpty())
+    }
+
+    @Test
+    fun preservesConcreteReferenceFramesWhenLocalSlotsAreReused() {
+        val useBuilder = LabelNode()
+        val useRunnable = LabelNode()
+        val method = MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "reuse", "()V", null, null).apply {
+            instructions = InsnList().apply {
+                add(FieldInsnNode(Opcodes.GETSTATIC, "example/Test", "builder", "Ljava/lang/StringBuilder;"))
+                add(VarInsnNode(Opcodes.ASTORE, 0))
+                add(JumpInsnNode(Opcodes.GOTO, useBuilder))
+                add(useBuilder)
+                add(VarInsnNode(Opcodes.ALOAD, 0))
+                add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "length", "()I", false))
+                add(InsnNode(Opcodes.POP))
+                add(FieldInsnNode(Opcodes.GETSTATIC, "example/Test", "task", "Ljava/lang/Runnable;"))
+                add(VarInsnNode(Opcodes.ASTORE, 0))
+                add(JumpInsnNode(Opcodes.GOTO, useRunnable))
+                add(useRunnable)
+                add(VarInsnNode(Opcodes.ALOAD, 0))
+                add(MethodInsnNode(Opcodes.INVOKEINTERFACE, "java/lang/Runnable", "run", "()V", true))
+                add(InsnNode(Opcodes.RETURN))
+            }
+            maxLocals = 1
+            maxStack = 1
+        }
+
+        val flow = JvmFlowImporter().import("example/Test", method).method
+
+        assertEquals(3, flow.blocks.size)
+        assertEquals(FlowFrameValue.Object("java/lang/StringBuilder"), flow.blocks[1].entryFrame.locals.single())
+        assertEquals(FlowFrameValue.Object("java/lang/Runnable"), flow.blocks[2].entryFrame.locals.single())
     }
 }

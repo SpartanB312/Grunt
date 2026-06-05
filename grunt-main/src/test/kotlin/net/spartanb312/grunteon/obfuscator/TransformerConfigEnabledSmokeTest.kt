@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlatteningSSA
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.FlowIRRoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.SSARoundTrip
@@ -70,14 +71,33 @@ class TransformerConfigEnabledSmokeTest {
         try {
             ObfConfig.write(
                 ObfConfig(
-                    transformerConfigs = listOf(ControlflowFlatteningSSA.Config())
+                    transformerConfigs = listOf(ControlflowFlattening.Config())
                 ),
                 path
             )
             val text = path.readText()
             assertContains(text, "ControlflowFlattening.Config")
-            assertContains(text, "\"skipSyntheticBridgeMethods\": true")
-            assertContains(text, "\"skipDefaultMethods\": true")
+            assertContains(text, "\"includeMethodEntry\": true")
+            assertContains(text, "\"includeExceptionBlocks\": true")
+            assertContains(text, "\"maxDispatcherIslands\": 0")
+            assertIs<ControlflowFlattening.Config>(ObfConfig.read(path).transformerConfigs.single())
+        } finally {
+            path.deleteIfExists()
+        }
+    }
+
+    @Test
+    fun roundTripsControlflowFlatteningSsaConfig() {
+        val path = createTempFile("grunteon-controlflow-flattening-ssa-config", ".json")
+        try {
+            ObfConfig.write(
+                ObfConfig(
+                    transformerConfigs = listOf(ControlflowFlatteningSSA.Config())
+                ),
+                path
+            )
+            val text = path.readText()
+            assertContains(text, "ControlflowFlatteningSSA.Config")
             assertIs<ControlflowFlatteningSSA.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()

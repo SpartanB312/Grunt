@@ -127,6 +127,12 @@ object FlowFrames {
         if (actual is FlowFrameValue.Unknown || expected is FlowFrameValue.Unknown) return true
         if (actual == expected) return true
         if (actual == FlowFrameValue.Null && expected is FlowFrameValue.Object) return true
+        if (expected is FlowFrameValue.Object && expected.internalName == "java/lang/Object") {
+            return actual is FlowFrameValue.Object ||
+                actual == FlowFrameValue.Null ||
+                actual == FlowFrameValue.UninitializedThis ||
+                actual is FlowFrameValue.UninitializedNew
+        }
         return false
     }
 
