@@ -56,7 +56,9 @@ val LightPalette = UiPalette(
 val LocalUiPalette = staticCompositionLocalOf { DarkPalette }
 
 const val BaseFontScale = 0.85f
+const val MinFontScale = 0.8f
 const val DefaultFontScale = 1.0f
+const val MaxFontScale = 1.3f
 val UiCornerRadius: Dp = 6.dp
 val UiPanelShape = RoundedCornerShape(UiCornerRadius)
 val UiControlShape = RoundedCornerShape(UiCornerRadius)

@@ -38,13 +38,17 @@ class SourceDebugInfoHide : Transformer<SourceDebugInfoHide.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Remove or edit source file information")
+        @SettingDesc("Remove or edit source file information")
+        @SettingName("Source files")
         val sourceFiles: SourceFileAction = SourceFileAction.Remove,
-        @SettingDesc(enText = "Remove line numbers")
+        @SettingDesc("Remove line numbers")
+        @SettingName("Line numbers")
         val lineNumbers: Boolean = true,
-        @SettingDesc(enText = "Customize source names")
+        @SettingDesc("Customize source names")
+        @SettingName("Source names")
         val sourceNames: List<String> = listOf("")
     ) : TransformerConfig()
 

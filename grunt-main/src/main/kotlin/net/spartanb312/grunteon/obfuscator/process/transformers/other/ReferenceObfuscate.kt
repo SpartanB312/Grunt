@@ -43,16 +43,21 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "The chance that attempt to replace invokes")
+        @SettingDesc("The chance that attempt to replace invokes")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Chance")
         val chance: Double = 0.3,
-        @SettingDesc(enText = "Specify encrypted data container")
+        @SettingDesc("Specify encrypted data container")
+        @SettingName("Metadata class")
         val metadataClass: String = "net/spartanb312/grunteon/internal/Metadata",
-        @SettingDesc(enText = "Reobfuscate bootstrap method")
+        @SettingDesc("Reobfuscate bootstrap method")
+        @SettingName("Reobfuscate BSM")
         val reobfBSM: Boolean = true,
-        @SettingDesc(enText = "Specify method exclusions.")
+        @SettingDesc("Specify method exclusions.")
+        @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
             "net/dummy/**",
             "net/dummy/Class",

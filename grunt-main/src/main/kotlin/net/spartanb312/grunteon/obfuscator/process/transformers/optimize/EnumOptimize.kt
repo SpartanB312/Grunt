@@ -37,6 +37,7 @@ class EnumOptimize : Transformer<EnumOptimize.Config>(
 
     @Serializable
     data class Config(
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig()
     ) : TransformerConfig()
 

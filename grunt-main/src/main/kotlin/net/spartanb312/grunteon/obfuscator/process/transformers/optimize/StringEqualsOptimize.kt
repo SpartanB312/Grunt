@@ -34,9 +34,11 @@ class StringEqualsOptimize : Transformer<StringEqualsOptimize.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Redirect equalsIgnoreCase()")
+        @SettingDesc("Redirect equalsIgnoreCase()")
+        @SettingName("Ignore case")
         val ignoreCase: Boolean = true
     ) : TransformerConfig()
 

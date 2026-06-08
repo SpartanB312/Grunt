@@ -86,6 +86,7 @@ fun SettingsPage(
     uiLogLevel: UiLogLevel,
     onUiLogLevelChange: (UiLogLevel) -> Unit,
     configPath: NioPath,
+    uiSettingsPath: NioPath,
     status: String,
     plugins: List<LoadedPlugin>,
     modifier: Modifier = Modifier,
@@ -117,8 +118,8 @@ fun SettingsPage(
                         }
                         Slider(
                             value = fontScale,
-                            onValueChange = { onFontScaleChange(it.coerceIn(0.8f, 1.3f)) },
-                            valueRange = 0.8f..1.3f,
+                            onValueChange = { onFontScaleChange(it.coerceIn(MinFontScale, MaxFontScale)) },
+                            valueRange = MinFontScale..MaxFontScale,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             UiOutlinedButton(onClick = { onFontScaleChange(0.9f) }) { Text("Small") }
@@ -166,6 +167,13 @@ fun SettingsPage(
                 }
                 SettingsSection {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("UI Settings", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            uiSettingsPath.toAbsolutePath().normalize().toString(),
+                            fontFamily = FontFamily.Monospace,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         Text("Config", fontWeight = FontWeight.SemiBold)
                         Text(
                             configPath.toAbsolutePath().normalize().toString(),

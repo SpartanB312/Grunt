@@ -25,11 +25,14 @@ class ParameterObfuscate : Transformer<ParameterObfuscate.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Only obfuscate private methods")
+        @SettingDesc("Only obfuscate private methods")
+        @SettingName("Only private method")
         val onlyPrivateMethod: Boolean = true, // Not stable for all methods
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Specify method exclusions.")
+        @SettingDesc("Specify method exclusions.")
+        @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
             "net/dummy/**",
             "net/dummy/Class",

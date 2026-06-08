@@ -19,7 +19,9 @@ class DecompilerCrasher : Transformer<DecompilerCrasher.Config>(
 ) {
     @Serializable
     data class Config(
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
+        @SettingName("Blank string")
         val blankString: Boolean = false
     ) : TransformerConfig()
 

@@ -40,15 +40,20 @@ class LocalVarRenamer : Transformer<LocalVarRenamer.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Dictionary for renamer")
+        @SettingDesc("Dictionary for renamer")
+        @SettingName("Dictionary")
         val dictionary: NameGenerator.DictionaryType = NameGenerator.DictionaryType.Alphabet,
-        @SettingDesc(enText = "Prefix for new name")
+        @SettingDesc("Prefix for new name")
+        @SettingName("Prefix")
         val prefix: String = "\u202E",
-        @SettingDesc(enText = "Delete local vars and parameters info")
+        @SettingDesc("Delete local vars and parameters info")
+        @SettingName("Delete ASM info")
         val deleteASMInfo: Boolean = false,
-        @SettingDesc(enText = "Specify method exclusions.")
+        @SettingDesc("Specify method exclusions.")
+        @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
             "net/dummy/**",
             "net/dummy/Class",

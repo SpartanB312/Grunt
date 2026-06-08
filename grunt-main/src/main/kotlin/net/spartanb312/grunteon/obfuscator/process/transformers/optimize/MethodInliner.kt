@@ -43,23 +43,31 @@ class MethodInliner : Transformer<MethodInliner.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Maximum real instruction count for inline candidates, including return")
+        @SettingDesc("Maximum real instruction count for inline candidates, including return")
         @IntRangeVal(min = 1, max = 128, step = 1)
+        @SettingName("Max instructions")
         val maxInstructions: Int = 10,
-        @SettingDesc(enText = "Maximum inline replacements per caller method")
+        @SettingDesc("Maximum inline replacements per caller method")
         @IntRangeVal(min = 1, max = 512, step = 1)
+        @SettingName("Max inline per method")
         val maxInlinePerMethod: Int = 64,
-        @SettingDesc(enText = "Inline static methods")
+        @SettingDesc("Inline static methods")
+        @SettingName("Inline static")
         val inlineStatic: Boolean = true,
-        @SettingDesc(enText = "Inline private instance methods")
+        @SettingDesc("Inline private instance methods")
+        @SettingName("Inline private")
         val inlinePrivate: Boolean = true,
-        @SettingDesc(enText = "Inline final instance methods")
+        @SettingDesc("Inline final instance methods")
+        @SettingName("Inline final")
         val inlineFinal: Boolean = true,
-        @SettingDesc(enText = "Preserve null checks for inlined instance calls")
+        @SettingDesc("Preserve null checks for inlined instance calls")
+        @SettingName("Preserve null check")
         val preserveNullCheck: Boolean = true,
-        @SettingDesc(enText = "Specify method exclusions.")
+        @SettingDesc("Specify method exclusions.")
+        @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
             "net/dummy/**",
             "net/dummy/Class",

@@ -30,22 +30,30 @@ class FieldAccessProxy : Transformer<FieldAccessProxy.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "The chance that attempt to replace put/set to getter/setter")
+        @SettingDesc("The chance that attempt to replace put/set to getter/setter")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Chance")
         val chance: Double = 1.0,
-        @SettingDesc(enText = "Replace GETSTATIC to static getter")
+        @SettingDesc("Replace GETSTATIC to static getter")
+        @SettingName("Get static")
         val getStatic: Boolean = true,
-        @SettingDesc(enText = "Replace PUTSTATIC to static setter")
+        @SettingDesc("Replace PUTSTATIC to static setter")
+        @SettingName("Put static")
         val putStatic: Boolean = true,
-        @SettingDesc(enText = "Replace GETFIELD to getter")
+        @SettingDesc("Replace GETFIELD to getter")
+        @SettingName("Get field")
         val getField: Boolean = true,
-        @SettingDesc(enText = "Replace PUTFIELD to setter")
+        @SettingDesc("Replace PUTFIELD to setter")
+        @SettingName("Put field")
         val putField: Boolean = true,
-        @SettingDesc(enText = "Generate an outer class to store proxies")
+        @SettingDesc("Generate an outer class to store proxies")
+        @SettingName("Outer")
         val outer: Boolean = true,
-        @SettingDesc(enText = "Specify method exclusions.")
+        @SettingDesc("Specify method exclusions.")
+        @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
             "net/dummy/**",
             "net/dummy/Class",

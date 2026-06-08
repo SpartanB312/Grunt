@@ -32,6 +32,7 @@ class DeclaredFieldsExtract : Transformer<DeclaredFieldsExtract.Config>(
 ) {
     @Serializable
     data class Config(
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig()
     ) : TransformerConfig()
 

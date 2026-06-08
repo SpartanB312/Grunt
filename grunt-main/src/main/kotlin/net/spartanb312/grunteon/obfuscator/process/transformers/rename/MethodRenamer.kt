@@ -53,18 +53,25 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Dictionary for renamer")
+        @SettingDesc("Dictionary for renamer")
+        @SettingName("Dictionary")
         val dictionary: NameGenerator.DictionaryType = NameGenerator.DictionaryType.Alphabet,
-        @SettingDesc(enText = "Obfuscate methods in enum classes")
+        @SettingDesc("Obfuscate methods in enum classes")
+        @SettingName("Enums")
         val enums: Boolean = true,
-        @SettingDesc(enText = "Obfuscate methods in interfaces")
+        @SettingDesc("Obfuscate methods in interfaces")
+        @SettingName("Interfaces")
         val interfaces: Boolean = true,
-        @SettingDesc(enText = "Overload method names as much as possible")
+        @SettingDesc("Overload method names as much as possible")
+        @SettingName("Heavy overloads")
         val heavyOverloads: Boolean = true,
-        @SettingDesc(enText = "Shadow method names as much as possible")
+        @SettingDesc("Shadow method names as much as possible")
+        @SettingName("Aggressive shadow names")
         val aggressiveShadowNames: Boolean = true,
+        @SettingName("Solve bridge")
         val solveBridge: Boolean = true
     ) : TransformerConfig()
 

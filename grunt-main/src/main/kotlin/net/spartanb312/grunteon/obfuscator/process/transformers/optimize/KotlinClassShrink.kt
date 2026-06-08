@@ -39,13 +39,17 @@ class KotlinClassShrink : Transformer<KotlinClassShrink.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Remove kotlin metadata. Warning: It will render KReflect unusable")
+        @SettingDesc("Remove kotlin metadata. Warning: It will render KReflect unusable")
+        @SettingName("Metadata")
         val metaData: Boolean = true,
-        @SettingDesc(enText = "Remove kotlin intrinsics like parameter check")
+        @SettingDesc("Remove kotlin intrinsics like parameter check")
+        @SettingName("Intrinsics")
         val intrinsics: Boolean = true,
-        @SettingDesc(enText = "Specify intrinsics remove target")
+        @SettingDesc("Specify intrinsics remove target")
+        @SettingName("Intrinsics removal")
         val intrinsicsRemoval: List<String> = listOf(
             "checkExpressionValueIsNotNull",
             "checkNotNullExpressionValue",
@@ -54,7 +58,8 @@ class KotlinClassShrink : Transformer<KotlinClassShrink.Config>(
             "checkParameterIsNotNull",
             "checkNotNullParameter"
         ),
-        @SettingDesc(enText = "Replace LDC to avoid reference leaking")
+        @SettingDesc("Replace LDC to avoid reference leaking")
+        @SettingName("Replace LDC")
         val replaceLDC: Boolean = true
     ) : TransformerConfig()
 

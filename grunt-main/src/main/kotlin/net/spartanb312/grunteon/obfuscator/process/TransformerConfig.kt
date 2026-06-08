@@ -31,6 +31,7 @@ annotation class DecimalRangeVal(val min: Double, val max: Double, val step: Dou
 @Serializable
 abstract class TransformerConfig {
     @SettingDesc("Enable this transformer config node")
+    @SettingName("Enabled")
     var enabled: Boolean = true
 
     companion object {
@@ -54,13 +55,15 @@ abstract class TransformerConfig {
 @Serializable
 @I18NDescriptorPath("process.common")
 data class ClassFilterConfig(
-    @SettingDesc(enText = "Specify class exclusions")
+    @SettingDesc("Specify class exclusions")
+    @SettingName("Exclude strategy")
     val excludeStrategy: List<String> = listOf(
         "net/dummy/**", // Exclude package
         "net/dummy/Class", // Exclude class
         "net/dummy/Event**" // Exclude prefix
     ),
-    @SettingDesc(enText = "Specify class includes")
+    @SettingDesc("Specify class includes")
+    @SettingName("Include strategy")
     val includeStrategy: List<String> = listOf(
         "**" // Include all
     )

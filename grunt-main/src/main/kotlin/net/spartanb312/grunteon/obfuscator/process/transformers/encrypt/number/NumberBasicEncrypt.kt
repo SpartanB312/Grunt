@@ -44,33 +44,45 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
     // TODO: hide chances when disabled
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Encrypt integers")
+        @SettingDesc("Encrypt integers")
+        @SettingName("Integer")
         val integer: Boolean = true,
-        @SettingDesc(enText = "Integer encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Integer encrypt rate. Range: 0.0..1.0")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Integer chance")
         val integerChance: Double = 1.0,
-        @SettingDesc(enText = "Encrypt longs")
+        @SettingDesc("Encrypt longs")
+        @SettingName("Long")
         val long: Boolean = true,
-        @SettingDesc(enText = "Long encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Long encrypt rate. Range: 0.0..1.0")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Long chance")
         val longChance: Double = 1.0,
-        @SettingDesc(enText = "Encrypt floats")
+        @SettingDesc("Encrypt floats")
+        @SettingName("Float")
         val float: Boolean = true,
-        @SettingDesc(enText = "Float encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Float encrypt rate. Range: 0.0..1.0")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Float chance")
         val floatChance: Double = 1.0,
-        @SettingDesc(enText = "Encrypt doubles")
+        @SettingDesc("Encrypt doubles")
+        @SettingName("Double")
         val double: Boolean = true,
-        @SettingDesc(enText = "Double encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Double encrypt rate. Range: 0.0..1.0")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Double chance")
         val doubleChance: Double = 1.0,
-        @SettingDesc(enText = "The upper limit of instruction count for a Method. Typically, each instruction occupies 2-3 bytes, and the upper limit for each Method is 65536 bytes")
+        @SettingDesc("The upper limit of instruction count for a Method. Typically, each instruction occupies 2-3 bytes, and the upper limit for each Method is 65536 bytes")
+        @SettingName("Max instructions")
         val maxInstructions: Int = 16384,
-        @SettingDesc(enText = "When enabled, a modifier will be applied to all chances. Modifier = (MaxInsn - CurrentInsn) / MaxInsn")
+        @SettingDesc("When enabled, a modifier will be applied to all chances. Modifier = (MaxInsn - CurrentInsn) / MaxInsn")
+        @SettingName("Dynamic strength")
         val dynamicStrength: Boolean = true,
-        @SettingDesc(enText = "Specify method exclusions.")
+        @SettingDesc("Specify method exclusions.")
+        @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
             "net/dummy/**",
             "net/dummy/Class",

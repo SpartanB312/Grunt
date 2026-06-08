@@ -10,6 +10,7 @@ import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
 import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
 import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
 import net.spartanb312.grunteon.obfuscator.process.SettingDesc
+import net.spartanb312.grunteon.obfuscator.process.SettingName
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
@@ -35,11 +36,14 @@ class SSARoundTrip : Transformer<SSARoundTrip.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Verify each exported method with ASM BasicInterpreter")
+        @SettingDesc("Verify each exported method with ASM BasicInterpreter")
+        @SettingName("Verify exported method")
         val verifyExportedMethod: Boolean = true,
-        @SettingDesc(enText = "Keep going when one method cannot be imported or exported")
+        @SettingDesc("Keep going when one method cannot be imported or exported")
+        @SettingName("Ignore failures")
         val ignoreFailures: Boolean = false
     ) : TransformerConfig()
 

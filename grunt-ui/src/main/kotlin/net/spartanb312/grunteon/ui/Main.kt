@@ -59,6 +59,8 @@ fun main(args: Array<String>) {
 fun App() {
     val definitions = remember { transformerDefinitions() }
     val plugins = remember { PluginManager.plugins }
+    val uiSettingsPath = remember { defaultUiSettingsPath() }
+    val initialUiSettings = remember { loadUiSettings(uiSettingsPath) }
     var editorReady by remember { mutableStateOf(false) }
     var baseConfig by remember { mutableStateOf(ObfConfig()) }
     var configPath by remember { mutableStateOf(defaultConfigPath()) }
@@ -67,9 +69,9 @@ fun App() {
     var status by remember { mutableStateOf("Choose a config to begin") }
     var search by remember { mutableStateOf("") }
     var page by remember { mutableStateOf(AppPage.Editor) }
-    var fontScale by remember { mutableStateOf(DefaultFontScale) }
-    var themeMode by remember { mutableStateOf(ThemeMode.Dark) }
-    var uiLogLevel by remember { mutableStateOf(UiLogLevel.Info) }
+    var fontScale by remember { mutableStateOf(initialUiSettings.fontScale) }
+    var themeMode by remember { mutableStateOf(initialUiSettings.themeMode) }
+    var uiLogLevel by remember { mutableStateOf(initialUiSettings.uiLogLevel) }
     var obfuscationRunning by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val baseDensity = LocalDensity.current
@@ -138,6 +140,42 @@ fun App() {
     }
 
     fun currentConfig(): ObfConfig = baseConfig.copy(transformerConfigs = nodes.map { it.config })
+
+    fun persistUiSettings(settings: UiSettings) {
+        saveUiSettings(settings, uiSettingsPath).onFailure {
+            status = "Failed to save UI settings to ${uiSettingsPath.toAbsolutePath().normalize()}: ${it.message}"
+        }
+    }
+
+    fun updateFontScale(value: Float) {
+        val next = UiSettings(
+            fontScale = value.coerceIn(MinFontScale, MaxFontScale),
+            themeMode = themeMode,
+            uiLogLevel = uiLogLevel,
+        )
+        fontScale = next.fontScale
+        persistUiSettings(next)
+    }
+
+    fun updateThemeMode(value: ThemeMode) {
+        val next = UiSettings(
+            fontScale = fontScale,
+            themeMode = value,
+            uiLogLevel = uiLogLevel,
+        )
+        themeMode = next.themeMode
+        persistUiSettings(next)
+    }
+
+    fun updateUiLogLevel(value: UiLogLevel) {
+        val next = UiSettings(
+            fontScale = fontScale,
+            themeMode = themeMode,
+            uiLogLevel = value,
+        )
+        uiLogLevel = next.uiLogLevel
+        persistUiSettings(next)
+    }
 
     fun appendObfuscationLog(line: String) {
         SwingUtilities.invokeLater {
@@ -350,12 +388,13 @@ fun App() {
 
                     AppPage.Settings -> SettingsPage(
                         fontScale = fontScale,
-                        onFontScaleChange = { fontScale = it },
+                        onFontScaleChange = ::updateFontScale,
                         themeMode = themeMode,
-                        onThemeModeChange = { themeMode = it },
+                        onThemeModeChange = ::updateThemeMode,
                         uiLogLevel = uiLogLevel,
-                        onUiLogLevelChange = { uiLogLevel = it },
+                        onUiLogLevelChange = ::updateUiLogLevel,
                         configPath = configPath,
+                        uiSettingsPath = uiSettingsPath,
                         status = status,
                         plugins = plugins,
                         modifier = Modifier.fillMaxSize()

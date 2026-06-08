@@ -40,21 +40,29 @@ class ClassRenamer : Transformer<ClassRenamer.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Dictionary for renamer")
+        @SettingDesc("Dictionary for renamer")
+        @SettingName("Dictionary")
         val dictionary: NameGenerator.DictionaryType = NameGenerator.DictionaryType.Alphabet,
-        @SettingDesc(enText = "Parent package for target name")
+        @SettingDesc("Parent package for target name")
+        @SettingName("Parent")
         val parent: String = "net/spartanb312/obf/",
-        @SettingDesc(enText = "Prefix for target name")
+        @SettingDesc("Prefix for target name")
+        @SettingName("Prefix")
         val prefix: String = "",
-        @SettingDesc(enText = "Append special char to reverse name")
+        @SettingDesc("Append special char to reverse name")
+        @SettingName("Reversed")
         val reversed: Boolean = false,
-        @SettingDesc(enText = "Shuffled mappings for classes")
+        @SettingDesc("Shuffled mappings for classes")
+        @SettingName("Shuffled")
         val shuffled: Boolean = false,
-        @SettingDesc(enText = "Corrupted name for class in zip")
+        @SettingDesc("Corrupted name for class in zip")
+        @SettingName("Corrupted name")
         val corruptedName: Boolean = false,
-        @SettingDesc(enText = "Class exclusion for corrupted name")
+        @SettingDesc("Class exclusion for corrupted name")
+        @SettingName("Corrupted exclusion")
         val corruptedExclusion: List<String> = listOf()
     ) : TransformerConfig() {
 

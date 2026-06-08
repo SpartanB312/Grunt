@@ -41,13 +41,21 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
 
     @Serializable
     data class Config(
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
+        @SettingName("Dictionary")
         val dictionary: NameGenerator.DictionaryType = NameGenerator.DictionaryType.Alphabet,
+        @SettingName("Prefix")
         val prefix: String = "",
+        @SettingName("Reversed")
         val reversed: Boolean = false,
+        @SettingName("Shuffled")
         val shuffled: Boolean = true,
+        @SettingName("Heavy overloads")
         val heavyOverloads: Boolean = true,
+        @SettingName("Aggressive shadow names")
         val aggressiveShadowNames: Boolean = true,
+        @SettingName("Excluded names")
         val excludedNames: List<String> = listOf("INSTANCE", "Companion")
     ) : TransformerConfig() {
 

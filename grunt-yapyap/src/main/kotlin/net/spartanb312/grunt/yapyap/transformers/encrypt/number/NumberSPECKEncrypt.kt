@@ -37,24 +37,33 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Encrypt integers with SPECK32/64")
+        @SettingDesc("Encrypt integers with SPECK32/64")
+        @SettingName("Integer")
         val integer: Boolean = true,
-        @SettingDesc(enText = "Encrypt longs with SPECK64/128")
+        @SettingDesc("Encrypt longs with SPECK64/128")
+        @SettingName("Long")
         val long: Boolean = true,
-        @SettingDesc(enText = "Encrypt floats through SPECK32/64 bit encryption")
+        @SettingDesc("Encrypt floats through SPECK32/64 bit encryption")
+        @SettingName("Float")
         val float: Boolean = true,
-        @SettingDesc(enText = "Encrypt doubles through SPECK64/128 bit encryption")
+        @SettingDesc("Encrypt doubles through SPECK64/128 bit encryption")
+        @SettingName("Double")
         val double: Boolean = true,
-        @SettingDesc(enText = "Number encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Number encrypt rate. Range: 0.0..1.0")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Chance")
         val chance: Double = 1.0,
-        @SettingDesc(enText = "The upper limit of instruction count for a Method")
+        @SettingDesc("The upper limit of instruction count for a Method")
+        @SettingName("Max instructions")
         val maxInstructions: Int = 16384,
-        @SettingDesc(enText = "When enabled, a modifier will be applied to chance. Modifier = (MaxInsn - CurrentInsn) / MaxInsn")
+        @SettingDesc("When enabled, a modifier will be applied to chance. Modifier = (MaxInsn - CurrentInsn) / MaxInsn")
+        @SettingName("Dynamic strength")
         val dynamicStrength: Boolean = true,
-        @SettingDesc(enText = "Specify method exclusions.")
+        @SettingDesc("Specify method exclusions.")
+        @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
             "net/dummy/**",
             "net/dummy/Class",

@@ -9,6 +9,7 @@ import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
 import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
 import net.spartanb312.grunteon.obfuscator.process.SettingDesc
+import net.spartanb312.grunteon.obfuscator.process.SettingName
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
@@ -44,45 +45,65 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Run ASM BasicInterpreter after exporting Flow IR bytecode")
+        @SettingDesc("Run ASM BasicInterpreter after exporting Flow IR bytecode")
+        @SettingName("Verify bytecode")
         val verifyBytecode: Boolean = true,
-        @SettingDesc(enText = "Include method entry block in dispatcher flattening")
+        @SettingDesc("Include method entry block in dispatcher flattening")
+        @SettingName("Include method entry")
         val includeMethodEntry: Boolean = true,
-        @SettingDesc(enText = "Include blocks protected by try/catch regions and exception handlers")
+        @SettingDesc("Include blocks protected by try/catch regions and exception handlers")
+        @SettingName("Include exception blocks")
         val includeExceptionBlocks: Boolean = true,
-        @SettingDesc(enText = "Include JVM constructors")
+        @SettingDesc("Include JVM constructors")
+        @SettingName("Include constructors")
         val includeConstructors: Boolean = false,
-        @SettingDesc(enText = "Include synthetic or bridge methods")
+        @SettingDesc("Include synthetic or bridge methods")
+        @SettingName("Include synthetic bridge methods")
         val includeSyntheticBridgeMethods: Boolean = true,
-        @SettingDesc(enText = "Include Kotlin/JVM default helper methods")
+        @SettingDesc("Include Kotlin/JVM default helper methods")
+        @SettingName("Include default helper methods")
         val includeDefaultHelperMethods: Boolean = true,
-        @SettingDesc(enText = "Allow Flow blocks whose verifier frame contains uninitialized values")
+        @SettingDesc("Allow Flow blocks whose verifier frame contains uninitialized values")
+        @SettingName("Include uninitialized frames")
         val includeUninitializedFrames: Boolean = false,
-        @SettingDesc(enText = "Minimum number of Flow blocks required before flattening a method")
+        @SettingDesc("Minimum number of Flow blocks required before flattening a method")
+        @SettingName("Min flattened blocks")
         val minFlattenedBlocks: Int = 2,
-        @SettingDesc(enText = "Maximum Flow blocks inside the maximal region; 0 expands to all eligible blocks")
+        @SettingDesc("Maximum Flow blocks inside the maximal region; 0 expands to all eligible blocks")
+        @SettingName("Max flattened blocks")
         val maxFlattenedBlocks: Int = 0,
-        @SettingDesc(enText = "Maximum verifier-frame dispatcher islands in the maximal region; 0 allows all islands")
+        @SettingDesc("Maximum verifier-frame dispatcher islands in the maximal region; 0 allows all islands")
+        @SettingName("Max dispatcher islands")
         val maxDispatcherIslands: Int = 0,
-        @SettingDesc(enText = "Bogus switch cases inserted into each dispatcher island")
+        @SettingDesc("Bogus switch cases inserted into each dispatcher island")
+        @SettingName("Fake cases per dispatcher")
         val fakeCasesPerDispatcher: Int = 1,
-        @SettingDesc(enText = "Minimum arithmetic state operations used to compute a dispatcher case key")
+        @SettingDesc("Minimum arithmetic state operations used to compute a dispatcher case key")
+        @SettingName("Min state ops per case")
         val minStateOpsPerCase: Int = 2,
-        @SettingDesc(enText = "Maximum arithmetic state operations used to compute a dispatcher case key")
+        @SettingDesc("Maximum arithmetic state operations used to compute a dispatcher case key")
+        @SettingName("Max state ops per case")
         val maxStateOpsPerCase: Int = 5,
-        @SettingDesc(enText = "Shuffle physical layout order of Flow blocks selected into the flattened region")
+        @SettingDesc("Shuffle physical layout order of Flow blocks selected into the flattened region")
+        @SettingName("Shuffle region blocks")
         val shuffleRegionBlocks: Boolean = false,
-        @SettingDesc(enText = "Maximum executable JVM instructions before importing Flow IR; 0 disables this limit")
+        @SettingDesc("Maximum executable JVM instructions before importing Flow IR; 0 disables this limit")
+        @SettingName("Max executable instructions")
         val maxExecutableInstructions: Int = 0,
-        @SettingDesc(enText = "Maximum imported Flow blocks before flattening; 0 disables this limit")
+        @SettingDesc("Maximum imported Flow blocks before flattening; 0 disables this limit")
+        @SettingName("Max flow blocks")
         val maxFlowBlocks: Int = 0,
-        @SettingDesc(enText = "Parallel class processing batch size")
+        @SettingDesc("Parallel class processing batch size")
+        @SettingName("Worker batch size")
         val workerBatchSize: Int = 16,
-        @SettingDesc(enText = "Log methods skipped by Flow IR CFF planning")
+        @SettingDesc("Log methods skipped by Flow IR CFF planning")
+        @SettingName("Log skips")
         val logSkips: Boolean = true,
-        @SettingDesc(enText = "Keep going when one method cannot be flattened")
+        @SettingDesc("Keep going when one method cannot be flattened")
+        @SettingName("Ignore failures")
         val ignoreFailures: Boolean = false
     ) : TransformerConfig()
 

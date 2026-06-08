@@ -29,14 +29,18 @@ class InvokeProxy : Transformer<InvokeProxy.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "The chance that attempt to replace put/set to getter/setter")
+        @SettingDesc("The chance that attempt to replace put/set to getter/setter")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Chance")
         val chance: Double = 0.3,
-        @SettingDesc(enText = "Generate an outer class to store proxies")
+        @SettingDesc("Generate an outer class to store proxies")
+        @SettingName("Outer")
         val outer: Boolean = true,
-        @SettingDesc(enText = "Specify method exclusions.")
+        @SettingDesc("Specify method exclusions.")
+        @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
             "net/dummy/**",
             "net/dummy/Class",

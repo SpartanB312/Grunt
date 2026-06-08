@@ -35,13 +35,17 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Using char array instead of string LDC")
+        @SettingDesc("Using char array instead of string LDC")
+        @SettingName("Char array")
         val carray: Boolean = true,
-        @SettingDesc(enText = "Replace invokedynamic string concat")
+        @SettingDesc("Replace invokedynamic string concat")
+        @SettingName("Invoke dynamics")
         val invokeDynamics: Boolean = true,
-        @SettingDesc(enText = "Specify method exclusions.")
+        @SettingDesc("Specify method exclusions.")
+        @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
             "net/dummy/**",
             "net/dummy/Class",

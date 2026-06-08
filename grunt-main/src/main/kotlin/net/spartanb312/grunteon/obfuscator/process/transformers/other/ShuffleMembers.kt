@@ -17,10 +17,15 @@ class ShuffleMembers : Transformer<ShuffleMembers.Config>(
 ) {
     @Serializable
     data class Config(
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
+        @SettingName("Methods")
         val methods: Boolean = true,
+        @SettingName("Fields")
         val fields: Boolean = true,
+        @SettingName("Annotations")
         val annotations: Boolean = true,
+        @SettingName("Exceptions")
         val exceptions: Boolean = true
     ) : TransformerConfig()
 

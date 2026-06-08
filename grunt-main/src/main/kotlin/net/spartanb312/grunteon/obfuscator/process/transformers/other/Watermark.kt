@@ -21,18 +21,23 @@ class Watermark : Transformer<Watermark.Config>(
 ) {
     @Serializable
     data class Config(
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Watermark member names")
+        @SettingDesc("Watermark member names")
+        @SettingName("Names")
         val names: List<String> = listOf("Grunt", "Gruntpocalypse", "Grunteon"),
-        @SettingDesc(enText = "Watermark messages")
+        @SettingDesc("Watermark messages")
+        @SettingName("Messages")
         val messages: List<String> = listOf(
             "PROTECTED BY GRUNTEON",
             "PROTECTED BY EVERETT",
             "PROTECTED BY YuShengJun"
         ),
-        @SettingDesc(enText = "Add field watermark")
+        @SettingDesc("Add field watermark")
+        @SettingName("Field mark")
         val fieldMark: Boolean = true,
-        @SettingDesc(enText = "Add method watermark")
+        @SettingDesc("Add method watermark")
+        @SettingName("Method mark")
         val methodMark: Boolean = true
     ) : TransformerConfig()
 

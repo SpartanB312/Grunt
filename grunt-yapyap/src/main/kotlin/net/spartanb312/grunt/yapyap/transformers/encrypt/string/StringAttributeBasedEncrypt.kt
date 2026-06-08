@@ -61,26 +61,36 @@ class StringAttributeBasedEncrypt : Transformer<StringAttributeBasedEncrypt.Conf
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "String encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("String encrypt rate. Range: 0.0..1.0")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Chance")
         val chance: Double = 1.0,
-        @SettingDesc(enText = "Minimum constants required before generating a CP-ABE pool")
+        @SettingDesc("Minimum constants required before generating a CP-ABE pool")
+        @SettingName("Min pool size")
         val minPoolSize: Int = 2,
-        @SettingDesc(enText = "Maximum constants per CP-ABE pool")
+        @SettingDesc("Maximum constants per CP-ABE pool")
+        @SettingName("Max pool size")
         val maxPoolSize: Int = 512,
-        @SettingDesc(enText = "The upper limit of instruction count for a Method")
+        @SettingDesc("The upper limit of instruction count for a Method")
+        @SettingName("Max instructions")
         val maxInstructions: Int = 16384,
-        @SettingDesc(enText = "jPBC Type A subgroup order bits")
+        @SettingDesc("jPBC Type A subgroup order bits")
+        @SettingName("R bits")
         val rBits: Int = 256,
-        @SettingDesc(enText = "jPBC Type A base field bits")
+        @SettingDesc("jPBC Type A base field bits")
+        @SettingName("Q bits")
         val qBits: Int = 1536,
-        @SettingDesc(enText = "Use jPBC PBC native backend when available")
+        @SettingDesc("Use jPBC PBC native backend when available")
+        @SettingName("Use native")
         val useNative: Boolean = true,
-        @SettingDesc(enText = "Project/application CP-ABE attribute")
+        @SettingDesc("Project/application CP-ABE attribute")
+        @SettingName("App ID")
         val appId: String = "grunt-yapyap",
-        @SettingDesc(enText = "Specify method exclusions.")
+        @SettingDesc("Specify method exclusions.")
+        @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
             "net/dummy/**",
             "net/dummy/Class",

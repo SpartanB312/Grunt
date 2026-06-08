@@ -23,19 +23,26 @@ class PostProcess : Transformer<PostProcess.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Remap manifest")
+        @SettingDesc("Remap manifest")
+        @SettingName("Manifest")
         val manifest: Boolean = true,
-        @SettingDesc(enText = "Remap Plugin YML")
+        @SettingDesc("Remap Plugin YML")
+        @SettingName("Plugin main")
         val pluginMain: Boolean = true,
-        @SettingDesc(enText = "Remap Bungee YML")
+        @SettingDesc("Remap Bungee YML")
+        @SettingName("Bungee main")
         val bungeeMain: Boolean = true,
-        @SettingDesc(enText = "Remap Fabric JSON")
+        @SettingDesc("Remap Fabric JSON")
+        @SettingName("Fabric main")
         val fabricMain: Boolean = true,
-        @SettingDesc(enText = "Remap Velocity JSON")
+        @SettingDesc("Remap Velocity JSON")
+        @SettingName("Velocity main")
         val velocityMain: Boolean = true,
-        @SettingDesc(enText = "Main class manifest key")
+        @SettingDesc("Main class manifest key")
+        @SettingName("Manifest replace")
         val manifestReplace: List<String> = listOf(
             "Main-Class:",
             "Launch-Entry:"

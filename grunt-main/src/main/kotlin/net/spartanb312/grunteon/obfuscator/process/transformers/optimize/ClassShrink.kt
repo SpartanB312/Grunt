@@ -34,15 +34,20 @@ class ClassShrink : Transformer<ClassShrink.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Remove redundant inner classes")
+        @SettingDesc("Remove redundant inner classes")
+        @SettingName("Inner classes")
         val innerClasses: Boolean = true,
-        @SettingDesc(enText = "Remove unused labels")
+        @SettingDesc("Remove unused labels")
+        @SettingName("Unused labels")
         val unusedLabels: Boolean = true,
-        @SettingDesc(enText = "Remove redundant NOP instructions")
+        @SettingDesc("Remove redundant NOP instructions")
+        @SettingName("NOP remove")
         val nopRemove: Boolean = true,
-        @SettingDesc(enText = "Remove method signatures")
+        @SettingDesc("Remove method signatures")
+        @SettingName("Method signatures")
         val methodSignatures: Boolean = true
     ) : TransformerConfig()
 

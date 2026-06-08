@@ -12,6 +12,7 @@ import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
 import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
 import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
 import net.spartanb312.grunteon.obfuscator.process.SettingDesc
+import net.spartanb312.grunteon.obfuscator.process.SettingName
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
@@ -51,37 +52,53 @@ class ControlflowFlatteningSSA : Transformer<ControlflowFlatteningSSA.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Verify each exported method with ASM BasicInterpreter")
+        @SettingDesc("Verify each exported method with ASM BasicInterpreter")
+        @SettingName("Verify exported method")
         val verifyExportedMethod: Boolean = true,
-        @SettingDesc(enText = "Skip exception protected/handler regions")
+        @SettingDesc("Skip exception protected/handler regions")
+        @SettingName("Skip exception regions")
         val skipExceptionRegions: Boolean = false,
-        @SettingDesc(enText = "Skip instance constructors because JVM uninitializedThis cannot be dispatched safely")
+        @SettingDesc("Skip instance constructors because JVM uninitializedThis cannot be dispatched safely")
+        @SettingName("Skip constructors")
         val skipConstructors: Boolean = true,
-        @SettingDesc(enText = "Skip synthetic and bridge methods")
+        @SettingDesc("Skip synthetic and bridge methods")
+        @SettingName("Skip synthetic bridge methods")
         val skipSyntheticBridgeMethods: Boolean = true,
-        @SettingDesc(enText = "Skip methods whose names end with \$default")
+        @SettingDesc("Skip methods whose names end with \$default")
+        @SettingName("Skip default methods")
         val skipDefaultMethods: Boolean = true,
-        @SettingDesc(enText = "Skip methods where uninitialized NEW objects cross control flow")
+        @SettingDesc("Skip methods where uninitialized NEW objects cross control flow")
+        @SettingName("Skip uninitialized object flow")
         val skipUninitializedObjectFlow: Boolean = true,
-        @SettingDesc(enText = "Maximum executable instructions before skipping; 0 disables this limit")
+        @SettingDesc("Maximum executable instructions before skipping; 0 disables this limit")
+        @SettingName("Max instructions")
         val maxInstructions: Int = 1000,
-        @SettingDesc(enText = "Maximum estimated method basic blocks before skipping; 0 disables this limit")
+        @SettingDesc("Maximum estimated method basic blocks before skipping; 0 disables this limit")
+        @SettingName("Max basic blocks")
         val maxBasicBlocks: Int = 0,
-        @SettingDesc(enText = "Maximum JVM local slots before skipping; 0 disables this limit")
+        @SettingDesc("Maximum JVM local slots before skipping; 0 disables this limit")
+        @SettingName("Max locals")
         val maxLocals: Int = 64,
-        @SettingDesc(enText = "Minimum basic blocks in one flattened region")
+        @SettingDesc("Minimum basic blocks in one flattened region")
+        @SettingName("Min region blocks")
         val minRegionBlocks: Int = 2,
-        @SettingDesc(enText = "Maximum basic blocks in one flattened region")
+        @SettingDesc("Maximum basic blocks in one flattened region")
+        @SettingName("Max region blocks")
         val maxRegionBlocks: Int = 8,
-        @SettingDesc(enText = "Maximum estimated region dispatcher argument pressure before skipping that region; 0 disables this limit")
+        @SettingDesc("Maximum estimated region dispatcher argument pressure before skipping that region; 0 disables this limit")
+        @SettingName("Max estimated dispatcher args")
         val maxEstimatedDispatcherArgs: Int = 64,
-        @SettingDesc(enText = "Parallel class processing batch size")
+        @SettingDesc("Parallel class processing batch size")
+        @SettingName("Parallel batch size")
         val parallelBatchSize: Int = 16,
-        @SettingDesc(enText = "Log methods skipped by the control-flow flattening budget")
+        @SettingDesc("Log methods skipped by the control-flow flattening budget")
+        @SettingName("Log budget skips")
         val logBudgetSkips: Boolean = true,
-        @SettingDesc(enText = "Keep going when one method cannot be flattened")
+        @SettingDesc("Keep going when one method cannot be flattened")
+        @SettingName("Ignore failures")
         val ignoreFailures: Boolean = false
     ) : TransformerConfig()
 

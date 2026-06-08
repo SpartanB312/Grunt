@@ -40,13 +40,17 @@ class DeadCodeRemove : Transformer<DeadCodeRemove.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc(enText = "Specify class include/exclude rules")
+        @SettingDesc("Specify class include/exclude rules")
+        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc(enText = "Remove redundant load and pop")
+        @SettingDesc("Remove redundant load and pop")
+        @SettingName("Pop")
         val pop: Boolean = true,
-        @SettingDesc(enText = "Remove redundant load and pop2")
+        @SettingDesc("Remove redundant load and pop2")
+        @SettingName("Pop2")
         val pop2: Boolean = true,
-        @SettingDesc(enText = "Remove fall through goto")
+        @SettingDesc("Remove fall through goto")
+        @SettingName("Fallthrough")
         val fallthrough: Boolean = true
     ) : TransformerConfig()
 
