@@ -41,6 +41,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junk
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.pipeline.before
+import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
 import net.spartanb312.grunteon.obfuscator.util.DISABLE_CONTROL_FLOW
 import net.spartanb312.grunteon.obfuscator.util.IGNORE_JUNK_CODE
 import net.spartanb312.grunteon.obfuscator.util.Logger
@@ -62,6 +63,7 @@ import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 
+@HiddenTransformer
 @Transformer.Description(
     "process.controlflow.controlflow_jump.desc",
     "Insert verifier-safe junk branches through Flow IR"

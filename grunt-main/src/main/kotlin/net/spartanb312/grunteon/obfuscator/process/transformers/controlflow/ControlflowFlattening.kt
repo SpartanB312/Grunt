@@ -23,13 +23,17 @@ import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
 import net.spartanb312.grunteon.obfuscator.process.seq
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorRegistry
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattenOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattener
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowStateKeyMode
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowStateKeyProcessor
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
+import net.spartanb312.grunteon.obfuscator.util.getRandomString
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
 import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
@@ -120,6 +124,13 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @SettingDesc("Maximum arithmetic state operations used to compute a dispatcher case key")
         @SettingName("Max state ops per case")
         val maxStateOpsPerCase: Int = 5,
+        @SettingDesc("How CFF emits dispatcher state key updates. Processor mode moves key operations into generated methods that can be further protected by ReferenceObfuscate, making static analysis less direct")
+        @SettingName("State key mode")
+        val stateKeyMode: FlowStateKeyMode = FlowStateKeyMode.Mixed,
+        @SettingDesc("Chance that one state key update uses a generated processor in Mixed mode. Range: 0.0..1.0")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("State key processor chance")
+        val stateKeyProcessorChance: Double = 0.5,
         @SettingDesc("Shuffle physical layout order of Flow blocks selected into the flattened region")
         @SettingName("Shuffle region blocks")
         val shuffleRegionBlocks: Boolean = false,
@@ -176,6 +187,20 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 null
             }
         }
+        val keyProcessorRegistryKey = globalScopeValue<CffKeyProcessorRegistry?> {
+            if (config.stateKeyMode == FlowStateKeyMode.Inline) {
+                null
+            } else {
+                CffKeyProcessorRegistry(
+                    classMarker = Xoshiro256PPRandom(getSeed("CffKeyProcessor", "classMarker"))
+                        .getRandomString(10),
+                    classExists = {
+                        instance.workRes.inputClassMap.containsKey(it) ||
+                            instance.workRes.libraryClassMap.containsKey(it)
+                    }
+                )
+            }
+        }
 
         parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), config.workerBatchSize.coerceAtLeast(1)) { classNode ->
             val transformedMethods = classNode.methods.map { methodNode ->
@@ -198,7 +223,14 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                                 config,
                                 randomGen,
                                 hierarchyKey.global,
-                                junkCallPoolKey.global
+                                junkCallPoolKey.global,
+                                keyProcessorRegistryKey.global?.methodProcessor(
+                                    owner = classNode.name,
+                                    ownerVersion = classNode.version,
+                                    methodMarker = Xoshiro256PPRandom(
+                                        getSeed(classNode.name, methodNode.name, methodNode.desc, "CffKeyProcessor", "methodMarker")
+                                    ).getRandomString(8)
+                                )
                             )
                         }.fold(
                             onSuccess = { result ->
@@ -236,6 +268,9 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         }
 
         seq {
+            keyProcessorRegistryKey.global?.materialize()?.forEach {
+                instance.workRes.addGeneratedClass(it)
+            }
             Logger.info("Took ${System.currentTimeMillis() - startTime.get()}ms")
         }
 
@@ -248,6 +283,10 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             Logger.info("    Created ${bridgeCounter.global.get()} state bridges")
             Logger.info("    Rewritten ${edgeCounter.global.get()} incoming edges")
             Logger.info("    Created ${fakeCaseCounter.global.get()} fake dispatcher cases")
+            keyProcessorRegistryKey.global?.let {
+                Logger.info("    Generated ${it.classCount} key processor classes")
+                Logger.info("    Generated ${it.actionCount} key processor actions")
+            }
             Logger.info("    Skipped ${skippedCounter.global.get()} methods")
             if (failureCounter.global.get() != 0) {
                 Logger.warn("    Failed ${failureCounter.global.get()} methods")
@@ -277,7 +316,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         config: Config,
         randomGen: UniformRandomProvider,
         hierarchy: ClassHierarchy?,
-        junkCallPool: JunkCallPool?
+        junkCallPool: JunkCallPool?,
+        stateKeyProcessor: FlowStateKeyProcessor?
     ): FlattenedMethod {
         val imported = JvmFlowImporter().import(ownerInternalName, this)
         if (config.maxFlowBlocks > 0 && imported.method.blocks.size > config.maxFlowBlocks) {
@@ -304,11 +344,14 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 ),
                 minStateOpsPerCase = config.minStateOpsPerCase,
                 maxStateOpsPerCase = config.maxStateOpsPerCase,
+                stateKeyMode = config.stateKeyMode,
+                stateKeyProcessorChance = config.stateKeyProcessorChance,
                 shuffleRegionBlocks = config.shuffleRegionBlocks
             ),
             randomGen,
             hierarchy,
-            junkCallPool
+            junkCallPool,
+            stateKeyProcessor
         ).flatten(imported.method)
         if (!result.changed) {
             return FlattenedMethod(this, changed = false, reason = result.reason)

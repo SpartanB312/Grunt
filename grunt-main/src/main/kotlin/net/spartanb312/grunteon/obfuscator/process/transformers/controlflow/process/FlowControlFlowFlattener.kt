@@ -1,5 +1,10 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process
 
+import net.spartanb312.genesis.kotlin.extensions.insn.ILOAD
+import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESTATIC
+import net.spartanb312.genesis.kotlin.extensions.insn.ISTORE
+import net.spartanb312.genesis.kotlin.extensions.toInsnNode
+import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunt.ir.flow.core.FlowBlock
 import net.spartanb312.grunt.ir.flow.core.FlowBlockId
 import net.spartanb312.grunt.ir.flow.core.FlowBlockKind
@@ -46,6 +51,8 @@ data class FlowControlFlowFlattenOptions(
     val junkCodeOptions: JunkCodeOptions = JunkCodeOptions(),
     val minStateOpsPerCase: Int = 2,
     val maxStateOpsPerCase: Int = 5,
+    val stateKeyMode: FlowStateKeyMode = FlowStateKeyMode.Mixed,
+    val stateKeyProcessorChance: Double = 0.5,
     val shuffleRegionBlocks: Boolean = false
 )
 
@@ -70,8 +77,11 @@ class FlowControlFlowFlattener(
     private val options: FlowControlFlowFlattenOptions = FlowControlFlowFlattenOptions(),
     private val random: UniformRandomProvider = Xoshiro256PPRandom(DefaultSeed),
     private val hierarchy: ClassHierarchy? = null,
-    private val junkCallPool: JunkCallPool? = null
+    private val junkCallPool: JunkCallPool? = null,
+    private val stateKeyProcessor: FlowStateKeyProcessor? = null
 ) {
+    private var nextStateProgramSite = 0
+
     fun flatten(method: FlowMethod): FlowControlFlowFlattenResult {
         val plan = plan(method) ?: return FlowControlFlowFlattenResult(
             changed = false,
@@ -541,12 +551,47 @@ class FlowControlFlowFlattener(
     }
 
     private fun emitStateProgram(program: StateProgram, slot: Int): FlowBytecodeSlice {
+        if (shouldUseStateProcessor()) {
+            return emitProcessorStateProgram(program, slot)
+        }
+        return emitInlineStateProgram(program, slot)
+    }
+
+    private fun shouldUseStateProcessor(): Boolean {
+        if (stateKeyProcessor == null) return false
+        return when (options.stateKeyMode) {
+            FlowStateKeyMode.Inline -> false
+            FlowStateKeyMode.Processor -> true
+            FlowStateKeyMode.Mixed -> random.nextDouble() < options.stateKeyProcessorChance.coerceIn(0.0, 1.0)
+        }
+    }
+
+    private fun emitInlineStateProgram(program: StateProgram, slot: Int): FlowBytecodeSlice {
         val instructions = mutableListOf(pushInt(program.baseKey))
         for (op in program.operations) {
             op.emitTo(instructions)
         }
         instructions += VarInsnNode(Opcodes.ISTORE, slot)
         return FlowBytecodeSlice(instructions)
+    }
+
+    private fun emitProcessorStateProgram(program: StateProgram, slot: Int): FlowBytecodeSlice {
+        val call = requireNotNull(stateKeyProcessor).reserve(
+            siteId = nextStateProgramSite++,
+            inputKey = program.baseKey,
+            targetKey = program.output,
+            random = random
+        )
+        return FlowBytecodeSlice(
+            instructions {
+                +call.inputKey.toInsnNode()
+                ISTORE(slot)
+                ILOAD(slot)
+                +call.salt.toInsnNode()
+                INVOKESTATIC(call.owner, call.name, call.desc)
+                ISTORE(slot)
+            }.toArray().toMutableList()
+        )
     }
 
     private fun pushInt(value: Int) = when (value) {

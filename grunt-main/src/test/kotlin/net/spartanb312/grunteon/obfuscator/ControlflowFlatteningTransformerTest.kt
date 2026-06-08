@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowStateKeyMode
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Label
@@ -37,6 +38,7 @@ class ControlflowFlatteningTransformerTest {
                     transformerConfigs = listOf(
                         ControlflowFlattening.Config(
                             verifyBytecode = true,
+                            stateKeyMode = FlowStateKeyMode.Processor,
                             logSkips = false
                         )
                     )
@@ -56,6 +58,14 @@ class ControlflowFlatteningTransformerTest {
                 assertTrue(method.instructions.toArray().any {
                     it.opcode == Opcodes.LOOKUPSWITCH || it.opcode == Opcodes.TABLESWITCH
                 })
+                val processorEntry = zip.entries().asSequence().firstOrNull {
+                    it.name.startsWith("example/FlowFlattenCase\$KeyProcessor\$") &&
+                        it.name.endsWith(".class")
+                }
+                assertNotNull(processorEntry)
+                val processorNode = ClassNode()
+                ClassReader(zip.getInputStream(processorEntry).use { it.readBytes() }).accept(processorNode, 0)
+                assertTrue(processorNode.version > 0)
             }
         } finally {
             input.deleteIfExists()
