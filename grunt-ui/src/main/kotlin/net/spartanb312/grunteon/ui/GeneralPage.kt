@@ -112,6 +112,9 @@ fun GeneralPage(
                             BooleanOption("Missing dependency check", config.missingCheck) {
                                 onConfigChange(config.copy(missingCheck = it))
                             }
+                            BooleanOption("Show hidden transformers", config.showHiddenTransformers) {
+                                onConfigChange(config.copy(showHiddenTransformers = it))
+                            }
                         }
                     }
                     Column(

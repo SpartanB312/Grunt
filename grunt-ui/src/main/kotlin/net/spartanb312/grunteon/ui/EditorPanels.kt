@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,6 +65,7 @@ fun Header(
 @Composable
 fun TransformerLibrary(
     definitions: List<TransformerDefinition>,
+    showHiddenTransformers: Boolean,
     search: String,
     onSearchChange: (String) -> Unit,
     onAdd: (TransformerDefinition) -> Unit,
@@ -82,7 +84,8 @@ fun TransformerLibrary(
                 label = { Text("Search") },
             )
             Spacer(Modifier.height(10.dp))
-            val filtered = definitions.filter {
+            val visibleDefinitions = if (showHiddenTransformers) definitions else definitions.filterNot { it.isHidden }
+            val filtered = visibleDefinitions.filter {
                 search.isBlank() ||
                     it.label.contains(search, ignoreCase = true) ||
                     it.category.name.contains(search, ignoreCase = true)
@@ -109,6 +112,11 @@ fun TransformerLibrary(
 @Composable
 private fun LibraryItem(definition: TransformerDefinition, onAdd: (TransformerDefinition) -> Unit) {
     val palette = LocalUiPalette.current
+    val labelColor = when {
+        definition.isHidden -> palette.warning
+        definition.isPluginProvided -> Color(0xFF8FD4FF)
+        else -> palette.text
+    }
     SectionSurface(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(10.dp),
@@ -116,7 +124,7 @@ private fun LibraryItem(definition: TransformerDefinition, onAdd: (TransformerDe
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Column(Modifier.weight(1f)) {
-                Text(definition.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(definition.label, color = labelColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(definition.description, color = palette.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             UiOutlinedButton(onClick = { onAdd(definition) }) {

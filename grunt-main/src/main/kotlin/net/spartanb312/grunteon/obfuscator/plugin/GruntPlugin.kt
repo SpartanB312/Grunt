@@ -2,12 +2,10 @@ package net.spartanb312.grunteon.obfuscator.plugin
 
 interface GruntPlugin {
 
-    fun onLoad(context: PluginContext) {
-    }
+    val pluginID: String
+    val pluginName: String
+    val version: String
 
-    fun onEnable(context: PluginContext)
-
-    fun onDisable(context: PluginContext) {
-    }
+    fun onLoad(context: PluginContext)
 
 }

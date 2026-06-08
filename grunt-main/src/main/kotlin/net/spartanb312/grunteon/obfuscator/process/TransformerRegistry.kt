@@ -76,16 +76,44 @@ object TransformerRegistry {
     )
 
     private val pluginEntries = mutableListOf<TransformerRegistryEntry>()
+    private var frozen = false
 
     val entries: List<TransformerRegistryEntry>
         get() = builtinEntries + pluginEntries
 
     fun register(entry: TransformerRegistryEntry) {
-        val existed = entries.firstOrNull { it.configClass == entry.configClass }
-        require(existed == null) {
-            "Transformer config ${entry.configClass.qualifiedName} is already registered by ${existed?.owner}"
+        registerAll(listOf(entry))
+    }
+
+    fun registerAll(entries: List<TransformerRegistryEntry>) {
+        check(!frozen) {
+            "Transformer registry is frozen"
         }
-        pluginEntries += entry
+        val duplicated = entries
+            .groupingBy { it.configClass }
+            .eachCount()
+            .filterValues { it > 1 }
+            .keys
+            .firstOrNull()
+        require(duplicated == null) {
+            "Transformer config ${duplicated?.qualifiedName} is registered more than once in the same plugin"
+        }
+        val existed = entries.firstNotNullOfOrNull { entry ->
+            allEntries().firstOrNull { it.configClass == entry.configClass }?.let { existed -> entry to existed }
+        }
+        require(existed == null) {
+            val (entry, previous) = existed!!
+            "Transformer config ${entry.configClass.qualifiedName} is already registered by ${previous.owner}"
+        }
+        pluginEntries += entries
+    }
+
+    fun freeze() {
+        frozen = true
+    }
+
+    private fun allEntries(): List<TransformerRegistryEntry> {
+        return builtinEntries + pluginEntries
     }
 
     fun find(config: TransformerConfig): TransformerRegistryEntry? {

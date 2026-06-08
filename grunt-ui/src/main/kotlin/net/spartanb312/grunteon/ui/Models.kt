@@ -12,10 +12,15 @@ data class TransformerDefinition(
     val typeName: String,
     val category: Category,
     val description: String,
+    val owner: String,
+    val isHidden: Boolean,
     val configClass: KClass<out TransformerConfig>,
     val configFactory: () -> TransformerConfig,
     val transformerPrototype: Transformer<*>,
-)
+) {
+    val isPluginProvided: Boolean
+        get() = owner != "grunteon"
+}
 
 data class PipelineNode(
     val id: Long,

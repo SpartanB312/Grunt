@@ -6,6 +6,7 @@ import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
+import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
 import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
 import net.spartanb312.grunteon.obfuscator.process.SettingDesc
 import net.spartanb312.grunteon.obfuscator.process.Transformer
@@ -21,6 +22,7 @@ import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 
+@HiddenTransformer
 @Transformer.Description(
     "process.controlflow.flow_ir_round_trip.desc",
     "Round-trip methods through Grunt Flow IR"

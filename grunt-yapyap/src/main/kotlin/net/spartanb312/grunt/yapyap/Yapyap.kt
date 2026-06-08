@@ -21,12 +21,16 @@ import net.spartanb312.grunteon.obfuscator.util.INTERNAL
  */
 
 const val PLUGIN_NAME = "Yapyap"
-const val PLUGIN_ID = "yapyap"
+const val PLUGIN_ID = "grunt-yapyap"
 const val PLUGIN_VERSION = "1.0"
 
 object Yapyap : GruntPlugin {
 
-    override fun onEnable(context: PluginContext) {
+    override val pluginID: String = PLUGIN_ID
+    override val pluginName: String = PLUGIN_NAME
+    override val version: String = PLUGIN_VERSION
+
+    override fun onLoad(context: PluginContext) {
         DISABLER.add(DISABLE_NUMBER_ABE)
         DISABLER.add(DISABLE_STRING_ABE)
         INTERNAL.add(ABE_EXTERNAL_CLASS)
@@ -53,6 +57,7 @@ fun main(args: Array<String>) {
     // Run with UI
     if (enableUI) {
         PluginManager.loadPlugin(Yapyap)
+        PluginManager.freeze()
         net.spartanb312.grunteon.ui.main(arrayOf("--disablePlugin"))
     } else {
         net.spartanb312.grunteon.obfuscator.main(arrayOf())

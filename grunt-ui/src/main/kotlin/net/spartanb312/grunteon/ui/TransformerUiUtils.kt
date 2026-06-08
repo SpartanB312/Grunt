@@ -2,6 +2,7 @@ package net.spartanb312.grunteon.ui
 
 import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
+import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.TransformerRegistry
@@ -91,6 +92,8 @@ fun transformerDefinitions(): List<TransformerDefinition> {
             typeName = entry.configClass.qualifiedName.orEmpty(),
             category = transformer.category,
             description = transformer.descriptionText(),
+            owner = entry.owner,
+            isHidden = transformer.isHiddenTransformer(),
             configClass = entry.configClass,
             configFactory = entry.createConfig,
             transformerPrototype = transformer,
@@ -103,4 +106,8 @@ private fun Transformer<*>.descriptionText(): String {
         .getAnnotation(Transformer.Description::class.java)
         ?.enText
         .orEmpty()
+}
+
+private fun Transformer<*>.isHiddenTransformer(): Boolean {
+    return this::class.java.isAnnotationPresent(HiddenTransformer::class.java)
 }

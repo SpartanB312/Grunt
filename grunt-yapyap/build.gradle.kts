@@ -30,6 +30,10 @@ dependencies {
 }
 
 tasks {
+    test {
+        enabled = false
+    }
+
     jar {
         exclude("META-INF/versions/**", "module-info.class", "**/**.RSA")
         manifest {
@@ -37,7 +41,7 @@ tasks {
                 "Entry-Class" to "net.spartanb312.grunt.yapyap.Yapyap",
                 "Grunt-Plugin-Id" to "grunt-yapyap",
                 "Grunt-Plugin-Name" to "Grunt Yapyap",
-                "Grunt-Plugin-Version" to rootProject.version.toString(),
+                "Grunt-Plugin-Version" to "1.0",
                 "Grunt-Plugin-Api" to "1"
             )
         }

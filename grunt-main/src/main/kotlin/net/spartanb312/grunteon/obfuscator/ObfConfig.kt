@@ -42,6 +42,8 @@ data class ObfConfig(
     val forceComputeMax: Boolean = false,
     @SettingDesc("Dependency missing check")
     val missingCheck: Boolean = true,
+    @SettingDesc("Show hidden experimental transformers in UI")
+    val showHiddenTransformers: Boolean = false,
     // Features
     @SettingDesc("Corrupt file headers")
     val corruptHeaders: Boolean = false,

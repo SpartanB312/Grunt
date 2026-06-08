@@ -34,3 +34,5 @@ abstract class Transformer<T : TransformerConfig>(
         val enText: String,
     )
 }
+
+annotation class HiddenTransformer

@@ -39,7 +39,11 @@ import javax.swing.SwingUtilities
 
 fun main(args: Array<String>) {
     FileKit.init(appId = "Grunteon")
-    if (!args.contains("--disablePlugin")) PluginManager.loadPlugins()
+    if (!args.contains("--disablePlugin")) {
+        PluginManager.loadPlugins()
+    } else {
+        PluginManager.freeze()
+    }
     application {
         Window(
             onCloseRequest = ::exitApplication,
@@ -54,6 +58,7 @@ fun main(args: Array<String>) {
 @Composable
 fun App() {
     val definitions = remember { transformerDefinitions() }
+    val plugins = remember { PluginManager.plugins }
     var editorReady by remember { mutableStateOf(false) }
     var baseConfig by remember { mutableStateOf(ObfConfig()) }
     var configPath by remember { mutableStateOf(defaultConfigPath()) }
@@ -283,6 +288,7 @@ fun App() {
                         ) {
                             TransformerLibrary(
                                 definitions = definitions,
+                                showHiddenTransformers = baseConfig.showHiddenTransformers,
                                 search = search,
                                 onSearchChange = { search = it },
                                 onAdd = ::addNode,
@@ -351,6 +357,7 @@ fun App() {
                         onUiLogLevelChange = { uiLogLevel = it },
                         configPath = configPath,
                         status = status,
+                        plugins = plugins,
                         modifier = Modifier.fillMaxSize()
                     )
                 }

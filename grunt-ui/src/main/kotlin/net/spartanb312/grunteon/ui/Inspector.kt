@@ -204,7 +204,7 @@ private fun EnumField(value: Enum<*>, onChange: (Any?) -> Unit) {
 @Composable
 private fun NestedConfigField(value: Any, onChange: (Any?) -> Unit) {
     NestedSurface(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(5.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             ConfigEditor(value = value, onChange = onChange)
         }
     }

@@ -9,6 +9,7 @@ import net.spartanb312.grunt.ir.ssa.transform.SSARegionControlFlowFlattener
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
+import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
 import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
 import net.spartanb312.grunteon.obfuscator.process.SettingDesc
 import net.spartanb312.grunteon.obfuscator.process.Transformer
@@ -38,6 +39,7 @@ import org.objectweb.asm.tree.analysis.BasicInterpreter
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
+@HiddenTransformer
 @Transformer.Description(
     "process.controlflow.controlflow_flattening.desc",
     "Flatten method control flow through Grunt SSA IR"
