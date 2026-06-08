@@ -3,6 +3,7 @@ package net.spartanb312.grunteon.obfuscator.process
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlatteningSSA
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.FlowIRRoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.SSARoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.ArithmeticSubstitute
@@ -53,6 +54,7 @@ object TransformerRegistry {
         entry({ MethodInliner() }, { MethodInliner.Config() }),
         entry({ ControlflowFlattening() }, { ControlflowFlattening.Config() }),
         entry({ ControlflowFlatteningSSA() }, { ControlflowFlatteningSSA.Config() }),
+        entry({ ControlflowJump() }, { ControlflowJump.Config() }),
         entry({ FlowIRRoundTrip() }, { FlowIRRoundTrip.Config() }),
         entry({ SSARoundTrip() }, { SSARoundTrip.Config() }),
         entry({ ArithmeticSubstitute() }, { ArithmeticSubstitute.Config() }),

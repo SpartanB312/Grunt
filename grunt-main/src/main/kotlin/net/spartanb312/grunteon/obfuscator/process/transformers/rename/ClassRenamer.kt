@@ -6,6 +6,7 @@ import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.NameGenerator
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.collection.shuffled
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
@@ -29,13 +30,13 @@ class ClassRenamer : Transformer<ClassRenamer.Config>(
 
     init {
         after(Category.Encryption, "Renamer should run after encryption category")
-        //after(Category.Controlflow, "Renamer should run after controlflow category")
         after(Category.AntiDebug, "Renamer should run after anti debug category")
         after(Category.Authentication, "Renamer should run after authentication category")
         after(Category.Exploit, "Renamer should run after exploit category")
         after(Category.Miscellaneous, "Renamer should run after miscellaneous category")
         after(Category.Optimization, "Renamer should run after optimization category")
         after(Category.Redirect, "Renamer should run after redirect category")
+        after(ControlflowJump::class.java, "Renamer should run after ControlflowJump")
     }
 
     @Serializable

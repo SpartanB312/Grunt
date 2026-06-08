@@ -29,7 +29,6 @@ class LocalVarRenamer : Transformer<LocalVarRenamer.Config>(
 
     init {
         after(Category.Encryption, "Renamer should run after encryption category")
-        //after(Category.Controlflow, "Renamer should run after controlflow category")
         after(Category.AntiDebug, "Renamer should run after anti debug category")
         after(Category.Authentication, "Renamer should run after authentication category")
         after(Category.Exploit, "Renamer should run after exploit category")

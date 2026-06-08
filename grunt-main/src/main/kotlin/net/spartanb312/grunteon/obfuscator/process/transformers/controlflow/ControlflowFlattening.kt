@@ -5,19 +5,27 @@ import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExportOptions
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
 import net.spartanb312.grunteon.obfuscator.Grunteon
+import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
+import net.spartanb312.grunteon.obfuscator.process.DecimalRangeVal
+import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
 import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
 import net.spartanb312.grunteon.obfuscator.process.SettingDesc
 import net.spartanb312.grunteon.obfuscator.process.SettingName
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
+import net.spartanb312.grunteon.obfuscator.process.globalScopeValue
+import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
 import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
 import net.spartanb312.grunteon.obfuscator.process.post
 import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
 import net.spartanb312.grunteon.obfuscator.process.seq
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattenOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattener
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
@@ -42,6 +50,11 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
     "ControlflowFlattening",
     Category.Controlflow,
 ) {
+
+    init {
+        before(FakeSyntheticBridge::class.java, "ControlflowFlattening should run before FakeSyntheticBridge")
+        before(ControlflowJump::class.java, "ControlflowFlattening should run before ControlflowJump")
+    }
 
     @Serializable
     data class Config(
@@ -81,6 +94,26 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @SettingDesc("Bogus switch cases inserted into each dispatcher island")
         @SettingName("Fake cases per dispatcher")
         val fakeCasesPerDispatcher: Int = 1,
+        @SettingDesc("Allow dispatcher fake cases to terminate through generated JunkCode")
+        @SettingName("Junk cases")
+        val junkCases: Boolean = true,
+        @SettingDesc("Chance that one fake dispatcher case becomes a terminal JunkCode case. Range: 0.0..1.0")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Junk case chance")
+        val junkCaseChance: Double = 0.35,
+        @SettingDesc("Maximum junk call preludes emitted before a junk terminal return")
+        @IntRangeVal(min = 0, max = 8)
+        @SettingName("Max junk prelude calls")
+        val maxJunkPreludeCalls: Int = 2,
+        @SettingDesc("Use public static methods as junk return values when hierarchy proves assignability")
+        @SettingName("Assignable junk returns")
+        val assignableJunkReturns: Boolean = true,
+        @SettingDesc("Use natural reference return values such as strings, wrappers, and empty arrays")
+        @SettingName("Natural reference values")
+        val naturalReferenceValues: Boolean = true,
+        @SettingDesc("Allow library classes to be scanned for junk call candidates")
+        @SettingName("Expanded junk calls")
+        val expandedJunkCalls: Boolean = false,
         @SettingDesc("Minimum arithmetic state operations used to compute a dispatcher case key")
         @SettingName("Min state ops per case")
         val minStateOpsPerCase: Int = 2,
@@ -124,6 +157,25 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val fakeCaseCounter = reducibleScopeValue { MergeableCounter() }
         val skippedCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
+        val hierarchyKey = globalScopeValue<ClassHierarchy?> {
+            if (config.junkCases) {
+                ClassHierarchy.build(instance.workRes.allClassCollection, instance.workRes::getClassNode)
+            } else {
+                null
+            }
+        }
+        val junkCallPoolKey = globalScopeValue<JunkCallPool?> {
+            if (config.junkCases) {
+                val classes = if (config.expandedJunkCalls) {
+                    instance.workRes.allClassCollection
+                } else {
+                    instance.workRes.inputClassCollection
+                }
+                JunkCallPool.build(classes)
+            } else {
+                null
+            }
+        }
 
         parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), config.workerBatchSize.coerceAtLeast(1)) { classNode ->
             val transformedMethods = classNode.methods.map { methodNode ->
@@ -141,7 +193,13 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                             val randomGen = Xoshiro256PPRandom(
                                 getSeed(classNode.name, methodNode.name, methodNode.desc, "FlowControlFlowFlattening")
                             )
-                            methodNode.flattenControlFlow(classNode.name, config, randomGen)
+                            methodNode.flattenControlFlow(
+                                classNode.name,
+                                config,
+                                randomGen,
+                                hierarchyKey.global,
+                                junkCallPoolKey.global
+                            )
                         }.fold(
                             onSuccess = { result ->
                                 if (result.changed) {
@@ -217,7 +275,9 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
     private fun MethodNode.flattenControlFlow(
         ownerInternalName: String,
         config: Config,
-        randomGen: UniformRandomProvider
+        randomGen: UniformRandomProvider,
+        hierarchy: ClassHierarchy?,
+        junkCallPool: JunkCallPool?
     ): FlattenedMethod {
         val imported = JvmFlowImporter().import(ownerInternalName, this)
         if (config.maxFlowBlocks > 0 && imported.method.blocks.size > config.maxFlowBlocks) {
@@ -233,11 +293,22 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 maxFlattenedBlocks = config.maxFlattenedBlocks,
                 maxDispatcherIslands = config.maxDispatcherIslands,
                 fakeCasesPerDispatcher = config.fakeCasesPerDispatcher,
+                junkCases = config.junkCases,
+                junkCaseChance = config.junkCaseChance,
+                junkCodeOptions = JunkCodeOptions(
+                    maxPreludeCalls = config.maxJunkPreludeCalls.coerceAtLeast(0),
+                    useJunkCallPrelude = junkCallPool?.isEmpty() == false,
+                    useNaturalReferenceValues = config.naturalReferenceValues,
+                    useAssignableJunkReturns = config.assignableJunkReturns,
+                    junkReturnChance = 0.35
+                ),
                 minStateOpsPerCase = config.minStateOpsPerCase,
                 maxStateOpsPerCase = config.maxStateOpsPerCase,
                 shuffleRegionBlocks = config.shuffleRegionBlocks
             ),
-            randomGen
+            randomGen,
+            hierarchy,
+            junkCallPool
         ).flatten(imported.method)
         if (!result.changed) {
             return FlattenedMethod(this, changed = false, reason = result.reason)

@@ -20,6 +20,10 @@ import net.spartanb312.grunt.ir.flow.core.FlowSwitchJump
 import net.spartanb312.grunt.ir.flow.core.FlowThrowJump
 import net.spartanb312.grunt.ir.flow.core.FlowVerifier
 import net.spartanb312.grunt.ir.flow.core.categorySize
+import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeGenerator
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Opcodes
@@ -37,6 +41,9 @@ data class FlowControlFlowFlattenOptions(
     val maxFlattenedBlocks: Int = 0,
     val maxDispatcherIslands: Int = 0,
     val fakeCasesPerDispatcher: Int = 1,
+    val junkCases: Boolean = true,
+    val junkCaseChance: Double = 0.35,
+    val junkCodeOptions: JunkCodeOptions = JunkCodeOptions(),
     val minStateOpsPerCase: Int = 2,
     val maxStateOpsPerCase: Int = 5,
     val shuffleRegionBlocks: Boolean = false
@@ -61,7 +68,9 @@ data class FlowControlFlowFlattenResult(
  */
 class FlowControlFlowFlattener(
     private val options: FlowControlFlowFlattenOptions = FlowControlFlowFlattenOptions(),
-    private val random: UniformRandomProvider = Xoshiro256PPRandom(DefaultSeed)
+    private val random: UniformRandomProvider = Xoshiro256PPRandom(DefaultSeed),
+    private val hierarchy: ClassHierarchy? = null,
+    private val junkCallPool: JunkCallPool? = null
 ) {
     fun flatten(method: FlowMethod): FlowControlFlowFlattenResult {
         val plan = plan(method) ?: return FlowControlFlowFlattenResult(
@@ -225,7 +234,7 @@ class FlowControlFlowFlattener(
                 )
             }
             for (fakeCase in dispatcher.fakeCases) {
-                val fakeBlock = createFakeCaseBlock(fakeCase, dispatcher, plan.stateSlot, ids)
+                val fakeBlock = createFakeCaseBlock(method, fakeCase, dispatcher, plan.stateSlot, ids)
                 fakeBlocks += FakeCaseBlock(fakeBlock, fakeCase.fallthroughTarget)
                 method.addBlock(fakeBlock)
                 method.addEdge(
@@ -234,7 +243,11 @@ class FlowControlFlowFlattener(
                         from = block,
                         port = FlowPort.Case(fakeCase.key),
                         to = fakeBlock,
-                        semantics = FlowEdgeSemantics.Bogus,
+                        semantics = if (fakeBlock.kind == FlowBlockKind.Junk) {
+                            FlowEdgeSemantics.Junk
+                        } else {
+                            FlowEdgeSemantics.Bogus
+                        },
                         flags = mutableSetOf(FlowEdgeFlag.Inserted)
                     )
                 )
@@ -344,7 +357,8 @@ class FlowControlFlowFlattener(
         if (fakeKeys.isEmpty() || blocks.isEmpty()) return emptyList()
 
         return fakeKeys.map { key ->
-            val exit = when (random.nextInt(3)) {
+            val exit = if (shouldCreateJunkCase()) FakeCaseExit.JunkTerminal
+            else when (random.nextInt(3)) {
                 0 -> FakeCaseExit.ScrambleState(createBogusStateProgram(usedKeys))
                 1 -> FakeCaseExit.ThrowNull
                 else -> FakeCaseExit.RealBranch(
@@ -354,6 +368,13 @@ class FlowControlFlowFlattener(
             }
             FakeCasePlan(key, exit)
         }
+    }
+
+    private fun shouldCreateJunkCase(): Boolean {
+        return options.junkCases &&
+            hierarchy != null &&
+            junkCallPool != null &&
+            random.nextDouble() < options.junkCaseChance.coerceIn(0.0, 1.0)
     }
 
     private fun createBogusStateProgram(usedKeys: Set<Int>): StateProgram {
@@ -420,14 +441,25 @@ class FlowControlFlowFlattener(
     }
 
     private fun createFakeCaseBlock(
+        method: FlowMethod,
         fakeCase: FakeCasePlan,
         dispatcher: DispatcherPlan,
         stateSlot: Int,
         ids: MutableFlowIds
     ): FlowBlock {
+        if (fakeCase.exit == FakeCaseExit.JunkTerminal) {
+            return JunkCodeGenerator(
+                callPool = requireNotNull(junkCallPool),
+                hierarchy = requireNotNull(hierarchy),
+                options = options.junkCodeOptions,
+                random = random
+            ).createTerminalBlock(ids.block(), method, dispatcher.frame)
+        }
+
         val body = FlowBytecodeSlice(mutableListOf(InsnNode(Opcodes.NOP)))
         val jump = when (val exit = fakeCase.exit) {
             is FakeCaseExit.ScrambleState -> {
+                appendNonTerminalJunk(body)
                 body.instructions += emitStateProgram(exit.program, stateSlot).instructions
                 FlowGotoJump(FlowGotoMode.Synthetic)
             }
@@ -442,9 +474,11 @@ class FlowControlFlowFlattener(
                     )
                 )
             }
-            is FakeCaseExit.RealBranch -> FlowGotoJump(
-                if (exit.fallthrough) FlowGotoMode.Fallthrough else FlowGotoMode.ExplicitGoto
-            )
+            is FakeCaseExit.RealBranch -> {
+                appendNonTerminalJunk(body)
+                FlowGotoJump(if (exit.fallthrough) FlowGotoMode.Fallthrough else FlowGotoMode.ExplicitGoto)
+            }
+            FakeCaseExit.JunkTerminal -> error("Junk terminal should be emitted as its own Flow block")
         }
         val bodyExitFrame = if (fakeCase.exit == FakeCaseExit.ThrowNull) {
             dispatcher.frame.copy(stack = emptyList())
@@ -461,6 +495,16 @@ class FlowControlFlowFlattener(
         )
     }
 
+    private fun appendNonTerminalJunk(body: FlowBytecodeSlice) {
+        if (!options.junkCases || hierarchy == null || junkCallPool == null) return
+        JunkCodeGenerator(
+            callPool = junkCallPool,
+            hierarchy = hierarchy,
+            options = options.junkCodeOptions,
+            random = random
+        ).appendStackNeutralJunk(body, minimumCalls = 1)
+    }
+
     private fun connectFakeCase(
         method: FlowMethod,
         fakeBlock: FlowBlock,
@@ -475,6 +519,7 @@ class FlowControlFlowFlattener(
                 mutableSetOf(FlowEdgeFlag.Inserted)
             )
             FakeCaseExit.ThrowNull -> return
+            FakeCaseExit.JunkTerminal -> return
             is FakeCaseExit.RealBranch -> Triple(
                 exit.target,
                 FlowEdgeSemantics.Bogus,
@@ -801,6 +846,7 @@ class FlowControlFlowFlattener(
     private sealed interface FakeCaseExit {
         data class ScrambleState(val program: StateProgram) : FakeCaseExit
         data object ThrowNull : FakeCaseExit
+        data object JunkTerminal : FakeCaseExit
         data class RealBranch(val target: FlowBlock, val fallthrough: Boolean) : FakeCaseExit
     }
 

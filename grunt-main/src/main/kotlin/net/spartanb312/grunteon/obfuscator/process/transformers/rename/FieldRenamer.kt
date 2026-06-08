@@ -9,6 +9,7 @@ import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.FieldHierarchy
 import net.spartanb312.grunteon.obfuscator.process.resource.NameGenerator
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.extensions.isPrivate
 import net.spartanb312.grunteon.obfuscator.util.extensions.isProtected
@@ -29,13 +30,13 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
 
     init {
         after(Category.Encryption, "Renamer should run after encryption category")
-        //after(Category.Controlflow, "Renamer should run after controlflow category")
         after(Category.AntiDebug, "Renamer should run after anti debug category")
         after(Category.Authentication, "Renamer should run after authentication category")
         after(Category.Exploit, "Renamer should run after exploit category")
         after(Category.Miscellaneous, "Renamer should run after miscellaneous category")
         after(Category.Optimization, "Renamer should run after optimization category")
         after(Category.Redirect, "Renamer should run after redirect category")
+        after(ControlflowJump::class.java, "Renamer should run after ControlflowJump")
         after(ClassRenamer::class.java, "MethodRenamer should run after ClassRenamer")
     }
 
