@@ -40,6 +40,7 @@ the near future
 * [X] Dispatcher landing block
 * [X] Anti-static simulation
 * [X] Runtime dynamic predicate
+* [X] Shared terminator
 * [X] Junk code
 
 ### Controlflow exception

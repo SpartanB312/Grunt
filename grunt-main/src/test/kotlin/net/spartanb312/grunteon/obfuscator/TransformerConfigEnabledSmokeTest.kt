@@ -134,6 +134,8 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"mangledIfChance\": 0.25")
             assertContains(text, "\"maxMangledIfsPerMethod\": 4")
             assertContains(text, "\"mangledFakeLoopChance\": 0.35")
+            assertContains(text, "\"sharedJunkExitChance\": 0.65")
+            assertContains(text, "\"junkTerminalThrowChance\": 0.2")
             assertContains(text, "\"dispatcherLandingJunkChance\": 0.0")
             assertContains(text, "\"maxDispatcherLandingJunkBlocksPerMethod\": 4")
             assertContains(text, "\"predicateProcessorMinMainSteps\": 1")

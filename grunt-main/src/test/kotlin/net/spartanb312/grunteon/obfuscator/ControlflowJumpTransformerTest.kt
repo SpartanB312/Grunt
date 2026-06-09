@@ -111,6 +111,8 @@ class ControlflowJumpTransformerTest {
                 mangledIfChance = 1.0,
                 maxMangledIfsPerMethod = 1,
                 mangledFakeLoopChance = 0.0,
+                sharedJunkExitChance = 0.0,
+                junkTerminalThrowChance = 0.0,
                 maxPreludeCalls = 0,
                 verifyBytecode = true
             )
@@ -119,6 +121,45 @@ class ControlflowJumpTransformerTest {
 
         assertTrue(method.instructions.toArray().count { it.opcode == Opcodes.IRETURN } >= 4)
         assertTrue(method.instructions.toArray().count { isIfOpcode(it.opcode) } >= 3)
+    }
+
+    @Test
+    fun mangledIfCanShareTerminalJunkExit() {
+        val classNode = runControlflowJump(
+            ControlflowJump.Config(
+                chance = 0.0,
+                mangledIfChance = 1.0,
+                maxMangledIfsPerMethod = 1,
+                mangledFakeLoopChance = 0.0,
+                sharedJunkExitChance = 1.0,
+                junkTerminalThrowChance = 0.0,
+                maxPreludeCalls = 0,
+                verifyBytecode = true
+            )
+        )
+        val method = classNode.methods.single { it.name == "choose" }
+        val nodes = method.instructions.toArray().toList()
+
+        assertTrue(nodes.hasSharedGotoTerminator())
+    }
+
+    @Test
+    fun terminalJunkExitCanThrow() {
+        val classNode = runControlflowJump(
+            ControlflowJump.Config(
+                chance = 0.0,
+                mangledIfChance = 1.0,
+                maxMangledIfsPerMethod = 1,
+                mangledFakeLoopChance = 0.0,
+                sharedJunkExitChance = 0.0,
+                junkTerminalThrowChance = 1.0,
+                maxPreludeCalls = 0,
+                verifyBytecode = true
+            )
+        )
+        val method = classNode.methods.single { it.name == "choose" }
+
+        assertTrue(method.instructions.toArray().any { it.opcode == Opcodes.ATHROW })
     }
 
     @Test
@@ -218,6 +259,27 @@ class ControlflowJumpTransformerTest {
             if (opcode >= 0) return opcode
         }
         return null
+    }
+
+    private fun List<AbstractInsnNode>.hasSharedGotoTerminator(): Boolean {
+        val labelIndices = withIndex()
+            .mapNotNull { (index, insn) -> (insn as? LabelNode)?.let { it to index } }
+            .toMap()
+        val sharedGotoTargets = filterIsInstance<JumpInsnNode>()
+            .filter { it.opcode == Opcodes.GOTO }
+            .groupingBy { it.label }
+            .eachCount()
+            .filterValues { it >= 2 }
+            .keys
+        return sharedGotoTargets.any { label ->
+            val start = labelIndices[label] ?: return@any false
+            for (index in start + 1 until size) {
+                val insn = this[index]
+                if (insn is LabelNode) return@any false
+                if (insn.opcode in Opcodes.IRETURN..Opcodes.RETURN) return@any true
+            }
+            false
+        }
     }
 
     private fun switchTargetLabels(insn: AbstractInsnNode): Set<LabelNode> {

@@ -105,7 +105,15 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Mangled fake loop chance")
         val mangledFakeLoopChance: Double = 0.35,
-        @SettingDesc("Chance to place a terminal junk landing block immediately after a CFF dispatcher switch. Range: 0.0..1.0")
+        @SettingDesc("Chance that a fake junk branch emits a junk prelude and jumps to a shared terminal junk exit instead of owning its own terminator. Range: 0.0..1.0")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Shared junk exit chance")
+        val sharedJunkExitChance: Double = 0.65,
+        @SettingDesc("Chance that a terminal junk exit throws null instead of returning a junk value. Range: 0.0..1.0")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Junk terminal throw chance")
+        val junkTerminalThrowChance: Double = 0.2,
+        @SettingDesc("Chance to place a junk landing block immediately after a CFF dispatcher switch. Range: 0.0..1.0")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Dispatcher landing junk chance")
         val dispatcherLandingJunkChance: Double = 0.0,
@@ -349,6 +357,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 maxBranchesPerMethod = config.maxBranchesPerMethod.coerceAtLeast(1),
                 maxMangledIfsPerMethod = config.maxMangledIfsPerMethod.coerceAtLeast(0),
                 mangledFakeLoopChance = config.mangledFakeLoopChance.coerceIn(0.0, 1.0),
+                sharedJunkExitChance = config.sharedJunkExitChance.coerceIn(0.0, 1.0),
                 dispatcherLandingJunkChance = config.dispatcherLandingJunkChance.coerceIn(0.0, 1.0),
                 maxDispatcherLandingJunkBlocksPerMethod = config.maxDispatcherLandingJunkBlocksPerMethod.coerceAtLeast(0),
                 junkCodeOptions = JunkCodeOptions(
@@ -356,7 +365,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                     useJunkCallPrelude = !pool.isEmpty(),
                     useNaturalReferenceValues = config.naturalReferenceValues,
                     useAssignableJunkReturns = config.assignableJunkReturns,
-                    junkReturnChance = 0.35
+                    junkReturnChance = 0.35,
+                    terminalThrowChance = config.junkTerminalThrowChance
                 )
             ),
             callPool = pool,
@@ -410,6 +420,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val maxBranchesPerMethod: Int,
         val maxMangledIfsPerMethod: Int,
         val mangledFakeLoopChance: Double,
+        val sharedJunkExitChance: Double,
         val dispatcherLandingJunkChance: Double,
         val maxDispatcherLandingJunkBlocksPerMethod: Int,
         val junkCodeOptions: JunkCodeOptions
@@ -442,12 +453,13 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         fun insert(method: FlowMethod): JunkBranchResult {
             val ids = MutableFlowIds(method)
             val junk = JunkCodeGenerator(callPool, hierarchy, options.junkCodeOptions, random)
-            val mangledIfs = insertMangledIfs(method, ids, junk)
-            val dispatcherLandingJunkBlocks = insertDispatcherLandingJunkBlocks(method, ids, junk)
+            val junkExits = JunkExitPlanner(method, ids, junk)
+            val mangledIfs = insertMangledIfs(method, ids, junk, junkExits)
+            val dispatcherLandingJunkBlocks = insertDispatcherLandingJunkBlocks(method, ids, junkExits)
             val branches = dispatcherLandingJunkBlocks + insertJunkEdges(
                 method,
                 ids,
-                junk,
+                junkExits,
                 maxBranches = options.maxBranchesPerMethod - dispatcherLandingJunkBlocks
             )
 
@@ -462,7 +474,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         private fun insertMangledIfs(
             method: FlowMethod,
             ids: MutableFlowIds,
-            junk: JunkCodeGenerator
+            junk: JunkCodeGenerator,
+            junkExits: JunkExitPlanner
         ): Int {
             if (options.maxMangledIfsPerMethod <= 0 || options.mangledIfChance <= 0.0) return 0
             val candidates = method.blocks
@@ -494,8 +507,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 fallthroughEdge.to = fallthroughGate
                 fallthroughEdge.flags += FlowEdgeFlag.Inserted
 
-                connectMangledGate(method, ids, branchGate, branchTarget, sourceFrame, junk)
-                connectMangledGate(method, ids, fallthroughGate, fallthroughTarget, sourceFrame, junk)
+                connectMangledGate(method, ids, branchGate, branchTarget, sourceFrame, junk, junkExits)
+                connectMangledGate(method, ids, fallthroughGate, fallthroughTarget, sourceFrame, junk, junkExits)
                 inserted++
             }
 
@@ -505,7 +518,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         private fun insertJunkEdges(
             method: FlowMethod,
             ids: MutableFlowIds,
-            junk: JunkCodeGenerator,
+            junkExits: JunkExitPlanner,
             maxBranches: Int = options.maxBranchesPerMethod
         ): Int {
             if (maxBranches <= 0) return 0
@@ -523,10 +536,9 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
 
                 val originalTarget = edge.to
                 val guard = createGuardBlock(ids.block(), sourceFrame)
-                val terminalJunk = junk.createTerminalBlock(ids.block(), method, sourceFrame)
-
                 method.addBlock(guard)
-                method.addBlock(terminalJunk)
+                val junkTarget = junkExits.createTarget(sourceFrame)
+
                 edge.to = guard
                 edge.flags += FlowEdgeFlag.Inserted
                 method.addEdge(
@@ -544,7 +556,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                         id = ids.edge(),
                         from = guard,
                         port = FlowPort.Fallthrough,
-                        to = terminalJunk,
+                        to = junkTarget,
                         semantics = FlowEdgeSemantics.Junk,
                         flags = mutableSetOf(FlowEdgeFlag.Inserted)
                     )
@@ -558,7 +570,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         private fun insertDispatcherLandingJunkBlocks(
             method: FlowMethod,
             ids: MutableFlowIds,
-            junk: JunkCodeGenerator
+            junkExits: JunkExitPlanner
         ): Int {
             if (options.maxDispatcherLandingJunkBlocksPerMethod <= 0) return 0
             if (options.dispatcherLandingJunkChance <= 0.0) return 0
@@ -589,9 +601,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 if (sourceFrame != dispatcher.entryFrame || sourceFrame.hasUninitialized()) continue
 
                 val guard = createGuardBlock(ids.block(), sourceFrame)
-                val landing = junk.createTerminalBlock(ids.block(), method, sourceFrame)
                 method.addBlock(guard)
-                method.addBlock(landing)
+                val landing = junkExits.createTarget(sourceFrame)
 
                 launcher.to = guard
                 launcher.flags += FlowEdgeFlag.Inserted
@@ -651,12 +662,13 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             gate: FlowBlock,
             realTarget: FlowBlock,
             frame: FlowFrame,
-            junk: JunkCodeGenerator
+            junk: JunkCodeGenerator,
+            junkExits: JunkExitPlanner
         ) {
             val fakeTarget = if (random.nextDouble() < options.mangledFakeLoopChance) {
                 createMangledLoopBlock(method, ids, gate, frame, junk)
             } else {
-                junk.createTerminalBlock(ids.block(), method, frame).also { method.addBlock(it) }
+                junkExits.createTarget(frame)
             }
             method.addEdge(
                 FlowEdge(
@@ -709,6 +721,49 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 )
             )
             return loop
+        }
+
+        private inner class JunkExitPlanner(
+            private val method: FlowMethod,
+            private val ids: MutableFlowIds,
+            private val junk: JunkCodeGenerator
+        ) {
+            private val sharedTerminalByFrame = linkedMapOf<FlowFrame, FlowBlock>()
+
+            fun createTarget(frame: FlowFrame): FlowBlock {
+                return if (random.nextDouble() < options.sharedJunkExitChance) {
+                    createSharedPrelude(frame)
+                } else {
+                    junk.createTerminalBlock(ids.block(), method, frame).also { method.addBlock(it) }
+                }
+            }
+
+            private fun createSharedPrelude(frame: FlowFrame): FlowBlock {
+                val prelude = FlowBlock(
+                    id = ids.block(),
+                    kind = FlowBlockKind.Junk,
+                    body = FlowBytecodeSlice().also { junk.appendStackNeutralJunk(it, minimumCalls = 1) },
+                    jump = FlowGotoJump(FlowGotoMode.ExplicitGoto),
+                    entryFrame = frame,
+                    bodyExitFrame = frame
+                )
+                method.addBlock(prelude)
+
+                val terminal = sharedTerminalByFrame.getOrPut(frame) {
+                    junk.createTerminalBlock(ids.block(), method, frame).also { method.addBlock(it) }
+                }
+                method.addEdge(
+                    FlowEdge(
+                        id = ids.edge(),
+                        from = prelude,
+                        port = FlowPort.Next,
+                        to = terminal,
+                        semantics = FlowEdgeSemantics.Junk,
+                        flags = mutableSetOf(FlowEdgeFlag.Inserted)
+                    )
+                )
+                return prelude
+            }
         }
 
         private fun FlowEdge.isEligibleJunkEdge(method: FlowMethod): Boolean {

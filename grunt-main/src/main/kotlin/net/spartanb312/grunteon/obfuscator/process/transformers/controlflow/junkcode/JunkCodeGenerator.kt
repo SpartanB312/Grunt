@@ -9,6 +9,7 @@ import net.spartanb312.grunt.ir.flow.core.FlowFrameValue
 import net.spartanb312.grunt.ir.flow.core.FlowJumpInput
 import net.spartanb312.grunt.ir.flow.core.FlowMethod
 import net.spartanb312.grunt.ir.flow.core.FlowReturnJump
+import net.spartanb312.grunt.ir.flow.core.FlowThrowJump
 import net.spartanb312.grunt.ir.flow.core.categorySize
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
 import net.spartanb312.grunteon.obfuscator.util.IGNORE_JUNK_CODE
@@ -37,7 +38,8 @@ data class JunkCodeOptions(
     val useJunkCallPrelude: Boolean = true,
     val useNaturalReferenceValues: Boolean = true,
     val useAssignableJunkReturns: Boolean = true,
-    val junkReturnChance: Double = 0.35
+    val junkReturnChance: Double = 0.35,
+    val terminalThrowChance: Double = 0.0
 )
 
 private val primitiveSorts = setOf(
@@ -64,6 +66,22 @@ class JunkCodeGenerator(
         val body = FlowBytecodeSlice(mutableListOf())
         dropStack(entryFrame.stack, body.instructions)
         emitPrelude(body.instructions)
+
+        if (random.nextDouble() < options.terminalThrowChance.coerceIn(0.0, 1.0)) {
+            return FlowBlock(
+                id = id,
+                kind = FlowBlockKind.Junk,
+                body = body,
+                jump = FlowThrowJump(
+                    FlowJumpInput.Generated(
+                        FlowBytecodeSlice(mutableListOf(InsnNode(Opcodes.ACONST_NULL))),
+                        listOf(FlowFrameValue.Null)
+                    )
+                ),
+                entryFrame = entryFrame,
+                bodyExitFrame = entryFrame.copy(stack = emptyList())
+            )
+        }
 
         val returnType = Type.getReturnType(method.desc)
         val jumpInput = returnInput(returnType)
