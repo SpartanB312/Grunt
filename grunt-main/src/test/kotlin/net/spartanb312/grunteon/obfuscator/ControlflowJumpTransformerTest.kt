@@ -1,15 +1,20 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
+import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.JumpInsnNode
 import org.objectweb.asm.tree.LabelNode
+import org.objectweb.asm.tree.LookupSwitchInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.TableSwitchInsnNode
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipFile
@@ -82,11 +87,46 @@ class ControlflowJumpTransformerTest {
         assertTrue(method.instructions.toArray().count { isIfOpcode(it.opcode) } >= 3)
     }
 
+    @Test
+    fun placesDispatcherLandingJunkBelowCffSwitch() {
+        val classes = runTransformerClasses(
+            listOf(
+                ControlflowFlattening.Config(
+                    fakeCasesPerDispatcher = 0,
+                    junkCases = false,
+                    verifyBytecode = true
+                ),
+                ControlflowJump.Config(
+                    chance = 0.0,
+                    mangledIfChance = 0.0,
+                    maxBranchesPerMethod = 1,
+                    dispatcherLandingJunkChance = 1.0,
+                    maxDispatcherLandingJunkBlocksPerMethod = 1,
+                    maxPreludeCalls = 0,
+                    verifyBytecode = true
+                )
+            )
+        )
+        val method = classes.getValue("example/MangledJumpCase").methods.single { it.name == "choose" }
+        val nodes = method.instructions.toArray().toList()
+        val switchIndex = nodes.indexOfFirst { it is LookupSwitchInsnNode || it is TableSwitchInsnNode }
+        assertTrue(switchIndex >= 0)
+
+        val switchInsn = nodes[switchIndex]
+        val landingLabel = nodes.drop(switchIndex + 1).first { it is LabelNode } as LabelNode
+        assertTrue(landingLabel !in switchTargetLabels(switchInsn))
+        assertTrue(nodes.hasOpaqueGateJumpTo(landingLabel))
+    }
+
     private fun runControlflowJump(config: ControlflowJump.Config): ClassNode {
         return runControlflowJumpClasses(config).getValue("example/MangledJumpCase")
     }
 
     private fun runControlflowJumpClasses(config: ControlflowJump.Config): Map<String, ClassNode> {
+        return runTransformerClasses(listOf(config))
+    }
+
+    private fun runTransformerClasses(transformerConfigs: List<TransformerConfig>): Map<String, ClassNode> {
         val input = createTempFile("grunteon-controlflow-jump-input", ".jar")
         val output = createTempFile("grunteon-controlflow-jump-output", ".jar")
         try {
@@ -101,7 +141,7 @@ class ControlflowJumpTransformerTest {
                     input = input.pathString,
                     output = output.pathString,
                     dumpMappings = false,
-                    transformerConfigs = listOf(config)
+                    transformerConfigs = transformerConfigs
                 )
             )
 
@@ -126,6 +166,31 @@ class ControlflowJumpTransformerTest {
         } finally {
             input.deleteIfExists()
             output.deleteIfExists()
+        }
+    }
+
+    private fun List<AbstractInsnNode>.hasOpaqueGateJumpTo(label: LabelNode): Boolean {
+        return withIndex().any { (index, insn) ->
+            insn is JumpInsnNode &&
+                insn.opcode == Opcodes.GOTO &&
+                insn.label == label &&
+                previousExecutableOpcode(index)?.let(::isIfOpcode) == true
+        }
+    }
+
+    private fun List<AbstractInsnNode>.previousExecutableOpcode(index: Int): Int? {
+        for (candidate in index - 1 downTo 0) {
+            val opcode = this[candidate].opcode
+            if (opcode >= 0) return opcode
+        }
+        return null
+    }
+
+    private fun switchTargetLabels(insn: AbstractInsnNode): Set<LabelNode> {
+        return when (insn) {
+            is LookupSwitchInsnNode -> (insn.labels + insn.dflt).toSet()
+            is TableSwitchInsnNode -> (insn.labels + insn.dflt).toSet()
+            else -> emptySet()
         }
     }
 
