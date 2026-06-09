@@ -363,7 +363,6 @@ class CffKeyProcessorRegistry(
                 INT(31)
                 IAND
                 INVOKESTATIC("java/lang/Integer", "rotateLeft", "(II)I")
-                Unit
             }
         }
 

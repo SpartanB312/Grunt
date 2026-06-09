@@ -51,6 +51,40 @@ class ControlflowJumpTransformerTest {
     }
 
     @Test
+    fun generatesRandomBoundOpaquePredicates() {
+        val classes = runControlflowJumpClasses(
+            ControlflowJump.Config(
+                chance = 1.0,
+                mangledIfChance = 0.0,
+                maxBranchesPerMethod = 1,
+                predicateRandomBoundChance = 1.0,
+                verifyBytecode = true
+            )
+        )
+        val method = classes.getValue("example/MangledJumpCase").methods.single { it.name == "choose" }
+        val processor = classes.values.single { it.name.contains("\$PredicateProcessor\$") }
+        val methodCalls = method.instructions.toArray().filterIsInstance<MethodInsnNode>()
+
+        assertTrue(processor.methods.count { it.desc == "(III)I" } >= 2)
+        assertTrue(
+            methodCalls.any {
+                it.opcode == Opcodes.INVOKESTATIC &&
+                    it.owner == "java/util/concurrent/ThreadLocalRandom" &&
+                    it.name == "current" &&
+                    it.desc == "()Ljava/util/concurrent/ThreadLocalRandom;"
+            }
+        )
+        assertTrue(
+            methodCalls.any {
+                it.opcode == Opcodes.INVOKEVIRTUAL &&
+                    it.owner == "java/util/concurrent/ThreadLocalRandom" &&
+                    it.name == "nextInt" &&
+                    it.desc == "(I)I"
+            }
+        )
+    }
+
+    @Test
     fun manglesIfJumpWithFakeLoopAndNaturalCallPop() {
         val classNode = runControlflowJump(
             ControlflowJump.Config(

@@ -2,6 +2,7 @@ package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunt.ir.flow.core.FlowBlockKind
 import net.spartanb312.grunt.ir.flow.core.FlowEdgeSemantics
+import net.spartanb312.grunt.ir.flow.core.FlowPredicateGuarantee
 import net.spartanb312.grunt.ir.flow.core.FlowSwitchJump
 import net.spartanb312.grunt.ir.flow.core.FlowVerifier
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
@@ -12,7 +13,9 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.proc
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattenOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattener
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowStateKeyMode
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorRegistry
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.RandomBoundOpaquePredicateProcessorCall
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
@@ -30,6 +33,7 @@ import org.objectweb.asm.tree.analysis.BasicInterpreter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class FlowControlFlowFlattenerTest {
@@ -304,6 +308,58 @@ class FlowControlFlowFlattenerTest {
             )
             val result = action.invoke(null, call.left, call.right, call.salt) as Int
             assertTrue(compareOpcode(call.opcode, result, call.compareValue.value))
+        }
+    }
+
+    @Test
+    fun randomBoundOpaquePredicateActionsAreExecutable() {
+        val registry = OpaquePredicateProcessorRegistry(
+            classMarker = "RandomBoundExec",
+            classExists = { false },
+            options = OpaquePredicateProcessorOptions(randomBoundChance = 1.0)
+        )
+        val processor = registry.methodProcessor(Owner, Opcodes.V17, "MethodSalt")
+        val calls = (0 until 32).map { index ->
+            assertIs<RandomBoundOpaquePredicateProcessorCall>(
+                processor.reserveGate(index, testRandom("random-bound-predicate-$index"))
+            )
+        }
+
+        val classNode = registry.materialize().single()
+        val generated = GeneratedClassLoader().define(classNode)
+        calls.forEach { call ->
+            val valueAction = generated.getDeclaredMethod(
+                call.valueAction.name,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType
+            )
+            val boundAction = generated.getDeclaredMethod(
+                call.boundAction.name,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType
+            )
+            val value = valueAction.invoke(
+                null,
+                call.valueAction.left,
+                call.valueAction.right,
+                call.valueAction.salt
+            ) as Int
+            val bound = boundAction.invoke(
+                null,
+                call.boundAction.left,
+                call.boundAction.right,
+                call.boundAction.salt
+            ) as Int
+            val expected = call.guarantee == FlowPredicateGuarantee.AlwaysTrue
+
+            assertEquals(call.valueAction.result, value)
+            assertEquals(call.boundAction.result, bound)
+            assertTrue(bound > 0)
+            repeat(bound) { sample ->
+                assertEquals(expected, compareOpcode(call.opcode, value, sample))
+            }
         }
     }
 

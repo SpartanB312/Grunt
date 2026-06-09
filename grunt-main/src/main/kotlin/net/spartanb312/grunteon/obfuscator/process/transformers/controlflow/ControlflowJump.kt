@@ -16,6 +16,7 @@ import net.spartanb312.grunt.ir.flow.core.FlowGotoMode
 import net.spartanb312.grunt.ir.flow.core.FlowIfJump
 import net.spartanb312.grunt.ir.flow.core.FlowMethod
 import net.spartanb312.grunt.ir.flow.core.FlowPort
+import net.spartanb312.grunt.ir.flow.core.FlowPredicateGuarantee
 import net.spartanb312.grunt.ir.flow.core.FlowSwitchJump
 import net.spartanb312.grunt.ir.flow.core.FlowVerifier
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExportOptions
@@ -136,6 +137,34 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @IntRangeVal(min = 0, max = 8)
         @SettingName("Predicate max chain steps")
         val predicateProcessorMaxChainSteps: Int = 2,
+        @SettingDesc("Chance that an opaque predicate gate uses ThreadLocalRandom.nextInt(bound) with lightweight processor actions. Range: 0.0..1.0")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Predicate random bound chance")
+        val predicateRandomBoundChance: Double = 0.15,
+        @SettingDesc("Minimum main arithmetic steps in random-bound predicate processor actions")
+        @IntRangeVal(min = 1, max = 8)
+        @SettingName("Random bound predicate min main steps")
+        val randomBoundPredicateMinMainSteps: Int = 1,
+        @SettingDesc("Maximum main arithmetic steps in random-bound predicate processor actions")
+        @IntRangeVal(min = 1, max = 8)
+        @SettingName("Random bound predicate max main steps")
+        val randomBoundPredicateMaxMainSteps: Int = 1,
+        @SettingDesc("Minimum extra arithmetic steps in random-bound predicate processor actions")
+        @IntRangeVal(min = 0, max = 8)
+        @SettingName("Random bound predicate min extra steps")
+        val randomBoundPredicateMinExtraSteps: Int = 0,
+        @SettingDesc("Maximum extra arithmetic steps in random-bound predicate processor actions")
+        @IntRangeVal(min = 0, max = 8)
+        @SettingName("Random bound predicate max extra steps")
+        val randomBoundPredicateMaxExtraSteps: Int = 0,
+        @SettingDesc("Minimum constant-chain steps in random-bound predicate processor actions")
+        @IntRangeVal(min = 0, max = 8)
+        @SettingName("Random bound predicate min chain steps")
+        val randomBoundPredicateMinChainSteps: Int = 1,
+        @SettingDesc("Maximum constant-chain steps in random-bound predicate processor actions")
+        @IntRangeVal(min = 0, max = 8)
+        @SettingName("Random bound predicate max chain steps")
+        val randomBoundPredicateMaxChainSteps: Int = 1,
         @SettingDesc("Maximum junk call preludes emitted before a junk terminal return")
         @IntRangeVal(min = 0, max = 8)
         @SettingName("Max prelude calls")
@@ -201,7 +230,14 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                     minExtraSteps = config.predicateProcessorMinExtraSteps,
                     maxExtraSteps = config.predicateProcessorMaxExtraSteps,
                     minChainSteps = config.predicateProcessorMinChainSteps,
-                    maxChainSteps = config.predicateProcessorMaxChainSteps
+                    maxChainSteps = config.predicateProcessorMaxChainSteps,
+                    randomBoundChance = config.predicateRandomBoundChance,
+                    randomBoundMinMainSteps = config.randomBoundPredicateMinMainSteps,
+                    randomBoundMaxMainSteps = config.randomBoundPredicateMaxMainSteps,
+                    randomBoundMinExtraSteps = config.randomBoundPredicateMinExtraSteps,
+                    randomBoundMaxExtraSteps = config.randomBoundPredicateMaxExtraSteps,
+                    randomBoundMinChainSteps = config.randomBoundPredicateMinChainSteps,
+                    randomBoundMaxChainSteps = config.randomBoundPredicateMaxChainSteps
                 )
             )
         }
@@ -772,10 +808,13 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         }
 
         private fun createOpaqueTrueJump(): FlowIfJump {
-            val call = predicateProcessor.reserveAlwaysTrue(nextPredicateSite++, random)
+            val call = predicateProcessor.reserveGate(nextPredicateSite++, random)
+            val conditionIsFalse = call.guarantee == FlowPredicateGuarantee.AlwaysFalse
             return FlowIfJump(
                 opcode = call.opcode,
-                input = call.toJumpInput()
+                input = call.toJumpInput(),
+                branchPort = if (conditionIsFalse) FlowPort.Fallthrough else FlowPort.Branch,
+                fallthroughPort = if (conditionIsFalse) FlowPort.Branch else FlowPort.Fallthrough
             )
         }
 

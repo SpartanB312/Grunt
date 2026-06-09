@@ -27,7 +27,8 @@ the near future
 * [X] Dispatcher protect
 * [X] Bogus jump/loop
 * [X] Shuffle blocks
-* [X] Anti simulation
+* [X] Dispatcher trailing block
+* [X] Anti-static simulation
 * [X] Junk code
 
 ### Controlflow jump
@@ -36,8 +37,15 @@ the near future
 * [X] Bogus jump
 * [X] Mangled jump
 * [ ] Reversed jump
-* [X] Anti simulation
+* [X] Dispatcher landing block
+* [X] Anti-static simulation
+* [X] Runtime dynamic predicate
 * [X] Junk code
+
+### Controlflow exception
+
+* [ ] Verifier
+* [ ] Exception bridge
 
 ### Encrypt
 
@@ -95,11 +103,11 @@ Yapyap is a grunt extension pack licensed under PolyForm Strict License 1.0.0
 
 The license of each Grunt version：
 
-| Generation     | Versions    | Aim of obfuscation             | License | Commercial Use |
-|----------------|-------------|--------------------------------|---------|----------------|
-| Grunt          | 1.0.0-1.5.x | Lightweight and stability      | MIT     | Allowed        |
-| Gruntpocalypse | 2.0.0-2.5.x | Diversity and intensity        | LGPL3   | Restricted     |
-| Grunteon       | 3.0.0-      | Industrial-grade and efficient | Apache2 | Allowed        |
+| Generation     | Versions    | Aim of obfuscation            | License | Commercial Use |
+|----------------|-------------|-------------------------------|---------|----------------|
+| Grunt          | 1.0.0-1.5.x | Lightweight and stability     | MIT     | Allowed        |
+| Gruntpocalypse | 2.0.0-2.5.x | Diversity and intensity       | LGPL3   | Restricted     |
+| Grunteon       | 3.0.0-      | Industrial-aimed and strength | Apache2 | Allowed        |
 
 ## Stargazers over time
 

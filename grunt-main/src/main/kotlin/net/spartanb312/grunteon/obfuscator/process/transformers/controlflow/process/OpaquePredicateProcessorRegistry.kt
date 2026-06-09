@@ -28,7 +28,17 @@ internal data class OpaquePredicateProcessorOptions(
     val minExtraSteps: Int = 0,
     val maxExtraSteps: Int = 1,
     val minChainSteps: Int = 1,
-    val maxChainSteps: Int = 2
+    val maxChainSteps: Int = 2,
+    val randomBoundChance: Double = 0.15,
+    val randomBoundMinMainSteps: Int = 1,
+    val randomBoundMaxMainSteps: Int = 1,
+    val randomBoundMinExtraSteps: Int = 0,
+    val randomBoundMaxExtraSteps: Int = 0,
+    val randomBoundMinChainSteps: Int = 1,
+    val randomBoundMaxChainSteps: Int = 1,
+    val randomBoundMin: Int = 3,
+    val randomBoundMax: Int = 17,
+    val randomBoundMaxDelta: Int = 8
 ) {
     val mainStepRange: IntRange
         get() = normalizedIntRange(minMainSteps, maxMainSteps, minimum = 1)
@@ -38,6 +48,32 @@ internal data class OpaquePredicateProcessorOptions(
 
     val chainStepRange: IntRange
         get() = normalizedIntRange(minChainSteps, maxChainSteps, minimum = 0)
+
+    val randomBoundMainStepRange: IntRange
+        get() = normalizedIntRange(randomBoundMinMainSteps, randomBoundMaxMainSteps, minimum = 1)
+
+    val randomBoundExtraStepRange: IntRange
+        get() = normalizedIntRange(randomBoundMinExtraSteps, randomBoundMaxExtraSteps, minimum = 0)
+
+    val randomBoundChainStepRange: IntRange
+        get() = normalizedIntRange(randomBoundMinChainSteps, randomBoundMaxChainSteps, minimum = 0)
+
+    val randomBoundRange: IntRange
+        get() {
+            val start = randomBoundMin.coerceAtLeast(1)
+            val end = randomBoundMax.coerceAtLeast(start)
+            return start..end
+        }
+
+    val normalizedRandomBoundChance: Double
+        get() = randomBoundChance.coerceIn(0.0, 1.0)
+}
+
+internal sealed interface OpaquePredicateCall {
+    val opcode: Int
+    val guarantee: FlowPredicateGuarantee
+
+    fun toJumpInput(): FlowJumpInput.Generated
 }
 
 internal data class OpaquePredicateProcessorCall(
@@ -48,9 +84,11 @@ internal data class OpaquePredicateProcessorCall(
     val right: Int,
     val salt: Int,
     val compareValue: IntConstChain,
-    val opcode: Int
-) {
-    fun toJumpInput(): FlowJumpInput.Generated {
+    override val opcode: Int
+) : OpaquePredicateCall {
+    override val guarantee: FlowPredicateGuarantee = FlowPredicateGuarantee.AlwaysTrue
+
+    override fun toJumpInput(): FlowJumpInput.Generated {
         return FlowJumpInput.Generated(
             code = FlowBytecodeSlice(
                 instructions {
@@ -67,8 +105,57 @@ internal data class OpaquePredicateProcessorCall(
     }
 }
 
+internal data class RandomBoundOpaquePredicateProcessorCall(
+    val valueAction: PredicateActionInvocation,
+    val boundAction: PredicateActionInvocation,
+    override val opcode: Int,
+    override val guarantee: FlowPredicateGuarantee
+) : OpaquePredicateCall {
+    override fun toJumpInput(): FlowJumpInput.Generated {
+        return FlowJumpInput.Generated(
+            code = FlowBytecodeSlice(
+                instructions {
+                    valueAction.emit(this)
+                    INVOKESTATIC(
+                        "java/util/concurrent/ThreadLocalRandom",
+                        "current",
+                        "()Ljava/util/concurrent/ThreadLocalRandom;"
+                    )
+                    boundAction.emit(this)
+                    INVOKEVIRTUAL(
+                        "java/util/concurrent/ThreadLocalRandom",
+                        "nextInt",
+                        "(I)I"
+                    )
+                }.toArray().toMutableList()
+            ),
+            produced = listOf(FlowFrameValue.Int, FlowFrameValue.Int),
+            guarantee = guarantee
+        )
+    }
+}
+
+internal data class PredicateActionInvocation(
+    val owner: String,
+    val name: String,
+    val desc: String,
+    val left: Int,
+    val right: Int,
+    val salt: Int,
+    val result: Int
+) {
+    fun emit(builder: InsnListBuilder) = with(builder) {
+        INT(left)
+        INT(right)
+        INT(salt)
+        INVOKESTATIC(owner, name, desc)
+        Unit
+    }
+}
+
 internal interface FlowOpaquePredicateProcessor {
     fun reserveAlwaysTrue(siteId: Int, random: UniformRandomProvider): OpaquePredicateProcessorCall
+    fun reserveGate(siteId: Int, random: UniformRandomProvider): OpaquePredicateCall
 }
 
 internal class OpaquePredicateProcessorRegistry(
@@ -136,6 +223,55 @@ internal class OpaquePredicateProcessorRegistry(
             )
             return registry.processorClassPlan(owner, ownerVersion).add(action)
         }
+
+        override fun reserveGate(siteId: Int, random: UniformRandomProvider): OpaquePredicateCall {
+            if (random.nextDouble() >= options.normalizedRandomBoundChance) {
+                return reserveAlwaysTrue(siteId, random)
+            }
+            return reserveRandomBoundGate(siteId, random)
+        }
+
+        private fun reserveRandomBoundGate(
+            siteId: Int,
+            random: UniformRandomProvider
+        ): RandomBoundOpaquePredicateProcessorCall {
+            val classPlan = registry.processorClassPlan(owner, ownerVersion)
+            val boundRange = options.randomBoundRange
+            val bound = boundRange.first + random.nextInt(boundRange.last - boundRange.first + 1)
+            val delta = 1 + random.nextInt(options.randomBoundMaxDelta.coerceAtLeast(1))
+            val value = bound + delta
+            val guarantee = if (random.nextBoolean()) {
+                FlowPredicateGuarantee.AlwaysTrue
+            } else {
+                FlowPredicateGuarantee.AlwaysFalse
+            }
+            val valueAction = classPlan.addInvocation(
+                PredicateActionPlan.createConstant(
+                    name = "predicate_${methodMarker}_${siteId.toString(36)}_v",
+                    target = value,
+                    options = options,
+                    random = random
+                )
+            )
+            val boundAction = classPlan.addInvocation(
+                PredicateActionPlan.createConstant(
+                    name = "predicate_${methodMarker}_${siteId.toString(36)}_b",
+                    target = bound,
+                    options = options,
+                    random = random
+                )
+            )
+            return RandomBoundOpaquePredicateProcessorCall(
+                valueAction = valueAction,
+                boundAction = boundAction,
+                opcode = if (guarantee == FlowPredicateGuarantee.AlwaysTrue) {
+                    Opcodes.IF_ICMPGT
+                } else {
+                    Opcodes.IF_ICMPLE
+                },
+                guarantee = guarantee
+            )
+        }
     }
 
     private class ProcessorClassPlan(
@@ -152,6 +288,21 @@ internal class OpaquePredicateProcessorRegistry(
 
         @Synchronized
         fun add(action: PredicateActionPlan): OpaquePredicateProcessorCall {
+            val invocation = addInvocation(action)
+            return OpaquePredicateProcessorCall(
+                owner = invocation.owner,
+                name = invocation.name,
+                desc = invocation.desc,
+                left = invocation.left,
+                right = invocation.right,
+                salt = invocation.salt,
+                compareValue = action.compareValue,
+                opcode = action.comparison.opcode
+            )
+        }
+
+        @Synchronized
+        fun addInvocation(action: PredicateActionPlan): PredicateActionInvocation {
             var candidate = action
             var suffix = 0
             while (actions.containsKey(candidate.name)) {
@@ -159,15 +310,14 @@ internal class OpaquePredicateProcessorRegistry(
                 candidate = action.copy(name = "${action.name}_$suffix")
             }
             actions[candidate.name] = candidate
-            return OpaquePredicateProcessorCall(
+            return PredicateActionInvocation(
                 owner = name,
                 name = candidate.name,
                 desc = ActionDesc,
                 left = candidate.left,
                 right = candidate.right,
                 salt = candidate.salt,
-                compareValue = candidate.compareValue,
-                opcode = candidate.comparison.opcode
+                result = candidate.result
             )
         }
 
@@ -195,6 +345,7 @@ internal class OpaquePredicateProcessorRegistry(
         val action: BitAction,
         val actionVariant: Int,
         val steps: List<PredicateStep>,
+        val result: Int,
         val comparison: Comparison,
         val compareValue: IntConstChain
     ) {
@@ -261,6 +412,56 @@ internal class OpaquePredicateProcessorRegistry(
                     action = action,
                     actionVariant = actionVariant,
                     steps = steps,
+                    result = result,
+                    comparison = comparison,
+                    compareValue = compareValue
+                )
+            }
+
+            fun createConstant(
+                name: String,
+                target: Int,
+                options: OpaquePredicateProcessorOptions,
+                random: UniformRandomProvider
+            ): PredicateActionPlan {
+                val chainRange = options.randomBoundChainStepRange
+                val leftDecoder = IntConstChain.random(random, chainRange)
+                val rightDecoder = IntConstChain.random(random, chainRange)
+                val saltDecoder = IntConstChain.random(random, chainRange)
+                val plainSalt = nextNonZeroInt(random)
+                val steps = createSteps(
+                    random = random,
+                    mainRange = options.randomBoundMainStepRange,
+                    extraRange = options.randomBoundExtraStepRange,
+                    chainRange = chainRange
+                )
+                val base = steps
+                    .asReversed()
+                    .fold(target) { value, step -> step.inverse(value, plainSalt) }
+                val plainLeft = nextNonZeroInt(random)
+                val plainRight = plainLeft xor base
+                val action = BitAction.Xor
+                val actionVariant = random.nextInt(4)
+                val result = steps.fold(action.apply(plainLeft, plainRight)) { value, step ->
+                    step.apply(value, plainSalt)
+                }
+                val comparison = Comparison.trueAgainst(result, random)
+                val compareValue = IntConstChain.endingAt(comparison.value, chainRange, random)
+                require(result == target) {
+                    "Generated random-bound predicate action does not reach target"
+                }
+                return PredicateActionPlan(
+                    name = name,
+                    left = plainLeft xor leftDecoder.value,
+                    right = plainRight xor rightDecoder.value,
+                    salt = plainSalt xor saltDecoder.value,
+                    leftDecoder = leftDecoder,
+                    rightDecoder = rightDecoder,
+                    saltDecoder = saltDecoder,
+                    action = action,
+                    actionVariant = actionVariant,
+                    steps = steps,
+                    result = result,
                     comparison = comparison,
                     compareValue = compareValue
                 )
@@ -270,9 +471,22 @@ internal class OpaquePredicateProcessorRegistry(
                 random: UniformRandomProvider,
                 options: OpaquePredicateProcessorOptions
             ): List<PredicateStep> {
-                val chainRange = options.chainStepRange
-                val mainCount = random.nextCount(options.mainStepRange)
-                val extraCount = random.nextCount(options.extraStepRange)
+                return createSteps(
+                    random = random,
+                    mainRange = options.mainStepRange,
+                    extraRange = options.extraStepRange,
+                    chainRange = options.chainStepRange
+                )
+            }
+
+            private fun createSteps(
+                random: UniformRandomProvider,
+                mainRange: IntRange,
+                extraRange: IntRange,
+                chainRange: IntRange
+            ): List<PredicateStep> {
+                val mainCount = random.nextCount(mainRange)
+                val extraCount = random.nextCount(extraRange)
                 val steps = mutableListOf<PredicateStep>()
                 repeat(mainCount) {
                     steps += createMainStep(random, chainRange)
@@ -404,10 +618,14 @@ internal class OpaquePredicateProcessorRegistry(
     private sealed interface PredicateStep {
         fun apply(value: Int, salt: Int): Int
 
+        fun inverse(value: Int, salt: Int): Int
+
         fun emit(builder: InsnListBuilder)
 
         data object XorSalt : PredicateStep {
             override fun apply(value: Int, salt: Int): Int = value xor salt
+
+            override fun inverse(value: Int, salt: Int): Int = value xor salt
 
             override fun emit(builder: InsnListBuilder) = with(builder) {
                 ILOAD(2)
@@ -419,6 +637,8 @@ internal class OpaquePredicateProcessorRegistry(
         data class AddConst(val value: IntConstChain) : PredicateStep {
             override fun apply(value: Int, salt: Int): Int = value + this.value.value
 
+            override fun inverse(value: Int, salt: Int): Int = value - this.value.value
+
             override fun emit(builder: InsnListBuilder) = with(builder) {
                 value.emit(this)
                 IADD
@@ -428,6 +648,8 @@ internal class OpaquePredicateProcessorRegistry(
 
         data class XorConst(val value: IntConstChain) : PredicateStep {
             override fun apply(value: Int, salt: Int): Int = value xor this.value.value
+
+            override fun inverse(value: Int, salt: Int): Int = value xor this.value.value
 
             override fun emit(builder: InsnListBuilder) = with(builder) {
                 value.emit(this)
@@ -439,6 +661,8 @@ internal class OpaquePredicateProcessorRegistry(
         data class MulConst(val value: IntConstChain) : PredicateStep {
             override fun apply(value: Int, salt: Int): Int = value * this.value.value
 
+            override fun inverse(value: Int, salt: Int): Int = value * PredicateStep.inverseOddInt(this.value.value)
+
             override fun emit(builder: InsnListBuilder) = with(builder) {
                 value.emit(this)
                 IMUL
@@ -448,6 +672,8 @@ internal class OpaquePredicateProcessorRegistry(
 
         data class AddSaltRotate(val bits: Int) : PredicateStep {
             override fun apply(value: Int, salt: Int): Int = value + Integer.rotateLeft(salt, bits)
+
+            override fun inverse(value: Int, salt: Int): Int = value - Integer.rotateLeft(salt, bits)
 
             override fun emit(builder: InsnListBuilder) = with(builder) {
                 ILOAD(2)
@@ -461,6 +687,8 @@ internal class OpaquePredicateProcessorRegistry(
         data class XorSaltMul(val multiplier: Int) : PredicateStep {
             override fun apply(value: Int, salt: Int): Int = value xor (salt * multiplier)
 
+            override fun inverse(value: Int, salt: Int): Int = value xor (salt * multiplier)
+
             override fun emit(builder: InsnListBuilder) = with(builder) {
                 ILOAD(2)
                 INT(multiplier)
@@ -472,6 +700,8 @@ internal class OpaquePredicateProcessorRegistry(
 
         data object RotateBySalt : PredicateStep {
             override fun apply(value: Int, salt: Int): Int = Integer.rotateLeft(value, salt and 31)
+
+            override fun inverse(value: Int, salt: Int): Int = Integer.rotateRight(value, salt and 31)
 
             override fun emit(builder: InsnListBuilder) = with(builder) {
                 ILOAD(2)
@@ -485,6 +715,8 @@ internal class OpaquePredicateProcessorRegistry(
         data class AddSaltChainMul(val mask: IntConstChain, val multiplier: Int) : PredicateStep {
             override fun apply(value: Int, salt: Int): Int = value + ((salt + mask.value) * multiplier)
 
+            override fun inverse(value: Int, salt: Int): Int = value - ((salt + mask.value) * multiplier)
+
             override fun emit(builder: InsnListBuilder) = with(builder) {
                 ILOAD(2)
                 mask.emit(this)
@@ -493,6 +725,17 @@ internal class OpaquePredicateProcessorRegistry(
                 IMUL
                 IADD
                 Unit
+            }
+        }
+
+        companion object {
+            fun inverseOddInt(value: Int): Int {
+                require(value and 1 != 0) { "Only odd int values have a modular inverse" }
+                var inverse = value
+                repeat(5) {
+                    inverse *= 2 - value * inverse
+                }
+                return inverse
             }
         }
     }
