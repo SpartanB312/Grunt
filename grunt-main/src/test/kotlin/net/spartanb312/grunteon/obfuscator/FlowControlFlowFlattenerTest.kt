@@ -1,4 +1,4 @@
-package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process
+package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunt.ir.flow.core.FlowBlockKind
 import net.spartanb312.grunt.ir.flow.core.FlowEdgeSemantics
@@ -7,9 +7,17 @@ import net.spartanb312.grunt.ir.flow.core.FlowVerifier
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorOptions
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorRegistry
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattenOptions
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattener
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowStateKeyMode
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorRegistry
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
+import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
+import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.JumpInsnNode
@@ -51,7 +59,7 @@ class FlowControlFlowFlattenerTest {
         assertTrue(stateBlocks.any { block ->
             block.body.instructions.any {
                 it.opcode in listOf(Opcodes.IADD, Opcodes.ISUB, Opcodes.IMUL, Opcodes.IDIV, Opcodes.IXOR) ||
-                    it.opcode == Opcodes.INVOKESTATIC
+                        it.opcode == Opcodes.INVOKESTATIC
             }
         })
         val dispatcherJump = imported.method.blocks.single { it.kind == FlowBlockKind.Dispatcher }.jump as FlowSwitchJump
@@ -63,7 +71,9 @@ class FlowControlFlowFlattenerTest {
 
         val exported = JvmFlowExporter(imported.metadata).export(imported.method)
         Analyzer(BasicInterpreter()).analyze(Owner, exported)
-        assertTrue(exported.instructions.toArray().any { it.opcode == Opcodes.LOOKUPSWITCH || it.opcode == Opcodes.TABLESWITCH })
+        assertTrue(
+            exported.instructions.toArray()
+                .any { it.opcode == Opcodes.LOOKUPSWITCH || it.opcode == Opcodes.TABLESWITCH })
     }
 
     @Test
@@ -133,9 +143,9 @@ class FlowControlFlowFlattenerTest {
         assertTrue(stateBlocks.all { block ->
             block.body.instructions.any {
                 it is MethodInsnNode &&
-                    it.opcode == Opcodes.INVOKESTATIC &&
-                    it.owner.contains("\$KeyProcessor\$") &&
-                    it.desc == CffKeyProcessorRegistry.ActionDesc
+                        it.opcode == Opcodes.INVOKESTATIC &&
+                        it.owner.contains("\$KeyProcessor\$") &&
+                        it.desc == CffKeyProcessorRegistry.ActionDesc
             }
         })
 
@@ -147,14 +157,7 @@ class FlowControlFlowFlattenerTest {
         assertTrue(actions.all { it.desc == CffKeyProcessorRegistry.ActionDesc })
         assertTrue(actions.all { it.access and Opcodes.ACC_PUBLIC != 0 })
         assertTrue(actions.all { it.access and Opcodes.ACC_STATIC != 0 })
-        assertTrue(actions.all { it.instructions.toArray().count { insn -> insn.isSaltLoad() } >= 4 })
-        assertTrue(actions.all { action ->
-            action.instructions.toArray().any {
-                it is MethodInsnNode &&
-                    it.owner == "java/lang/Integer" &&
-                    it.name == "rotateLeft"
-            }
-        })
+        assertTrue(actions.all { it.instructions.toArray().count { insn -> insn.isSaltLoad() } >= 2 })
         assertFalse(JunkCallPool.build(listOf(processor)).isEmpty())
 
         FlowVerifier.verify(imported.method).requireValid()
@@ -170,6 +173,93 @@ class FlowControlFlowFlattenerTest {
             .reserve(0, 1, 2, testRandom("version-fallback"))
 
         assertEquals(Opcodes.V1_8, registry.materialize().single().version)
+    }
+
+    @Test
+    fun processorWithoutReservedActionsDoesNotMaterializeClass() {
+        val registry = CffKeyProcessorRegistry("Empty", classExists = { false })
+        registry.methodProcessor(Owner, Opcodes.V17, "Unused")
+
+        assertEquals(0, registry.classCount)
+        assertEquals(0, registry.actionCount)
+        assertTrue(registry.materialize().isEmpty())
+    }
+
+    @Test
+    fun processorActionsComputeReservedTargetKeys() {
+        val registry = CffKeyProcessorRegistry("Executable", classExists = { false })
+        val processor = registry.methodProcessor(Owner, Opcodes.V17, "MethodSalt")
+        val targets = listOf(0, 1, -1, 0x13579BDF, Int.MIN_VALUE)
+        val calls = targets.mapIndexed { index, target ->
+            processor.reserve(
+                siteId = index,
+                inputKey = 0x10203040 + index,
+                targetKey = target,
+                random = testRandom("processor-exec-$index")
+            )
+        }
+
+        val classNode = registry.materialize().single()
+        val generated = GeneratedClassLoader().define(classNode)
+        calls.zip(targets).forEach { (call, target) ->
+            val action = generated.getDeclaredMethod(
+                call.name,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType
+            )
+            assertEquals(target, action.invoke(null, call.inputKey, call.salt) as Int)
+        }
+    }
+
+    @Test
+    fun processorOptionsAllowMinimalComplexity() {
+        val registry = CffKeyProcessorRegistry(
+            classMarker = "Minimal",
+            classExists = { false },
+            options = CffKeyProcessorOptions(
+                minMainSteps = 1,
+                maxMainSteps = 1,
+                minExtraSteps = 0,
+                maxExtraSteps = 0,
+                minChainSteps = 0,
+                maxChainSteps = 0
+            )
+        )
+        val call = registry.methodProcessor(Owner, Opcodes.V17, "MethodSalt")
+            .reserve(0, inputKey = 7, targetKey = 42, random = testRandom("minimal-processor"))
+        val classNode = registry.materialize().single()
+        val action = classNode.methods.single { it.name == call.name }
+
+        assertTrue(action.instructions.toArray().count { it.isSaltLoad() } >= 2)
+        val generated = GeneratedClassLoader().define(classNode)
+        val method = generated.getDeclaredMethod(
+            call.name,
+            Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType
+        )
+        assertEquals(42, method.invoke(null, call.inputKey, call.salt) as Int)
+    }
+
+    @Test
+    fun opaquePredicateProcessorActionsAreExecutable() {
+        val registry = OpaquePredicateProcessorRegistry("OpaqueExec", classExists = { false })
+        val processor = registry.methodProcessor(Owner, Opcodes.V17, "MethodSalt")
+        val calls = (0 until 32).map { index ->
+            processor.reserveAlwaysTrue(index, testRandom("opaque-predicate-$index"))
+        }
+
+        val classNode = registry.materialize().single()
+        val generated = GeneratedClassLoader().define(classNode)
+        calls.forEach { call ->
+            val action = generated.getDeclaredMethod(
+                call.name,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType
+            )
+            val result = action.invoke(null, call.left, call.right, call.salt) as Int
+            assertTrue(compareOpcode(call.opcode, result, call.compareValue.value))
+        }
     }
 
     private fun linearMethod(): MethodNode {
@@ -211,6 +301,27 @@ class FlowControlFlowFlattenerTest {
 
     private fun AbstractInsnNode.isSaltLoad(): Boolean {
         return this is VarInsnNode && opcode == Opcodes.ILOAD && `var` == 1
+    }
+
+    private fun compareOpcode(opcode: Int, left: Int, right: Int): Boolean {
+        return when (opcode) {
+            Opcodes.IF_ICMPEQ -> left == right
+            Opcodes.IF_ICMPNE -> left != right
+            Opcodes.IF_ICMPLT -> left < right
+            Opcodes.IF_ICMPLE -> left <= right
+            Opcodes.IF_ICMPGT -> left > right
+            Opcodes.IF_ICMPGE -> left >= right
+            else -> false
+        }
+    }
+
+    private class GeneratedClassLoader : ClassLoader(FlowControlFlowFlattenerTest::class.java.classLoader) {
+        fun define(classNode: ClassNode): Class<*> {
+            val writer = ClassWriter(0)
+            classNode.accept(writer)
+            val bytes = writer.toByteArray()
+            return defineClass(classNode.name.replace('/', '.'), bytes, 0, bytes.size)
+        }
     }
 
     private companion object {

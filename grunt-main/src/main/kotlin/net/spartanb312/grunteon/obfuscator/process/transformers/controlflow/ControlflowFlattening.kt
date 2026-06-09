@@ -23,6 +23,7 @@ import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
 import net.spartanb312.grunteon.obfuscator.process.seq
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorRegistry
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattenOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattener
@@ -131,6 +132,30 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("State key processor chance")
         val stateKeyProcessorChance: Double = 0.5,
+        @SettingDesc("Minimum main salt-mixing steps emitted inside generated state key processor actions")
+        @IntRangeVal(min = 1, max = 16)
+        @SettingName("Key processor min main steps")
+        val keyProcessorMinMainSteps: Int = 1,
+        @SettingDesc("Maximum main salt-mixing steps emitted inside generated state key processor actions")
+        @IntRangeVal(min = 1, max = 16)
+        @SettingName("Key processor max main steps")
+        val keyProcessorMaxMainSteps: Int = 3,
+        @SettingDesc("Minimum optional extra expression steps emitted inside generated state key processor actions")
+        @IntRangeVal(min = 0, max = 16)
+        @SettingName("Key processor min extra steps")
+        val keyProcessorMinExtraSteps: Int = 0,
+        @SettingDesc("Maximum optional extra expression steps emitted inside generated state key processor actions")
+        @IntRangeVal(min = 0, max = 16)
+        @SettingName("Key processor max extra steps")
+        val keyProcessorMaxExtraSteps: Int = 1,
+        @SettingDesc("Minimum constant-chain steps used by generated state key processor actions")
+        @IntRangeVal(min = 0, max = 16)
+        @SettingName("Key processor min chain steps")
+        val keyProcessorMinChainSteps: Int = 1,
+        @SettingDesc("Maximum constant-chain steps used by generated state key processor actions")
+        @IntRangeVal(min = 0, max = 16)
+        @SettingName("Key processor max chain steps")
+        val keyProcessorMaxChainSteps: Int = 2,
         @SettingDesc("Shuffle physical layout order of Flow blocks selected into the flattened region")
         @SettingName("Shuffle region blocks")
         val shuffleRegionBlocks: Boolean = false,
@@ -191,7 +216,15 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                     classExists = {
                         instance.workRes.inputClassMap.containsKey(it) ||
                             instance.workRes.libraryClassMap.containsKey(it)
-                    }
+                    },
+                    options = CffKeyProcessorOptions(
+                        minMainSteps = config.keyProcessorMinMainSteps,
+                        maxMainSteps = config.keyProcessorMaxMainSteps,
+                        minExtraSteps = config.keyProcessorMinExtraSteps,
+                        maxExtraSteps = config.keyProcessorMaxExtraSteps,
+                        minChainSteps = config.keyProcessorMinChainSteps,
+                        maxChainSteps = config.keyProcessorMaxChainSteps
+                    )
                 )
             }
         }

@@ -14,10 +14,8 @@ import net.spartanb312.grunt.ir.flow.core.FlowFrameValue
 import net.spartanb312.grunt.ir.flow.core.FlowGotoJump
 import net.spartanb312.grunt.ir.flow.core.FlowGotoMode
 import net.spartanb312.grunt.ir.flow.core.FlowIfJump
-import net.spartanb312.grunt.ir.flow.core.FlowJumpInput
 import net.spartanb312.grunt.ir.flow.core.FlowMethod
 import net.spartanb312.grunt.ir.flow.core.FlowPort
-import net.spartanb312.grunt.ir.flow.core.FlowPredicateGuarantee
 import net.spartanb312.grunt.ir.flow.core.FlowVerifier
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExportOptions
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
@@ -38,6 +36,9 @@ import net.spartanb312.grunteon.obfuscator.process.post
 import net.spartanb312.grunteon.obfuscator.process.pre
 import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowOpaquePredicateProcessor
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorOptions
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorRegistry
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeGenerator
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
@@ -50,6 +51,7 @@ import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
+import net.spartanb312.grunteon.obfuscator.util.getRandomString
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
 import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
@@ -58,10 +60,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicate
 import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 import org.apache.commons.rng.UniformRandomProvider
-import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
@@ -104,6 +103,30 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Mangled fake loop chance")
         val mangledFakeLoopChance: Double = 0.35,
+        @SettingDesc("Minimum main arithmetic steps in generated opaque predicate processor actions")
+        @IntRangeVal(min = 1, max = 8)
+        @SettingName("Predicate min main steps")
+        val predicateProcessorMinMainSteps: Int = 1,
+        @SettingDesc("Maximum main arithmetic steps in generated opaque predicate processor actions")
+        @IntRangeVal(min = 1, max = 8)
+        @SettingName("Predicate max main steps")
+        val predicateProcessorMaxMainSteps: Int = 2,
+        @SettingDesc("Minimum extra arithmetic steps in generated opaque predicate processor actions")
+        @IntRangeVal(min = 0, max = 8)
+        @SettingName("Predicate min extra steps")
+        val predicateProcessorMinExtraSteps: Int = 0,
+        @SettingDesc("Maximum extra arithmetic steps in generated opaque predicate processor actions")
+        @IntRangeVal(min = 0, max = 8)
+        @SettingName("Predicate max extra steps")
+        val predicateProcessorMaxExtraSteps: Int = 1,
+        @SettingDesc("Minimum steps used to build encoded opaque predicate constants")
+        @IntRangeVal(min = 0, max = 8)
+        @SettingName("Predicate min chain steps")
+        val predicateProcessorMinChainSteps: Int = 1,
+        @SettingDesc("Maximum steps used to build encoded opaque predicate constants")
+        @IntRangeVal(min = 0, max = 8)
+        @SettingName("Predicate max chain steps")
+        val predicateProcessorMaxChainSteps: Int = 2,
         @SettingDesc("Maximum junk call preludes emitted before a junk terminal return")
         @IntRangeVal(min = 0, max = 8)
         @SettingName("Max prelude calls")
@@ -155,6 +178,24 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             }
             JunkCallPool.build(classes)
         }
+        val predicateProcessorRegistryKey = globalScopeValue {
+            OpaquePredicateProcessorRegistry(
+                classMarker = Xoshiro256PPRandom(getSeed("ControlflowJump", "PredicateProcessor", "classMarker"))
+                    .getRandomString(10),
+                classExists = {
+                    instance.workRes.inputClassMap.containsKey(it) ||
+                        instance.workRes.libraryClassMap.containsKey(it)
+                },
+                options = OpaquePredicateProcessorOptions(
+                    minMainSteps = config.predicateProcessorMinMainSteps,
+                    maxMainSteps = config.predicateProcessorMaxMainSteps,
+                    minExtraSteps = config.predicateProcessorMinExtraSteps,
+                    maxExtraSteps = config.predicateProcessorMaxExtraSteps,
+                    minChainSteps = config.predicateProcessorMinChainSteps,
+                    maxChainSteps = config.predicateProcessorMaxChainSteps
+                )
+            )
+        }
         val methodCounter = reducibleScopeValue { MergeableCounter() }
         val branchCounter = reducibleScopeValue { MergeableCounter() }
         val mangledIfCounter = reducibleScopeValue { MergeableCounter() }
@@ -179,7 +220,27 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                         val random = Xoshiro256PPRandom(
                             getSeed(classNode.name, methodNode.name, methodNode.desc, "ControlflowJump")
                         )
-                        methodNode.insertJunkBranches(classNode, config, hierarchy, pool, random)
+                        methodNode.insertJunkBranches(
+                            owner = classNode,
+                            config = config,
+                            hierarchy = hierarchy,
+                            pool = pool,
+                            predicateProcessor = predicateProcessorRegistryKey.global.methodProcessor(
+                                owner = classNode.name,
+                                ownerVersion = classNode.version,
+                                methodMarker = Xoshiro256PPRandom(
+                                    getSeed(
+                                        classNode.name,
+                                        methodNode.name,
+                                        methodNode.desc,
+                                        "ControlflowJump",
+                                        "PredicateProcessor",
+                                        "methodMarker"
+                                    )
+                                ).getRandomString(8)
+                            ),
+                            random = random
+                        )
                     }.fold(
                         onSuccess = { result ->
                             if (result.changed) {
@@ -208,9 +269,15 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         }
 
         post {
+            val predicateRegistry = predicateProcessorRegistryKey.global
+            predicateRegistry.materialize().forEach {
+                instance.workRes.addGeneratedClass(it)
+            }
             Logger.info(" - ControlflowJump:")
             Logger.info("    Inserted ${branchCounter.global.get()} junk branches")
             Logger.info("    Mangled ${mangledIfCounter.global.get()} conditional jumps")
+            Logger.info("    Generated ${predicateRegistry.classCount} predicate processor classes")
+            Logger.info("    Added ${predicateRegistry.actionCount} predicate processor actions")
             Logger.info("    Transformed ${methodCounter.global.get()} methods")
             if (failureCounter.global.get() != 0) {
                 Logger.warn("    Failed ${failureCounter.global.get()} methods")
@@ -223,6 +290,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         config: Config,
         hierarchy: ClassHierarchy,
         pool: JunkCallPool,
+        predicateProcessor: FlowOpaquePredicateProcessor,
         random: UniformRandomProvider
     ): JunkBranchMethod {
         val imported = JvmFlowImporter().import(owner.name, this)
@@ -243,6 +311,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             ),
             callPool = pool,
             hierarchy = hierarchy,
+            predicateProcessor = predicateProcessor,
             random = random
         ).insert(imported.method)
 
@@ -310,8 +379,11 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         private val options: JunkBranchOptions,
         private val callPool: JunkCallPool,
         private val hierarchy: ClassHierarchy,
+        private val predicateProcessor: FlowOpaquePredicateProcessor,
         private val random: UniformRandomProvider
     ) {
+        private var nextPredicateSite = 0
+
         fun insert(method: FlowMethod): JunkBranchResult {
             val ids = MutableFlowIds(method)
             val junk = JunkCodeGenerator(callPool, hierarchy, options.junkCodeOptions, random)
@@ -525,14 +597,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 id = id,
                 kind = FlowBlockKind.Bogus,
                 body = FlowBytecodeSlice(),
-                jump = FlowIfJump(
-                    opcode = Opcodes.IFNE,
-                    input = FlowJumpInput.Generated(
-                        code = FlowBytecodeSlice(mutableListOf(InsnNode(Opcodes.ICONST_1))),
-                        produced = listOf(FlowFrameValue.Int),
-                        guarantee = FlowPredicateGuarantee.AlwaysTrue
-                    )
-                ),
+                jump = createOpaqueTrueJump(),
                 entryFrame = frame,
                 bodyExitFrame = frame
             )
@@ -553,44 +618,10 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         }
 
         private fun createOpaqueTrueJump(): FlowIfJump {
-            val instructions = mutableListOf<AbstractInsnNode>()
-            val opcode = when (random.nextInt(6)) {
-                0 -> {
-                    instructions += InsnNode(Opcodes.ICONST_0)
-                    Opcodes.IFEQ
-                }
-                1 -> {
-                    instructions += InsnNode(Opcodes.ICONST_1)
-                    Opcodes.IFNE
-                }
-                2 -> {
-                    instructions += InsnNode(Opcodes.ICONST_1)
-                    instructions += InsnNode(Opcodes.ICONST_1)
-                    Opcodes.IF_ICMPEQ
-                }
-                3 -> {
-                    instructions += InsnNode(Opcodes.ICONST_0)
-                    instructions += InsnNode(Opcodes.ICONST_1)
-                    Opcodes.IF_ICMPLT
-                }
-                4 -> {
-                    instructions += InsnNode(Opcodes.ICONST_1)
-                    instructions += InsnNode(Opcodes.ICONST_0)
-                    Opcodes.IF_ICMPGT
-                }
-                else -> {
-                    instructions += InsnNode(Opcodes.ICONST_0)
-                    instructions += InsnNode(Opcodes.ICONST_0)
-                    Opcodes.IF_ICMPGE
-                }
-            }
+            val call = predicateProcessor.reserveAlwaysTrue(nextPredicateSite++, random)
             return FlowIfJump(
-                opcode = opcode,
-                input = FlowJumpInput.Generated(
-                    code = FlowBytecodeSlice(instructions),
-                    produced = List(instructions.size) { FlowFrameValue.Int },
-                    guarantee = FlowPredicateGuarantee.AlwaysTrue
-                )
+                opcode = call.opcode,
+                input = call.toJumpInput()
             )
         }
 

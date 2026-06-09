@@ -86,6 +86,12 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"maxStateOpsPerCase\": 5")
             assertContains(text, "\"stateKeyMode\": \"Mixed\"")
             assertContains(text, "\"stateKeyProcessorChance\": 0.5")
+            assertContains(text, "\"keyProcessorMinMainSteps\": 1")
+            assertContains(text, "\"keyProcessorMaxMainSteps\": 3")
+            assertContains(text, "\"keyProcessorMinExtraSteps\": 0")
+            assertContains(text, "\"keyProcessorMaxExtraSteps\": 1")
+            assertContains(text, "\"keyProcessorMinChainSteps\": 1")
+            assertContains(text, "\"keyProcessorMaxChainSteps\": 2")
             assertContains(text, "\"shuffleRegionBlocks\": false")
             assertIs<ControlflowFlattening.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
@@ -126,6 +132,10 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"mangledIfChance\": 0.25")
             assertContains(text, "\"maxMangledIfsPerMethod\": 4")
             assertContains(text, "\"mangledFakeLoopChance\": 0.35")
+            assertContains(text, "\"predicateProcessorMinMainSteps\": 1")
+            assertContains(text, "\"predicateProcessorMaxMainSteps\": 2")
+            assertContains(text, "\"predicateProcessorMinExtraSteps\": 0")
+            assertContains(text, "\"predicateProcessorMaxExtraSteps\": 1")
             assertIs<ControlflowJump.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()

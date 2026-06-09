@@ -23,6 +23,29 @@ import kotlin.test.assertTrue
 
 class ControlflowJumpTransformerTest {
     @Test
+    fun generatesProcessorBackedOpaquePredicates() {
+        val classes = runControlflowJumpClasses(
+            ControlflowJump.Config(
+                chance = 1.0,
+                mangledIfChance = 0.0,
+                maxBranchesPerMethod = 1,
+                verifyBytecode = true
+            )
+        )
+        val method = classes.getValue("example/MangledJumpCase").methods.single { it.name == "choose" }
+        val processor = classes.values.single { it.name.contains("\$PredicateProcessor\$") }
+
+        assertTrue(processor.methods.any { it.desc == "(III)I" })
+        assertTrue(
+            method.instructions.toArray().any {
+                it is MethodInsnNode &&
+                    it.owner == processor.name &&
+                    it.desc == "(III)I"
+            }
+        )
+    }
+
+    @Test
     fun manglesIfJumpWithFakeLoopAndNaturalCallPop() {
         val classNode = runControlflowJump(
             ControlflowJump.Config(
@@ -60,6 +83,10 @@ class ControlflowJumpTransformerTest {
     }
 
     private fun runControlflowJump(config: ControlflowJump.Config): ClassNode {
+        return runControlflowJumpClasses(config).getValue("example/MangledJumpCase")
+    }
+
+    private fun runControlflowJumpClasses(config: ControlflowJump.Config): Map<String, ClassNode> {
         val input = createTempFile("grunteon-controlflow-jump-input", ".jar")
         val output = createTempFile("grunteon-controlflow-jump-output", ".jar")
         try {
@@ -83,12 +110,18 @@ class ControlflowJumpTransformerTest {
             }
 
             ZipFile(output.toFile()).use { zip ->
-                val entry = zip.getEntry("example/MangledJumpCase.class")
-                assertNotNull(entry)
-                val bytes = zip.getInputStream(entry).use { it.readBytes() }
-                val classNode = ClassNode()
-                ClassReader(bytes).accept(classNode, 0)
-                return classNode
+                return zip.entries()
+                    .asSequence()
+                    .filter { it.name.endsWith(".class") }
+                    .associate { entry ->
+                        val bytes = zip.getInputStream(entry).use { it.readBytes() }
+                        val classNode = ClassNode()
+                        ClassReader(bytes).accept(classNode, 0)
+                        classNode.name to classNode
+                    }
+                    .also {
+                        assertNotNull(it["example/MangledJumpCase"])
+                    }
             }
         } finally {
             input.deleteIfExists()
