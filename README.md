@@ -19,7 +19,7 @@ the near future
 * [X] Filter system
 * [X] Compose based UI
 * [X] SSA-IR / Flow-IR
-* [ ] Native cpp Codegen
+* [ ] Native cpp codegen
 
 ### Controlflow flattening
 

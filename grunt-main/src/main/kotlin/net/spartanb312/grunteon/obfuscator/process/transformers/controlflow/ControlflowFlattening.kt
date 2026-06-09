@@ -38,6 +38,7 @@ import net.spartanb312.grunteon.obfuscator.util.getRandomString
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
 import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
+import net.spartanb312.grunteon.obfuscator.util.extensions.isMixinClass
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
 import net.spartanb312.grunteon.obfuscator.util.extensions.isSynthetic
 import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
@@ -212,7 +213,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                     instance.workRes.allClassCollection
                 } else {
                     instance.workRes.inputClassCollection
-                }
+                }.filterNot { it.isMixinClass }
                 JunkCallPool.build(classes)
             } else {
                 null

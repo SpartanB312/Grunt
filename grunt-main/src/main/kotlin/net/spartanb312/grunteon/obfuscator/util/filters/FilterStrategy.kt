@@ -1,7 +1,8 @@
 package net.spartanb312.grunteon.obfuscator.util.filters
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.util.extensions.isExcluded
+import net.spartanb312.grunteon.obfuscator.util.extensions.isGlobalExcluded
+import net.spartanb312.grunteon.obfuscator.util.extensions.isMixinClass
 import org.objectweb.asm.tree.ClassNode
 
 class FilterStrategy(
@@ -10,13 +11,17 @@ class FilterStrategy(
 ) {
 
     context(_: Grunteon)
-    fun testClass(classNode: ClassNode, obfName: String): Boolean {
-        return testClass(obfName) && !classNode.isExcluded
+    fun testClass(classNode: ClassNode, obfName: String, excludeMixins: Boolean = true): Boolean {
+        return testClass(obfName) &&
+                !classNode.isGlobalExcluded &&
+                (!excludeMixins || !classNode.isMixinClass)
     }
 
     context(_: Grunteon)
-    fun testClass(classNode: ClassNode): Boolean {
-        return testClass(classNode.name) && !classNode.isExcluded
+    fun testClass(classNode: ClassNode, excludeMixins: Boolean = true): Boolean {
+        return testClass(classNode.name) &&
+                !classNode.isGlobalExcluded &&
+                (!excludeMixins || !classNode.isMixinClass)
     }
 
     fun testClass(className: String): Boolean {

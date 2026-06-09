@@ -2,10 +2,10 @@ package net.spartanb312.grunteon.obfuscator.process
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlatteningSSA
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.exp.ControlflowFlatteningSSA
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.FlowIRRoundTrip
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.SSARoundTrip
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roundtrip.FlowIRRoundTrip
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roundtrip.SSARoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.ArithmeticSubstitute
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
@@ -30,6 +30,8 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.rename.ClassRena
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.FieldRenamer
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.LocalVarRenamer
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MethodRenamer
+import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MixinClassRenamer
+import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MixinFieldRenamer
 import kotlin.reflect.KClass
 
 data class TransformerRegistryEntry(
@@ -69,6 +71,8 @@ object TransformerRegistry {
         entry({ ClassRenamer() }, { ClassRenamer.Config() }),
         entry({ FieldRenamer() }, { FieldRenamer.Config() }),
         entry({ MethodRenamer() }, { MethodRenamer.Config() }),
+        entry({ MixinClassRenamer() }, { MixinClassRenamer.Config() }),
+        entry({ MixinFieldRenamer() }, { MixinFieldRenamer.Config() }),
         entry({ FakeSyntheticBridge() }, { FakeSyntheticBridge.Config() }),
         entry({ ReferenceObfuscate() }, { ReferenceObfuscate.Config() }),
         entry({ DecompilerCrasher() }, { DecompilerCrasher.Config() }),

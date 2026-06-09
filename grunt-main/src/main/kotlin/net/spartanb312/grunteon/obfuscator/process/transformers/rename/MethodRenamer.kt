@@ -18,6 +18,7 @@ import net.spartanb312.grunteon.obfuscator.process.hierarchy.MethodHierarchy
 import net.spartanb312.grunteon.obfuscator.process.resource.NameGenerator
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
+import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.MappingSource
 import net.spartanb312.grunteon.obfuscator.util.IndyChecker
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.extensions.*

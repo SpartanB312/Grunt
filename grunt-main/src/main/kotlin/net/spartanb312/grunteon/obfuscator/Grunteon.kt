@@ -8,9 +8,9 @@ import net.spartanb312.grunteon.obfuscator.process.WorkerContext
 import net.spartanb312.grunteon.obfuscator.process.resource.JarDumper
 import net.spartanb312.grunteon.obfuscator.process.resource.ObfuscationIO
 import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
-import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MappingApplier
-import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MappingSource
-import net.spartanb312.grunteon.obfuscator.process.transformers.rename.NameMapping
+import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.MappingApplier
+import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.MappingSource
+import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.NameMapping
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
 

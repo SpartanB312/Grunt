@@ -8,7 +8,7 @@ import net.spartanb312.grunteon.obfuscator.ObfConfig
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.SSARoundTrip
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roundtrip.SSARoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.ArithmeticSubstitute
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt

@@ -1,4 +1,4 @@
-package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow
+package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.exp
 
 import kotlinx.serialization.Serializable
 import net.spartanb312.grunt.ir.ssa.jvm.JvmSSAExportOptions
@@ -27,16 +27,6 @@ import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
 import net.spartanb312.grunteon.obfuscator.util.extensions.isSynthetic
 import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
-import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.AbstractInsnNode
-import org.objectweb.asm.tree.JumpInsnNode
-import org.objectweb.asm.tree.LabelNode
-import org.objectweb.asm.tree.LookupSwitchInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
-import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.TableSwitchInsnNode
-import org.objectweb.asm.tree.analysis.Analyzer
-import org.objectweb.asm.tree.analysis.BasicInterpreter
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -132,7 +122,10 @@ class ControlflowFlatteningSSA : Transformer<ControlflowFlatteningSSA.Config>(
             isDaemon = true
             start()
         }*/
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), config.parallelBatchSize.coerceAtLeast(1)) { classNode ->
+        parForEachClassesFiltered(
+            config.classFilter.buildFilterStrategy(),
+            config.parallelBatchSize.coerceAtLeast(1)
+        ) { classNode ->
             val transformedMethods = classNode.methods.map { methodNode ->
                 if (methodNode.isAbstract || methodNode.isNative) {
                     methodNode

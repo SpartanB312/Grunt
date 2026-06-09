@@ -1,4 +1,4 @@
-package net.spartanb312.grunteon.obfuscator.process.transformers.rename
+package net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 import net.spartanb312.grunteon.obfuscator.Grunteon

@@ -1,7 +1,7 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.FlowIRRoundTrip
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roundtrip.FlowIRRoundTrip
 import net.spartanb312.grunteon.testcase.Asserts
 import org.objectweb.asm.ClassReader
 import java.util.zip.ZipFile

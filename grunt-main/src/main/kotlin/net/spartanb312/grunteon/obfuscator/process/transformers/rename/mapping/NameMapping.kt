@@ -1,4 +1,4 @@
-package net.spartanb312.grunteon.obfuscator.process.transformers.rename
+package net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject

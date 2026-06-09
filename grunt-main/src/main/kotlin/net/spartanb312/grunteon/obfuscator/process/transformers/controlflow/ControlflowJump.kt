@@ -46,7 +46,6 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junk
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.pipeline.before
-import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
 import net.spartanb312.grunteon.obfuscator.util.DISABLE_CONTROL_FLOW
 import net.spartanb312.grunteon.obfuscator.util.IGNORE_JUNK_CODE
 import net.spartanb312.grunteon.obfuscator.util.Logger
@@ -55,6 +54,7 @@ import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.getRandomString
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
+import net.spartanb312.grunteon.obfuscator.util.extensions.isMixinClass
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
 import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
 import net.spartanb312.grunteon.obfuscator.util.filters.NamePredicates
@@ -67,7 +67,6 @@ import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 
-@HiddenTransformer
 @Transformer.Description(
     "process.controlflow.controlflow_jump.desc",
     "Insert verifier-safe junk branches through Flow IR"
@@ -221,7 +220,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 instance.workRes.allClassCollection
             } else {
                 instance.workRes.inputClassCollection
-            }
+            }.filterNot { it.isMixinClass }
             JunkCallPool.build(classes)
         }
         val predicateProcessorRegistryKey = globalScopeValue {
