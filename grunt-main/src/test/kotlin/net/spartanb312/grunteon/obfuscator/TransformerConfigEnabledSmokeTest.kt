@@ -93,6 +93,8 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"keyProcessorMinChainSteps\": 1")
             assertContains(text, "\"keyProcessorMaxChainSteps\": 2")
             assertContains(text, "\"shuffleRegionBlocks\": false")
+            assertContains(text, "\"dispatcherTrailingRealBlock\": false")
+            assertContains(text, "\"dispatcherTrailingRealBlockChance\": 1.0")
             assertIs<ControlflowFlattening.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()

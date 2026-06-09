@@ -159,6 +159,13 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @SettingDesc("Shuffle physical layout order of Flow blocks selected into the flattened region")
         @SettingName("Shuffle region blocks")
         val shuffleRegionBlocks: Boolean = false,
+        @SettingDesc("Place a suitable real block immediately after a dispatcher switch without making it a switch target")
+        @SettingName("Dispatcher trailing real block")
+        val dispatcherTrailingRealBlock: Boolean = false,
+        @SettingDesc("Chance that one dispatcher switch is followed by an unrelated real block. Range: 0.0..1.0")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Dispatcher trailing real chance")
+        val dispatcherTrailingRealBlockChance: Double = 1.0,
         @SettingDesc("Maximum executable JVM instructions before importing Flow IR; 0 disables this limit")
         @SettingName("Max executable instructions")
         val maxExecutableInstructions: Int = 0,
@@ -185,6 +192,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val bridgeCounter = reducibleScopeValue { MergeableCounter() }
         val edgeCounter = reducibleScopeValue { MergeableCounter() }
         val fakeCaseCounter = reducibleScopeValue { MergeableCounter() }
+        val trailingRealBlockCounter = reducibleScopeValue { MergeableCounter() }
         val skippedCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
         val hierarchyKey = globalScopeValue {
@@ -269,6 +277,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                                     bridgeCounter.local.add(result.stateBridges)
                                     edgeCounter.local.add(result.rewrittenEdges)
                                     fakeCaseCounter.local.add(result.fakeCases)
+                                    trailingRealBlockCounter.local.add(result.dispatcherTrailingRealBlocks)
                                 } else {
                                     skippedCounter.local.add()
                                     if (config.logSkips) Logger.debug("ControlflowFlattening skipped $nameKey: ${result.reason}")
@@ -310,6 +319,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             Logger.info("    Created ${bridgeCounter.global.get()} state bridges")
             Logger.info("    Rewritten ${edgeCounter.global.get()} incoming edges")
             Logger.info("    Created ${fakeCaseCounter.global.get()} fake dispatcher cases")
+            Logger.info("    Relocated ${trailingRealBlockCounter.global.get()} real blocks below dispatcher switches")
             keyProcessorRegistryKey.global?.let {
                 Logger.info("    Generated ${it.classCount} key processor classes")
                 Logger.info("    Generated ${it.actionCount} key processor actions")
@@ -373,7 +383,9 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 maxStateOpsPerCase = config.maxStateOpsPerCase,
                 stateKeyMode = config.stateKeyMode,
                 stateKeyProcessorChance = config.stateKeyProcessorChance,
-                shuffleRegionBlocks = config.shuffleRegionBlocks
+                shuffleRegionBlocks = config.shuffleRegionBlocks,
+                dispatcherTrailingRealBlock = config.dispatcherTrailingRealBlock,
+                dispatcherTrailingRealBlockChance = config.dispatcherTrailingRealBlockChance
             ),
             randomGen,
             hierarchy,
@@ -406,7 +418,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             dispatcherIslands = result.dispatcherIslands,
             stateBridges = result.stateBridges,
             rewrittenEdges = result.rewrittenEdges,
-            fakeCases = result.fakeCases
+            fakeCases = result.fakeCases,
+            dispatcherTrailingRealBlocks = result.dispatcherTrailingRealBlocks
         )
     }
 
@@ -433,6 +446,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val stateBridges: Int = 0,
         val rewrittenEdges: Int = 0,
         val fakeCases: Int = 0,
+        val dispatcherTrailingRealBlocks: Int = 0,
         val reason: String? = null
     )
 }

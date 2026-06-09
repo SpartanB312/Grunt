@@ -30,7 +30,9 @@ data class FlowControlFlowFlattenOptions(
     val maxStateOpsPerCase: Int = 5,
     val stateKeyMode: FlowStateKeyMode = FlowStateKeyMode.Mixed,
     val stateKeyProcessorChance: Double = 0.5,
-    val shuffleRegionBlocks: Boolean = false
+    val shuffleRegionBlocks: Boolean = false,
+    val dispatcherTrailingRealBlock: Boolean = false,
+    val dispatcherTrailingRealBlockChance: Double = 1.0
 )
 
 data class FlowControlFlowFlattenResult(
@@ -41,6 +43,7 @@ data class FlowControlFlowFlattenResult(
     val stateBridges: Int = 0,
     val rewrittenEdges: Int = 0,
     val fakeCases: Int = 0,
+    val dispatcherTrailingRealBlocks: Int = 0,
     val reason: String? = null
 )
 
@@ -64,7 +67,7 @@ class FlowControlFlowFlattener(
             changed = false,
             reason = skipReason(method)
         )
-        apply(method, plan)
+        val trailingRealBlocks = apply(method, plan)
         return FlowControlFlowFlattenResult(
             changed = true,
             flattenedRegions = 1,
@@ -72,7 +75,8 @@ class FlowControlFlowFlattener(
             dispatcherIslands = plan.dispatchers.size,
             stateBridges = plan.normalEdgeEntries.size + plan.handlerEntries.size + if (plan.methodEntry != null) 1 else 0,
             rewrittenEdges = plan.normalEdgeEntries.size,
-            fakeCases = plan.dispatchers.sumOf { it.fakeCases.size }
+            fakeCases = plan.dispatchers.sumOf { it.fakeCases.size },
+            dispatcherTrailingRealBlocks = trailingRealBlocks
         )
     }
 
@@ -193,7 +197,7 @@ class FlowControlFlowFlattener(
         }
     }
 
-    private fun apply(method: FlowMethod, plan: FlattenPlan) {
+    private fun apply(method: FlowMethod, plan: FlattenPlan): Int {
         val ids = MutableFlowIds(method)
         val state = method.locals.allocate(FlowFrameValue.Int)
         require(state.index == plan.stateSlot) {
@@ -279,11 +283,11 @@ class FlowControlFlowFlattener(
             connectBridge(method, bridge, dispatcherBlocks.getValue(entry.dispatcher), ids)
         }
 
-        rewriteLayout(
+        return rewriteLayout(
             method,
             plan.methodEntry?.target,
             plan.regionBlocks,
-            dispatcherBlocks.values.toList(),
+            dispatcherBlocks.entries.toList(),
             bridgeBlocks,
             fakeBlocks
         )
@@ -654,6 +658,11 @@ class FlowControlFlowFlattener(
             this == FlowBlockKind.Bogus
     }
 
+    private fun FlowBlockKind.isTrailingRealBlockKind(): Boolean {
+        return this == FlowBlockKind.Original ||
+            this == FlowBlockKind.Split
+    }
+
     private fun FlowMethod.layoutOrder(): List<FlowBlock> {
         return (layout.order.ifEmpty { blocks }).filter { it in blocks }
     }
@@ -750,11 +759,12 @@ class FlowControlFlowFlattener(
         method: FlowMethod,
         oldEntry: FlowBlock?,
         regionBlocks: List<FlowBlock>,
-        dispatchers: List<FlowBlock>,
+        dispatchers: List<Map.Entry<DispatcherPlan, FlowBlock>>,
         bridges: List<FlowBlock>,
         fakeBlocks: List<FakeCaseBlock>
-    ) {
-        val insertedBlocks = (dispatchers + bridges + fakeBlocks.map { it.block }).toSet()
+    ): Int {
+        val dispatcherBlocks = dispatchers.map { it.value }
+        val insertedBlocks = (dispatcherBlocks + bridges + fakeBlocks.map { it.block }).toSet()
         val oldOrder = method.layoutOrder().filter { it !in insertedBlocks }
         val regionSet = regionBlocks.toSet()
         val reorderedRegionBlocks = if (options.shuffleRegionBlocks) {
@@ -794,11 +804,62 @@ class FlowControlFlowFlattener(
         } else {
             oldOrder.forEach(::addWithFallthroughFakes)
         }
-        newOrder += dispatchers
+        val trailingRealBlocks = selectTrailingRealBlocks(
+            method = method,
+            dispatchers = dispatchers,
+            candidates = newOrder.distinct(),
+            oldEntry = oldEntry,
+            fallthroughTargets = fallthroughFakes.keys.filterNotNull().toSet()
+        )
+        newOrder.removeAll(trailingRealBlocks.values.toSet())
+        for ((_, dispatcherBlock) in dispatchers) {
+            newOrder += dispatcherBlock
+            trailingRealBlocks[dispatcherBlock]?.let { newOrder += it }
+        }
         newOrder += fakeBlocks.map { it.block }.filter { it !in placedFakes }
         newOrder += bridges.filter { it != method.entry }
         method.layout.order.clear()
         method.layout.order += newOrder.distinct()
+        return trailingRealBlocks.size
+    }
+
+    private fun selectTrailingRealBlocks(
+        method: FlowMethod,
+        dispatchers: List<Map.Entry<DispatcherPlan, FlowBlock>>,
+        candidates: List<FlowBlock>,
+        oldEntry: FlowBlock?,
+        fallthroughTargets: Set<FlowBlock>
+    ): Map<FlowBlock, FlowBlock> {
+        if (!options.dispatcherTrailingRealBlock) return emptyMap()
+
+        val chance = options.dispatcherTrailingRealBlockChance.coerceIn(0.0, 1.0)
+        if (chance <= 0.0) return emptyMap()
+
+        val exceptionSensitiveBlocks = method.exceptionRegions
+            .flatMapTo(mutableSetOf()) { it.protectedBlocks + it.handler }
+        val used = mutableSetOf<FlowBlock>()
+        val selected = linkedMapOf<FlowBlock, FlowBlock>()
+
+        fun isSuitableCandidate(block: FlowBlock, dispatcher: DispatcherPlan): Boolean {
+            return block !in used &&
+                block != method.entry &&
+                block != oldEntry &&
+                block !in dispatcher.blocks &&
+                block !in exceptionSensitiveBlocks &&
+                block !in fallthroughTargets &&
+                block.kind.isTrailingRealBlockKind()
+        }
+
+        for ((dispatcherPlan, dispatcherBlock) in dispatchers) {
+            if (random.nextDouble() > chance) continue
+            val available = candidates.filter { isSuitableCandidate(it, dispatcherPlan) }
+            if (available.isEmpty()) continue
+            val block = available[random.nextInt(available.size)]
+            used += block
+            selected[dispatcherBlock] = block
+        }
+
+        return selected
     }
 
     private fun shuffleBlocks(blocks: List<FlowBlock>): List<FlowBlock> {

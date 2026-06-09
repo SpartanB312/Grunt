@@ -122,6 +122,51 @@ class FlowControlFlowFlattenerTest {
     }
 
     @Test
+    fun placesSuitableRealBlockAfterDispatcherSwitchWhenEnabled() {
+        val imported = JvmFlowImporter().import(Owner, trailingCandidateMethod())
+        val result = FlowControlFlowFlattener(
+            FlowControlFlowFlattenOptions(
+                minFlattenedBlocks = 2,
+                maxFlattenedBlocks = 3,
+                fakeCasesPerDispatcher = 0,
+                junkCases = false,
+                dispatcherTrailingRealBlock = true,
+                dispatcherTrailingRealBlockChance = 1.0
+            ),
+            testRandom("trailing-real")
+        ).flatten(imported.method)
+
+        assertTrue(result.changed, result.reason ?: "not changed")
+        assertEquals(1, result.dispatcherTrailingRealBlocks)
+
+        val dispatcher = imported.method.blocks.single { it.kind == FlowBlockKind.Dispatcher }
+        val layout = imported.method.layout.order
+        val dispatcherIndex = layout.indexOf(dispatcher)
+        assertTrue(dispatcherIndex >= 0 && dispatcherIndex + 1 < layout.size)
+        val trailing = layout[dispatcherIndex + 1]
+        assertTrue(trailing.kind == FlowBlockKind.Original || trailing.kind == FlowBlockKind.Split)
+
+        val switch = dispatcher.jump as FlowSwitchJump
+        val switchTargets = switch.ports
+            .mapNotNull { port -> imported.method.edgeFrom(dispatcher, port)?.to }
+            .toSet()
+        assertTrue(trailing !in switchTargets)
+
+        FlowVerifier.verify(imported.method).requireValid()
+        val exported = JvmFlowExporter(imported.metadata).export(imported.method)
+        Analyzer(BasicInterpreter()).analyze(Owner, exported)
+
+        val instructions = exported.instructions.toArray()
+        val switchIndex = instructions.indexOfFirst {
+            it.opcode == Opcodes.LOOKUPSWITCH || it.opcode == Opcodes.TABLESWITCH
+        }
+        assertTrue(switchIndex >= 0)
+        val firstOpcodeAfterSwitch = instructions.drop(switchIndex + 1).first { it.opcode >= 0 }.opcode
+        val trailingFirstOpcode = trailing.body.instructions.first { it.opcode >= 0 }.opcode
+        assertEquals(trailingFirstOpcode, firstOpcodeAfterSwitch)
+    }
+
+    @Test
     fun emitsProcessorStateProgramsWithSaltDataFlow() {
         val imported = JvmFlowImporter().import(Owner, linearMethod())
         val registry = CffKeyProcessorRegistry("TestSalt", classExists = { false })
@@ -287,6 +332,31 @@ class FlowControlFlowFlattenerTest {
                 add(InsnNode(Opcodes.ICONST_1))
                 add(JumpInsnNode(Opcodes.GOTO, target))
                 add(target)
+                add(InsnNode(Opcodes.POP))
+                add(InsnNode(Opcodes.RETURN))
+            }
+            maxLocals = 0
+            maxStack = 1
+        }
+    }
+
+    private fun trailingCandidateMethod(): MethodNode {
+        val first = LabelNode()
+        val second = LabelNode()
+        val trailing = LabelNode()
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "trailing", "()V", null, null).apply {
+            instructions = InsnList().apply {
+                add(JumpInsnNode(Opcodes.GOTO, first))
+                add(first)
+                add(InsnNode(Opcodes.ICONST_0))
+                add(InsnNode(Opcodes.POP))
+                add(JumpInsnNode(Opcodes.GOTO, second))
+                add(second)
+                add(InsnNode(Opcodes.ICONST_1))
+                add(InsnNode(Opcodes.POP))
+                add(JumpInsnNode(Opcodes.GOTO, trailing))
+                add(trailing)
+                add(InsnNode(Opcodes.ICONST_5))
                 add(InsnNode(Opcodes.POP))
                 add(InsnNode(Opcodes.RETURN))
             }
