@@ -2,11 +2,13 @@ package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunt.ir.flow.core.FlowBlockKind
 import net.spartanb312.grunt.ir.flow.core.FlowEdgeSemantics
+import net.spartanb312.grunt.ir.flow.core.FlowFrameValue
 import net.spartanb312.grunt.ir.flow.core.FlowPredicateGuarantee
 import net.spartanb312.grunt.ir.flow.core.FlowSwitchJump
 import net.spartanb312.grunt.ir.flow.core.FlowVerifier
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
+import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorRegistry
@@ -168,6 +170,48 @@ class FlowControlFlowFlattenerTest {
         val firstOpcodeAfterSwitch = instructions.drop(switchIndex + 1).first { it.opcode >= 0 }.opcode
         val trailingFirstOpcode = trailing.body.instructions.first { it.opcode >= 0 }.opcode
         assertEquals(trailingFirstOpcode, firstOpcodeAfterSwitch)
+    }
+
+    @Test
+    fun cffJunkCasesShareCompatibleTerminatorsAcrossDispatchers() {
+        val imported = JvmFlowImporter().import(Owner, linearMethod())
+        imported.method.layout.order
+            .filter { it.kind == FlowBlockKind.Original || it.kind == FlowBlockKind.Split }
+            .drop(1)
+            .first()
+            .let { block ->
+                block.entryFrame = block.entryFrame.copy(locals = block.entryFrame.locals + FlowFrameValue.Top)
+                block.bodyExitFrame = block.bodyExitFrame.copy(locals = block.bodyExitFrame.locals + FlowFrameValue.Top)
+            }
+        val result = FlowControlFlowFlattener(
+            FlowControlFlowFlattenOptions(
+                minFlattenedBlocks = 2,
+                fakeCasesPerDispatcher = 1,
+                junkCases = true,
+                junkCaseChance = 1.0,
+                sharedFakeCaseTerminatorChance = 1.0
+            ),
+            testRandom("cff-shared-terminator"),
+            hierarchy = ClassHierarchy.build(emptyList()),
+            junkCallPool = JunkCallPool.build(emptyList())
+        ).flatten(imported.method)
+
+        assertTrue(result.changed, result.reason ?: "not changed")
+        assertTrue(result.dispatcherIslands >= 2)
+
+        val junkCaseEdges = imported.method.edges.filter {
+            it.from.kind == FlowBlockKind.Dispatcher && it.semantics == FlowEdgeSemantics.Junk
+        }
+        assertTrue(junkCaseEdges.map { it.from }.distinct().size >= 2)
+        val sharedTargets = junkCaseEdges
+            .groupBy { it.to }
+            .filterValues { edges -> edges.map { it.from }.distinct().size >= 2 }
+        assertTrue(sharedTargets.isNotEmpty())
+        assertTrue(sharedTargets.keys.all { it.kind == FlowBlockKind.Junk })
+
+        FlowVerifier.verify(imported.method).requireValid()
+        val exported = JvmFlowExporter(imported.metadata).export(imported.method)
+        Analyzer(BasicInterpreter()).analyze(Owner, exported)
     }
 
     @Test

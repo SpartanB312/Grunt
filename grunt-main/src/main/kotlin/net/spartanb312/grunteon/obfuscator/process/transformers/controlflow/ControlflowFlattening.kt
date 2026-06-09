@@ -106,6 +106,10 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Junk case chance")
         val junkCaseChance: Double = 0.35,
+        @SettingDesc("Chance that CFF fake switch cases reuse a compatible terminal fake case target. Range: 0.0..1.0")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Shared fake case terminator chance")
+        val sharedFakeCaseTerminatorChance: Double = 0.65,
         @SettingDesc("Maximum junk call preludes emitted before a junk terminal return")
         @IntRangeVal(min = 0, max = 8)
         @SettingName("Max junk prelude calls")
@@ -372,6 +376,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 fakeCasesPerDispatcher = config.fakeCasesPerDispatcher,
                 junkCases = config.junkCases,
                 junkCaseChance = config.junkCaseChance,
+                sharedFakeCaseTerminatorChance = config.sharedFakeCaseTerminatorChance,
                 junkCodeOptions = JunkCodeOptions(
                     maxPreludeCalls = config.maxJunkPreludeCalls.coerceAtLeast(0),
                     useJunkCallPrelude = junkCallPool?.isEmpty() == false,

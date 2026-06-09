@@ -82,6 +82,7 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"includeExceptionBlocks\": true")
             assertContains(text, "\"maxDispatcherIslands\": 0")
             assertContains(text, "\"fakeCasesPerDispatcher\": 1")
+            assertContains(text, "\"sharedFakeCaseTerminatorChance\": 0.65")
             assertContains(text, "\"minStateOpsPerCase\": 2")
             assertContains(text, "\"maxStateOpsPerCase\": 5")
             assertContains(text, "\"stateKeyMode\": \"Mixed\"")

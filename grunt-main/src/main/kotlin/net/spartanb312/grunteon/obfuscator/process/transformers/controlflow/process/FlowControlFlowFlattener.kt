@@ -25,6 +25,7 @@ data class FlowControlFlowFlattenOptions(
     val fakeCasesPerDispatcher: Int = 1,
     val junkCases: Boolean = true,
     val junkCaseChance: Double = 0.35,
+    val sharedFakeCaseTerminatorChance: Double = 0.65,
     val junkCodeOptions: JunkCodeOptions = JunkCodeOptions(),
     val minStateOpsPerCase: Int = 2,
     val maxStateOpsPerCase: Int = 5,
@@ -209,6 +210,7 @@ class FlowControlFlowFlattener(
         }
         val bridgeBlocks = mutableListOf<FlowBlock>()
         val fakeBlocks = mutableListOf<FakeCaseBlock>()
+        val fakeTerminators = FakeTerminatorPlanner(method, ids)
 
         for ((dispatcher, block) in dispatcherBlocks) {
             method.addBlock(block)
@@ -225,9 +227,11 @@ class FlowControlFlowFlattener(
                 )
             }
             for (fakeCase in dispatcher.fakeCases) {
-                val fakeBlock = createFakeCaseBlock(method, fakeCase, dispatcher, plan.stateSlot, ids)
+                val fakeBlock = createFakeCaseBlock(method, fakeCase, dispatcher, plan.stateSlot, ids, fakeTerminators)
                 fakeBlocks += FakeCaseBlock(fakeBlock, fakeCase.fallthroughTarget)
-                method.addBlock(fakeBlock)
+                if (fakeBlock !in method.blocks) {
+                    method.addBlock(fakeBlock)
+                }
                 method.addEdge(
                     FlowEdge(
                         id = ids.edge(),
@@ -436,15 +440,14 @@ class FlowControlFlowFlattener(
         fakeCase: FakeCasePlan,
         dispatcher: DispatcherPlan,
         stateSlot: Int,
-        ids: MutableFlowIds
+        ids: MutableFlowIds,
+        fakeTerminators: FakeTerminatorPlanner
     ): FlowBlock {
         if (fakeCase.exit == FakeCaseExit.JunkTerminal) {
-            return JunkCodeGenerator(
-                callPool = requireNotNull(junkCallPool),
-                hierarchy = requireNotNull(hierarchy),
-                options = options.junkCodeOptions,
-                random = random
-            ).createTerminalBlock(ids.block(), method, dispatcher.frame)
+            return fakeTerminators.junkTerminator(dispatcher.frame)
+        }
+        if (fakeCase.exit == FakeCaseExit.ThrowNull) {
+            return fakeTerminators.throwNullTerminator(dispatcher.frame)
         }
 
         val body = FlowBytecodeSlice(mutableListOf(InsnNode(Opcodes.NOP)))
@@ -454,27 +457,12 @@ class FlowControlFlowFlattener(
                 body.instructions += emitStateProgram(exit.program, stateSlot).instructions
                 FlowGotoJump(FlowGotoMode.Synthetic)
             }
-            FakeCaseExit.ThrowNull -> {
-                for (value in dispatcher.frame.stack.asReversed()) {
-                    body.instructions += InsnNode(if (value.categorySize == 2) Opcodes.POP2 else Opcodes.POP)
-                }
-                FlowThrowJump(
-                    FlowJumpInput.Generated(
-                        code = FlowBytecodeSlice(mutableListOf(InsnNode(Opcodes.ACONST_NULL))),
-                        produced = listOf(FlowFrameValue.Null)
-                    )
-                )
-            }
             is FakeCaseExit.RealBranch -> {
                 appendNonTerminalJunk(body)
                 FlowGotoJump(if (exit.fallthrough) FlowGotoMode.Fallthrough else FlowGotoMode.ExplicitGoto)
             }
+            FakeCaseExit.ThrowNull -> error("Throw null terminal should be emitted as its own Flow block")
             FakeCaseExit.JunkTerminal -> error("Junk terminal should be emitted as its own Flow block")
-        }
-        val bodyExitFrame = if (fakeCase.exit == FakeCaseExit.ThrowNull) {
-            dispatcher.frame.copy(stack = emptyList())
-        } else {
-            dispatcher.frame
         }
         return FlowBlock(
             id = ids.block(),
@@ -482,7 +470,70 @@ class FlowControlFlowFlattener(
             body = body,
             jump = jump,
             entryFrame = dispatcher.frame,
-            bodyExitFrame = bodyExitFrame
+            bodyExitFrame = dispatcher.frame
+        )
+    }
+
+    private inner class FakeTerminatorPlanner(
+        private val method: FlowMethod,
+        private val ids: MutableFlowIds
+    ) {
+        private val sharedJunkTerminals = mutableListOf<FlowBlock>()
+        private val sharedThrowTerminals = mutableListOf<FlowBlock>()
+
+        fun junkTerminator(frame: FlowFrame): FlowBlock {
+            return terminalFor(frame, sharedJunkTerminals) {
+                JunkCodeGenerator(
+                    callPool = requireNotNull(junkCallPool),
+                    hierarchy = requireNotNull(hierarchy),
+                    options = options.junkCodeOptions,
+                    random = random
+                ).createTerminalBlock(ids.block(), method, frame)
+            }
+        }
+
+        fun throwNullTerminator(frame: FlowFrame): FlowBlock {
+            return terminalFor(frame, sharedThrowTerminals) {
+                createThrowNullTerminatorBlock(ids.block(), frame)
+            }
+        }
+
+        private fun terminalFor(
+            frame: FlowFrame,
+            shared: MutableList<FlowBlock>,
+            create: () -> FlowBlock
+        ): FlowBlock {
+            if (random.nextDouble() < options.sharedFakeCaseTerminatorChance.coerceIn(0.0, 1.0)) {
+                shared
+                    .filter { FlowFrames.isCompatible(frame, it.entryFrame) }
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { return it[random.nextInt(it.size)] }
+                return create().also {
+                    method.addBlock(it)
+                    shared += it
+                }
+            }
+            return create().also { method.addBlock(it) }
+        }
+    }
+
+    private fun createThrowNullTerminatorBlock(id: FlowBlockId, frame: FlowFrame): FlowBlock {
+        val body = FlowBytecodeSlice(mutableListOf(InsnNode(Opcodes.NOP)))
+        for (value in frame.stack.asReversed()) {
+            body.instructions += InsnNode(if (value.categorySize == 2) Opcodes.POP2 else Opcodes.POP)
+        }
+        return FlowBlock(
+            id = id,
+            kind = FlowBlockKind.Bogus,
+            body = body,
+            jump = FlowThrowJump(
+                FlowJumpInput.Generated(
+                    code = FlowBytecodeSlice(mutableListOf(InsnNode(Opcodes.ACONST_NULL))),
+                    produced = listOf(FlowFrameValue.Null)
+                )
+            ),
+            entryFrame = frame,
+            bodyExitFrame = frame.copy(stack = emptyList())
         )
     }
 

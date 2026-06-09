@@ -29,6 +29,7 @@ the near future
 * [X] Shuffle blocks
 * [X] Dispatcher trailing block
 * [X] Anti-static simulation
+* [X] Shared terminator
 * [X] Junk code
 
 ### Controlflow jump
