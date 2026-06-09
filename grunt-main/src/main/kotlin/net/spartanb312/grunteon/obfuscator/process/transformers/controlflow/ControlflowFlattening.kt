@@ -260,6 +260,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                             )
                             methodNode.flattenControlFlow(
                                 classNode.name,
+                                classNode.superName,
                                 config,
                                 randomGen,
                                 hierarchyKey.global,
@@ -355,6 +356,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
 
     private fun MethodNode.flattenControlFlow(
         ownerInternalName: String,
+        ownerSuperName: String?,
         config: Config,
         randomGen: UniformRandomProvider,
         hierarchy: ClassHierarchy?,
@@ -396,7 +398,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             randomGen,
             hierarchy,
             junkCallPool,
-            stateKeyProcessor
+            stateKeyProcessor,
+            setOfNotNull(ownerInternalName, ownerSuperName)
         ).flatten(imported.method)
         if (!result.changed) {
             return FlattenedMethod(this, changed = false, reason = result.reason)

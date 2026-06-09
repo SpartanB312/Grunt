@@ -27,6 +27,16 @@ import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
 import net.spartanb312.grunteon.obfuscator.util.extensions.isSynthetic
 import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
+import org.objectweb.asm.tree.JumpInsnNode
+import org.objectweb.asm.tree.LabelNode
+import org.objectweb.asm.tree.LookupSwitchInsnNode
+import org.objectweb.asm.tree.MethodInsnNode
+import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.TableSwitchInsnNode
+import org.objectweb.asm.tree.analysis.Analyzer
+import org.objectweb.asm.tree.analysis.BasicInterpreter
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -235,7 +245,9 @@ class ControlflowFlatteningSSA : Transformer<ControlflowFlatteningSSA.Config>(
                 val insn = insns[index]
                 if (insn.opcode < 0) continue
                 if (insn.isControlFlowTransfer()) return true
-                if (insn is MethodInsnNode && insn.opcode == Opcodes.INVOKESPECIAL && insn.name == "<init>") break
+                if (insn is MethodInsnNode && insn.opcode == Opcodes.INVOKESPECIAL && insn.name == "<init>") {
+                    break
+                }
             }
         }
         return false

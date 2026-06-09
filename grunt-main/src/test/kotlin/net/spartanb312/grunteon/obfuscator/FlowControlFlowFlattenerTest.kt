@@ -19,7 +19,9 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.proc
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorRegistry
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.RandomBoundOpaquePredicateProcessorCall
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
+import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.ClassNode
@@ -212,6 +214,37 @@ class FlowControlFlowFlattenerTest {
         FlowVerifier.verify(imported.method).requireValid()
         val exported = JvmFlowExporter(imported.metadata).export(imported.method)
         Analyzer(BasicInterpreter()).analyze(Owner, exported)
+    }
+
+    @Test
+    fun excludesConstructorPreInitFlowFromFlattenedRegion() {
+        val originalClass = preInitBranchConstructorClass()
+        val originalConstructor = originalClass.methods.single { it.name == "<init>" && it.desc == "(I)V" }
+        val imported = JvmFlowImporter().import(ConstructorOwner, originalConstructor)
+        val result = FlowControlFlowFlattener(
+            FlowControlFlowFlattenOptions(
+                includeMethodEntry = true,
+                includeUninitializedFrames = false,
+                minFlattenedBlocks = 2,
+                fakeCasesPerDispatcher = 1,
+                junkCases = false
+            ),
+            testRandom("constructor-preinit"),
+            constructorInitOwners = setOf(ConstructorOwner, "java/lang/Object")
+        ).flatten(imported.method)
+
+        assertTrue(result.changed, result.reason ?: "not changed")
+        FlowVerifier.verify(imported.method).requireValid()
+
+        val exported = JvmFlowExporter(imported.metadata).export(imported.method)
+        Analyzer(BasicInterpreter()).analyze(ConstructorOwner, exported)
+
+        val transformedClass = preInitBranchConstructorClass()
+        val constructorIndex = transformedClass.methods.indexOfFirst { it.name == "<init>" && it.desc == "(I)V" }
+        transformedClass.methods.set(constructorIndex, exported)
+        val generated = GeneratedClassLoader().defineComputed(transformedClass)
+        generated.getDeclaredConstructor(Int::class.javaPrimitiveType).newInstance(0)
+        generated.getDeclaredConstructor(Int::class.javaPrimitiveType).newInstance(1)
     }
 
     @Test
@@ -465,6 +498,39 @@ class FlowControlFlowFlattenerTest {
         }
     }
 
+    private fun preInitBranchConstructorClass(): ClassNode {
+        val classNode = ClassNode()
+        ClassReader(preInitBranchConstructorBytes()).accept(classNode, ClassReader.EXPAND_FRAMES)
+        return classNode
+    }
+
+    private fun preInitBranchConstructorBytes(): ByteArray {
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, ConstructorOwner, null, "java/lang/Object", null)
+
+        writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "(I)V", null, null).apply {
+            val init = Label()
+            val done = Label()
+            visitCode()
+            visitVarInsn(Opcodes.ILOAD, 1)
+            visitJumpInsn(Opcodes.IFEQ, init)
+            visitInsn(Opcodes.NOP)
+            visitLabel(init)
+            visitVarInsn(Opcodes.ALOAD, 0)
+            visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+            visitVarInsn(Opcodes.ILOAD, 1)
+            visitJumpInsn(Opcodes.IFLE, done)
+            visitInsn(Opcodes.NOP)
+            visitLabel(done)
+            visitInsn(Opcodes.RETURN)
+            visitMaxs(0, 0)
+            visitEnd()
+        }
+
+        writer.visitEnd()
+        return writer.toByteArray()
+    }
+
     private fun testRandom(suffix: String) = Xoshiro256PPRandom(
         ByteArray(32) { index -> (Owner + suffix + index).sumOf { it.code }.toByte() }
     )
@@ -492,9 +558,17 @@ class FlowControlFlowFlattenerTest {
             val bytes = writer.toByteArray()
             return defineClass(classNode.name.replace('/', '.'), bytes, 0, bytes.size)
         }
+
+        fun defineComputed(classNode: ClassNode): Class<*> {
+            val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+            classNode.accept(writer)
+            val bytes = writer.toByteArray()
+            return defineClass(classNode.name.replace('/', '.'), bytes, 0, bytes.size)
+        }
     }
 
     private companion object {
         const val Owner = "example/Test"
+        const val ConstructorOwner = "example/ConstructorPreInitCase"
     }
 }

@@ -59,7 +59,8 @@ class FlowControlFlowFlattener(
     private val random: UniformRandomProvider = Xoshiro256PPRandom(DefaultSeed),
     private val hierarchy: ClassHierarchy? = null,
     private val junkCallPool: JunkCallPool? = null,
-    private val stateKeyProcessor: FlowStateKeyProcessor? = null
+    private val stateKeyProcessor: FlowStateKeyProcessor? = null,
+    private val constructorInitOwners: Set<String> = emptySet()
 ) {
     private var nextStateProgramSite = 0
 
@@ -87,6 +88,9 @@ class FlowControlFlowFlattener(
 
         val stateSlot = method.locals.nextSlot
         val regionSet = regionBlocks.toSet()
+        val unsafeConstructorExits = constructorPreInitBlocks(method)
+            .filterNot { it.initializesThis() }
+            .toSet()
         val dispatchers = regionBlocks
             .groupBy { it.entryFrame }
             .map { (frame, blocks) ->
@@ -114,6 +118,7 @@ class FlowControlFlowFlattener(
         for (edge in method.edges) {
             val target = edge.to
             if (target !in regionSet) continue
+            if (!options.includeUninitializedFrames && edge.from in unsafeConstructorExits) return null
             val sourceFrame = runCatching { FlowVerifier.frameAfterJump(edge.from) }.getOrNull() ?: return null
             normalEntries += EdgeEntryPlan(
                 edge = edge,
@@ -167,11 +172,13 @@ class FlowControlFlowFlattener(
         } else {
             method.exceptionRegions.flatMapTo(mutableSetOf()) { it.protectedBlocks + it.handler }
         }
+        val constructorPreInitBlocks = constructorPreInitBlocks(method)
 
         val eligible = method.layoutOrder()
             .filter { block ->
                 block in reachable &&
                     block !in exceptionBlocks &&
+                    block !in constructorPreInitBlocks &&
                     block.kind.isFlattenableOriginalKind() &&
                     (options.includeMethodEntry || block != method.entry) &&
                     (options.includeUninitializedFrames || !block.entryFrame.hasUninitialized())
@@ -700,6 +707,34 @@ class FlowControlFlowFlattener(
     private fun FlowFrame.hasUninitialized(): Boolean {
         return (locals.asSequence() + stack.asSequence()).any {
             it == FlowFrameValue.UninitializedThis || it is FlowFrameValue.UninitializedNew
+        }
+    }
+
+    private fun constructorPreInitBlocks(method: FlowMethod): Set<FlowBlock> {
+        if (options.includeUninitializedFrames) return emptySet()
+        if (method.name != "<init>") return emptySet()
+
+        val entry = method.entry ?: return emptySet()
+        val visited = linkedSetOf<FlowBlock>()
+        val queue = ArrayDeque<FlowBlock>()
+        queue.addLast(entry)
+        while (queue.isNotEmpty()) {
+            val block = queue.removeFirst()
+            if (!visited.add(block)) continue
+            if (block.initializesThis()) continue
+            for (successor in method.successors(block)) {
+                if (successor !in visited) queue.addLast(successor)
+            }
+        }
+        return visited
+    }
+
+    private fun FlowBlock.initializesThis(): Boolean {
+        return body.instructions.any {
+            it is MethodInsnNode &&
+                it.opcode == Opcodes.INVOKESPECIAL &&
+                it.name == "<init>" &&
+                it.owner in constructorInitOwners
         }
     }
 
