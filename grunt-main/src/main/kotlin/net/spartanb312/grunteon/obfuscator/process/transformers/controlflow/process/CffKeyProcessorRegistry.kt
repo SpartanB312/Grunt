@@ -2,17 +2,11 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.pro
 
 import kotlinx.serialization.Serializable
 import net.spartanb312.genesis.kotlin.clazz
+import net.spartanb312.genesis.kotlin.extensions.INT
 import net.spartanb312.genesis.kotlin.extensions.PUBLIC
 import net.spartanb312.genesis.kotlin.extensions.STATIC
 import net.spartanb312.genesis.kotlin.extensions.SUPER
-import net.spartanb312.genesis.kotlin.extensions.toInsnNode
-import net.spartanb312.genesis.kotlin.extensions.insn.IADD
-import net.spartanb312.genesis.kotlin.extensions.insn.IAND
-import net.spartanb312.genesis.kotlin.extensions.insn.ILOAD
-import net.spartanb312.genesis.kotlin.extensions.insn.IMUL
-import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESTATIC
-import net.spartanb312.genesis.kotlin.extensions.insn.IRETURN
-import net.spartanb312.genesis.kotlin.extensions.insn.IXOR
+import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_CLASS
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_METHOD
@@ -169,22 +163,22 @@ class CffKeyProcessorRegistry(
                     ILOAD(1)
                     IXOR
                     ILOAD(1)
-                    +rotateSalt.toInsnNode()
+                    INT(rotateSalt)
                     INVOKESTATIC("java/lang/Integer", "rotateLeft", "(II)I")
                     IADD
-                    +multiplierA.toInsnNode()
+                    INT(multiplierA)
                     IMUL
                     ILOAD(1)
-                    +multiplierB.toInsnNode()
+                    INT(multiplierB)
                     IMUL
                     IXOR
                     ILOAD(1)
-                    +31.toInsnNode()
+                    INT(31)
                     IAND
                     INVOKESTATIC("java/lang/Integer", "rotateLeft", "(II)I")
-                    +xorConst.toInsnNode()
+                    INT(xorConst)
                     IXOR
-                    +finalAdd.toInsnNode()
+                    INT(finalAdd)
                     IADD
                     IRETURN
                 }

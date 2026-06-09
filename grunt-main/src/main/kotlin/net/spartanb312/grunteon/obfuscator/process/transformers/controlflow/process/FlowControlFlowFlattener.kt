@@ -1,30 +1,11 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process
 
+import net.spartanb312.genesis.kotlin.extensions.INT
 import net.spartanb312.genesis.kotlin.extensions.insn.ILOAD
 import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESTATIC
 import net.spartanb312.genesis.kotlin.extensions.insn.ISTORE
-import net.spartanb312.genesis.kotlin.extensions.toInsnNode
 import net.spartanb312.genesis.kotlin.instructions
-import net.spartanb312.grunt.ir.flow.core.FlowBlock
-import net.spartanb312.grunt.ir.flow.core.FlowBlockId
-import net.spartanb312.grunt.ir.flow.core.FlowBlockKind
-import net.spartanb312.grunt.ir.flow.core.FlowBytecodeSlice
-import net.spartanb312.grunt.ir.flow.core.FlowEdge
-import net.spartanb312.grunt.ir.flow.core.FlowEdgeFlag
-import net.spartanb312.grunt.ir.flow.core.FlowEdgeId
-import net.spartanb312.grunt.ir.flow.core.FlowEdgeSemantics
-import net.spartanb312.grunt.ir.flow.core.FlowExceptionRegion
-import net.spartanb312.grunt.ir.flow.core.FlowFrame
-import net.spartanb312.grunt.ir.flow.core.FlowFrameValue
-import net.spartanb312.grunt.ir.flow.core.FlowGotoJump
-import net.spartanb312.grunt.ir.flow.core.FlowGotoMode
-import net.spartanb312.grunt.ir.flow.core.FlowJumpInput
-import net.spartanb312.grunt.ir.flow.core.FlowMethod
-import net.spartanb312.grunt.ir.flow.core.FlowPort
-import net.spartanb312.grunt.ir.flow.core.FlowSwitchJump
-import net.spartanb312.grunt.ir.flow.core.FlowThrowJump
-import net.spartanb312.grunt.ir.flow.core.FlowVerifier
-import net.spartanb312.grunt.ir.flow.core.categorySize
+import net.spartanb312.grunt.ir.flow.core.*
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeGenerator
@@ -32,11 +13,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junk
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.InsnNode
-import org.objectweb.asm.tree.IntInsnNode
-import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
-import org.objectweb.asm.tree.VarInsnNode
+import org.objectweb.asm.tree.*
 
 data class FlowControlFlowFlattenOptions(
     val includeMethodEntry: Boolean = true,
@@ -584,10 +561,10 @@ class FlowControlFlowFlattener(
         )
         return FlowBytecodeSlice(
             instructions {
-                +call.inputKey.toInsnNode()
+                INT(call.inputKey)
                 ISTORE(slot)
                 ILOAD(slot)
-                +call.salt.toInsnNode()
+                INT(call.salt)
                 INVOKESTATIC(call.owner, call.name, call.desc)
                 ISTORE(slot)
             }.toArray().toMutableList()

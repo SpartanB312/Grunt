@@ -27,21 +27,17 @@ the near future
 * [X] Dispatcher protect
 * [X] Bogus jump/loop
 * [X] Shuffle blocks
-* [ ] Junk code
+* [X] Anti simulation
+* [X] Junk code
 
-### Controlflow obfuscate
+### Controlflow jump
 
-* [ ] Bogus conditional jump
-* [ ] Mangled conditional jump
-* [ ] Reversed conditional jump
-* [ ] Table switch multi jump
-* [ ] Trapped switch case
-* [ ] Switch extractor
-* [ ] Mutate conditional jump
-* [ ] Chaos switch multi jump
-* [ ] Controlflow flattening
-* [ ] Anti simulation
-* [ ] Junk code
+* [X] Verifier
+* [X] Bogus jump
+* [X] Mangled jump
+* [ ] Reversed jump
+* [X] Anti simulation
+* [X] Junk code
 
 ### Encrypt
 

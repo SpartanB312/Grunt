@@ -151,14 +151,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val ignoreFailures: Boolean = false
     ) : TransformerConfig()
 
-    private val startTime = AtomicLong(0L)
-
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
-        seq {
-            startTime.set(System.currentTimeMillis())
-        }
-
         val methodCounter = reducibleScopeValue { MergeableCounter() }
         val regionCounter = reducibleScopeValue { MergeableCounter() }
         val blockCounter = reducibleScopeValue { MergeableCounter() }
@@ -168,14 +162,14 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val fakeCaseCounter = reducibleScopeValue { MergeableCounter() }
         val skippedCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
-        val hierarchyKey = globalScopeValue<ClassHierarchy?> {
+        val hierarchyKey = globalScopeValue {
             if (config.junkCases) {
                 ClassHierarchy.build(instance.workRes.allClassCollection, instance.workRes::getClassNode)
             } else {
                 null
             }
         }
-        val junkCallPoolKey = globalScopeValue<JunkCallPool?> {
+        val junkCallPoolKey = globalScopeValue {
             if (config.junkCases) {
                 val classes = if (config.expandedJunkCalls) {
                     instance.workRes.allClassCollection
@@ -187,7 +181,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 null
             }
         }
-        val keyProcessorRegistryKey = globalScopeValue<CffKeyProcessorRegistry?> {
+        val keyProcessorRegistryKey = globalScopeValue {
             if (config.stateKeyMode == FlowStateKeyMode.Inline) {
                 null
             } else {
@@ -271,7 +265,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             keyProcessorRegistryKey.global?.materialize()?.forEach {
                 instance.workRes.addGeneratedClass(it)
             }
-            Logger.info("Took ${System.currentTimeMillis() - startTime.get()}ms")
+            //Logger.info("Took ${System.currentTimeMillis() - startTime.get()}ms")
         }
 
         post {

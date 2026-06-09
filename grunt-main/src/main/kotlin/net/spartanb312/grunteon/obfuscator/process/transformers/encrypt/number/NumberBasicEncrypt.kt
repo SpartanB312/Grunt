@@ -215,16 +215,16 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
         val obfuscated = value xor negative
         return instructions {
             if (nextBoolean()) {
-                +negative.toInsnNode()
+                INT(negative)
                 I2L
-                +obfuscated.toInsnNode()
+                INT(obfuscated)
                 I2L
                 LXOR
                 L2I
             } else {
                 LDC(negative.toLong())
                 L2I
-                +obfuscated.toInsnNode()
+                INT(obfuscated)
                 IXOR
             }
         }
@@ -237,7 +237,7 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
         INT(32)
         INVOKESTATIC("java/lang/Long", "parseUnsignedLong", "(Ljava/lang/String;I)J")
         val obfuscated = key xor value
-        +obfuscated.toInsnNode()
+        LONG(obfuscated)
         LXOR
     }
 

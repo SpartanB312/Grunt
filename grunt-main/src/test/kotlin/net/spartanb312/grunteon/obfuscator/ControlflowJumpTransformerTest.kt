@@ -1,0 +1,161 @@
+package net.spartanb312.grunteon.obfuscator
+
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Label
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.JumpInsnNode
+import org.objectweb.asm.tree.LabelNode
+import org.objectweb.asm.tree.MethodInsnNode
+import org.objectweb.asm.tree.MethodNode
+import java.util.jar.JarEntry
+import java.util.jar.JarOutputStream
+import java.util.zip.ZipFile
+import kotlin.io.path.createTempFile
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.outputStream
+import kotlin.io.path.pathString
+import kotlin.test.Test
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+class ControlflowJumpTransformerTest {
+    @Test
+    fun manglesIfJumpWithFakeLoopAndNaturalCallPop() {
+        val classNode = runControlflowJump(
+            ControlflowJump.Config(
+                chance = 0.0,
+                mangledIfChance = 1.0,
+                maxMangledIfsPerMethod = 1,
+                mangledFakeLoopChance = 1.0,
+                maxPreludeCalls = 1,
+                verifyBytecode = true
+            )
+        )
+        val method = classNode.methods.single { it.name == "choose" }
+
+        assertTrue(method.instructions.toArray().count { isIfOpcode(it.opcode) } >= 3)
+        assertTrue(method.hasBackwardGoto())
+        assertTrue(method.instructions.toArray().any { it is MethodInsnNode && it.opcode == Opcodes.INVOKESTATIC })
+    }
+
+    @Test
+    fun manglesIfJumpWithTerminalJunkReturns() {
+        val classNode = runControlflowJump(
+            ControlflowJump.Config(
+                chance = 0.0,
+                mangledIfChance = 1.0,
+                maxMangledIfsPerMethod = 1,
+                mangledFakeLoopChance = 0.0,
+                maxPreludeCalls = 0,
+                verifyBytecode = true
+            )
+        )
+        val method = classNode.methods.single { it.name == "choose" }
+
+        assertTrue(method.instructions.toArray().count { it.opcode == Opcodes.IRETURN } >= 4)
+        assertTrue(method.instructions.toArray().count { isIfOpcode(it.opcode) } >= 3)
+    }
+
+    private fun runControlflowJump(config: ControlflowJump.Config): ClassNode {
+        val input = createTempFile("grunteon-controlflow-jump-input", ".jar")
+        val output = createTempFile("grunteon-controlflow-jump-output", ".jar")
+        try {
+            JarOutputStream(input.outputStream()).use { jar ->
+                jar.putNextEntry(JarEntry("example/MangledJumpCase.class"))
+                jar.write(branchClass())
+                jar.closeEntry()
+            }
+
+            val instance = Grunteon.create(
+                ObfConfig(
+                    input = input.pathString,
+                    output = output.pathString,
+                    dumpMappings = false,
+                    transformerConfigs = listOf(config)
+                )
+            )
+
+            context(instance.workRes, instance) {
+                instance.execute()
+            }
+
+            ZipFile(output.toFile()).use { zip ->
+                val entry = zip.getEntry("example/MangledJumpCase.class")
+                assertNotNull(entry)
+                val bytes = zip.getInputStream(entry).use { it.readBytes() }
+                val classNode = ClassNode()
+                ClassReader(bytes).accept(classNode, 0)
+                return classNode
+            }
+        } finally {
+            input.deleteIfExists()
+            output.deleteIfExists()
+        }
+    }
+
+    private fun MethodNode.hasBackwardGoto(): Boolean {
+        val nodes = this.instructions.toArray().toList()
+        val labelIndices = nodes
+            .withIndex()
+            .mapNotNull { (index, insn) -> (insn as? LabelNode)?.let { it to index } }
+            .toMap()
+        return nodes.withIndex().any { (index, insn) ->
+            insn is JumpInsnNode &&
+                insn.opcode == Opcodes.GOTO &&
+                (labelIndices[insn.label] ?: Int.MAX_VALUE) < index
+        }
+    }
+
+    private fun isIfOpcode(opcode: Int): Boolean {
+        return opcode in Opcodes.IFEQ..Opcodes.IF_ACMPNE ||
+            opcode == Opcodes.IFNULL ||
+            opcode == Opcodes.IFNONNULL
+    }
+
+    private fun branchClass(): ByteArray {
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "example/MangledJumpCase", null, "java/lang/Object", null)
+
+        writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null).apply {
+            visitCode()
+            visitVarInsn(Opcodes.ALOAD, 0)
+            visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+            visitInsn(Opcodes.RETURN)
+            visitMaxs(0, 0)
+            visitEnd()
+        }
+
+        writer.visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "helper", "(I)I", null, null).apply {
+            visitCode()
+            visitVarInsn(Opcodes.ILOAD, 0)
+            visitInsn(Opcodes.ICONST_1)
+            visitInsn(Opcodes.IADD)
+            visitInsn(Opcodes.IRETURN)
+            visitMaxs(0, 0)
+            visitEnd()
+        }
+
+        writer.visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "choose", "(I)I", null, null).apply {
+            val falseLabel = Label()
+            visitCode()
+            visitVarInsn(Opcodes.ILOAD, 0)
+            visitJumpInsn(Opcodes.IFEQ, falseLabel)
+            visitVarInsn(Opcodes.ILOAD, 0)
+            visitInsn(Opcodes.ICONST_1)
+            visitInsn(Opcodes.IADD)
+            visitInsn(Opcodes.IRETURN)
+            visitLabel(falseLabel)
+            visitVarInsn(Opcodes.ILOAD, 0)
+            visitInsn(Opcodes.INEG)
+            visitInsn(Opcodes.IRETURN)
+            visitMaxs(0, 0)
+            visitEnd()
+        }
+
+        writer.visitEnd()
+        return writer.toByteArray()
+    }
+}

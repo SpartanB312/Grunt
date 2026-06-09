@@ -11,6 +11,8 @@ import net.spartanb312.grunt.ir.flow.core.FlowEdgeId
 import net.spartanb312.grunt.ir.flow.core.FlowEdgeSemantics
 import net.spartanb312.grunt.ir.flow.core.FlowFrame
 import net.spartanb312.grunt.ir.flow.core.FlowFrameValue
+import net.spartanb312.grunt.ir.flow.core.FlowGotoJump
+import net.spartanb312.grunt.ir.flow.core.FlowGotoMode
 import net.spartanb312.grunt.ir.flow.core.FlowIfJump
 import net.spartanb312.grunt.ir.flow.core.FlowJumpInput
 import net.spartanb312.grunt.ir.flow.core.FlowMethod
@@ -57,6 +59,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.MethodNode
@@ -85,10 +88,22 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Junk branch chance")
         val chance: Double = 0.25,
+        @SettingDesc("Chance to expand an eligible IF jump into opaque true gates with fake junk branches. Range: 0.0..1.0")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Mangled IF chance")
+        val mangledIfChance: Double = 0.25,
         @SettingDesc("Maximum junk branches inserted into one method")
         @IntRangeVal(min = 1, max = 32)
         @SettingName("Max branches per method")
         val maxBranchesPerMethod: Int = 4,
+        @SettingDesc("Maximum IF jumps mangled in one method")
+        @IntRangeVal(min = 0, max = 32)
+        @SettingName("Max mangled IFs per method")
+        val maxMangledIfsPerMethod: Int = 4,
+        @SettingDesc("Chance that a mangled IF fake branch loops back to its gate instead of returning through JunkCode. Range: 0.0..1.0")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Mangled fake loop chance")
+        val mangledFakeLoopChance: Double = 0.35,
         @SettingDesc("Maximum junk call preludes emitted before a junk terminal return")
         @IntRangeVal(min = 0, max = 8)
         @SettingName("Max prelude calls")
@@ -142,6 +157,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         }
         val methodCounter = reducibleScopeValue { MergeableCounter() }
         val branchCounter = reducibleScopeValue { MergeableCounter() }
+        val mangledIfCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
 
         parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), config.workerBatchSize.coerceAtLeast(1)) { classNode ->
@@ -169,6 +185,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                             if (result.changed) {
                                 methodCounter.local.add()
                                 branchCounter.local.add(result.branches)
+                                mangledIfCounter.local.add(result.mangledIfs)
                             }
                             result.method
                         },
@@ -193,6 +210,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         post {
             Logger.info(" - ControlflowJump:")
             Logger.info("    Inserted ${branchCounter.global.get()} junk branches")
+            Logger.info("    Mangled ${mangledIfCounter.global.get()} conditional jumps")
             Logger.info("    Transformed ${methodCounter.global.get()} methods")
             if (failureCounter.global.get() != 0) {
                 Logger.warn("    Failed ${failureCounter.global.get()} methods")
@@ -211,7 +229,10 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val result = FlowJunkBranchInserter(
             options = JunkBranchOptions(
                 chance = config.chance.coerceIn(0.0, 1.0),
+                mangledIfChance = config.mangledIfChance.coerceIn(0.0, 1.0),
                 maxBranchesPerMethod = config.maxBranchesPerMethod.coerceAtLeast(1),
+                maxMangledIfsPerMethod = config.maxMangledIfsPerMethod.coerceAtLeast(0),
+                mangledFakeLoopChance = config.mangledFakeLoopChance.coerceIn(0.0, 1.0),
                 junkCodeOptions = JunkCodeOptions(
                     maxPreludeCalls = config.maxPreludeCalls.coerceAtLeast(0),
                     useJunkCallPrelude = !pool.isEmpty(),
@@ -241,7 +262,12 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             Analyzer(BasicInterpreter()).analyze(owner.name, exported)
         }
 
-        return JunkBranchMethod(exported, changed = true, branches = result.branches)
+        return JunkBranchMethod(
+            exported,
+            changed = true,
+            branches = result.branches,
+            mangledIfs = result.mangledIfs
+        )
     }
 
     private fun MethodNode.copyMethodMetadataTo(target: MethodNode) {
@@ -260,19 +286,24 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
 
     private data class JunkBranchOptions(
         val chance: Double,
+        val mangledIfChance: Double,
         val maxBranchesPerMethod: Int,
+        val maxMangledIfsPerMethod: Int,
+        val mangledFakeLoopChance: Double,
         val junkCodeOptions: JunkCodeOptions
     )
 
     private data class JunkBranchResult(
         val changed: Boolean,
-        val branches: Int = 0
+        val branches: Int = 0,
+        val mangledIfs: Int = 0
     )
 
     private data class JunkBranchMethod(
         val method: MethodNode,
         val changed: Boolean,
-        val branches: Int = 0
+        val branches: Int = 0,
+        val mangledIfs: Int = 0
     )
 
     private class FlowJunkBranchInserter(
@@ -283,6 +314,65 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
     ) {
         fun insert(method: FlowMethod): JunkBranchResult {
             val ids = MutableFlowIds(method)
+            val junk = JunkCodeGenerator(callPool, hierarchy, options.junkCodeOptions, random)
+            val mangledIfs = insertMangledIfs(method, ids, junk)
+            val branches = insertJunkEdges(method, ids, junk)
+
+            return JunkBranchResult(
+                changed = branches != 0 || mangledIfs != 0,
+                branches = branches,
+                mangledIfs = mangledIfs
+            )
+        }
+
+        private fun insertMangledIfs(
+            method: FlowMethod,
+            ids: MutableFlowIds,
+            junk: JunkCodeGenerator
+        ): Int {
+            if (options.maxMangledIfsPerMethod <= 0 || options.mangledIfChance <= 0.0) return 0
+            val candidates = method.blocks
+                .filter { it.isEligibleMangledIf(method) }
+                .toMutableList()
+            shuffle(candidates)
+
+            var inserted = 0
+            for (block in candidates) {
+                if (inserted >= options.maxMangledIfsPerMethod) break
+                if (random.nextDouble() >= options.mangledIfChance) continue
+                val jump = block.jump as? FlowIfJump ?: continue
+                val branchEdge = method.edgeFrom(block, jump.branchPort) ?: continue
+                val fallthroughEdge = method.edgeFrom(block, jump.fallthroughPort) ?: continue
+                if (!branchEdge.isEligibleMangledIfEdge(method)) continue
+                if (!fallthroughEdge.isEligibleMangledIfEdge(method)) continue
+                val sourceFrame = runCatching { FlowVerifier.frameAfterJump(block) }.getOrNull() ?: continue
+                if (sourceFrame.hasUninitialized()) continue
+
+                val branchTarget = branchEdge.to
+                val fallthroughTarget = fallthroughEdge.to
+                val branchGate = createMangledGateBlock(ids.block(), sourceFrame)
+                val fallthroughGate = createMangledGateBlock(ids.block(), sourceFrame)
+
+                method.addBlock(branchGate)
+                method.addBlock(fallthroughGate)
+                branchEdge.to = branchGate
+                branchEdge.flags += FlowEdgeFlag.Inserted
+                fallthroughEdge.to = fallthroughGate
+                fallthroughEdge.flags += FlowEdgeFlag.Inserted
+
+                connectMangledGate(method, ids, branchGate, branchTarget, sourceFrame, junk)
+                connectMangledGate(method, ids, fallthroughGate, fallthroughTarget, sourceFrame, junk)
+                inserted++
+            }
+
+            return inserted
+        }
+
+        private fun insertJunkEdges(
+            method: FlowMethod,
+            ids: MutableFlowIds,
+            junk: JunkCodeGenerator
+        ): Int {
             val candidates = method.edges
                 .filter { it.isEligibleJunkEdge(method) }
                 .toMutableList()
@@ -297,11 +387,10 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
 
                 val originalTarget = edge.to
                 val guard = createGuardBlock(ids.block(), sourceFrame)
-                val junk = JunkCodeGenerator(callPool, hierarchy, options.junkCodeOptions, random)
-                    .createTerminalBlock(ids.block(), method, sourceFrame)
+                val terminalJunk = junk.createTerminalBlock(ids.block(), method, sourceFrame)
 
                 method.addBlock(guard)
-                method.addBlock(junk)
+                method.addBlock(terminalJunk)
                 edge.to = guard
                 edge.flags += FlowEdgeFlag.Inserted
                 method.addEdge(
@@ -319,7 +408,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                         id = ids.edge(),
                         from = guard,
                         port = FlowPort.Fallthrough,
-                        to = junk,
+                        to = terminalJunk,
                         semantics = FlowEdgeSemantics.Junk,
                         flags = mutableSetOf(FlowEdgeFlag.Inserted)
                     )
@@ -327,12 +416,101 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 inserted++
             }
 
-            return JunkBranchResult(changed = inserted != 0, branches = inserted)
+            return inserted
+        }
+
+        private fun FlowBlock.isEligibleMangledIf(method: FlowMethod): Boolean {
+            if (kind == FlowBlockKind.Junk || kind == FlowBlockKind.Trap) return false
+            val jump = jump as? FlowIfJump ?: return false
+            val branchEdge = method.edgeFrom(this, jump.branchPort) ?: return false
+            val fallthroughEdge = method.edgeFrom(this, jump.fallthroughPort) ?: return false
+            if (!branchEdge.isEligibleMangledIfEdge(method)) return false
+            if (!fallthroughEdge.isEligibleMangledIfEdge(method)) return false
+            return runCatching {
+                val sourceFrame = FlowVerifier.frameAfterJump(this)
+                !sourceFrame.hasUninitialized()
+            }.getOrDefault(false)
+        }
+
+        private fun FlowEdge.isEligibleMangledIfEdge(method: FlowMethod): Boolean {
+            if (semantics != FlowEdgeSemantics.Real) return false
+            if (FlowEdgeFlag.DoNotMutate in flags || FlowEdgeFlag.LayoutSensitive in flags) return false
+            if (FlowEdgeFlag.Inserted in flags) return false
+            if (from.kind == FlowBlockKind.Junk || to.kind == FlowBlockKind.Junk) return false
+            if (from !in method.blocks || to !in method.blocks) return false
+            return true
+        }
+
+        private fun connectMangledGate(
+            method: FlowMethod,
+            ids: MutableFlowIds,
+            gate: FlowBlock,
+            realTarget: FlowBlock,
+            frame: FlowFrame,
+            junk: JunkCodeGenerator
+        ) {
+            val fakeTarget = if (random.nextDouble() < options.mangledFakeLoopChance) {
+                createMangledLoopBlock(method, ids, gate, frame, junk)
+            } else {
+                junk.createTerminalBlock(ids.block(), method, frame).also { method.addBlock(it) }
+            }
+            method.addEdge(
+                FlowEdge(
+                    id = ids.edge(),
+                    from = gate,
+                    port = FlowPort.Branch,
+                    to = realTarget,
+                    semantics = FlowEdgeSemantics.OpaqueTrue,
+                    flags = mutableSetOf(FlowEdgeFlag.Inserted)
+                )
+            )
+            method.addEdge(
+                FlowEdge(
+                    id = ids.edge(),
+                    from = gate,
+                    port = FlowPort.Fallthrough,
+                    to = fakeTarget,
+                    semantics = FlowEdgeSemantics.Junk,
+                    flags = mutableSetOf(FlowEdgeFlag.Inserted)
+                )
+            )
+        }
+
+        private fun createMangledLoopBlock(
+            method: FlowMethod,
+            ids: MutableFlowIds,
+            gate: FlowBlock,
+            frame: FlowFrame,
+            junk: JunkCodeGenerator
+        ): FlowBlock {
+            val body = FlowBytecodeSlice()
+            junk.appendStackNeutralJunk(body, minimumCalls = 1)
+            val loop = FlowBlock(
+                id = ids.block(),
+                kind = FlowBlockKind.Bogus,
+                body = body,
+                jump = FlowGotoJump(FlowGotoMode.ExplicitGoto),
+                entryFrame = frame,
+                bodyExitFrame = frame
+            )
+            method.addBlock(loop)
+            method.addEdge(
+                FlowEdge(
+                    id = ids.edge(),
+                    from = loop,
+                    port = FlowPort.Next,
+                    to = gate,
+                    semantics = FlowEdgeSemantics.Bogus,
+                    flags = mutableSetOf(FlowEdgeFlag.Inserted)
+                )
+            )
+            return loop
         }
 
         private fun FlowEdge.isEligibleJunkEdge(method: FlowMethod): Boolean {
             if (semantics != FlowEdgeSemantics.Real) return false
             if (FlowEdgeFlag.DoNotMutate in flags || FlowEdgeFlag.LayoutSensitive in flags) return false
+            if (FlowEdgeFlag.Inserted in flags) return false
             if (port == FlowPort.Fallthrough) return false
             if (from.kind == FlowBlockKind.Junk || to.kind == FlowBlockKind.Junk) return false
             if (from !in method.blocks || to !in method.blocks) return false
@@ -357,6 +535,62 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 ),
                 entryFrame = frame,
                 bodyExitFrame = frame
+            )
+        }
+
+        private fun createMangledGateBlock(
+            id: FlowBlockId,
+            frame: FlowFrame
+        ): FlowBlock {
+            return FlowBlock(
+                id = id,
+                kind = FlowBlockKind.Bogus,
+                body = FlowBytecodeSlice(),
+                jump = createOpaqueTrueJump(),
+                entryFrame = frame,
+                bodyExitFrame = frame
+            )
+        }
+
+        private fun createOpaqueTrueJump(): FlowIfJump {
+            val instructions = mutableListOf<AbstractInsnNode>()
+            val opcode = when (random.nextInt(6)) {
+                0 -> {
+                    instructions += InsnNode(Opcodes.ICONST_0)
+                    Opcodes.IFEQ
+                }
+                1 -> {
+                    instructions += InsnNode(Opcodes.ICONST_1)
+                    Opcodes.IFNE
+                }
+                2 -> {
+                    instructions += InsnNode(Opcodes.ICONST_1)
+                    instructions += InsnNode(Opcodes.ICONST_1)
+                    Opcodes.IF_ICMPEQ
+                }
+                3 -> {
+                    instructions += InsnNode(Opcodes.ICONST_0)
+                    instructions += InsnNode(Opcodes.ICONST_1)
+                    Opcodes.IF_ICMPLT
+                }
+                4 -> {
+                    instructions += InsnNode(Opcodes.ICONST_1)
+                    instructions += InsnNode(Opcodes.ICONST_0)
+                    Opcodes.IF_ICMPGT
+                }
+                else -> {
+                    instructions += InsnNode(Opcodes.ICONST_0)
+                    instructions += InsnNode(Opcodes.ICONST_0)
+                    Opcodes.IF_ICMPGE
+                }
+            }
+            return FlowIfJump(
+                opcode = opcode,
+                input = FlowJumpInput.Generated(
+                    code = FlowBytecodeSlice(instructions),
+                    produced = List(instructions.size) { FlowFrameValue.Int },
+                    guarantee = FlowPredicateGuarantee.AlwaysTrue
+                )
             )
         }
 

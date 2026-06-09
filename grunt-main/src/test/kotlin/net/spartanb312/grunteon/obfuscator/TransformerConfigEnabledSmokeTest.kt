@@ -3,6 +3,7 @@ package net.spartanb312.grunteon.obfuscator
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlatteningSSA
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.FlowIRRoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.SSARoundTrip
 import kotlin.io.path.createTempFile
@@ -105,6 +106,27 @@ class TransformerConfigEnabledSmokeTest {
             val text = path.readText()
             assertContains(text, "ControlflowFlatteningSSA.Config")
             assertIs<ControlflowFlatteningSSA.Config>(ObfConfig.read(path).transformerConfigs.single())
+        } finally {
+            path.deleteIfExists()
+        }
+    }
+
+    @Test
+    fun roundTripsControlflowJumpConfig() {
+        val path = createTempFile("grunteon-controlflow-jump-config", ".json")
+        try {
+            ObfConfig.write(
+                ObfConfig(
+                    transformerConfigs = listOf(ControlflowJump.Config())
+                ),
+                path
+            )
+            val text = path.readText()
+            assertContains(text, "ControlflowJump.Config")
+            assertContains(text, "\"mangledIfChance\": 0.25")
+            assertContains(text, "\"maxMangledIfsPerMethod\": 4")
+            assertContains(text, "\"mangledFakeLoopChance\": 0.35")
+            assertIs<ControlflowJump.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()
         }

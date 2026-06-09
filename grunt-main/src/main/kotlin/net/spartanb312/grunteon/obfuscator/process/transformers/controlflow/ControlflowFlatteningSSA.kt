@@ -206,7 +206,7 @@ class ControlflowFlatteningSSA : Transformer<ControlflowFlatteningSSA.Config>(
         }
 
         seq {
-            Logger.info("Took ${System.currentTimeMillis() - startTime.get()}ms")
+            Logger.info(" ${System.currentTimeMillis() - startTime.get()}ms")
         }
 
         post {
