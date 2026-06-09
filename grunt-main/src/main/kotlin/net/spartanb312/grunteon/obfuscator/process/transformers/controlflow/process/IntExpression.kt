@@ -20,6 +20,10 @@ internal data class IntConstChain(
     }
 
     companion object {
+        fun literal(value: Int): IntConstChain {
+            return IntConstChain(value, emptyList())
+        }
+
         fun random(random: UniformRandomProvider, stepsRange: IntRange): IntConstChain {
             val stepCount = random.nextCount(stepsRange)
             return IntConstChain(

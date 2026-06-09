@@ -26,6 +26,13 @@ enum class FlowStateKeyMode(override val displayName: CharSequence) : DisplayEnu
     Mixed("Mixed")
 }
 
+@Serializable
+enum class CffKeyProcessorComplexity(override val displayName: CharSequence) : DisplayEnum {
+    Light("Light"),
+    Balanced("Balanced"),
+    Heavy("Heavy")
+}
+
 data class FlowStateKeyProcessorCall(
     val owner: String,
     val name: String,
@@ -39,12 +46,13 @@ interface FlowStateKeyProcessor {
 }
 
 data class CffKeyProcessorOptions(
+    val complexity: CffKeyProcessorComplexity = CffKeyProcessorComplexity.Light,
     val minMainSteps: Int = 1,
     val maxMainSteps: Int = 3,
     val minExtraSteps: Int = 0,
     val maxExtraSteps: Int = 1,
-    val minChainSteps: Int = 1,
-    val maxChainSteps: Int = 2
+    val minChainSteps: Int = 0,
+    val maxChainSteps: Int = 0
 ) {
     val mainStepRange: IntRange
         get() = normalizedIntRange(minMainSteps, maxMainSteps, minimum = 1)
@@ -54,6 +62,12 @@ data class CffKeyProcessorOptions(
 
     val chainStepRange: IntRange
         get() = normalizedIntRange(minChainSteps, maxChainSteps, minimum = 0)
+
+    val effectiveChainStepRange: IntRange
+        get() = if (complexity == CffKeyProcessorComplexity.Light) 0..0 else chainStepRange
+
+    val encodeArguments: Boolean
+        get() = complexity != CffKeyProcessorComplexity.Light
 }
 
 class CffKeyProcessorRegistry(
@@ -177,8 +191,8 @@ class CffKeyProcessorRegistry(
         val inputKey: Int,
         val targetKey: Int,
         val salt: Int,
-        val keyDecoder: IntConstChain,
-        val saltDecoder: IntConstChain,
+        val keyDecoder: IntConstChain?,
+        val saltDecoder: IntConstChain?,
         val steps: List<ActionStep>,
         val correction: FinalCorrection
     ) {
@@ -190,14 +204,18 @@ class CffKeyProcessorRegistry(
             ) {
                 INSTRUCTIONS {
                     ILOAD(0)
-                    keyDecoder.emit(this)
-                    IXOR
-                    ISTORE(0)
-                    ILOAD(1)
-                    saltDecoder.emit(this)
-                    IXOR
-                    ISTORE(1)
-                    ILOAD(0)
+                    keyDecoder?.let {
+                        it.emit(this)
+                        IXOR
+                        ISTORE(0)
+                        ILOAD(0)
+                    }
+                    saltDecoder?.let {
+                        ILOAD(1)
+                        it.emit(this)
+                        IXOR
+                        ISTORE(1)
+                    }
                     steps.forEach { it.emit(this) }
                     correction.emit(this)
                     IRETURN
@@ -215,10 +233,11 @@ class CffKeyProcessorRegistry(
                 options: CffKeyProcessorOptions,
                 random: UniformRandomProvider
             ): ProcessorActionPlan {
-                val keyDecoder = IntConstChain.random(random, options.chainStepRange)
-                val saltDecoder = IntConstChain.random(random, options.chainStepRange)
-                val encodedInputKey = inputKey xor keyDecoder.value
-                val encodedSalt = salt xor saltDecoder.value
+                val chainRange = options.effectiveChainStepRange
+                val keyDecoder = if (options.encodeArguments) IntConstChain.random(random, chainRange) else null
+                val saltDecoder = if (options.encodeArguments) IntConstChain.random(random, chainRange) else null
+                val encodedInputKey = inputKey xor (keyDecoder?.value ?: 0)
+                val encodedSalt = salt xor (saltDecoder?.value ?: 0)
                 val steps = createSteps(random, options)
                 val prefix = steps.fold(inputKey) { value, step -> step.apply(value, salt) }
                 val correction = FinalCorrection.create(prefix, targetKey, options, random)
@@ -241,36 +260,69 @@ class CffKeyProcessorRegistry(
                 random: UniformRandomProvider,
                 options: CffKeyProcessorOptions
             ): List<ActionStep> {
-                val chainRange = options.chainStepRange
+                val chainRange = options.effectiveChainStepRange
                 val mainCount = random.nextCount(options.mainStepRange)
                 val extraCount = random.nextCount(options.extraStepRange)
                 val steps = mutableListOf<ActionStep>()
                 repeat(mainCount) {
-                    steps += createMainStep(random, chainRange)
+                    steps += createMainStep(random, chainRange, options.complexity)
                 }
                 repeat(extraCount) {
-                    steps += createExtraStep(random, chainRange)
+                    steps += createExtraStep(random, chainRange, options.complexity)
                 }
                 return steps.shuffled(random)
             }
 
-            private fun createMainStep(random: UniformRandomProvider, chainRange: IntRange): ActionStep {
-                return when (random.nextInt(5)) {
-                    0 -> ActionStep.XorSalt
-                    1 -> ActionStep.AddSaltRotate(1 + random.nextInt(31))
-                    2 -> ActionStep.XorSaltMul(nextOddInt(random))
-                    3 -> ActionStep.RotateBySalt
-                    else -> ActionStep.AddSaltChainMul(IntConstChain.random(random, chainRange), nextOddInt(random))
+            private fun createMainStep(
+                random: UniformRandomProvider,
+                chainRange: IntRange,
+                complexity: CffKeyProcessorComplexity
+            ): ActionStep {
+                return when (complexity) {
+                    CffKeyProcessorComplexity.Light -> when (random.nextInt(3)) {
+                        0 -> ActionStep.XorSalt
+                        1 -> ActionStep.AddSalt
+                        else -> ActionStep.SubSalt
+                    }
+                    CffKeyProcessorComplexity.Balanced -> when (random.nextInt(4)) {
+                        0 -> ActionStep.XorSalt
+                        1 -> ActionStep.AddSalt
+                        2 -> ActionStep.AddSaltRotate(1 + random.nextInt(7))
+                        else -> ActionStep.XorSaltMul(nextSmallOddInt(random))
+                    }
+                    CffKeyProcessorComplexity.Heavy -> when (random.nextInt(5)) {
+                        0 -> ActionStep.XorSalt
+                        1 -> ActionStep.AddSaltRotate(1 + random.nextInt(31))
+                        2 -> ActionStep.XorSaltMul(nextOddInt(random))
+                        3 -> ActionStep.RotateBySalt
+                        else -> ActionStep.AddSaltChainMul(IntConstChain.random(random, chainRange), nextOddInt(random))
+                    }
                 }
             }
 
-            private fun createExtraStep(random: UniformRandomProvider, chainRange: IntRange): ActionStep {
-                return when (random.nextInt(5)) {
-                    0 -> ActionStep.AddConst(IntConstChain.random(random, chainRange))
-                    1 -> ActionStep.XorConst(IntConstChain.random(random, chainRange))
-                    2 -> ActionStep.MulConst(IntConstChain.endingAt(nextOddInt(random), chainRange, random))
-                    3 -> ActionStep.XorSaltChain(IntConstChain.random(random, chainRange))
-                    else -> ActionStep.AddSaltRotate(1 + random.nextInt(31))
+            private fun createExtraStep(
+                random: UniformRandomProvider,
+                chainRange: IntRange,
+                complexity: CffKeyProcessorComplexity
+            ): ActionStep {
+                return when (complexity) {
+                    CffKeyProcessorComplexity.Light -> when (random.nextInt(2)) {
+                        0 -> ActionStep.AddConst(IntConstChain.literal(nextSmallInt(random)))
+                        else -> ActionStep.XorConst(IntConstChain.literal(nextSmallInt(random)))
+                    }
+                    CffKeyProcessorComplexity.Balanced -> when (random.nextInt(4)) {
+                        0 -> ActionStep.AddConst(IntConstChain.random(random, chainRange))
+                        1 -> ActionStep.XorConst(IntConstChain.random(random, chainRange))
+                        2 -> ActionStep.XorSaltChain(IntConstChain.random(random, chainRange))
+                        else -> ActionStep.AddSaltRotate(1 + random.nextInt(7))
+                    }
+                    CffKeyProcessorComplexity.Heavy -> when (random.nextInt(5)) {
+                        0 -> ActionStep.AddConst(IntConstChain.random(random, chainRange))
+                        1 -> ActionStep.XorConst(IntConstChain.random(random, chainRange))
+                        2 -> ActionStep.MulConst(IntConstChain.endingAt(nextOddInt(random), chainRange, random))
+                        3 -> ActionStep.XorSaltChain(IntConstChain.random(random, chainRange))
+                        else -> ActionStep.AddSaltRotate(1 + random.nextInt(31))
+                    }
                 }
             }
 
@@ -297,6 +349,26 @@ class CffKeyProcessorRegistry(
             override fun emit(builder: InsnListBuilder) = with(builder) {
                 ILOAD(1)
                 IXOR
+                Unit
+            }
+        }
+
+        data object AddSalt : ActionStep {
+            override fun apply(value: Int, salt: Int): Int = value + salt
+
+            override fun emit(builder: InsnListBuilder) = with(builder) {
+                ILOAD(1)
+                IADD
+                Unit
+            }
+        }
+
+        data object SubSalt : ActionStep {
+            override fun apply(value: Int, salt: Int): Int = value - salt
+
+            override fun emit(builder: InsnListBuilder) = with(builder) {
+                ILOAD(1)
+                ISUB
                 Unit
             }
         }
@@ -435,10 +507,19 @@ class CffKeyProcessorRegistry(
                 options: CffKeyProcessorOptions,
                 random: UniformRandomProvider
             ): FinalCorrection {
+                val literal = options.complexity == CffKeyProcessorComplexity.Light
+                fun const(value: Int): IntConstChain {
+                    return if (literal) {
+                        IntConstChain.literal(value)
+                    } else {
+                        IntConstChain.endingAt(value, options.chainStepRange, random)
+                    }
+                }
+
                 return when (random.nextInt(3)) {
-                    0 -> Add(IntConstChain.endingAt(target - current, options.chainStepRange, random))
-                    1 -> Sub(IntConstChain.endingAt(current - target, options.chainStepRange, random))
-                    else -> Xor(IntConstChain.endingAt(current xor target, options.chainStepRange, random))
+                    0 -> Add(const(target - current))
+                    1 -> Sub(const(current - target))
+                    else -> Xor(const(current xor target))
                 }
             }
         }
@@ -446,5 +527,15 @@ class CffKeyProcessorRegistry(
 
     companion object {
         const val ActionDesc = "(II)I"
+
+        private fun nextSmallInt(random: UniformRandomProvider): Int {
+            val magnitude = 1 + random.nextInt(16)
+            return if (random.nextBoolean()) magnitude else -magnitude
+        }
+
+        private fun nextSmallOddInt(random: UniformRandomProvider): Int {
+            val magnitude = 3 + random.nextInt(7) * 2
+            return if (random.nextBoolean()) magnitude else -magnitude
+        }
     }
 }

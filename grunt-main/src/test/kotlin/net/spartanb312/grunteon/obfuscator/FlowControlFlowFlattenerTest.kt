@@ -10,6 +10,7 @@ import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorComplexity
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorRegistry
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattenOptions
@@ -343,6 +344,7 @@ class FlowControlFlowFlattenerTest {
             classMarker = "Minimal",
             classExists = { false },
             options = CffKeyProcessorOptions(
+                complexity = CffKeyProcessorComplexity.Light,
                 minMainSteps = 1,
                 maxMainSteps = 1,
                 minExtraSteps = 0,
@@ -356,7 +358,10 @@ class FlowControlFlowFlattenerTest {
         val classNode = registry.materialize().single()
         val action = classNode.methods.single { it.name == call.name }
 
-        assertTrue(action.instructions.toArray().count { it.isSaltLoad() } >= 2)
+        val executable = action.instructions.toArray().filter { it.opcode >= 0 }
+        assertTrue(executable.count { it.isSaltLoad() } >= 1)
+        assertTrue(executable.size <= 6)
+        assertFalse(executable.any { it.opcode == Opcodes.INVOKESTATIC || it.opcode == Opcodes.IMUL })
         val generated = GeneratedClassLoader().define(classNode)
         val method = generated.getDeclaredMethod(
             call.name,
