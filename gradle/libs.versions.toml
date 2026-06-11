@@ -55,6 +55,10 @@ jpbc-api = { module = "com.github.emilianobonassi.jpbc:jpbc-api", version.ref = 
 jpbc-plaf = { module = "com.github.emilianobonassi.jpbc:jpbc-plaf", version.ref = "jpbc" }
 jpbc-pbc = { module = "com.github.emilianobonassi.jpbc:jpbc-pbc", version.ref = "jpbc" }
 
+# Compose
+compose-fluent = { module = "io.github.compose-fluent:fluent", version.ref = "compose-fluent" }
+compose-fluent-icons = { module = "io.github.compose-fluent:fluent-icons-extended", version.ref = "compose-fluent" }
+
 [bundles]
 asm = ["asm", "asm-tree", "asm-util", "asm-commons", "asm-analysis"]
 apache-common = ["apache-math", "apache-lang", "apache-rng-simple"]
