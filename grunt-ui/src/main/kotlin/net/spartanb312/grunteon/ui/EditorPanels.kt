@@ -11,13 +11,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.Text
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.*
 
 @Composable
 fun Header(
@@ -28,7 +29,6 @@ fun Header(
     onReload: () -> Unit,
     onSave: () -> Unit,
 ) {
-    val palette = LocalUiPalette.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -37,17 +37,17 @@ fun Header(
         Column(Modifier.weight(1f)) {
             Text(
                 "Pipeline Editor",
-                color = palette.text,
+                color = UiTextPrimary(),
                 style = FluentTheme.typography.title,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 "$enabledCount enabled / $nodeCount nodes. $warningCount order warnings.",
-                color = if (warningCount == 0) palette.muted else palette.warning,
+                color = if (warningCount == 0) UiTextSecondary() else UiWarningColor(),
                 style = FluentTheme.typography.body
             )
         }
-        Text(status, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(status, color = UiTextSecondary(), maxLines = 1, overflow = TextOverflow.Ellipsis)
         UiOutlinedButton(onClick = onReload) { Text("Reload") }
         UiButton(onClick = onSave) { Text("Save config") }
     }
@@ -62,11 +62,10 @@ fun TransformerLibrary(
     onAdd: (TransformerDefinition) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val palette = LocalUiPalette.current
     PanelSurface(modifier) {
-        Column(Modifier.fillMaxHeight().padding(12.dp)) {
+        Column(Modifier.fillMaxHeight().padding(horizontal = 12.dp, vertical = 12.dp)) {
             Text("Transformer Library", fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             UiTextField(
                 value = search,
                 onValueChange = onSearchChange,
@@ -74,7 +73,7 @@ fun TransformerLibrary(
                 singleLine = true,
                 label = "Search",
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             val visibleDefinitions = if (showHiddenTransformers) definitions else definitions.filterNot { it.isHidden }
             val filtered = visibleDefinitions.filter {
                 search.isBlank() ||
@@ -86,9 +85,9 @@ fun TransformerLibrary(
                     item {
                         Text(
                             category.name,
-                            color = palette.muted,
+                            color = UiTextSecondary(),
                             style = FluentTheme.typography.bodyStrong,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
                         )
                     }
                     items(categoryDefinitions) { definition ->
@@ -102,21 +101,20 @@ fun TransformerLibrary(
 
 @Composable
 private fun LibraryItem(definition: TransformerDefinition, onAdd: (TransformerDefinition) -> Unit) {
-    val palette = LocalUiPalette.current
     val labelColor = when {
-        definition.isHidden -> palette.warning
-        definition.isPluginProvided -> Color(0xFF8FD4FF)
-        else -> palette.text
+        definition.isHidden -> UiWarningColor()
+        definition.isPluginProvided -> UiAccentColor()
+        else -> UiTextPrimary()
     }
     SectionSurface(Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(10.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Column(Modifier.weight(1f)) {
                 Text(definition.label, color = labelColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(definition.description, color = palette.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(definition.description, color = UiTextSecondary(), maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             UiOutlinedButton(onClick = { onAdd(definition) }) {
                 Text("Add")
@@ -138,13 +136,12 @@ fun PipelineStack(
     onEnabledChange: (Long, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val palette = LocalUiPalette.current
     PanelSurface(modifier) {
-        Column(Modifier.fillMaxHeight().padding(12.dp)) {
+        Column(Modifier.fillMaxHeight().padding(horizontal = 12.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Pipeline Stack", fontWeight = FontWeight.Bold)
-                    Text("Execution order is top to bottom. Duplicate transformers are allowed.", color = palette.muted)
+                    Text("Execution order is top to bottom. Duplicate transformers are allowed.")
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -192,39 +189,88 @@ private fun PipelineNodeCard(
     onDelete: () -> Unit,
     onEnabledChange: (Boolean) -> Unit,
 ) {
-    val palette = LocalUiPalette.current
     val borderColor = when {
-        warning != null -> palette.warning
-        selected -> palette.accent
-        else -> palette.stroke
+        warning != null -> UiWarningColor()
+        selected -> UiAccentColor()
+        else -> UiBorderColor()
     }
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 118.dp)
             .clip(UiPanelShape)
-            .background(if (selected) palette.selectedPanel else palette.panelAlt)
+            .background(if (selected) UiSelectedPanelColor() else UiSectionColor())
             .border(BorderStroke(1.dp, borderColor), UiPanelShape)
             .clickable(onClick = onSelect)
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("#${index + 1}", color = palette.muted, fontFamily = FontFamily.Monospace)
-                Column(Modifier.weight(1f)) {
+        Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                UiIconButton(
+                    imageVector = Icons.Default.ArrowSortUp,
+                    contentDescription = "Move up",
+                    onClick = onMoveUp,
+                    enabled = canMoveUp,
+                    modifier = Modifier.size(32.dp)
+                )
+                io.github.composefluent.component.Icon(
+                    imageVector = Icons.Default.ReOrderDotsVertical,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                UiIconButton(
+                    imageVector = Icons.Default.ArrowSortDown,
+                    contentDescription = "Move down",
+                    onClick = onMoveDown,
+                    enabled = canMoveDown,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            Text(
+                "#${index + 1}",
+                color = UiTextSecondary(),
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier.padding(top = 26.dp)
+            )
+            Column(Modifier.weight(1f).padding(top = 22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text(definition?.label ?: node.config::class.simpleName.orEmpty(), fontWeight = FontWeight.SemiBold)
-                    Text(definition?.category?.name ?: "Unknown", color = palette.muted)
+                    Text(definition?.category?.name ?: "Unknown", color = UiTextSecondary())
                 }
+                if (warning != null) {
+                    Text(warning, color = UiWarningColor(), style = FluentTheme.typography.caption)
+                } else {
+                    Text(
+                        definition?.description ?: node.config::class.qualifiedName.orEmpty(),
+                        color = UiTextSecondary()
+                    )
+                }
+            }
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.height(90.dp)
+            ) {
                 UiSwitch(checked = node.config.enabled, onCheckedChange = onEnabledChange)
-            }
-            if (warning != null) {
-                Text(warning, color = palette.warning, style = FluentTheme.typography.caption)
-            } else {
-                Text(definition?.description ?: node.config::class.qualifiedName.orEmpty(), color = palette.muted)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                UiOutlinedButton(onClick = onMoveUp, enabled = canMoveUp) { Text("Up") }
-                UiOutlinedButton(onClick = onMoveDown, enabled = canMoveDown) { Text("Down") }
-                UiOutlinedButton(onClick = onDuplicate) { Text("Duplicate") }
-                UiTextButton(onClick = onDelete) { Text("Delete") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    UiIconButton(
+                        imageVector = Icons.Default.CopyAdd,
+                        contentDescription = "Duplicate",
+                        onClick = onDuplicate,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    UiIconButton(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        onClick = onDelete,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
         }
     }
@@ -232,12 +278,11 @@ private fun PipelineNodeCard(
 
 @Composable
 private fun VirtualMappingApplier() {
-    val palette = LocalUiPalette.current
     NestedSurface(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp)) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("MappingApplier", color = palette.muted, fontFamily = FontFamily.Monospace)
+            Text("MappingApplier", color = UiTextSecondary(), fontFamily = FontFamily.Monospace)
             Spacer(Modifier.width(10.dp))
-            Text("auto inserted after the last renamer source", color = palette.muted)
+            Text("auto inserted after the last renamer source", color = UiTextSecondary())
         }
     }
 }

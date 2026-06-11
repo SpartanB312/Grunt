@@ -20,7 +20,6 @@ fun ObfuscationPage(
     onObfuscate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val palette = LocalUiPalette.current
     val scrollState = rememberScrollState()
 
     LaunchedEffect(logs.size) {
@@ -34,7 +33,7 @@ fun ObfuscationPage(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Obfuscation", style = FluentTheme.typography.title, fontWeight = FontWeight.Bold)
-                Text("Output information from work instance", color = palette.muted)
+                Text("Output information from work instance", color = UiTextSecondary())
             }
             NestedSurface(Modifier.fillMaxWidth().weight(1f)) {
                 Column(
@@ -42,23 +41,23 @@ fun ObfuscationPage(
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     if (logs.isEmpty()) {
-                        Text("No obfuscation run yet.", color = palette.muted, fontFamily = FontFamily.Monospace)
+                        Text("No obfuscation run yet.", color = UiTextSecondary(), fontFamily = FontFamily.Monospace)
                     } else {
                         logs.forEach { line ->
-                            Text(line, fontFamily = FontFamily.Monospace, color = palette.text)
+                            Text(line, fontFamily = FontFamily.Monospace, color = UiTextPrimary())
                         }
                     }
                 }
             }
             SectionSurface(Modifier.fillMaxWidth().height(120.dp)) {
                 Box(Modifier.fillMaxSize().padding(12.dp)) {
-                    Text("Reserved", color = palette.muted)
+                    Text("Reserved", color = UiTextSecondary())
                     Row(
                         modifier = Modifier.align(Alignment.BottomEnd),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (running) Text("Running...", color = palette.muted)
+                        if (running) Text("Running...", color = UiTextSecondary())
                         UiButton(onClick = onObfuscate, enabled = !running) {
                             Text("Obfuscate")
                         }

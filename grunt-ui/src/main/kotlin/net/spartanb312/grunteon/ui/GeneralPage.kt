@@ -24,7 +24,6 @@ fun GeneralPage(
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val palette = LocalUiPalette.current
     Column(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -38,12 +37,12 @@ fun GeneralPage(
                 Text(
                     "General",
                     style = FluentTheme.typography.title,
-                    color = palette.text,
+                    color = UiTextPrimary(),
                     fontWeight = FontWeight.Bold
                 )
-                Text("Top-level ObfConfig options.", color = palette.muted)
+                Text("Top-level ObfConfig options.", color = UiTextSecondary())
             }
-            Text(status, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(status, color = UiTextSecondary(), maxLines = 1, overflow = TextOverflow.Ellipsis)
             UiOutlinedButton(onClick = onReload) { Text("Reload") }
             UiButton(onClick = onSave) { Text("Save config") }
         }
@@ -153,21 +152,19 @@ fun GeneralPage(
 
 @Composable
 private fun GeneralTipsPlaceholder(modifier: Modifier = Modifier) {
-    val palette = LocalUiPalette.current
     SectionSurface(modifier.fillMaxWidth().heightIn(min = 180.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Tips", color = palette.text, fontWeight = FontWeight.SemiBold)
-            Text("Reserved for contextual help.", color = palette.muted)
+            Text("Tips", color = UiTextPrimary(), fontWeight = FontWeight.SemiBold)
+            Text("Reserved for contextual help.", color = UiTextSecondary())
         }
     }
 }
 
 @Composable
 private fun GeneralSection(title: String, content: @Composable () -> Unit) {
-    val palette = LocalUiPalette.current
     SectionSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, color = palette.text, fontWeight = FontWeight.SemiBold)
+            Text(title, color = UiTextPrimary(), fontWeight = FontWeight.SemiBold)
             content()
         }
     }
@@ -236,24 +233,22 @@ private fun StringListOption(label: String, value: List<String>, onChange: (List
 
 @Composable
 private fun BooleanOption(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
-    val palette = LocalUiPalette.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         UiCheckbox(checked = value, onCheckedChange = onChange)
-        Text(label, color = palette.text)
+        Text(label, color = UiTextPrimary())
     }
 }
 
 @Composable
 private fun IntSliderOption(label: String, value: Int, range: IntRange, onChange: (Int) -> Unit) {
-    val palette = LocalUiPalette.current
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, color = palette.text)
-            Text(value.toString(), color = palette.text)
+            Text(label, color = UiTextPrimary())
+            Text(value.toString(), color = UiTextPrimary())
         }
         UiSlider(
             value = value.toFloat().coerceIn(range.first.toFloat(), range.last.toFloat()),

@@ -3,20 +3,26 @@ package net.spartanb312.grunteon.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
 import io.github.composefluent.darkColors
 import io.github.composefluent.lightColors
 import io.github.vinceglb.filekit.FileKit
 import kotlinx.coroutines.launch
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.ObfConfig
+import net.spartanb312.grunteon.obfuscator.SUBTITLE
+import net.spartanb312.grunteon.obfuscator.VERSION
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import javax.swing.SwingUtilities
@@ -59,7 +65,8 @@ fun App() {
     var obfuscationRunning by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val baseDensity = LocalDensity.current
-    val palette = if (themeMode == ThemeMode.Dark) DarkPalette else LightPalette
+    val fluentColors =
+        if (themeMode == ThemeMode.Dark) darkColors(Color(0xFF0078D4)) else lightColors(Color(0xFF0078D4))
     val nodes = remember { mutableStateListOf<PipelineNode>() }
     val obfuscationLogs = remember { mutableStateListOf<String>() }
 
@@ -213,14 +220,13 @@ fun App() {
 
     CompositionLocalProvider(
         LocalDensity provides Density(baseDensity.density, BaseFontScale * fontScale),
-        LocalUiPalette provides palette,
     ) {
-        FluentTheme(colors = if (themeMode == ThemeMode.Dark) darkColors() else lightColors()) {
+        FluentTheme(colors = fluentColors) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(palette.background)
-                    .padding(16.dp)
+                    .background(UiAppBackgroundColor())
+                    .padding(start = 10.dp, top = 8.dp, end = 10.dp)
             ) {
                 if (!editorReady) {
                     WelcomeScreen(
@@ -260,108 +266,134 @@ fun App() {
                     onPageChange = { page = it },
                     fontScale = fontScale,
                 )
-                Spacer(Modifier.height(14.dp))
-                when (page) {
-                    AppPage.General -> GeneralPage(
-                        config = baseConfig,
-                        status = status,
-                        onConfigChange = { baseConfig = it },
-                        onReload = ::reloadConfig,
-                        onSave = ::saveConfig,
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                    AppPage.Editor -> {
-                        Header(
-                            nodeCount = nodes.size,
-                            enabledCount = nodes.count { it.config.enabled },
-                            warningCount = orderWarnings.size,
+                Spacer(Modifier.height(10.dp))
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    when (page) {
+                        AppPage.General -> GeneralPage(
+                            config = baseConfig,
                             status = status,
+                            onConfigChange = { baseConfig = it },
                             onReload = ::reloadConfig,
                             onSave = ::saveConfig,
+                            modifier = Modifier.fillMaxSize()
                         )
-                        Spacer(Modifier.height(14.dp))
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
-                            TransformerLibrary(
-                                definitions = definitions,
-                                showHiddenTransformers = baseConfig.showHiddenTransformers,
-                                search = search,
-                                onSearchChange = { search = it },
-                                onAdd = ::addNode,
-                                modifier = Modifier.width(290.dp).fillMaxHeight()
-                            )
-                            PipelineStack(
-                                nodes = nodes,
-                                definitions = definitions,
-                                selectedNodeId = selectedNodeId,
-                                orderWarnings = orderWarnings,
-                                onSelect = { selectedNodeId = it },
-                                onMove = { from, to ->
-                                    if (from in nodes.indices && to in nodes.indices) {
-                                        val node = nodes.removeAt(from)
-                                        nodes.add(to, node)
-                                        selectedNodeId = node.id
-                                    }
-                                },
-                                onDuplicate = { index ->
-                                    val current = nodes[index]
-                                    val copy = current.copy(id = nextNodeId++, config = cloneConfig(current.config))
-                                    nodes.add(index + 1, copy)
-                                    selectedNodeId = copy.id
-                                },
-                                onDelete = { index ->
-                                    val removed = nodes.removeAt(index)
-                                    if (selectedNodeId == removed.id) {
-                                        selectedNodeId = nodes.getOrNull(index)?.id ?: nodes.lastOrNull()?.id
-                                    }
-                                },
-                                onEnabledChange = { nodeId, enabled ->
-                                    val index = nodes.indexOfFirst { it.id == nodeId }
-                                    if (index != -1) {
-                                        val node = nodes[index]
-                                        nodes[index] = node.copy(
-                                            config = node.config.withEnabled(enabled),
-                                            revision = node.revision + 1
-                                        )
-                                    }
-                                },
-                                modifier = Modifier.weight(1f).fillMaxHeight()
-                            )
-                            Inspector(
-                                node = nodes.firstOrNull { it.id == selectedNodeId },
-                                definition = nodes.firstOrNull { it.id == selectedNodeId }
-                                    ?.let { findDefinition(it.config, definitions) },
-                                onConfigChange = ::updateSelectedConfig,
-                                modifier = Modifier.width(390.dp).fillMaxHeight()
-                            )
+
+                        AppPage.Editor -> {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                TransformerLibrary(
+                                    definitions = definitions,
+                                    showHiddenTransformers = baseConfig.showHiddenTransformers,
+                                    search = search,
+                                    onSearchChange = { search = it },
+                                    onAdd = ::addNode,
+                                    modifier = Modifier.width(290.dp).fillMaxHeight()
+                                )
+                                PipelineStack(
+                                    nodes = nodes,
+                                    definitions = definitions,
+                                    selectedNodeId = selectedNodeId,
+                                    orderWarnings = orderWarnings,
+                                    onSelect = { selectedNodeId = it },
+                                    onMove = { from, to ->
+                                        if (from in nodes.indices && to in nodes.indices) {
+                                            val node = nodes.removeAt(from)
+                                            nodes.add(to, node)
+                                            selectedNodeId = node.id
+                                        }
+                                    },
+                                    onDuplicate = { index ->
+                                        val current = nodes[index]
+                                        val copy = current.copy(id = nextNodeId++, config = cloneConfig(current.config))
+                                        nodes.add(index + 1, copy)
+                                        selectedNodeId = copy.id
+                                    },
+                                    onDelete = { index ->
+                                        val removed = nodes.removeAt(index)
+                                        if (selectedNodeId == removed.id) {
+                                            selectedNodeId = nodes.getOrNull(index)?.id ?: nodes.lastOrNull()?.id
+                                        }
+                                    },
+                                    onEnabledChange = { nodeId, enabled ->
+                                        val index = nodes.indexOfFirst { it.id == nodeId }
+                                        if (index != -1) {
+                                            val node = nodes[index]
+                                            nodes[index] = node.copy(
+                                                config = node.config.withEnabled(enabled),
+                                                revision = node.revision + 1
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f).fillMaxHeight()
+                                )
+                                Inspector(
+                                    node = nodes.firstOrNull { it.id == selectedNodeId },
+                                    definition = nodes.firstOrNull { it.id == selectedNodeId }
+                                        ?.let { findDefinition(it.config, definitions) },
+                                    onConfigChange = ::updateSelectedConfig,
+                                    modifier = Modifier.width(390.dp).fillMaxHeight()
+                                )
+                            }
                         }
+
+                        AppPage.Obfuscation -> ObfuscationPage(
+                            logs = obfuscationLogs,
+                            running = obfuscationRunning,
+                            onObfuscate = ::runObfuscation,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        AppPage.Settings -> SettingsPage(
+                            fontScale = fontScale,
+                            onFontScaleChange = ::updateFontScale,
+                            themeMode = themeMode,
+                            onThemeModeChange = ::updateThemeMode,
+                            uiLogLevel = uiLogLevel,
+                            onUiLogLevelChange = ::updateUiLogLevel,
+                            configPath = configPath,
+                            uiSettingsPath = uiSettingsPath,
+                            status = status,
+                            plugins = plugins,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
-
-                    AppPage.Obfuscation -> ObfuscationPage(
-                        logs = obfuscationLogs,
-                        running = obfuscationRunning,
-                        onObfuscate = ::runObfuscation,
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                    AppPage.Settings -> SettingsPage(
-                        fontScale = fontScale,
-                        onFontScaleChange = ::updateFontScale,
-                        themeMode = themeMode,
-                        onThemeModeChange = ::updateThemeMode,
-                        uiLogLevel = uiLogLevel,
-                        onUiLogLevelChange = ::updateUiLogLevel,
-                        configPath = configPath,
-                        uiSettingsPath = uiSettingsPath,
-                        status = status,
-                        plugins = plugins,
-                        modifier = Modifier.fillMaxSize()
-                    )
                 }
+                BottomStatusBar(
+                    status = status,
+                    enabledCount = nodes.count { it.config.enabled },
+                    nodeCount = nodes.size,
+                    warningCount = orderWarnings.size,
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun BottomStatusBar(
+    status: String,
+    enabledCount: Int,
+    nodeCount: Int,
+    warningCount: Int,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(22.dp).padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(status, color = UiTextPrimary(), modifier = Modifier.weight(1f), maxLines = 1)
+        Text(
+            "$enabledCount enabled / $nodeCount nodes. $warningCount order warnings.",
+            color = UiTextPrimary(),
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            "$VERSION [$SUBTITLE]",
+            color = UiTextPrimary(),
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.End,
+        )
     }
 }

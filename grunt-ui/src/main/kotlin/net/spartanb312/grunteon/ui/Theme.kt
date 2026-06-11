@@ -4,57 +4,18 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.*
-
-data class UiPalette(
-    val background: Color,
-    val panel: Color,
-    val panelAlt: Color,
-    val selectedPanel: Color,
-    val nestedPanel: Color,
-    val stroke: Color,
-    val text: Color,
-    val muted: Color,
-    val accent: Color,
-    val warning: Color,
-)
-
-val DarkPalette = UiPalette(
-    background = Color(0xFF202020),
-    panel = Color(0xFF2C2C2C),
-    panelAlt = Color(0xFF323232),
-    selectedPanel = Color(0xFF173B57),
-    nestedPanel = Color(0xFF272727),
-    stroke = Color(0xFF454545),
-    text = Color(0xFFFFFFFF),
-    muted = Color(0xFFC5C5C5),
-    accent = Color(0xFF60CDFF),
-    warning = Color(0xFFFCE100),
-)
-
-val LightPalette = UiPalette(
-    background = Color(0xFFF3F3F3),
-    panel = Color(0xFFFBFBFB),
-    panelAlt = Color(0xFFFFFFFF),
-    selectedPanel = Color(0xFFE9F5FC),
-    nestedPanel = Color(0xFFF7F7F7),
-    stroke = Color(0xFFE0E0E0),
-    text = Color(0xFF1A1A1A),
-    muted = Color(0xFF5D5D5D),
-    accent = Color(0xFF005FB8),
-    warning = Color(0xFF9D5D00),
-)
-
-val LocalUiPalette = staticCompositionLocalOf { DarkPalette }
 
 const val BaseFontScale = 0.85f
 const val MinFontScale = 0.8f
@@ -71,20 +32,17 @@ enum class ThemeMode {
 
 @Composable
 fun PanelSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val palette = LocalUiPalette.current
-    FramedSurface(color = palette.panel, modifier = modifier, content = content)
+    FramedSurface(color = UiPanelColor(), modifier = modifier, content = content)
 }
 
 @Composable
 fun SectionSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val palette = LocalUiPalette.current
-    FramedSurface(color = palette.panelAlt, modifier = modifier, content = content)
+    FramedSurface(color = UiSectionColor(), modifier = modifier, content = content)
 }
 
 @Composable
 fun NestedSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val palette = LocalUiPalette.current
-    FramedSurface(color = palette.nestedPanel, modifier = modifier, content = content)
+    FramedSurface(color = UiNestedColor(), modifier = modifier, content = content)
 }
 
 @Composable
@@ -93,16 +51,55 @@ fun FramedSurface(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val palette = LocalUiPalette.current
     Box(
         modifier = modifier
             .clip(UiPanelShape)
             .background(color)
-            .border(BorderStroke(1.dp, palette.stroke), UiPanelShape)
+            .border(BorderStroke(1.dp, UiBorderColor()), UiPanelShape)
     ) {
         content()
     }
 }
+
+@Composable
+@ReadOnlyComposable
+fun UiAppBackgroundColor(): Color = FluentTheme.colors.background.mica.base
+
+@Composable
+@ReadOnlyComposable
+fun UiPanelColor(): Color = FluentTheme.colors.background.card.default
+
+@Composable
+@ReadOnlyComposable
+fun UiSectionColor(): Color = FluentTheme.colors.background.card.secondary
+
+@Composable
+@ReadOnlyComposable
+fun UiNestedColor(): Color = FluentTheme.colors.background.layer.default
+
+@Composable
+@ReadOnlyComposable
+fun UiBorderColor(): Color = FluentTheme.colors.stroke.card.default
+
+@Composable
+@ReadOnlyComposable
+fun UiSelectedPanelColor(): Color = FluentTheme.colors.fillAccent.tertiary.copy(alpha = 0.45f)
+
+@Composable
+@ReadOnlyComposable
+fun UiAccentColor(): Color = FluentTheme.colors.fillAccent.default
+
+@Composable
+@ReadOnlyComposable
+fun UiWarningColor(): Color = FluentTheme.colors.system.caution
+
+@Composable
+@ReadOnlyComposable
+fun UiTextPrimary(): Color = FluentTheme.colors.text.text.primary
+
+@Composable
+@ReadOnlyComposable
+fun UiTextSecondary(): Color = FluentTheme.colors.text.text.secondary
 
 @Composable
 fun UiButton(
@@ -130,6 +127,19 @@ fun UiOutlinedButton(
 ) {
     Button(onClick = onClick, modifier = modifier, disabled = !enabled) {
         content()
+    }
+}
+
+@Composable
+fun UiIconButton(
+    imageVector: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    Button(onClick = onClick, modifier = modifier, disabled = !enabled, iconOnly = true) {
+        Icon(imageVector = imageVector, contentDescription = contentDescription)
     }
 }
 
@@ -163,11 +173,11 @@ fun UiTextField(
     TextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier,
+        modifier = modifier.heightIn(min = (minLines * 24).dp),
         singleLine = singleLine,
         maxLines = maxLines,
         header = label?.let {
-            { Text(it, color = LocalUiPalette.current.muted, style = FluentTheme.typography.caption) }
+            { Text(it, color = UiTextSecondary(), style = FluentTheme.typography.caption) }
         },
     )
 }

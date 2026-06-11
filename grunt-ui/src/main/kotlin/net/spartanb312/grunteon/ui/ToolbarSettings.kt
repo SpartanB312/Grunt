@@ -1,22 +1,24 @@
 package net.spartanb312.grunteon.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.Text
-import net.spartanb312.grunteon.obfuscator.SUBTITLE
-import net.spartanb312.grunteon.obfuscator.VERSION
 import net.spartanb312.grunteon.obfuscator.plugin.LoadedPlugin
 import java.nio.file.Path as NioPath
+
+private val ToolbarTabWidth = 112.dp
 
 @Composable
 fun TopToolbar(
@@ -24,47 +26,58 @@ fun TopToolbar(
     onPageChange: (AppPage) -> Unit,
     fontScale: Float,
 ) {
-    val palette = LocalUiPalette.current
-    PanelSurface(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text("Grunteon", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(8.dp))
-            ToolbarTab(
-                label = "General",
-                selected = page == AppPage.General,
-                onClick = { onPageChange(AppPage.General) }
-            )
-            ToolbarTab(
-                label = "Pipeline Editor",
-                selected = page == AppPage.Editor,
-                onClick = { onPageChange(AppPage.Editor) }
-            )
-            ToolbarTab(
-                label = "Obfuscation",
-                selected = page == AppPage.Obfuscation,
-                onClick = { onPageChange(AppPage.Obfuscation) }
-            )
-            ToolbarTab(
-                label = "Settings",
-                selected = page == AppPage.Settings,
-                onClick = { onPageChange(AppPage.Settings) }
-            )
-            Spacer(Modifier.weight(1f))
-            Text("$VERSION [${SUBTITLE}]", color = palette.muted)
-        }
+    Row(
+        modifier = Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 6.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        GrunteonLogo(Modifier.size(44.dp))
+        ToolbarTab(
+            label = "General",
+            selected = page == AppPage.General,
+            onClick = { onPageChange(AppPage.General) }
+        )
+        ToolbarTab(
+            label = "Pipeline Editor",
+            selected = page == AppPage.Editor,
+            onClick = { onPageChange(AppPage.Editor) }
+        )
+        ToolbarTab(
+            label = "Obfuscation",
+            selected = page == AppPage.Obfuscation,
+            onClick = { onPageChange(AppPage.Obfuscation) }
+        )
+        ToolbarTab(
+            label = "Settings",
+            selected = page == AppPage.Settings,
+            onClick = { onPageChange(AppPage.Settings) }
+        )
+        Spacer(Modifier.weight(1f))
     }
+}
+
+@Composable
+private fun GrunteonLogo(modifier: Modifier = Modifier) {
+    Image(
+        painter = painterResource("logo.svg"),
+        contentDescription = "Grunteon",
+        modifier = modifier,
+    )
 }
 
 @Composable
 private fun ToolbarTab(label: String, selected: Boolean, onClick: () -> Unit) {
     if (selected) {
-        UiButton(onClick = onClick) { Text(label) }
+        UiButton(onClick = onClick, modifier = Modifier.width(ToolbarTabWidth)) {
+            Text(label, textAlign = TextAlign.Center)
+        }
     } else {
-        UiOutlinedButton(onClick = onClick) { Text(label) }
+        UiOutlinedButton(
+            onClick = onClick,
+            modifier = Modifier.width(ToolbarTabWidth)
+        ) {
+            Text(label, textAlign = TextAlign.Center)
+        }
     }
 }
 
@@ -82,7 +95,6 @@ fun SettingsPage(
     plugins: List<LoadedPlugin>,
     modifier: Modifier = Modifier,
 ) {
-    val palette = LocalUiPalette.current
     val settingsScroll = rememberScrollState()
     val pluginsScroll = rememberScrollState()
     PanelSurface(modifier) {
@@ -96,14 +108,17 @@ fun SettingsPage(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Settings", style = FluentTheme.typography.title, fontWeight = FontWeight.Bold)
-                    Text("Workspace preferences for the editor prototype.", color = palette.muted)
+                    Text("Workspace preferences for the editor prototype.", color = UiTextSecondary())
                 }
                 SettingsSection {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Font Size", fontWeight = FontWeight.SemiBold)
-                                Text("Scale all editor text without changing the pipeline data.", color = palette.muted)
+                                Text(
+                                    "Scale all editor text without changing the pipeline data.",
+                                    color = UiTextSecondary()
+                                )
                             }
                             Text("${"%.0f".format(fontScale * 100)}%", fontFamily = FontFamily.Monospace)
                         }
@@ -123,7 +138,7 @@ fun SettingsPage(
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("Obfuscation Log Level", fontWeight = FontWeight.SemiBold)
-                            Text("Minimum logger level shown in the Obfuscation console.", color = palette.muted)
+                            Text("Minimum logger level shown in the Obfuscation console.", color = UiTextSecondary())
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (uiLogLevel == UiLogLevel.Info) {
@@ -172,7 +187,7 @@ fun SettingsPage(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Text(status, color = palette.muted)
+                        Text(status, color = UiTextSecondary())
                     }
                 }
             }
@@ -182,13 +197,13 @@ fun SettingsPage(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Plugins", style = FluentTheme.typography.title, fontWeight = FontWeight.Bold)
-                    Text("${plugins.size} loaded plugin(s).", color = palette.muted)
+                    Text("${plugins.size} loaded plugin(s).", color = UiTextSecondary())
                 }
                 if (plugins.isEmpty()) {
                     SettingsSection {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("No plugins loaded", fontWeight = FontWeight.SemiBold)
-                            Text("Only built-in transformers are available.", color = palette.muted)
+                            Text("Only built-in transformers are available.", color = UiTextSecondary())
                         }
                     }
                 } else {
@@ -208,20 +223,19 @@ private fun SettingsSection(content: @Composable () -> Unit) {
 
 @Composable
 private fun PluginSection(plugin: LoadedPlugin) {
-    val palette = LocalUiPalette.current
     val metadata = plugin.metadata
     SettingsSection {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(metadata.name, fontWeight = FontWeight.SemiBold)
             Text(
                 "Plugin ID: ${metadata.id}",
-                color = palette.muted,
+                color = UiTextSecondary(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 "Version: ${metadata.version} ",
-                color = palette.muted,
+                color = UiTextSecondary(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -233,7 +247,7 @@ private fun PluginSection(plugin: LoadedPlugin) {
             )
             val file = metadata.file.toString()
             if (file.isNotBlank()) {
-                Text(file, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(file, color = UiTextSecondary(), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

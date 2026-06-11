@@ -17,7 +17,6 @@ fun WelcomeScreen(
     onNewConfig: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val palette = LocalUiPalette.current
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -26,12 +25,12 @@ fun WelcomeScreen(
         ) {
             Text(
                 "Grunteon",
-                color = palette.text,
+                color = UiTextPrimary(),
                 style = FluentTheme.typography.title,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
             )
-            Text(status, color = palette.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(status, color = UiTextSecondary(), maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(8.dp))
             UiButton(onClick = onOpenConfig, modifier = Modifier.fillMaxWidth()) {
                 Text("Open existed config")

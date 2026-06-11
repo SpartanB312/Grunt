@@ -26,17 +26,16 @@ fun Inspector(
     onConfigChange: (TransformerConfig) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val palette = LocalUiPalette.current
     PanelSurface(modifier) {
         Column(Modifier.fillMaxSize().padding(12.dp)) {
             Text("Inspector", fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
             if (node == null) {
-                Text("Select a transformer node to edit its Config.", color = palette.muted)
+                Text("Select a transformer node to edit its Config.", color = UiTextSecondary())
                 return@Column
             }
             Text(definition?.label ?: node.config::class.simpleName.orEmpty(), style = FluentTheme.typography.subtitle)
-            Text(definition?.description ?: node.config::class.qualifiedName.orEmpty(), color = palette.muted)
+            Text(definition?.description ?: node.config::class.qualifiedName.orEmpty(), color = UiTextSecondary())
             Spacer(Modifier.height(12.dp))
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -83,11 +82,14 @@ private fun ConfigField(
     property: KProperty1<out Any, *>,
     onChange: (Any?) -> Unit,
 ) {
-    val palette = LocalUiPalette.current
     SectionSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(label, color = palette.text, fontWeight = FontWeight.SemiBold)
-            if (description != null) Text(description, color = palette.muted, style = FluentTheme.typography.caption)
+            Text(label, color = UiTextPrimary(), fontWeight = FontWeight.SemiBold)
+            if (description != null) Text(
+                description,
+                color = UiTextSecondary(),
+                style = FluentTheme.typography.caption
+            )
             when (value) {
                 is Boolean -> BooleanField(value, onChange)
                 is String -> StringField(value, onChange)
@@ -105,10 +107,9 @@ private fun ConfigField(
 
 @Composable
 private fun BooleanField(value: Boolean, onChange: (Any?) -> Unit) {
-    val palette = LocalUiPalette.current
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         UiSwitch(checked = value, onCheckedChange = { onChange(it) })
-        Text(if (value) "Enabled" else "Disabled", color = palette.muted)
+        Text(if (value) "Enabled" else "Disabled", color = UiTextSecondary())
     }
 }
 
@@ -206,11 +207,10 @@ private fun ListField(value: List<*>, onChange: (Any?) -> Unit) {
 
 @Composable
 private fun ReadOnlyValue(label: String, text: String) {
-    val palette = LocalUiPalette.current
     NestedSurface {
         Column(Modifier.fillMaxWidth().padding(10.dp)) {
-            Text(label, color = palette.muted)
-            Text(text, color = palette.text, fontFamily = FontFamily.Monospace)
+            Text(label, color = UiTextSecondary())
+            Text(text, color = UiTextPrimary(), fontFamily = FontFamily.Monospace)
         }
     }
 }
