@@ -35,13 +35,16 @@ data class FlowVerificationResult(
  * control-flow mutation passes rely on these invariants before exporting.
  */
 object FlowVerifier {
-    fun verify(method: FlowMethod): FlowVerificationResult {
+    fun verify(
+        method: FlowMethod,
+        isAssignable: (FlowFrameValue, FlowFrameValue) -> Boolean = FlowFrames::isAssignable
+    ): FlowVerificationResult {
         val issues = mutableListOf<FlowVerificationIssue>()
         val blockSet = method.blocks.toSet()
 
         verifyMethodShape(method, blockSet, issues)
-        verifyBlocks(method, blockSet, issues)
-        verifyEdges(method, blockSet, issues)
+        verifyBlocks(method, blockSet, issues, isAssignable)
+        verifyEdges(method, blockSet, issues, isAssignable)
         verifyExceptions(method, blockSet, issues)
 
         return FlowVerificationResult(issues)
@@ -91,10 +94,11 @@ object FlowVerifier {
     private fun verifyBlocks(
         method: FlowMethod,
         blockSet: Set<FlowBlock>,
-        issues: MutableList<FlowVerificationIssue>
+        issues: MutableList<FlowVerificationIssue>,
+        isAssignable: (FlowFrameValue, FlowFrameValue) -> Boolean
     ) {
         for (block in method.blocks) {
-            verifyJumpInput(block, issues)
+            verifyJumpInput(block, issues, isAssignable)
 
             val outgoing = method.outgoingEdges(block)
             val ports = block.jump.ports
@@ -123,7 +127,8 @@ object FlowVerifier {
 
     private fun verifyJumpInput(
         block: FlowBlock,
-        issues: MutableList<FlowVerificationIssue>
+        issues: MutableList<FlowVerificationIssue>,
+        isAssignable: (FlowFrameValue, FlowFrameValue) -> Boolean
     ) {
         val input = block.jump.input
         when (block.jump) {
@@ -150,7 +155,7 @@ object FlowVerifier {
         when (input) {
             FlowJumpInput.None -> Unit
             is FlowJumpInput.StackConsumed -> {
-                if (!FlowFrames.hasStackSuffix(block.bodyExitFrame, input.produced)) {
+                if (!FlowFrames.hasStackSuffix(block.bodyExitFrame, input.produced, isAssignable)) {
                     issues += FlowVerificationIssue(
                         "Jump consumes stack ${input.produced.describeValues()}, but body exits with ${block.bodyExitFrame.stack.describeValues()}",
                         block
@@ -171,7 +176,7 @@ object FlowVerifier {
                     val actual = block.bodyExitFrame.locals.getOrNull(local.index)
                     if (actual == null) {
                         issues += FlowVerificationIssue("Captured local ${local.index} is outside the body exit frame", block)
-                    } else if (!FlowFrames.isAssignable(actual, produced)) {
+                    } else if (!isAssignable(actual, produced)) {
                         issues += FlowVerificationIssue(
                             "Captured local ${local.index} has ${actual.displayName}, expected ${produced.displayName}",
                             block
@@ -185,7 +190,8 @@ object FlowVerifier {
     private fun verifyEdges(
         method: FlowMethod,
         blockSet: Set<FlowBlock>,
-        issues: MutableList<FlowVerificationIssue>
+        issues: MutableList<FlowVerificationIssue>,
+        isAssignable: (FlowFrameValue, FlowFrameValue) -> Boolean
     ) {
         val edgeIds = mutableSetOf<FlowEdgeId>()
         for (edge in method.edges) {
@@ -199,20 +205,21 @@ object FlowVerifier {
                 issues += FlowVerificationIssue("Edge target ${edge.to.id} is not part of the method", edge = edge)
             }
             if (edge.from in blockSet && edge.to in blockSet) {
-                verifyEdgeFrame(edge, issues)
+                verifyEdgeFrame(edge, issues, isAssignable)
             }
         }
     }
 
     private fun verifyEdgeFrame(
         edge: FlowEdge,
-        issues: MutableList<FlowVerificationIssue>
+        issues: MutableList<FlowVerificationIssue>,
+        isAssignable: (FlowFrameValue, FlowFrameValue) -> Boolean
     ) {
         val sourceFrame = runCatching { frameAfterJump(edge.from) }.getOrElse { error ->
             issues += FlowVerificationIssue("Cannot compute source frame after jump: ${error.message}", edge.from, edge)
             return
         }
-        if (!FlowFrames.isCompatible(sourceFrame, edge.to.entryFrame)) {
+        if (!FlowFrames.isCompatible(sourceFrame, edge.to.entryFrame, isAssignable)) {
             issues += FlowVerificationIssue(
                 "Edge frame ${sourceFrame} is not compatible with target entry ${edge.to.entryFrame}",
                 edge.from,

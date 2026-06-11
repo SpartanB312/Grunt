@@ -44,7 +44,7 @@ fun main(args: Array<String>) {
     Logger.info("Initializing obfuscator...")
     PluginManager.loadPlugins()
 
-    val config = ObfConfig.read(Path("config.json"))
+    val config = ObfConfig.read(Path(configPath(args)))
     val instance = Grunteon.create(config)
 
     measureTime {
@@ -52,4 +52,15 @@ fun main(args: Array<String>) {
     }.toDouble(DurationUnit.MILLISECONDS).also { time ->
         println("Execution time: ${"%.2f".format(time)} ms")
     }
+}
+
+private fun configPath(args: Array<String>): String {
+    val configIndex = args.indexOf("--config")
+    if (configIndex >= 0 && configIndex + 1 < args.size) {
+        return args[configIndex + 1]
+    }
+
+    return args.firstOrNull { it.startsWith("--config=") }
+        ?.substringAfter("=")
+        ?: "config.json"
 }

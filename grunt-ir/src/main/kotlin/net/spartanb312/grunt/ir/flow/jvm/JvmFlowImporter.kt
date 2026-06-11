@@ -24,14 +24,21 @@ import net.spartanb312.grunt.ir.flow.core.FlowUnreachableJump
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.AbstractInsnNode
+import org.objectweb.asm.tree.FieldInsnNode
 import org.objectweb.asm.tree.IincInsnNode
+import org.objectweb.asm.tree.IntInsnNode
+import org.objectweb.asm.tree.InvokeDynamicInsnNode
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.JumpInsnNode
 import org.objectweb.asm.tree.LabelNode
+import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.LookupSwitchInsnNode
+import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.MultiANewArrayInsnNode
 import org.objectweb.asm.tree.TableSwitchInsnNode
 import org.objectweb.asm.tree.TryCatchBlockNode
+import org.objectweb.asm.tree.TypeInsnNode
 import org.objectweb.asm.tree.VarInsnNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
@@ -39,7 +46,9 @@ import org.objectweb.asm.tree.analysis.BasicValue
 import org.objectweb.asm.tree.analysis.Frame
 
 class JvmFlowImporter(
-    private val context: JvmFlowImportContext = JvmFlowImportContext()
+    private val context: JvmFlowImportContext = JvmFlowImportContext(),
+    private val analyzerMode: JvmFlowAnalyzerMode = JvmFlowAnalyzerMode.Basic,
+    private val typeHierarchy: JvmFlowTypeHierarchy = JvmFlowTypeHierarchy.Empty
 ) {
     fun import(ownerInternalName: String, method: MethodNode): JvmFlowImportResult {
         context.metadata.capture(method)
@@ -105,8 +114,12 @@ class JvmFlowImporter(
         return try {
             method.maxLocals = analysisMaxLocals(method)
             method.maxStack = analysisMaxStack(method)
+            val interpreter = when (analyzerMode) {
+                JvmFlowAnalyzerMode.Basic -> BasicFlowInterpreter()
+                JvmFlowAnalyzerMode.Hierarchy -> HierarchyFlowInterpreter(typeHierarchy)
+            }
             @Suppress("UNCHECKED_CAST")
-            Analyzer<BasicValue>(PreciseFlowInterpreter()).analyze(ownerInternalName, method) as Array<Frame<BasicValue>?>
+            Analyzer<BasicValue>(interpreter).analyze(ownerInternalName, method) as Array<Frame<BasicValue>?>
         } catch (t: Throwable) {
             throw IllegalStateException("Failed to analyze ${ownerInternalName}.${method.name}${method.desc}", t)
         } finally {
@@ -472,7 +485,7 @@ class JvmFlowImporter(
         val block: FlowBlock
     )
 
-    private class PreciseFlowInterpreter : BasicInterpreter(Opcodes.ASM9) {
+    private open class BasicFlowInterpreter : BasicInterpreter(Opcodes.ASM9) {
         override fun newValue(type: Type?): BasicValue? {
             if (type == null) return BasicValue.UNINITIALIZED_VALUE
             return when (type.sort) {
@@ -491,6 +504,16 @@ class JvmFlowImporter(
             }
         }
 
+        override fun binaryOperation(insn: AbstractInsnNode, value1: BasicValue, value2: BasicValue): BasicValue? {
+            if (insn.opcode == Opcodes.AALOAD) {
+                val arrayType = value1.type
+                if (arrayType?.sort == Type.ARRAY) {
+                    return newValue(Type.getType(arrayType.descriptor.substring(1)))
+                }
+            }
+            return super.binaryOperation(insn, value1, value2)
+        }
+
         override fun merge(value1: BasicValue, value2: BasicValue): BasicValue {
             if (value1 == value2) return value1
             if (value1 == BasicValue.UNINITIALIZED_VALUE || value2 == BasicValue.UNINITIALIZED_VALUE) {
@@ -500,6 +523,168 @@ class JvmFlowImporter(
                 return BasicValue.REFERENCE_VALUE
             }
             return BasicValue.UNINITIALIZED_VALUE
+        }
+    }
+
+    private class HierarchyFlowInterpreter(
+        private val hierarchy: JvmFlowTypeHierarchy
+    ) : BasicFlowInterpreter() {
+        override fun newOperation(insn: AbstractInsnNode): BasicValue? {
+            return when (insn.opcode) {
+                Opcodes.ACONST_NULL -> NullValue
+                Opcodes.LDC -> ldcValue((insn as LdcInsnNode).cst)
+                Opcodes.GETSTATIC -> newValue(Type.getType((insn as FieldInsnNode).desc))
+                Opcodes.NEW -> newValue(Type.getObjectType((insn as TypeInsnNode).desc))
+                else -> super.newOperation(insn)
+            }
+        }
+
+        override fun unaryOperation(insn: AbstractInsnNode, value: BasicValue): BasicValue? {
+            return when (insn.opcode) {
+                Opcodes.CHECKCAST -> newValue(typeInsnType((insn as TypeInsnNode).desc))
+                Opcodes.INSTANCEOF -> BasicValue.INT_VALUE
+                Opcodes.GETFIELD -> newValue(Type.getType((insn as FieldInsnNode).desc))
+                Opcodes.NEWARRAY -> newValue(newPrimitiveArrayType((insn as IntInsnNode).operand))
+                Opcodes.ANEWARRAY -> newValue(Type.getType("[${typeInsnType((insn as TypeInsnNode).desc).descriptor}"))
+                Opcodes.ARRAYLENGTH -> BasicValue.INT_VALUE
+                else -> super.unaryOperation(insn, value)
+            }
+        }
+
+        override fun binaryOperation(insn: AbstractInsnNode, value1: BasicValue, value2: BasicValue): BasicValue? {
+            return when (insn.opcode) {
+                Opcodes.IALOAD,
+                Opcodes.BALOAD,
+                Opcodes.CALOAD,
+                Opcodes.SALOAD -> BasicValue.INT_VALUE
+                Opcodes.LALOAD -> BasicValue.LONG_VALUE
+                Opcodes.FALOAD -> BasicValue.FLOAT_VALUE
+                Opcodes.DALOAD -> BasicValue.DOUBLE_VALUE
+                Opcodes.AALOAD -> aaloadValue(value1)
+                else -> super.binaryOperation(insn, value1, value2)
+            }
+        }
+
+        override fun naryOperation(insn: AbstractInsnNode, values: MutableList<out BasicValue>): BasicValue? {
+            return when (insn.opcode) {
+                Opcodes.MULTIANEWARRAY -> newValue(Type.getType((insn as MultiANewArrayInsnNode).desc))
+                Opcodes.INVOKEDYNAMIC -> newValue(Type.getReturnType((insn as InvokeDynamicInsnNode).desc))
+                Opcodes.INVOKEVIRTUAL,
+                Opcodes.INVOKESPECIAL,
+                Opcodes.INVOKESTATIC,
+                Opcodes.INVOKEINTERFACE -> newValue(Type.getReturnType((insn as MethodInsnNode).desc))
+                else -> super.naryOperation(insn, values)
+            }
+        }
+
+        override fun merge(value1: BasicValue, value2: BasicValue): BasicValue {
+            if (value1 == value2) return value1
+            if (value1 == BasicValue.UNINITIALIZED_VALUE || value2 == BasicValue.UNINITIALIZED_VALUE) {
+                return BasicValue.UNINITIALIZED_VALUE
+            }
+            if (value1.isNullReference() && value2.isReferenceValue()) return value2
+            if (value2.isNullReference() && value1.isReferenceValue()) return value1
+            if (value1.isReferenceValue() && value2.isReferenceValue()) {
+                val type1 = value1.type ?: return BasicValue.REFERENCE_VALUE
+                val type2 = value2.type ?: return BasicValue.REFERENCE_VALUE
+                return BasicValue(commonReferenceType(type1, type2))
+            }
+            return BasicValue.UNINITIALIZED_VALUE
+        }
+
+        private fun ldcValue(cst: Any?): BasicValue? {
+            return when (cst) {
+                is Int -> BasicValue.INT_VALUE
+                is Float -> BasicValue.FLOAT_VALUE
+                is Long -> BasicValue.LONG_VALUE
+                is Double -> BasicValue.DOUBLE_VALUE
+                is String -> newValue(Type.getObjectType("java/lang/String"))
+                is Type -> when (cst.sort) {
+                    Type.METHOD -> newValue(Type.getObjectType("java/lang/invoke/MethodType"))
+                    else -> newValue(Type.getObjectType("java/lang/Class"))
+                }
+                is org.objectweb.asm.Handle -> newValue(Type.getObjectType("java/lang/invoke/MethodHandle"))
+                is org.objectweb.asm.ConstantDynamic -> newValue(Type.getType(cst.descriptor))
+                else -> newValue(Type.getObjectType(JavaObjectInternalName))
+            }
+        }
+
+        private fun aaloadValue(arrayValue: BasicValue): BasicValue {
+            val arrayType = arrayValue.type ?: return BasicValue.REFERENCE_VALUE
+            if (arrayType.sort != Type.ARRAY) return BasicValue.REFERENCE_VALUE
+            return newValue(Type.getType(arrayType.descriptor.substring(1))) ?: BasicValue.UNINITIALIZED_VALUE
+        }
+
+        private fun commonReferenceType(type1: Type, type2: Type): Type {
+            if (type1 == type2) return type1
+            return when {
+                type1.sort == Type.ARRAY && type2.sort == Type.ARRAY -> commonArrayType(type1, type2)
+                type1.sort == Type.ARRAY && type2.sort == Type.OBJECT -> commonArrayAndObject(type2)
+                type1.sort == Type.OBJECT && type2.sort == Type.ARRAY -> commonArrayAndObject(type1)
+                type1.sort == Type.OBJECT && type2.sort == Type.OBJECT -> {
+                    Type.getObjectType(hierarchy.commonSuperClass(type1.internalName, type2.internalName))
+                }
+                else -> Type.getObjectType(JavaObjectInternalName)
+            }
+        }
+
+        private fun commonArrayType(type1: Type, type2: Type): Type {
+            val element1 = type1.oneDimensionElementType()
+            val element2 = type2.oneDimensionElementType()
+            if (!element1.isReferenceType() || !element2.isReferenceType()) {
+                return if (type1 == type2) type1 else Type.getObjectType(JavaObjectInternalName)
+            }
+
+            val commonElement = commonReferenceType(element1, element2)
+            return Type.getType("[${commonElement.descriptor}")
+        }
+
+        private fun commonArrayAndObject(objectType: Type): Type {
+            return when (objectType.internalName) {
+                JavaObjectInternalName,
+                JavaCloneableInternalName,
+                JavaSerializableInternalName -> objectType
+                else -> Type.getObjectType(JavaObjectInternalName)
+            }
+        }
+
+        private fun BasicValue.isNullReference(): Boolean {
+            return type?.sort == Type.OBJECT && type?.internalName == JvmFlowNullInternalName
+        }
+
+        private fun BasicValue.isReferenceValue(): Boolean {
+            return isNullReference() || isReference
+        }
+
+        private fun Type.isReferenceType(): Boolean {
+            return sort == Type.OBJECT || sort == Type.ARRAY
+        }
+
+        private fun Type.oneDimensionElementType(): Type {
+            return Type.getType(descriptor.substring(1))
+        }
+
+        companion object {
+            private val NullValue = BasicValue(Type.getObjectType(JvmFlowNullInternalName))
+
+            private fun typeInsnType(desc: String): Type {
+                return if (desc.startsWith("[")) Type.getType(desc) else Type.getObjectType(desc)
+            }
+
+            private fun newPrimitiveArrayType(operand: Int): Type {
+                val descriptor = when (operand) {
+                    Opcodes.T_BOOLEAN -> "[Z"
+                    Opcodes.T_CHAR -> "[C"
+                    Opcodes.T_FLOAT -> "[F"
+                    Opcodes.T_DOUBLE -> "[D"
+                    Opcodes.T_BYTE -> "[B"
+                    Opcodes.T_SHORT -> "[S"
+                    Opcodes.T_INT -> "[I"
+                    Opcodes.T_LONG -> "[J"
+                    else -> "[Ljava/lang/Object;"
+                }
+                return Type.getType(descriptor)
+            }
         }
     }
 }

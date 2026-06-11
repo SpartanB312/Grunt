@@ -7,6 +7,7 @@ import net.spartanb312.genesis.kotlin.field
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
+import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
 import net.spartanb312.grunteon.obfuscator.process.DecimalRangeVal
@@ -88,6 +89,11 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
     "RuntimeMaterial",
     Category.AntiDebug,
 ) {
+
+    init {
+        // potential bug
+        after(Category.Redirect, "RuntimeMaterial should run after redirect category")
+    }
 
     @Serializable
     data class Config(
@@ -625,11 +631,11 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
                 return MaterialPlan(
                     materialId = materialId,
                     layoutId = CANONICAL_SHARE_SUM_STICKY_POISON,
-                shareAField = uniqueName(classNode, random, "a"),
-                shareBField = uniqueName(classNode, random, "b"),
-                keyField = uniqueName(classNode, random, "k"),
-                poisonField = uniqueName(classNode, random, "p"),
-                guardMethodName = uniqueName(classNode, random, "g"),
+                    shareAField = uniqueName(classNode, random, "a"),
+                    shareBField = uniqueName(classNode, random, "b"),
+                    keyField = uniqueName(classNode, random, "k"),
+                    poisonField = uniqueName(classNode, random, "p"),
+                    guardMethodName = uniqueName(classNode, random, "g"),
                     shareAInitial = shareA,
                     shareBInitial = shareB,
                     canonicalSeed = canonical,

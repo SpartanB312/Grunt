@@ -19,9 +19,11 @@ import net.spartanb312.grunt.ir.flow.core.FlowPort
 import net.spartanb312.grunt.ir.flow.core.FlowPredicateGuarantee
 import net.spartanb312.grunt.ir.flow.core.FlowSwitchJump
 import net.spartanb312.grunt.ir.flow.core.FlowVerifier
+import net.spartanb312.grunt.ir.flow.jvm.JvmFlowAnalyzerMode
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExportOptions
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
+import net.spartanb312.grunt.ir.flow.jvm.JvmFlowTypeHierarchy
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
@@ -46,6 +48,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junk
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.pipeline.before
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.hierarchy.ClassHierarchyFlowTypeHierarchy
 import net.spartanb312.grunteon.obfuscator.util.DISABLE_CONTROL_FLOW
 import net.spartanb312.grunteon.obfuscator.util.IGNORE_JUNK_CODE
 import net.spartanb312.grunteon.obfuscator.util.Logger
@@ -188,6 +191,9 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @SettingDesc("Run ASM BasicInterpreter after exporting Flow IR bytecode")
         @SettingName("Verify bytecode")
         val verifyBytecode: Boolean = true,
+        @SettingDesc("Analyzer used before importing methods into Flow IR")
+        @SettingName("Flow analyzer")
+        val flowAnalyzer: JvmFlowAnalyzerMode = JvmFlowAnalyzerMode.Hierarchy,
         @SettingDesc("Keep going when one method cannot be transformed")
         @SettingName("Ignore failures")
         val ignoreFailures: Boolean = false,
@@ -260,6 +266,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             }
 
             val hierarchy = hierarchyKey.global
+            val flowTypeHierarchy = ClassHierarchyFlowTypeHierarchy(hierarchy)
             val pool = junkCallPoolKey.global
             val transformedMethods = classNode.methods.map { methodNode ->
                 if (methodNode.isAbstract || methodNode.isNative || methodNode.name == "<init>") {
@@ -277,6 +284,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                             owner = classNode,
                             config = config,
                             hierarchy = hierarchy,
+                            flowTypeHierarchy = flowTypeHierarchy,
                             pool = pool,
                             predicateProcessor = predicateProcessorRegistryKey.global.methodProcessor(
                                 owner = classNode.name,
@@ -344,11 +352,15 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         owner: ClassNode,
         config: Config,
         hierarchy: ClassHierarchy,
+        flowTypeHierarchy: JvmFlowTypeHierarchy,
         pool: JunkCallPool,
         predicateProcessor: FlowOpaquePredicateProcessor,
         random: UniformRandomProvider
     ): JunkBranchMethod {
-        val imported = JvmFlowImporter().import(owner.name, this)
+        val imported = JvmFlowImporter(
+            analyzerMode = config.flowAnalyzer,
+            typeHierarchy = flowTypeHierarchy
+        ).import(owner.name, this)
         val result = FlowJunkBranchInserter(
             options = JunkBranchOptions(
                 chance = config.chance.coerceIn(0.0, 1.0),
@@ -382,7 +394,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 access = access,
                 signature = signature,
                 exceptions = exceptions?.toList() ?: emptyList()
-            )
+            ),
+            flowTypeHierarchy
         ).export(imported.method)
         copyMethodMetadataTo(exported)
 
