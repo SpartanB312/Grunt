@@ -2,12 +2,12 @@ package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiDebug
+import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReferenceObfuscate
 import net.spartanb312.grunteon.obfuscator.util.ClearClassNode
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_ANTIDEBUG_MATERIAL
+import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL
 import net.spartanb312.grunteon.obfuscator.util.extensions.findAnnotation
 import net.spartanb312.grunteon.testcase.methodinline.Basic
 import org.objectweb.asm.ClassWriter
@@ -24,12 +24,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class ReferenceObfuscateAntiDebugIntegrationTest {
+class ReferenceObfuscateRuntimeMaterialIntegrationTest {
 
     @Test
-    fun usesAntiDebugMaterialForReferencePayloads() {
+    fun usesRuntimeMaterialForReferencePayloads() {
         runMaterialReferenceTest(
-            AntiDebug.Config(
+            RuntimeMaterial.Config(
                 classFilter = basicOnlyFilter(),
                 classChance = 1.0,
                 clinit = true,
@@ -43,9 +43,9 @@ class ReferenceObfuscateAntiDebugIntegrationTest {
     }
 
     @Test
-    fun doesNotRekeyAntiDebugInitializationHelpers() {
+    fun doesNotRekeyRuntimeMaterialInitializationHelpers() {
         runMaterialReferenceTest(
-            AntiDebug.Config(
+            RuntimeMaterial.Config(
                 classFilter = basicOnlyFilter(),
                 classChance = 1.0,
                 clinit = true,
@@ -86,14 +86,18 @@ class ReferenceObfuscateAntiDebugIntegrationTest {
         val classNode = instance.workRes.inputClassMap[CLASS_NAME]
             ?: error("Missing test class $CLASS_NAME")
 
-        assertNotNull(classNode.findAnnotation(DRAFT_ANTIDEBUG_MATERIAL))
+        assertNotNull(classNode.findAnnotation(DRAFT_RUNTIME_MATERIAL))
         assertTrue(classNode.methods.any { method ->
             method.name != "<clinit>" &&
                 method.name != "<init>" &&
                 method.instructions.iterator().asSequence().any { it is InvokeDynamicInsnNode }
         })
+        assertTrue(classNode.methods.any { method ->
+            (method.name == "<clinit>" || method.name == "<init>") &&
+                method.instructions.iterator().asSequence().any { it is InvokeDynamicInsnNode }
+        })
 
-        val tempDir = Files.createTempDirectory("grunteon-reference-antidebug-test")
+        val tempDir = Files.createTempDirectory("grunteon-reference-runtime-material-test")
         writeClasses(instance.workRes.inputClassCollection, tempDir)
         runTestClass(tempDir)
     }

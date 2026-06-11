@@ -208,14 +208,16 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
 
             val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, "apply"))
             val counter = counter.local
-            val bsmName1 = randomGen.getRandomString(16)//massiveString
+            val bsmName1 = massiveString
             val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
-            val decryptName = randomGen.getRandomString(16)
-            val material = findAntiDebugMaterial(classNode)
-            val materialKeyName = material?.let { randomGen.getRandomString(16) }
+            val decryptName = bsmName1.substring(2, bsmName1.length - 1)
+            val material = findRuntimeMaterial(classNode)
+            val materialKeyName = material?.let { bsmName1.substring(1, bsmName1.length - 2) }
+            val plainBsmName = material?.let { bsmName1.substring(1, bsmName1.length - 3) }
+            val plainDecryptName = material?.let { bsmName1.substring(1, bsmName1.length - 3) }
             val decryptKey = randomGen.nextInt()
             context(config, counter) {
-                if (shouldApply(classNode, bsmName1, bsmName2, decryptKey, metadata, material)) {
+                if (shouldApply(classNode, bsmName1, bsmName2, plainBsmName, decryptKey, metadata, material)) {
                     val decrypt = createDecryptMethod(classNode.name, decryptName, decryptKey, materialKeyName)
                     val decrypt2 = createHeavyDecryptMethod(decryptName)
                     val bsm = createBootstrap(classNode.name, bsmName1, decryptName)
@@ -228,9 +230,17 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                     val materialKey = if (material != null && materialKeyName != null) {
                         createMaterialKeyMethod(classNode.name, materialKeyName, material)
                     } else null
+                    val plainDecrypt = if (material != null && plainDecryptName != null) {
+                        createDecryptMethod(classNode.name, plainDecryptName, decryptKey, null)
+                    } else null
+                    val plainBsm = if (material != null && plainBsmName != null && plainDecryptName != null) {
+                        createBootstrap(classNode.name, plainBsmName, plainDecryptName)
+                    } else null
                     if (config.reobfBSM) {
                         val methodsAdded = mutableListOf<MethodNode>()
                         materialKey?.let { methodsAdded.add(it) }
+                        plainDecrypt?.let { methodsAdded.add(it) }
+                        plainBsm?.let { methodsAdded.add(it) }
                         methodsAdded.add(decrypt)
                         methodsAdded.add(bsm)
                         methodsAdded.add(decrypt2)
@@ -238,6 +248,8 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                         addedMethods.add(classNode to methodsAdded)
                     }
                     materialKey?.let { classNode.methods.add(it) }
+                    plainDecrypt?.let { classNode.methods.add(it) }
+                    plainBsm?.let { classNode.methods.add(it) }
                     classNode.methods.add(decrypt)
                     classNode.methods.add(bsm)
                     classNode.methods.add(decrypt2)
@@ -264,17 +276,21 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         classNode: ClassNode,
         bsm1: String,
         bsm2: String,
+        plainBsm: String?,
         decryptKey: Int,
         metadataMap: Map<ClassNode, MetaData>,
-        antiDebugMaterial: AntiDebugMaterial?
+        runtimeMaterial: RuntimeMaterial?
     ): Boolean {
         var shouldApply = false
-        val materialKey = antiDebugMaterial?.seedFold ?: 0
-        val simpleDecryptKey = decryptKey xor materialKey
         classNode.methods
-            .filter { shouldProcessMethod(it, antiDebugMaterial) }
+            .filter { shouldProcessMethod(it) }
             .forEach { methodNode ->
                 if (!methodNode.hasAnnotation(DISABLE_REFERENCE_OBF)) {
+                    val methodMaterial = materialForMethod(methodNode, runtimeMaterial)
+                    val simpleDecryptKey = decryptKey xor (methodMaterial?.seedFold ?: 0)
+                    val simpleBsm = if (runtimeMaterial != null && methodMaterial == null) {
+                        plainBsm ?: bsm1
+                    } else bsm1
                     val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, methodNode.name, methodNode.desc))
                     methodNode.instructions.filter {
                         it is MethodInsnNode && it.opcode != Opcodes.INVOKESPECIAL
@@ -283,11 +299,14 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                             val metadata = metadataMap.entries.find { (clazz, _) -> clazz.name == insnNode.owner }
                             val metadataKey = insnNode.name + "<>" + insnNode.desc
                             val index = metadata?.value?.d2?.indexOf(metadataKey) ?: -1
-                            // Material-aware callers use the simple BSM payload for now:
-                            // the encrypted owner/name/desc are keyed by the caller-local
-                            // AntiDebug quotient. Heavy metadata stays unchanged until it
-                            // gets its own authenticated material lane.
-                            val invokeDynamicInsnNode = if (antiDebugMaterial == null && metadata != null && index >= 0) {
+                            // Material-aware callers use simple BSM payloads for now.
+                            // Normal methods are keyed by the caller-local RuntimeMaterial
+                            // quotient. <clinit>/<init> fall back to plain simple BSM:
+                            // they still hide references, but do not read material while
+                            // the material lane itself is being initialized or perturbed.
+                            // Heavy metadata stays unchanged until it gets its own
+                            // authenticated material lane.
+                            val invokeDynamicInsnNode = if (runtimeMaterial == null && metadata != null && index >= 0) {
                                 val magic1 = metadata.value.m1[index]
                                 val magic2 = metadata.value.m2[index]
                                 InvokeDynamicInsnNode(
@@ -314,12 +333,12 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                                     if (insnNode.opcode == Opcodes.INVOKESTATIC) 0 else 1
                                 )
                             } else InvokeDynamicInsnNode(
-                                bsm1,
+                                simpleBsm,
                                 if (insnNode.opcode == Opcodes.INVOKESTATIC) insnNode.desc
                                 else insnNode.desc.replace("(", "(Ljava/lang/Object;"),
                                 H_INVOKESTATIC(
                                     classNode.name,
-                                    bsm1,
+                                    simpleBsm,
                                     MethodType.methodType(
                                         CallSite::class.java,
                                         MethodHandles.Lookup::class.java,
@@ -348,19 +367,22 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         return shouldApply
     }
 
-    private fun shouldProcessMethod(methodNode: MethodNode, antiDebugMaterial: AntiDebugMaterial?): Boolean {
+    private fun shouldProcessMethod(methodNode: MethodNode): Boolean {
         if (methodNode.isAbstract || methodNode.isNative) return false
         if (methodNode.hasAnnotation(GENERATED_METHOD)) return false
-        if (antiDebugMaterial != null && (methodNode.name == "<clinit>" || methodNode.name == "<init>")) {
-            // Design note:
-            // material-aware ReferenceObfuscate must not protect AntiDebug's own
-            // bootstrap/initialization lane. Later encryption passes may expand
-            // AntiDebug constants into helper calls inside <clinit>/<init>; if
-            // those calls are re-keyed by material before the material is fully
-            // initialized, the sink trips in clean executions.
-            return false
-        }
         return true
+    }
+
+    private fun materialForMethod(methodNode: MethodNode, runtimeMaterial: RuntimeMaterial?): RuntimeMaterial? {
+        if (runtimeMaterial == null) return null
+        // Design note:
+        // <clinit>/<init> are still protected by ReferenceObfuscate, but they
+        // deliberately fall back to plain simple BSM. Later passes may expand
+        // RuntimeMaterial constants into helper calls in these methods; re-keying
+        // those helpers by material would read the material lane while it is
+        // being initialized or perturbed.
+        if (methodNode.name == "<clinit>" || methodNode.name == "<init>") return null
+        return runtimeMaterial
     }
 
     private fun createBootstrap(className: String, methodName: String, decryptName: String) =
@@ -877,7 +899,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
     private fun createMaterialKeyMethod(
         className: String,
         methodName: String,
-        material: AntiDebugMaterial
+        material: RuntimeMaterial
     ): MethodNode = method(
         PRIVATE + STATIC + SYNTHETIC + BRIDGE,
         methodName,
@@ -885,7 +907,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
     ) {
         INSTRUCTIONS {
             // The ReferenceObfuscate side consumes only the canonical quotient:
-            // clean AntiDebug perturbations may churn raw share fields, but the
+            // clean RuntimeMaterial perturbations may churn raw share fields, but the
             // KDF lane reads canonicalKey + sticky poison so BSM linkage cannot
             // observe a transient two-field update. Suspicious paths disturb
             // canonicalKey and/or poison, producing a wrong decrypt key.
@@ -910,25 +932,25 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         return stringBuilder.toString()
     }
 
-    private fun findAntiDebugMaterial(classNode: ClassNode): AntiDebugMaterial? {
-        val materialAnnotation = classNode.findAnnotation(DRAFT_ANTIDEBUG_MATERIAL) ?: return null
+    private fun findRuntimeMaterial(classNode: ClassNode): RuntimeMaterial? {
+        val materialAnnotation = classNode.findAnnotation(DRAFT_RUNTIME_MATERIAL) ?: return null
         val materialId = materialAnnotation.value("id") as? String ?: return null
         val seed = materialAnnotation.value("seed") as? Long ?: return null
-        classNode.findAntiDebugField(materialId, ANTIDEBUG_FIELD_ROLE_SHARE_A, "J") ?: return null
-        classNode.findAntiDebugField(materialId, ANTIDEBUG_FIELD_ROLE_SHARE_B, "J") ?: return null
-        val key = classNode.findAntiDebugField(materialId, ANTIDEBUG_FIELD_ROLE_CANONICAL_KEY, "J") ?: return null
-        val poison = classNode.findAntiDebugField(materialId, ANTIDEBUG_FIELD_ROLE_POISON, "I") ?: return null
-        return AntiDebugMaterial(
+        classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_SHARE_A, "J") ?: return null
+        classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_SHARE_B, "J") ?: return null
+        val key = classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_CANONICAL_KEY, "J") ?: return null
+        val poison = classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_POISON, "I") ?: return null
+        return RuntimeMaterial(
             keyField = key.name,
             poisonField = poison.name,
             seedFold = seed.foldToInt()
         )
     }
 
-    private fun ClassNode.findAntiDebugField(materialId: String, role: Int, desc: String): FieldNode? {
+    private fun ClassNode.findRuntimeMaterialField(materialId: String, role: Int, desc: String): FieldNode? {
         return fields.firstOrNull { field ->
             if (field.desc != desc) return@firstOrNull false
-            val annotation = field.findAnnotation(DRAFT_ANTIDEBUG_FIELD) ?: return@firstOrNull false
+            val annotation = field.findAnnotation(DRAFT_RUNTIME_MATERIAL_FIELD) ?: return@firstOrNull false
             annotation.value("id") == materialId && annotation.value("role") == role
         }
     }
@@ -945,7 +967,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
 
     private fun Long.foldToInt(): Int = (this xor (this ushr 32)).toInt()
 
-    private data class AntiDebugMaterial(
+    private data class RuntimeMaterial(
         val keyField: String,
         val poisonField: String,
         val seedFold: Int
@@ -961,10 +983,10 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
     )
 
     private companion object {
-        const val ANTIDEBUG_FIELD_ROLE_SHARE_A = 1
-        const val ANTIDEBUG_FIELD_ROLE_SHARE_B = 2
-        const val ANTIDEBUG_FIELD_ROLE_POISON = 3
-        const val ANTIDEBUG_FIELD_ROLE_CANONICAL_KEY = 4
+        const val RUNTIME_MATERIAL_FIELD_ROLE_SHARE_A = 1
+        const val RUNTIME_MATERIAL_FIELD_ROLE_SHARE_B = 2
+        const val RUNTIME_MATERIAL_FIELD_ROLE_POISON = 3
+        const val RUNTIME_MATERIAL_FIELD_ROLE_CANONICAL_KEY = 4
     }
 
 }

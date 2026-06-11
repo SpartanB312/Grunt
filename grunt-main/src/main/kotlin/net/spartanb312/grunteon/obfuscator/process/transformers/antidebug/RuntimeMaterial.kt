@@ -19,9 +19,9 @@ import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
 import net.spartanb312.grunteon.obfuscator.process.post
 import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_ANTIDEBUG_FIELD
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_ANTIDEBUG_GUARD
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_ANTIDEBUG_MATERIAL
+import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL
+import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL_FIELD
+import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL_GUARD
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_CLASS
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_FIELD
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_METHOD
@@ -48,9 +48,9 @@ import org.objectweb.asm.tree.MethodNode
 /*
  * Design notes
  * ------------
- * AntiDebug is intentionally a material perturbation pass, not a centralized
+ * RuntimeMaterial is intentionally a material perturbation pass, not a centralized
  * runtime detector. The generated program should not contain an obvious
- * AntiDebug.check() style choke point.
+ * RuntimeMaterial.check() style choke point.
  *
  * Runtime model:
  *   raw material space R:
@@ -81,11 +81,11 @@ import org.objectweb.asm.tree.MethodNode
  *   metadata only and are registered in INTERNAL so PostProcess removes them.
  */
 @Transformer.Description(
-    "process.antidebug.anti_debug.desc",
-    "Inject distributed anti-debug material perturbation"
+    "process.antidebug.runtime_material.desc",
+    "Inject distributed runtime material perturbation"
 )
-class AntiDebug : Transformer<AntiDebug.Config>(
-    "AntiDebug",
+class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
+    "RuntimeMaterial",
     Category.AntiDebug,
 ) {
 
@@ -94,7 +94,7 @@ class AntiDebug : Transformer<AntiDebug.Config>(
         @SettingDesc("Specify class include/exclude rules")
         @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc("Chance that an included class receives anti-debug material")
+        @SettingDesc("Chance that an included class receives runtime material")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Class chance")
         val classChance: Double = 1.0,
@@ -121,9 +121,9 @@ class AntiDebug : Transformer<AntiDebug.Config>(
 
         parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
             if (!isEligible(classNode)) return@parForEachClassesFiltered
-            if (classNode.hasAnnotation(DRAFT_ANTIDEBUG_MATERIAL)) return@parForEachClassesFiltered
+            if (classNode.hasAnnotation(DRAFT_RUNTIME_MATERIAL)) return@parForEachClassesFiltered
 
-            val random = Xoshiro256PPRandom(getSeed("AntiDebug", classNode.name))
+            val random = Xoshiro256PPRandom(getSeed("RuntimeMaterial", classNode.name))
             if (random.nextDouble() > config.classChance) return@parForEachClassesFiltered
 
             // Per-class material is deliberately local to the owner class. The
@@ -137,7 +137,7 @@ class AntiDebug : Transformer<AntiDebug.Config>(
                 appendInvisibleAnnotation(
                     guardMethod,
                     annotation(
-                        DRAFT_ANTIDEBUG_GUARD,
+                        DRAFT_RUNTIME_MATERIAL_GUARD,
                         "schema" to SCHEMA,
                         "id" to plan.materialId,
                         "kind" to GUARD_KIND_INPUT_ARGS
@@ -160,7 +160,7 @@ class AntiDebug : Transformer<AntiDebug.Config>(
         }
 
         post {
-            Logger.info(" - AntiDebug:")
+            Logger.info(" - RuntimeMaterial:")
             Logger.info("    Prepared ${classCounter.global.get()} classes")
             Logger.info("    Patched ${clinitCounter.global.get()} <clinit> blocks")
             Logger.info("    Patched ${initCounter.global.get()} constructors")
@@ -221,7 +221,7 @@ class AntiDebug : Transformer<AntiDebug.Config>(
             appendInvisibleAnnotation(
                 classNode,
                 annotation(
-                    DRAFT_ANTIDEBUG_MATERIAL,
+                    DRAFT_RUNTIME_MATERIAL,
                     "schema" to SCHEMA,
                     "id" to plan.materialId,
                     "layout" to plan.layoutId,
@@ -254,7 +254,7 @@ class AntiDebug : Transformer<AntiDebug.Config>(
                 appendInvisibleAnnotation(
                     it,
                     annotation(
-                        DRAFT_ANTIDEBUG_FIELD,
+                        DRAFT_RUNTIME_MATERIAL_FIELD,
                         "schema" to SCHEMA,
                         "id" to materialId,
                         "role" to role,

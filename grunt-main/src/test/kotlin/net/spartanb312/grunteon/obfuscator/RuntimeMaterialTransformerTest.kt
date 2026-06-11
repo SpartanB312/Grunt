@@ -1,10 +1,10 @@
 package net.spartanb312.grunteon.obfuscator
 
-import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiDebug
+import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial
 import net.spartanb312.grunteon.obfuscator.util.ClearClassNode
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_ANTIDEBUG_FIELD
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_ANTIDEBUG_GUARD
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_ANTIDEBUG_MATERIAL
+import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL
+import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL_FIELD
+import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL_GUARD
 import net.spartanb312.grunteon.obfuscator.util.extensions.findAnnotation
 import net.spartanb312.grunteon.testcase.methodinline.Basic
 import org.objectweb.asm.ClassWriter
@@ -22,7 +22,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class AntiDebugTransformerTest {
+class RuntimeMaterialTransformerTest {
 
     @Test
     fun injectsMaterialAndProducesVerifiableClasses() {
@@ -31,7 +31,7 @@ class AntiDebugTransformerTest {
             ObfConfig(
                 output = null,
                 transformerConfigs = listOf(
-                    AntiDebug.Config(
+                    RuntimeMaterial.Config(
                         classChance = 1.0,
                         clinit = true,
                         constructors = true
@@ -46,13 +46,13 @@ class AntiDebugTransformerTest {
         val classNode = instance.workRes.inputClassMap[CLASS_NAME]
             ?: error("Missing test class $CLASS_NAME")
 
-        assertNotNull(classNode.findAnnotation(DRAFT_ANTIDEBUG_MATERIAL))
-        assertEquals(4, classNode.fields.count { it.findAnnotation(DRAFT_ANTIDEBUG_FIELD) != null })
-        assertTrue(classNode.methods.any { it.findAnnotation(DRAFT_ANTIDEBUG_GUARD) != null })
+        assertNotNull(classNode.findAnnotation(DRAFT_RUNTIME_MATERIAL))
+        assertEquals(4, classNode.fields.count { it.findAnnotation(DRAFT_RUNTIME_MATERIAL_FIELD) != null })
+        assertTrue(classNode.methods.any { it.findAnnotation(DRAFT_RUNTIME_MATERIAL_GUARD) != null })
         assertTrue(classNode.methods.any { it.name == "<clinit>" })
         assertTrue(classNode.methods.first { it.name == "<init>" }.instructions.size() > 0)
 
-        val tempDir = Files.createTempDirectory("grunteon-antidebug-test")
+        val tempDir = Files.createTempDirectory("grunteon-runtime-material-test")
         writeClasses(instance.workRes.inputClassCollection, tempDir)
         runTestClass(tempDir)
     }

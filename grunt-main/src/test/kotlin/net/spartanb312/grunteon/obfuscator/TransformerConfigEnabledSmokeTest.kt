@@ -1,7 +1,7 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
-import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiDebug
+import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.exp.ControlflowFlatteningSSA
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
@@ -10,6 +10,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roun
 import kotlin.io.path.createTempFile
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.readText
+import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFalse
@@ -159,19 +160,22 @@ class TransformerConfigEnabledSmokeTest {
     }
 
     @Test
-    fun roundTripsAntiDebugConfig() {
-        val path = createTempFile("grunteon-antidebug-config", ".json")
+    fun roundTripsRuntimeMaterialConfig() {
+        val path = createTempFile("grunteon-runtime-material-config", ".json")
         try {
             ObfConfig.write(
                 ObfConfig(
-                    transformerConfigs = listOf(AntiDebug.Config())
+                    transformerConfigs = listOf(RuntimeMaterial.Config())
                 ),
                 path
             )
             val text = path.readText()
-            assertContains(text, "AntiDebug.Config")
+            assertContains(text, "RuntimeMaterial.Config")
             assertContains(text, "\"draftMaterialMetadata\": true")
-            assertIs<AntiDebug.Config>(ObfConfig.read(path).transformerConfigs.single())
+            assertIs<RuntimeMaterial.Config>(ObfConfig.read(path).transformerConfigs.single())
+
+            path.writeText(text.replace("RuntimeMaterial.Config", "AntiDebug.Config"))
+            assertIs<RuntimeMaterial.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()
         }

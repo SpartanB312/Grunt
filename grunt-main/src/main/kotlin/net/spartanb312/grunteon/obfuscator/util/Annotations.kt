@@ -68,9 +68,18 @@ val PHANTOM_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/PhantomClass;
 val PHANTOM_METHOD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomMethod;"
 val PHANTOM_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomField;"
 
-val DRAFT_ANTIDEBUG_MATERIAL = "Lnet/spartanb312/grunteon/annotation/internal/AntiDebugMaterial;"
-val DRAFT_ANTIDEBUG_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/AntiDebugField;"
-val DRAFT_ANTIDEBUG_GUARD = "Lnet/spartanb312/grunteon/annotation/internal/AntiDebugGuard;"
+val DRAFT_RUNTIME_MATERIAL = "Lnet/spartanb312/grunteon/annotation/internal/RuntimeMaterial;"
+val DRAFT_RUNTIME_MATERIAL_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/RuntimeMaterialField;"
+val DRAFT_RUNTIME_MATERIAL_GUARD = "Lnet/spartanb312/grunteon/annotation/internal/RuntimeMaterialGuard;"
+
+@Deprecated("Use DRAFT_RUNTIME_MATERIAL")
+val DRAFT_ANTIDEBUG_MATERIAL = DRAFT_RUNTIME_MATERIAL
+
+@Deprecated("Use DRAFT_RUNTIME_MATERIAL_FIELD")
+val DRAFT_ANTIDEBUG_FIELD = DRAFT_RUNTIME_MATERIAL_FIELD
+
+@Deprecated("Use DRAFT_RUNTIME_MATERIAL_GUARD")
+val DRAFT_ANTIDEBUG_GUARD = DRAFT_RUNTIME_MATERIAL_GUARD
 
 val INTERNAL = mutableSetOf(
     GENERATED_CLASS,
@@ -79,7 +88,7 @@ val INTERNAL = mutableSetOf(
     PHANTOM_CLASS,
     PHANTOM_METHOD,
     PHANTOM_FIELD,
-    DRAFT_ANTIDEBUG_MATERIAL,
-    DRAFT_ANTIDEBUG_FIELD,
-    DRAFT_ANTIDEBUG_GUARD
+    DRAFT_RUNTIME_MATERIAL,
+    DRAFT_RUNTIME_MATERIAL_FIELD,
+    DRAFT_RUNTIME_MATERIAL_GUARD
 )

@@ -104,12 +104,19 @@ data class ObfConfig(
         }
 
         fun read(path: Path): ObfConfig {
-            return json().decodeFromString(serializer(), path.readText())
+            return json().decodeFromString(serializer(), normalizeLegacyTypeNames(path.readText()))
         }
 
         fun write(config: ObfConfig, path: Path) {
             val jsonString = json().encodeToString(serializer(), config)
             path.writeText(jsonString)
+        }
+
+        private fun normalizeLegacyTypeNames(text: String): String {
+            return text.replace(
+                "net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiDebug.Config",
+                "net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial.Config"
+            )
         }
     }
 }
