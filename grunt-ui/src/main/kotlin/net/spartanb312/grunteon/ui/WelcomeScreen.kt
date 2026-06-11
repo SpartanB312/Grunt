@@ -25,12 +25,12 @@ fun WelcomeScreen(
         ) {
             Text(
                 "Grunteon",
-                color = UiTextPrimary(),
+                color = FluentTheme.colors.text.text.primary,
                 style = FluentTheme.typography.title,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
             )
-            Text(status, color = UiTextSecondary(), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(status, color = FluentTheme.colors.text.text.secondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(8.dp))
             UiButton(onClick = onOpenConfig, modifier = Modifier.fillMaxWidth()) {
                 Text("Open existed config")

@@ -37,17 +37,17 @@ fun Header(
         Column(Modifier.weight(1f)) {
             Text(
                 "Pipeline Editor",
-                color = UiTextPrimary(),
+                color = FluentTheme.colors.text.text.primary,
                 style = FluentTheme.typography.title,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 "$enabledCount enabled / $nodeCount nodes. $warningCount order warnings.",
-                color = if (warningCount == 0) UiTextSecondary() else UiWarningColor(),
+                color = if (warningCount == 0) FluentTheme.colors.text.text.secondary else FluentTheme.colors.system.caution,
                 style = FluentTheme.typography.body
             )
         }
-        Text(status, color = UiTextSecondary(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(status, color = FluentTheme.colors.text.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         UiOutlinedButton(onClick = onReload) { Text("Reload") }
         UiButton(onClick = onSave) { Text("Save config") }
     }
@@ -85,7 +85,7 @@ fun TransformerLibrary(
                     item {
                         Text(
                             category.name,
-                            color = UiTextSecondary(),
+                            color = FluentTheme.colors.text.text.secondary,
                             style = FluentTheme.typography.bodyStrong,
                             modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
                         )
@@ -102,9 +102,9 @@ fun TransformerLibrary(
 @Composable
 private fun LibraryItem(definition: TransformerDefinition, onAdd: (TransformerDefinition) -> Unit) {
     val labelColor = when {
-        definition.isHidden -> UiWarningColor()
-        definition.isPluginProvided -> UiAccentColor()
-        else -> UiTextPrimary()
+        definition.isHidden -> FluentTheme.colors.system.caution
+        definition.isPluginProvided -> FluentTheme.colors.fillAccent.default
+        else -> FluentTheme.colors.text.text.primary
     }
     SectionSurface(Modifier.fillMaxWidth()) {
         Row(
@@ -114,7 +114,10 @@ private fun LibraryItem(definition: TransformerDefinition, onAdd: (TransformerDe
         ) {
             Column(Modifier.weight(1f)) {
                 Text(definition.label, color = labelColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(definition.description, color = UiTextSecondary(), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    definition.description,
+                    color = FluentTheme.colors.text.text.secondary, maxLines = 2, overflow = TextOverflow.Ellipsis
+                )
             }
             UiOutlinedButton(onClick = { onAdd(definition) }) {
                 Text("Add")
@@ -190,16 +193,16 @@ private fun PipelineNodeCard(
     onEnabledChange: (Boolean) -> Unit,
 ) {
     val borderColor = when {
-        warning != null -> UiWarningColor()
-        selected -> UiAccentColor()
-        else -> UiBorderColor()
+        warning != null -> FluentTheme.colors.system.caution
+        selected -> FluentTheme.colors.fillAccent.default
+        else -> FluentTheme.colors.stroke.card.default
     }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 118.dp)
             .clip(UiPanelShape)
-            .background(if (selected) UiSelectedPanelColor() else UiSectionColor())
+            .background(if (selected) FluentTheme.colors.fillAccent.tertiary.copy(alpha = 0.45f) else FluentTheme.colors.background.card.secondary)
             .border(BorderStroke(1.dp, borderColor), UiPanelShape)
             .clickable(onClick = onSelect)
     ) {
@@ -230,7 +233,7 @@ private fun PipelineNodeCard(
             }
             Text(
                 "#${index + 1}",
-                color = UiTextSecondary(),
+                color = FluentTheme.colors.text.text.secondary,
                 fontFamily = FontFamily.Monospace,
                 modifier = Modifier.padding(top = 26.dp)
             )
@@ -240,14 +243,14 @@ private fun PipelineNodeCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(definition?.label ?: node.config::class.simpleName.orEmpty(), fontWeight = FontWeight.SemiBold)
-                    Text(definition?.category?.name ?: "Unknown", color = UiTextSecondary())
+                    Text(definition?.category?.name ?: "Unknown", color = FluentTheme.colors.text.text.secondary)
                 }
                 if (warning != null) {
-                    Text(warning, color = UiWarningColor(), style = FluentTheme.typography.caption)
+                    Text(warning, color = FluentTheme.colors.system.caution, style = FluentTheme.typography.caption)
                 } else {
                     Text(
                         definition?.description ?: node.config::class.qualifiedName.orEmpty(),
-                        color = UiTextSecondary()
+                        color = FluentTheme.colors.text.text.secondary
                     )
                 }
             }
@@ -280,9 +283,9 @@ private fun PipelineNodeCard(
 private fun VirtualMappingApplier() {
     NestedSurface(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp)) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("MappingApplier", color = UiTextSecondary(), fontFamily = FontFamily.Monospace)
+            Text("MappingApplier", color = FluentTheme.colors.text.text.secondary, fontFamily = FontFamily.Monospace)
             Spacer(Modifier.width(10.dp))
-            Text("auto inserted after the last renamer source", color = UiTextSecondary())
+            Text("auto inserted after the last renamer source", color = FluentTheme.colors.text.text.secondary)
         }
     }
 }

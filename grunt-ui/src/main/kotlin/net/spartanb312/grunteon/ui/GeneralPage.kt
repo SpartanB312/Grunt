@@ -37,12 +37,12 @@ fun GeneralPage(
                 Text(
                     "General",
                     style = FluentTheme.typography.title,
-                    color = UiTextPrimary(),
+                    color = FluentTheme.colors.text.text.primary,
                     fontWeight = FontWeight.Bold
                 )
-                Text("Top-level ObfConfig options.", color = UiTextSecondary())
+                Text("Top-level ObfConfig options.", color = FluentTheme.colors.text.text.secondary)
             }
-            Text(status, color = UiTextSecondary(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(status, color = FluentTheme.colors.text.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             UiOutlinedButton(onClick = onReload) { Text("Reload") }
             UiButton(onClick = onSave) { Text("Save config") }
         }
@@ -154,8 +154,8 @@ fun GeneralPage(
 private fun GeneralTipsPlaceholder(modifier: Modifier = Modifier) {
     SectionSurface(modifier.fillMaxWidth().heightIn(min = 180.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Tips", color = UiTextPrimary(), fontWeight = FontWeight.SemiBold)
-            Text("Reserved for contextual help.", color = UiTextSecondary())
+            Text("Tips", color = FluentTheme.colors.text.text.primary, fontWeight = FontWeight.SemiBold)
+            Text("Reserved for contextual help.", color = FluentTheme.colors.text.text.secondary)
         }
     }
 }
@@ -164,7 +164,7 @@ private fun GeneralTipsPlaceholder(modifier: Modifier = Modifier) {
 private fun GeneralSection(title: String, content: @Composable () -> Unit) {
     SectionSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, color = UiTextPrimary(), fontWeight = FontWeight.SemiBold)
+            Text(title, color = FluentTheme.colors.text.text.primary, fontWeight = FontWeight.SemiBold)
             content()
         }
     }
@@ -239,7 +239,7 @@ private fun BooleanOption(label: String, value: Boolean, onChange: (Boolean) -> 
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         UiCheckbox(checked = value, onCheckedChange = onChange)
-        Text(label, color = UiTextPrimary())
+        Text(label, color = FluentTheme.colors.text.text.primary)
     }
 }
 
@@ -247,8 +247,8 @@ private fun BooleanOption(label: String, value: Boolean, onChange: (Boolean) -> 
 private fun IntSliderOption(label: String, value: Int, range: IntRange, onChange: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, color = UiTextPrimary())
-            Text(value.toString(), color = UiTextPrimary())
+            Text(label, color = FluentTheme.colors.text.text.primary)
+            Text(value.toString(), color = FluentTheme.colors.text.text.primary)
         }
         UiSlider(
             value = value.toFloat().coerceIn(range.first.toFloat(), range.last.toFloat()),

@@ -108,7 +108,10 @@ fun SettingsPage(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Settings", style = FluentTheme.typography.title, fontWeight = FontWeight.Bold)
-                    Text("Workspace preferences for the editor prototype.", color = UiTextSecondary())
+                    Text(
+                        "Workspace preferences for the editor prototype.",
+                        color = FluentTheme.colors.text.text.secondary
+                    )
                 }
                 SettingsSection {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -117,7 +120,7 @@ fun SettingsPage(
                                 Text("Font Size", fontWeight = FontWeight.SemiBold)
                                 Text(
                                     "Scale all editor text without changing the pipeline data.",
-                                    color = UiTextSecondary()
+                                    color = FluentTheme.colors.text.text.secondary
                                 )
                             }
                             Text("${"%.0f".format(fontScale * 100)}%", fontFamily = FontFamily.Monospace)
@@ -138,7 +141,10 @@ fun SettingsPage(
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("Obfuscation Log Level", fontWeight = FontWeight.SemiBold)
-                            Text("Minimum logger level shown in the Obfuscation console.", color = UiTextSecondary())
+                            Text(
+                                "Minimum logger level shown in the Obfuscation console.",
+                                color = FluentTheme.colors.text.text.secondary
+                            )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (uiLogLevel == UiLogLevel.Info) {
@@ -187,7 +193,7 @@ fun SettingsPage(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Text(status, color = UiTextSecondary())
+                        Text(status, color = FluentTheme.colors.text.text.secondary)
                     }
                 }
             }
@@ -197,13 +203,16 @@ fun SettingsPage(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Plugins", style = FluentTheme.typography.title, fontWeight = FontWeight.Bold)
-                    Text("${plugins.size} loaded plugin(s).", color = UiTextSecondary())
+                    Text("${plugins.size} loaded plugin(s).", color = FluentTheme.colors.text.text.secondary)
                 }
                 if (plugins.isEmpty()) {
                     SettingsSection {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("No plugins loaded", fontWeight = FontWeight.SemiBold)
-                            Text("Only built-in transformers are available.", color = UiTextSecondary())
+                            Text(
+                                "Only built-in transformers are available.",
+                                color = FluentTheme.colors.text.text.secondary
+                            )
                         }
                     }
                 } else {
@@ -229,13 +238,13 @@ private fun PluginSection(plugin: LoadedPlugin) {
             Text(metadata.name, fontWeight = FontWeight.SemiBold)
             Text(
                 "Plugin ID: ${metadata.id}",
-                color = UiTextSecondary(),
+                color = FluentTheme.colors.text.text.secondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 "Version: ${metadata.version} ",
-                color = UiTextSecondary(),
+                color = FluentTheme.colors.text.text.secondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -247,7 +256,10 @@ private fun PluginSection(plugin: LoadedPlugin) {
             )
             val file = metadata.file.toString()
             if (file.isNotBlank()) {
-                Text(file, color = UiTextSecondary(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    file,
+                    color = FluentTheme.colors.text.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

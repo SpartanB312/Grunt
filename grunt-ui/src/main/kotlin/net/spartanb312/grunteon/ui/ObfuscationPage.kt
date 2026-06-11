@@ -33,7 +33,7 @@ fun ObfuscationPage(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Obfuscation", style = FluentTheme.typography.title, fontWeight = FontWeight.Bold)
-                Text("Output information from work instance", color = UiTextSecondary())
+                Text("Output information from work instance", color = FluentTheme.colors.text.text.secondary)
             }
             NestedSurface(Modifier.fillMaxWidth().weight(1f)) {
                 Column(
@@ -41,23 +41,26 @@ fun ObfuscationPage(
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     if (logs.isEmpty()) {
-                        Text("No obfuscation run yet.", color = UiTextSecondary(), fontFamily = FontFamily.Monospace)
+                        Text(
+                            "No obfuscation run yet.",
+                            color = FluentTheme.colors.text.text.secondary, fontFamily = FontFamily.Monospace
+                        )
                     } else {
                         logs.forEach { line ->
-                            Text(line, fontFamily = FontFamily.Monospace, color = UiTextPrimary())
+                            Text(line, fontFamily = FontFamily.Monospace, color = FluentTheme.colors.text.text.primary)
                         }
                     }
                 }
             }
             SectionSurface(Modifier.fillMaxWidth().height(120.dp)) {
                 Box(Modifier.fillMaxSize().padding(12.dp)) {
-                    Text("Reserved", color = UiTextSecondary())
+                    Text("Reserved", color = FluentTheme.colors.text.text.secondary)
                     Row(
                         modifier = Modifier.align(Alignment.BottomEnd),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (running) Text("Running...", color = UiTextSecondary())
+                        if (running) Text("Running...", color = FluentTheme.colors.text.text.secondary)
                         UiButton(onClick = onObfuscate, enabled = !running) {
                             Text("Obfuscate")
                         }

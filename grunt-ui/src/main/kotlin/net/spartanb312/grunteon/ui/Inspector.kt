@@ -26,14 +26,19 @@ fun Inspector(
 ) {
     PanelSurface(modifier) {
         Column(Modifier.fillMaxSize().padding(12.dp)) {
-            Text("Inspector", fontWeight = FontWeight.Bold)
+            Text(
+                "Inspector",
+            )
             Spacer(Modifier.height(10.dp))
             if (node == null) {
-                Text("Select a transformer node to edit its Config.", color = UiTextSecondary())
+                Text("Select a transformer node to edit its Config.", color = FluentTheme.colors.text.text.secondary)
                 return@Column
             }
             Text(definition?.label ?: node.config::class.simpleName.orEmpty(), style = FluentTheme.typography.subtitle)
-            Text(definition?.description ?: node.config::class.qualifiedName.orEmpty(), color = UiTextSecondary())
+            Text(
+                definition?.description ?: node.config::class.qualifiedName.orEmpty(),
+                color = FluentTheme.colors.text.text.secondary
+            )
             Spacer(Modifier.height(12.dp))
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -44,8 +49,8 @@ fun Inspector(
                     onChange = { updated -> onConfigChange(updated as TransformerConfig) },
                 )
             }
+            }
         }
-    }
 }
 
 @Composable
@@ -128,7 +133,11 @@ private fun InspectorCard(
     CardExpanderItem(heading = { Text(label, fontWeight = FontWeight.SemiBold) }, icon = null) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (description != null) {
-                Text(description, color = UiTextSecondary(), style = FluentTheme.typography.caption)
+                Text(
+                    description,
+                    color = FluentTheme.colors.text.text.secondary,
+                    style = FluentTheme.typography.caption
+                )
             }
             content()
         }
@@ -139,7 +148,7 @@ private fun InspectorCard(
 private fun BooleanField(value: Boolean, onChange: (Any?) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         UiSwitch(checked = value, onCheckedChange = { onChange(it) })
-        Text(if (value) "Enabled" else "Disabled", color = UiTextSecondary())
+        Text(if (value) "Enabled" else "Disabled", color = FluentTheme.colors.text.text.secondary)
     }
 }
 
@@ -224,7 +233,7 @@ private fun IntSliderField(
         if (description != null) {
             Text(
                 description,
-                color = UiTextSecondary(),
+                color = FluentTheme.colors.text.text.secondary,
                 style = FluentTheme.typography.caption,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
@@ -271,7 +280,7 @@ private fun DoubleSliderField(
         if (description != null) {
             Text(
                 description,
-                color = UiTextSecondary(),
+                color = FluentTheme.colors.text.text.secondary,
                 style = FluentTheme.typography.caption,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
@@ -302,7 +311,7 @@ private fun NestedConfigField(label: String, description: String?, value: Any, o
                 if (description != null) {
                     Text(
                         description,
-                        color = UiTextSecondary(),
+                        color = FluentTheme.colors.text.text.secondary,
                         style = FluentTheme.typography.caption,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
@@ -318,7 +327,7 @@ private fun NestedConfigField(label: String, description: String?, value: Any, o
         icon = null
     ) {
         if (description != null) {
-            Text(description, color = UiTextSecondary(), style = FluentTheme.typography.caption)
+            Text(description, color = FluentTheme.colors.text.text.secondary, style = FluentTheme.typography.caption)
         }
     }
 }
@@ -342,8 +351,8 @@ private fun ListField(value: List<*>, onChange: (Any?) -> Unit) {
 private fun ReadOnlyValue(label: String, text: String) {
     NestedSurface {
         Column(Modifier.fillMaxWidth().padding(10.dp)) {
-            Text(label, color = UiTextSecondary())
-            Text(text, color = UiTextPrimary(), fontFamily = FontFamily.Monospace)
+            Text(label, color = FluentTheme.colors.text.text.secondary)
+            Text(text, color = FluentTheme.colors.text.text.primary, fontFamily = FontFamily.Monospace)
         }
     }
 }

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -32,17 +31,17 @@ enum class ThemeMode {
 
 @Composable
 fun PanelSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    FramedSurface(color = UiPanelColor(), modifier = modifier, content = content)
+    FramedSurface(color = FluentTheme.colors.background.card.default, modifier = modifier, content = content)
 }
 
 @Composable
 fun SectionSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    FramedSurface(color = UiSectionColor(), modifier = modifier, content = content)
+    FramedSurface(color = FluentTheme.colors.background.card.secondary, modifier = modifier, content = content)
 }
 
 @Composable
 fun NestedSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    FramedSurface(color = UiNestedColor(), modifier = modifier, content = content)
+    FramedSurface(color = FluentTheme.colors.background.layer.default, modifier = modifier, content = content)
 }
 
 @Composable
@@ -55,51 +54,11 @@ fun FramedSurface(
         modifier = modifier
             .clip(UiPanelShape)
             .background(color)
-            .border(BorderStroke(1.dp, UiBorderColor()), UiPanelShape)
+            .border(BorderStroke(1.dp, FluentTheme.colors.stroke.card.default), UiPanelShape)
     ) {
         content()
     }
 }
-
-@Composable
-@ReadOnlyComposable
-fun UiAppBackgroundColor(): Color = FluentTheme.colors.background.mica.base
-
-@Composable
-@ReadOnlyComposable
-fun UiPanelColor(): Color = FluentTheme.colors.background.card.default
-
-@Composable
-@ReadOnlyComposable
-fun UiSectionColor(): Color = FluentTheme.colors.background.card.secondary
-
-@Composable
-@ReadOnlyComposable
-fun UiNestedColor(): Color = FluentTheme.colors.background.layer.default
-
-@Composable
-@ReadOnlyComposable
-fun UiBorderColor(): Color = FluentTheme.colors.stroke.card.default
-
-@Composable
-@ReadOnlyComposable
-fun UiSelectedPanelColor(): Color = FluentTheme.colors.fillAccent.tertiary.copy(alpha = 0.45f)
-
-@Composable
-@ReadOnlyComposable
-fun UiAccentColor(): Color = FluentTheme.colors.fillAccent.default
-
-@Composable
-@ReadOnlyComposable
-fun UiWarningColor(): Color = FluentTheme.colors.system.caution
-
-@Composable
-@ReadOnlyComposable
-fun UiTextPrimary(): Color = FluentTheme.colors.text.text.primary
-
-@Composable
-@ReadOnlyComposable
-fun UiTextSecondary(): Color = FluentTheme.colors.text.text.secondary
 
 @Composable
 fun UiButton(
@@ -177,7 +136,7 @@ fun UiTextField(
         singleLine = singleLine,
         maxLines = maxLines,
         header = label?.let {
-            { Text(it, color = UiTextSecondary(), style = FluentTheme.typography.caption) }
+            { Text(it, color = FluentTheme.colors.text.text.secondary, style = FluentTheme.typography.caption) }
         },
     )
 }
