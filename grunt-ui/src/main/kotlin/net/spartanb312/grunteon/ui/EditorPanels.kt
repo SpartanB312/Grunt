@@ -1,32 +1,23 @@
 package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
 
 @Composable
 fun Header(
@@ -46,14 +37,14 @@ fun Header(
         Column(Modifier.weight(1f)) {
             Text(
                 "Pipeline Editor",
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.headlineSmall,
+                color = palette.text,
+                style = FluentTheme.typography.title,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 "$enabledCount enabled / $nodeCount nodes. $warningCount order warnings.",
                 color = if (warningCount == 0) palette.muted else palette.warning,
-                style = MaterialTheme.typography.bodyMedium
+                style = FluentTheme.typography.body
             )
         }
         Text(status, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -76,12 +67,12 @@ fun TransformerLibrary(
         Column(Modifier.fillMaxHeight().padding(12.dp)) {
             Text("Transformer Library", fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
+            UiTextField(
                 value = search,
                 onValueChange = onSearchChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("Search") },
+                label = "Search",
             )
             Spacer(Modifier.height(10.dp))
             val visibleDefinitions = if (showHiddenTransformers) definitions else definitions.filterNot { it.isHidden }
@@ -96,7 +87,7 @@ fun TransformerLibrary(
                         Text(
                             category.name,
                             color = palette.muted,
-                            style = MaterialTheme.typography.labelLarge,
+                            style = FluentTheme.typography.bodyStrong,
                             modifier = Modifier.padding(top = 8.dp)
                         )
                     }
@@ -207,11 +198,13 @@ private fun PipelineNodeCard(
         selected -> palette.accent
         else -> palette.stroke
     }
-    Card(
-        colors = CardDefaults.cardColors(containerColor = if (selected) palette.selectedPanel else palette.panelAlt),
-        shape = UiPanelShape,
-        border = BorderStroke(1.dp, borderColor),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onSelect)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(UiPanelShape)
+            .background(if (selected) palette.selectedPanel else palette.panelAlt)
+            .border(BorderStroke(1.dp, borderColor), UiPanelShape)
+            .clickable(onClick = onSelect)
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -220,10 +213,10 @@ private fun PipelineNodeCard(
                     Text(definition?.label ?: node.config::class.simpleName.orEmpty(), fontWeight = FontWeight.SemiBold)
                     Text(definition?.category?.name ?: "Unknown", color = palette.muted)
                 }
-                Switch(checked = node.config.enabled, onCheckedChange = onEnabledChange)
+                UiSwitch(checked = node.config.enabled, onCheckedChange = onEnabledChange)
             }
             if (warning != null) {
-                Text(warning, color = palette.warning, style = MaterialTheme.typography.bodySmall)
+                Text(warning, color = palette.warning, style = FluentTheme.typography.caption)
             } else {
                 Text(definition?.description ?: node.config::class.qualifiedName.orEmpty(), color = palette.muted)
             }

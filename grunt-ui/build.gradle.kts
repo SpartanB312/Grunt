@@ -18,7 +18,6 @@ dependencies {
     implementation(libs.filekit.dialogs)
     implementation(libs.kotlinReflect)
     implementation(compose.desktop.currentOs)
-    implementation(compose.material3)
     implementation(libs.compose.fluent)
     implementation(libs.compose.fluent.icons)
 }

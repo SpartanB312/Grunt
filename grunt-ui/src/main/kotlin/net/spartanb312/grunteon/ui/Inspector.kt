@@ -1,39 +1,19 @@
 package net.spartanb312.grunteon.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.DecimalRangeVal
-import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.DropdownMenu
+import io.github.composefluent.component.DropdownMenuItem
+import io.github.composefluent.component.Text
+import net.spartanb312.grunteon.obfuscator.process.*
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
@@ -55,7 +35,7 @@ fun Inspector(
                 Text("Select a transformer node to edit its Config.", color = palette.muted)
                 return@Column
             }
-            Text(definition?.label ?: node.config::class.simpleName.orEmpty(), style = MaterialTheme.typography.titleMedium)
+            Text(definition?.label ?: node.config::class.simpleName.orEmpty(), style = FluentTheme.typography.subtitle)
             Text(definition?.description ?: node.config::class.qualifiedName.orEmpty(), color = palette.muted)
             Spacer(Modifier.height(12.dp))
             Column(
@@ -107,7 +87,7 @@ private fun ConfigField(
     SectionSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(label, color = palette.text, fontWeight = FontWeight.SemiBold)
-            if (description != null) Text(description, color = palette.muted, style = MaterialTheme.typography.bodySmall)
+            if (description != null) Text(description, color = palette.muted, style = FluentTheme.typography.caption)
             when (value) {
                 is Boolean -> BooleanField(value, onChange)
                 is String -> StringField(value, onChange)
@@ -127,14 +107,14 @@ private fun ConfigField(
 private fun BooleanField(value: Boolean, onChange: (Any?) -> Unit) {
     val palette = LocalUiPalette.current
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Switch(checked = value, onCheckedChange = { onChange(it) })
+        UiSwitch(checked = value, onCheckedChange = { onChange(it) })
         Text(if (value) "Enabled" else "Disabled", color = palette.muted)
     }
 }
 
 @Composable
 private fun StringField(value: String, onChange: (Any?) -> Unit) {
-    OutlinedTextField(
+    UiTextField(
         value = value,
         onValueChange = { onChange(it) },
         modifier = Modifier.fillMaxWidth(),
@@ -146,14 +126,14 @@ private fun StringField(value: String, onChange: (Any?) -> Unit) {
 private fun IntField(value: Int, property: KProperty1<out Any, *>, onChange: (Any?) -> Unit) {
     val range = property.findAnnotation<IntRangeVal>()
     if (range != null) {
-        Slider(
+        UiSlider(
             value = value.toFloat().coerceIn(range.min.toFloat(), range.max.toFloat()),
             onValueChange = { onChange(it.toInt().coerceIn(range.min, range.max)) },
             valueRange = range.min.toFloat()..range.max.toFloat(),
             steps = ((range.max - range.min) / range.step - 1).coerceAtLeast(0)
         )
     }
-    OutlinedTextField(
+    UiTextField(
         value = value.toString(),
         onValueChange = { text -> text.toIntOrNull()?.let { onChange(it) } },
         modifier = Modifier.fillMaxWidth(),
@@ -165,13 +145,13 @@ private fun IntField(value: Int, property: KProperty1<out Any, *>, onChange: (An
 private fun DoubleField(value: Double, property: KProperty1<out Any, *>, onChange: (Any?) -> Unit) {
     val range = property.findAnnotation<DecimalRangeVal>()
     if (range != null) {
-        Slider(
+        UiSlider(
             value = value.toFloat().coerceIn(range.min.toFloat(), range.max.toFloat()),
             onValueChange = { onChange(it.toDouble().coerceIn(range.min, range.max)) },
             valueRange = range.min.toFloat()..range.max.toFloat(),
         )
     }
-    OutlinedTextField(
+    UiTextField(
         value = "%.4f".format(value).trimEnd('0').trimEnd('.'),
         onValueChange = { text -> text.toDoubleOrNull()?.let { onChange(it) } },
         modifier = Modifier.fillMaxWidth(),
@@ -190,12 +170,11 @@ private fun EnumField(value: Enum<*>, onChange: (Any?) -> Unit) {
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             constants.forEach { constant ->
                 DropdownMenuItem(
-                    text = { Text(constant.name) },
                     onClick = {
                         expanded = false
                         onChange(constant)
                     }
-                )
+                ) { Text(constant.name) }
             }
         }
     }
@@ -213,7 +192,7 @@ private fun NestedConfigField(value: Any, onChange: (Any?) -> Unit) {
 @Composable
 private fun ListField(value: List<*>, onChange: (Any?) -> Unit) {
     if (value.all { it == null || it is String }) {
-        OutlinedTextField(
+        UiTextField(
             value = value.filterIsInstance<String>().joinToString("\n"),
             onValueChange = { text -> onChange(text.lines().filter { it.isNotBlank() }) },
             modifier = Modifier.fillMaxWidth(),

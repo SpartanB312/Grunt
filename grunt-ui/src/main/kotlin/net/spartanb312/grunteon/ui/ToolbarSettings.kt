@@ -1,19 +1,8 @@
 package net.spartanb312.grunteon.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +11,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
 import net.spartanb312.grunteon.obfuscator.SUBTITLE
 import net.spartanb312.grunteon.obfuscator.VERSION
 import net.spartanb312.grunteon.obfuscator.plugin.LoadedPlugin
@@ -104,7 +95,7 @@ fun SettingsPage(
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text("Settings", style = FluentTheme.typography.title, fontWeight = FontWeight.Bold)
                     Text("Workspace preferences for the editor prototype.", color = palette.muted)
                 }
                 SettingsSection {
@@ -116,7 +107,7 @@ fun SettingsPage(
                             }
                             Text("${"%.0f".format(fontScale * 100)}%", fontFamily = FontFamily.Monospace)
                         }
-                        Slider(
+                        UiSlider(
                             value = fontScale,
                             onValueChange = { onFontScaleChange(it.coerceIn(MinFontScale, MaxFontScale)) },
                             valueRange = MinFontScale..MaxFontScale,
@@ -190,7 +181,7 @@ fun SettingsPage(
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Plugins", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text("Plugins", style = FluentTheme.typography.title, fontWeight = FontWeight.Bold)
                     Text("${plugins.size} loaded plugin(s).", color = palette.muted)
                 }
                 if (plugins.isEmpty()) {

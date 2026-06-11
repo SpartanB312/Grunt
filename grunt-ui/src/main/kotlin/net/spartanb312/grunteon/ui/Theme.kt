@@ -1,18 +1,19 @@
 package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Shapes
-import androidx.compose.material3.Surface
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.*
 
 data class UiPalette(
     val background: Color,
@@ -28,29 +29,29 @@ data class UiPalette(
 )
 
 val DarkPalette = UiPalette(
-    background = Color(0xFF111318),
-    panel = Color(0xFF191C22),
-    panelAlt = Color(0xFF20242B),
-    selectedPanel = Color(0xFF233043),
-    nestedPanel = Color(0xFF141820),
-    stroke = Color(0xFF303640),
-    text = Color(0xFFE7ECF3),
-    muted = Color(0xFF9AA3AF),
-    accent = Color(0xFF75B8FF),
-    warning = Color(0xFFFFC857),
+    background = Color(0xFF202020),
+    panel = Color(0xFF2C2C2C),
+    panelAlt = Color(0xFF323232),
+    selectedPanel = Color(0xFF173B57),
+    nestedPanel = Color(0xFF272727),
+    stroke = Color(0xFF454545),
+    text = Color(0xFFFFFFFF),
+    muted = Color(0xFFC5C5C5),
+    accent = Color(0xFF60CDFF),
+    warning = Color(0xFFFCE100),
 )
 
 val LightPalette = UiPalette(
-    background = Color(0xFFF4F6FA),
-    panel = Color(0xFFFFFFFF),
-    panelAlt = Color(0xFFF0F3F8),
-    selectedPanel = Color(0xFFE6F1FF),
-    nestedPanel = Color(0xFFF8FAFD),
-    stroke = Color(0xFFD5DAE2),
-    text = Color(0xFF1D2430),
-    muted = Color(0xFF5F6875),
-    accent = Color(0xFF1467B8),
-    warning = Color(0xFF9F6B00),
+    background = Color(0xFFF3F3F3),
+    panel = Color(0xFFFBFBFB),
+    panelAlt = Color(0xFFFFFFFF),
+    selectedPanel = Color(0xFFE9F5FC),
+    nestedPanel = Color(0xFFF7F7F7),
+    stroke = Color(0xFFE0E0E0),
+    text = Color(0xFF1A1A1A),
+    muted = Color(0xFF5D5D5D),
+    accent = Color(0xFF005FB8),
+    warning = Color(0xFF9D5D00),
 )
 
 val LocalUiPalette = staticCompositionLocalOf { DarkPalette }
@@ -59,16 +60,9 @@ const val BaseFontScale = 0.85f
 const val MinFontScale = 0.8f
 const val DefaultFontScale = 1.0f
 const val MaxFontScale = 1.3f
-val UiCornerRadius: Dp = 6.dp
+val UiCornerRadius: Dp = 4.dp
 val UiPanelShape = RoundedCornerShape(UiCornerRadius)
 val UiControlShape = RoundedCornerShape(UiCornerRadius)
-val UiShapes = Shapes(
-    extraSmall = UiControlShape,
-    small = UiControlShape,
-    medium = UiPanelShape,
-    large = UiPanelShape,
-    extraLarge = UiPanelShape,
-)
 
 enum class ThemeMode {
     Dark,
@@ -100,11 +94,11 @@ fun FramedSurface(
     content: @Composable () -> Unit,
 ) {
     val palette = LocalUiPalette.current
-    Surface(
-        color = color,
-        shape = UiPanelShape,
-        border = BorderStroke(1.dp, palette.stroke),
+    Box(
         modifier = modifier
+            .clip(UiPanelShape)
+            .background(color)
+            .border(BorderStroke(1.dp, palette.stroke), UiPanelShape)
     ) {
         content()
     }
@@ -117,7 +111,12 @@ fun UiButton(
     enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    Button(onClick = onClick, modifier = modifier, enabled = enabled, shape = UiControlShape) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        disabled = !enabled,
+        buttonColors = ButtonDefaults.accentButtonColors(),
+    ) {
         content()
     }
 }
@@ -129,7 +128,7 @@ fun UiOutlinedButton(
     enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    OutlinedButton(onClick = onClick, modifier = modifier, enabled = enabled, shape = UiControlShape) {
+    Button(onClick = onClick, modifier = modifier, disabled = !enabled) {
         content()
     }
 }
@@ -141,7 +140,59 @@ fun UiTextButton(
     enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    TextButton(onClick = onClick, modifier = modifier, enabled = enabled, shape = UiControlShape) {
+    Button(onClick = onClick, modifier = modifier, disabled = !enabled) {
         content()
     }
+}
+
+@Composable
+fun UiTitle(text: String, modifier: Modifier = Modifier) {
+    Text(text, modifier = modifier, style = FluentTheme.typography.title)
+}
+
+@Composable
+fun UiTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String? = null,
+    singleLine: Boolean = false,
+    minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+) {
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        singleLine = singleLine,
+        maxLines = maxLines,
+        header = label?.let {
+            { Text(it, color = LocalUiPalette.current.muted, style = FluentTheme.typography.caption) }
+        },
+    )
+}
+
+@Composable
+fun UiSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Switcher(checked = checked, onCheckStateChange = onCheckedChange, text = null)
+}
+
+@Composable
+fun UiCheckbox(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    CheckBox(checked = checked, onCheckStateChange = onCheckedChange)
+}
+
+@Composable
+fun UiSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int = 0,
+    modifier: Modifier = Modifier,
+) {
+    Slider(
+        state = SliderState(value, steps, true, onValueChange, valueRange),
+        modifier = modifier,
+        showTickMark = steps in 1..20,
+    )
 }

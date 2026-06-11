@@ -1,17 +1,8 @@
 package net.spartanb312.grunteon.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -19,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
 
 @Composable
 fun ObfuscationPage(
@@ -40,7 +33,7 @@ fun ObfuscationPage(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Obfuscation", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text("Obfuscation", style = FluentTheme.typography.title, fontWeight = FontWeight.Bold)
                 Text("Output information from work instance", color = palette.muted)
             }
             NestedSurface(Modifier.fillMaxWidth().weight(1f)) {
@@ -52,7 +45,7 @@ fun ObfuscationPage(
                         Text("No obfuscation run yet.", color = palette.muted, fontFamily = FontFamily.Monospace)
                     } else {
                         logs.forEach { line ->
-                            Text(line, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurface)
+                            Text(line, fontFamily = FontFamily.Monospace, color = palette.text)
                         }
                     }
                 }

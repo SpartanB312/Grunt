@@ -1,21 +1,8 @@
 package net.spartanb312.grunteon.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -23,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
 import kotlinx.coroutines.launch
 import net.spartanb312.grunteon.obfuscator.ObfConfig
 
@@ -48,7 +37,7 @@ fun GeneralPage(
             Column(Modifier.weight(1f)) {
                 Text(
                     "General",
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = FluentTheme.typography.title,
                     color = palette.text,
                     fontWeight = FontWeight.Bold
                 )
@@ -186,10 +175,10 @@ private fun GeneralSection(title: String, content: @Composable () -> Unit) {
 
 @Composable
 private fun StringOption(label: String, value: String, onChange: (String) -> Unit) {
-    OutlinedTextField(
+    UiTextField(
         value = value,
         onValueChange = onChange,
-        label = { Text(label) },
+        label = label,
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
@@ -209,10 +198,10 @@ private fun PathOption(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        OutlinedTextField(
+        UiTextField(
             value = value,
             onValueChange = onChange,
-            label = { Text(label) },
+            label = label,
             modifier = Modifier.weight(1f),
             singleLine = true,
         )
@@ -235,10 +224,10 @@ private fun PathOption(
 
 @Composable
 private fun StringListOption(label: String, value: List<String>, onChange: (List<String>) -> Unit) {
-    OutlinedTextField(
+    UiTextField(
         value = value.joinToString("\n"),
         onValueChange = { text -> onChange(text.lines().filter { it.isNotBlank() }) },
-        label = { Text(label) },
+        label = label,
         modifier = Modifier.fillMaxWidth(),
         minLines = 3,
         maxLines = 8,
@@ -253,7 +242,7 @@ private fun BooleanOption(label: String, value: Boolean, onChange: (Boolean) -> 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Checkbox(checked = value, onCheckedChange = onChange)
+        UiCheckbox(checked = value, onCheckedChange = onChange)
         Text(label, color = palette.text)
     }
 }
@@ -266,7 +255,7 @@ private fun IntSliderOption(label: String, value: Int, range: IntRange, onChange
             Text(label, color = palette.text)
             Text(value.toString(), color = palette.text)
         }
-        Slider(
+        UiSlider(
             value = value.toFloat().coerceIn(range.first.toFloat(), range.last.toFloat()),
             onValueChange = { onChange(it.toInt().coerceIn(range.first, range.last)) },
             valueRange = range.first.toFloat()..range.last.toFloat(),
