@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator.process
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
+import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiDebug
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.exp.ControlflowFlatteningSSA
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
@@ -64,6 +65,7 @@ object TransformerRegistry {
         entry({ StringArrayedEncrypt() }, { StringArrayedEncrypt.Config() }),
         entry({ DeclaredFieldsExtract() }, { DeclaredFieldsExtract.Config() }),
         entry({ ParameterObfuscate() }, { ParameterObfuscate.Config() }),
+        entry({ AntiDebug() }, { AntiDebug.Config() }),
         entry({ InvokeDispatcher() }, { InvokeDispatcher.Config() }),
         entry({ InvokeProxy() }, { InvokeProxy.Config() }),
         entry({ FieldAccessProxy() }, { FieldAccessProxy.Config() }),

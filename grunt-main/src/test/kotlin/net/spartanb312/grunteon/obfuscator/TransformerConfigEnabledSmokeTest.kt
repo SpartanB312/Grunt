@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
+import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiDebug
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.exp.ControlflowFlatteningSSA
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
@@ -152,6 +153,25 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"randomBoundPredicateMinChainSteps\": 1")
             assertContains(text, "\"randomBoundPredicateMaxChainSteps\": 1")
             assertIs<ControlflowJump.Config>(ObfConfig.read(path).transformerConfigs.single())
+        } finally {
+            path.deleteIfExists()
+        }
+    }
+
+    @Test
+    fun roundTripsAntiDebugConfig() {
+        val path = createTempFile("grunteon-antidebug-config", ".json")
+        try {
+            ObfConfig.write(
+                ObfConfig(
+                    transformerConfigs = listOf(AntiDebug.Config())
+                ),
+                path
+            )
+            val text = path.readText()
+            assertContains(text, "AntiDebug.Config")
+            assertContains(text, "\"draftMaterialMetadata\": true")
+            assertIs<AntiDebug.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()
         }

@@ -68,11 +68,18 @@ val PHANTOM_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/PhantomClass;
 val PHANTOM_METHOD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomMethod;"
 val PHANTOM_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomField;"
 
+val DRAFT_ANTIDEBUG_MATERIAL = "Lnet/spartanb312/grunteon/annotation/internal/AntiDebugMaterial;"
+val DRAFT_ANTIDEBUG_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/AntiDebugField;"
+val DRAFT_ANTIDEBUG_GUARD = "Lnet/spartanb312/grunteon/annotation/internal/AntiDebugGuard;"
+
 val INTERNAL = mutableSetOf(
     GENERATED_CLASS,
     GENERATED_METHOD,
     GENERATED_FIELD,
     PHANTOM_CLASS,
     PHANTOM_METHOD,
-    PHANTOM_FIELD
+    PHANTOM_FIELD,
+    DRAFT_ANTIDEBUG_MATERIAL,
+    DRAFT_ANTIDEBUG_FIELD,
+    DRAFT_ANTIDEBUG_GUARD
 )
