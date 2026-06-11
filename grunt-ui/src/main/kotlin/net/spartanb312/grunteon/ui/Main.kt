@@ -13,10 +13,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
-import io.github.composefluent.FluentTheme
+import io.github.composefluent.*
 import io.github.composefluent.component.Text
-import io.github.composefluent.darkColors
-import io.github.composefluent.lightColors
 import io.github.vinceglb.filekit.FileKit
 import kotlinx.coroutines.launch
 import net.spartanb312.grunteon.obfuscator.Grunteon
@@ -221,154 +219,168 @@ fun App() {
     CompositionLocalProvider(
         LocalDensity provides Density(baseDensity.density, BaseFontScale * fontScale),
     ) {
-        FluentTheme(colors = fluentColors) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(UiAppBackgroundColor())
-                    .padding(start = 10.dp, top = 8.dp, end = 10.dp)
-            ) {
-                if (!editorReady) {
-                    WelcomeScreen(
-                        status = status,
-                        onOpenConfig = {
-                            coroutineScope.launch {
-                                val path = chooseConfigPath()
-                                if (path != null) {
-                                    val loaded = loadConfig(path)
-                                    if (loaded.success) {
-                                        openWorkspace(loaded.config, loaded.path, loaded.message)
-                                    } else {
-                                        status = loaded.message
+        FluentTheme(
+            colors = fluentColors,
+            typography = Typography(
+                caption = FluentTheme.typography.caption.copy(fluentColors.text.text.primary),
+                body = FluentTheme.typography.body.copy(fluentColors.text.text.primary),
+                bodyStrong = FluentTheme.typography.bodyStrong.copy(fluentColors.text.text.primary),
+                bodyLarge = FluentTheme.typography.bodyLarge.copy(fluentColors.text.text.primary),
+                subtitle = FluentTheme.typography.subtitle.copy(fluentColors.text.text.primary),
+                title = FluentTheme.typography.title.copy(fluentColors.text.text.primary),
+                titleLarge = FluentTheme.typography.titleLarge.copy(fluentColors.text.text.primary),
+                display = FluentTheme.typography.display.copy(fluentColors.text.text.primary)
+            )
+        ) {
+            ProvideTextStyle(FluentTheme.typography.body) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(FluentTheme.colors.background.mica.base)
+                        .padding(start = 10.dp, top = 8.dp, end = 10.dp)
+                ) {
+                    if (!editorReady) {
+                        WelcomeScreen(
+                            status = status,
+                            onOpenConfig = {
+                                coroutineScope.launch {
+                                    val path = chooseConfigPath()
+                                    if (path != null) {
+                                        val loaded = loadConfig(path)
+                                        if (loaded.success) {
+                                            openWorkspace(loaded.config, loaded.path, loaded.message)
+                                        } else {
+                                            status = loaded.message
+                                        }
                                     }
                                 }
-                            }
-                        },
-                        onNewConfig = {
-                            coroutineScope.launch {
-                                val path = chooseNewConfigPath()
-                                if (path != null) {
-                                    openWorkspace(
-                                        config = ObfConfig(),
-                                        path = path,
-                                        message = "New config. Save will write to ${
-                                            path.toAbsolutePath().normalize()
-                                        }"
+                            },
+                            onNewConfig = {
+                                coroutineScope.launch {
+                                    val path = chooseNewConfigPath()
+                                    if (path != null) {
+                                        openWorkspace(
+                                            config = ObfConfig(),
+                                            path = path,
+                                            message = "New config. Save will write to ${
+                                                path.toAbsolutePath().normalize()
+                                            }"
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        return@ProvideTextStyle
+                    }
+
+                    TopToolbar(
+                        page = page,
+                        onPageChange = { page = it },
+                        fontScale = fontScale,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        when (page) {
+                            AppPage.General -> GeneralPage(
+                                config = baseConfig,
+                                status = status,
+                                onConfigChange = { baseConfig = it },
+                                onReload = ::reloadConfig,
+                                onSave = ::saveConfig,
+                                modifier = Modifier.fillMaxSize()
+                            )
+
+                            AppPage.Editor -> {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    TransformerLibrary(
+                                        definitions = definitions,
+                                        showHiddenTransformers = baseConfig.showHiddenTransformers,
+                                        search = search,
+                                        onSearchChange = { search = it },
+                                        onAdd = ::addNode,
+                                        modifier = Modifier.weight(1f).fillMaxHeight()
+                                    )
+                                    PipelineStack(
+                                        nodes = nodes,
+                                        definitions = definitions,
+                                        selectedNodeId = selectedNodeId,
+                                        orderWarnings = orderWarnings,
+                                        onSelect = { selectedNodeId = it },
+                                        onMove = { from, to ->
+                                            if (from in nodes.indices && to in nodes.indices) {
+                                                val node = nodes.removeAt(from)
+                                                nodes.add(to, node)
+                                                selectedNodeId = node.id
+                                            }
+                                        },
+                                        onDuplicate = { index ->
+                                            val current = nodes[index]
+                                            val copy =
+                                                current.copy(id = nextNodeId++, config = cloneConfig(current.config))
+                                            nodes.add(index + 1, copy)
+                                            selectedNodeId = copy.id
+                                        },
+                                        onDelete = { index ->
+                                            val removed = nodes.removeAt(index)
+                                            if (selectedNodeId == removed.id) {
+                                                selectedNodeId = nodes.getOrNull(index)?.id ?: nodes.lastOrNull()?.id
+                                            }
+                                        },
+                                        onEnabledChange = { nodeId, enabled ->
+                                            val index = nodes.indexOfFirst { it.id == nodeId }
+                                            if (index != -1) {
+                                                val node = nodes[index]
+                                                nodes[index] = node.copy(
+                                                    config = node.config.withEnabled(enabled),
+                                                    revision = node.revision + 1
+                                                )
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f).fillMaxHeight()
+                                    )
+                                    Inspector(
+                                        node = nodes.firstOrNull { it.id == selectedNodeId },
+                                        definition = nodes.firstOrNull { it.id == selectedNodeId }
+                                            ?.let { findDefinition(it.config, definitions) },
+                                        onConfigChange = ::updateSelectedConfig,
+                                        modifier = Modifier.weight(1f).fillMaxHeight()
                                     )
                                 }
                             }
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    return@FluentTheme
-                }
 
-                TopToolbar(
-                    page = page,
-                    onPageChange = { page = it },
-                    fontScale = fontScale,
-                )
-                Spacer(Modifier.height(10.dp))
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    when (page) {
-                        AppPage.General -> GeneralPage(
-                            config = baseConfig,
-                            status = status,
-                            onConfigChange = { baseConfig = it },
-                            onReload = ::reloadConfig,
-                            onSave = ::saveConfig,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                            AppPage.Obfuscation -> ObfuscationPage(
+                                logs = obfuscationLogs,
+                                running = obfuscationRunning,
+                                onObfuscate = ::runObfuscation,
+                                modifier = Modifier.fillMaxSize()
+                            )
 
-                        AppPage.Editor -> {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
-                            ) {
-                                TransformerLibrary(
-                                    definitions = definitions,
-                                    showHiddenTransformers = baseConfig.showHiddenTransformers,
-                                    search = search,
-                                    onSearchChange = { search = it },
-                                    onAdd = ::addNode,
-                                    modifier = Modifier.weight(1f).fillMaxHeight()
-                                )
-                                PipelineStack(
-                                    nodes = nodes,
-                                    definitions = definitions,
-                                    selectedNodeId = selectedNodeId,
-                                    orderWarnings = orderWarnings,
-                                    onSelect = { selectedNodeId = it },
-                                    onMove = { from, to ->
-                                        if (from in nodes.indices && to in nodes.indices) {
-                                            val node = nodes.removeAt(from)
-                                            nodes.add(to, node)
-                                            selectedNodeId = node.id
-                                        }
-                                    },
-                                    onDuplicate = { index ->
-                                        val current = nodes[index]
-                                        val copy =
-                                            current.copy(id = nextNodeId++, config = cloneConfig(current.config))
-                                        nodes.add(index + 1, copy)
-                                        selectedNodeId = copy.id
-                                    },
-                                    onDelete = { index ->
-                                        val removed = nodes.removeAt(index)
-                                        if (selectedNodeId == removed.id) {
-                                            selectedNodeId = nodes.getOrNull(index)?.id ?: nodes.lastOrNull()?.id
-                                        }
-                                    },
-                                    onEnabledChange = { nodeId, enabled ->
-                                        val index = nodes.indexOfFirst { it.id == nodeId }
-                                        if (index != -1) {
-                                            val node = nodes[index]
-                                            nodes[index] = node.copy(
-                                                config = node.config.withEnabled(enabled),
-                                                revision = node.revision + 1
-                                            )
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f).fillMaxHeight()
-                                )
-                                Inspector(
-                                    node = nodes.firstOrNull { it.id == selectedNodeId },
-                                    definition = nodes.firstOrNull { it.id == selectedNodeId }
-                                        ?.let { findDefinition(it.config, definitions) },
-                                    onConfigChange = ::updateSelectedConfig,
-                                    modifier = Modifier.weight(1f).fillMaxHeight()
-                                )
-                            }
+                            AppPage.Settings -> SettingsPage(
+                                fontScale = fontScale,
+                                onFontScaleChange = ::updateFontScale,
+                                themeMode = themeMode,
+                                onThemeModeChange = ::updateThemeMode,
+                                uiLogLevel = uiLogLevel,
+                                onUiLogLevelChange = ::updateUiLogLevel,
+                                configPath = configPath,
+                                uiSettingsPath = uiSettingsPath,
+                                status = status,
+                                plugins = plugins,
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
-
-                        AppPage.Obfuscation -> ObfuscationPage(
-                            logs = obfuscationLogs,
-                            running = obfuscationRunning,
-                            onObfuscate = ::runObfuscation,
-                            modifier = Modifier.fillMaxSize()
-                        )
-
-                        AppPage.Settings -> SettingsPage(
-                            fontScale = fontScale,
-                            onFontScaleChange = ::updateFontScale,
-                            themeMode = themeMode,
-                            onThemeModeChange = ::updateThemeMode,
-                            uiLogLevel = uiLogLevel,
-                            onUiLogLevelChange = ::updateUiLogLevel,
-                            configPath = configPath,
-                            uiSettingsPath = uiSettingsPath,
-                            status = status,
-                            plugins = plugins,
-                            modifier = Modifier.fillMaxSize()
-                        )
                     }
+                    BottomStatusBar(
+                        status = status,
+                        enabledCount = nodes.count { it.config.enabled },
+                        nodeCount = nodes.size,
+                        warningCount = orderWarnings.size,
+                    )
                 }
-                BottomStatusBar(
-                    status = status,
-                    enabledCount = nodes.count { it.config.enabled },
-                    nodeCount = nodes.size,
-                    warningCount = orderWarnings.size,
-                )
             }
         }
     }
@@ -385,16 +397,16 @@ private fun BottomStatusBar(
         modifier = Modifier.fillMaxWidth().height(22.dp).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(status, color = UiTextPrimary(), modifier = Modifier.weight(1f), maxLines = 1)
+        Text(status, color = FluentTheme.colors.text.text.primary, modifier = Modifier.weight(1f), maxLines = 1)
         Text(
             "$enabledCount enabled / $nodeCount nodes. $warningCount order warnings.",
-            color = UiTextPrimary(),
+            color = FluentTheme.colors.text.text.primary,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center,
         )
         Text(
             "$VERSION [$SUBTITLE]",
-            color = UiTextPrimary(),
+            color = FluentTheme.colors.text.text.primary,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.End,
         )
