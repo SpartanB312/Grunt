@@ -1,5 +1,6 @@
 package net.spartanb312.grunteon.obfuscator
 
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
 import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening

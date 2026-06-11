@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.exp.ControlflowFlatteningSSA
 import net.spartanb312.grunteon.testcase.Asserts
 import org.objectweb.asm.ClassReader

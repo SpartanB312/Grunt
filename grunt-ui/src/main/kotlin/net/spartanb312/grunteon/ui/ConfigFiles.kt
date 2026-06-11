@@ -8,7 +8,7 @@ import io.github.vinceglb.filekit.dialogs.openDirectoryPicker
 import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.dialogs.openFileSaver
 import io.github.vinceglb.filekit.path
-import net.spartanb312.grunteon.obfuscator.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import java.nio.file.Path as NioPath
 import kotlin.io.path.Path
 import kotlin.io.path.absolute

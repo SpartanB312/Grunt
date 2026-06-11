@@ -3,6 +3,7 @@ package net.spartanb312.grunteon.obfuscator
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.logging.SimpleLogger
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.io.path.Path
@@ -15,7 +16,7 @@ import kotlin.time.measureTime
  * 3rd generation of Grunt
  */
 const val VERSION = "3.0.0"
-const val SUBTITLE = "build 260609"
+const val SUBTITLE = "build 260611"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
 // Local run

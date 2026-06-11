@@ -1,7 +1,7 @@
 package net.spartanb312.grunteon.backend
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.process.resource.ObfuscationIO
 import net.spartanb312.grunteon.obfuscator.process.resource.PathResourceInput

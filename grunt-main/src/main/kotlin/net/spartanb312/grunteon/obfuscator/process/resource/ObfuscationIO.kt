@@ -1,6 +1,6 @@
 package net.spartanb312.grunteon.obfuscator.process.resource
 
-import net.spartanb312.grunteon.obfuscator.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import java.io.OutputStream
 import java.nio.file.Path
 import kotlin.io.path.Path

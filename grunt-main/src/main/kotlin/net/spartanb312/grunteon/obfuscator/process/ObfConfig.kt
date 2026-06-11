@@ -1,11 +1,8 @@
-package net.spartanb312.grunteon.obfuscator
+package net.spartanb312.grunteon.obfuscator.process
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import java.nio.file.Path
 import java.util.zip.Deflater
 import kotlin.io.path.readText
@@ -104,19 +101,12 @@ data class ObfConfig(
         }
 
         fun read(path: Path): ObfConfig {
-            return json().decodeFromString(serializer(), normalizeLegacyTypeNames(path.readText()))
+            return json().decodeFromString(serializer(), path.readText())
         }
 
         fun write(config: ObfConfig, path: Path) {
             val jsonString = json().encodeToString(serializer(), config)
             path.writeText(jsonString)
-        }
-
-        private fun normalizeLegacyTypeNames(text: String): String {
-            return text.replace(
-                "net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiDebug.Config",
-                "net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial.Config"
-            )
         }
     }
 }

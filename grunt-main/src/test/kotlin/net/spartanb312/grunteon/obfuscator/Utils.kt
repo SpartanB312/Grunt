@@ -1,5 +1,6 @@
 package net.spartanb312.grunteon.obfuscator
 
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import kotlin.io.path.extension
 import kotlin.io.path.pathString
 import kotlin.io.path.toPath

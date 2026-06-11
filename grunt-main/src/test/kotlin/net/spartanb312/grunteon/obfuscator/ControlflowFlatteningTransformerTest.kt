@@ -1,5 +1,6 @@
 package net.spartanb312.grunteon.obfuscator
 
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowStateKeyMode
 import org.objectweb.asm.ClassReader
