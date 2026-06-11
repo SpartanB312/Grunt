@@ -13,6 +13,7 @@ import org.objectweb.asm.ClassWriter.COMPUTE_FRAMES
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
+import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodNode
 import java.nio.file.Files
 import java.nio.file.Path
@@ -20,6 +21,7 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.outputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -54,6 +56,57 @@ class RuntimeMaterialTransformerTest {
         assertTrue(classNode.methods.first { it.name == "<init>" }.instructions.size() > 0)
 
         val tempDir = Files.createTempDirectory("grunteon-runtime-material-test")
+        writeClasses(instance.workRes.inputClassCollection, tempDir)
+        runTestClass(tempDir)
+    }
+
+    @Test
+    fun respectsDisabledDetectionItems() {
+        val instance = readTestClasses(
+            Basic::class.java,
+            ObfConfig(
+                output = null,
+                transformerConfigs = listOf(
+                    RuntimeMaterial.Config(
+                        classChance = 1.0,
+                        clinit = true,
+                        constructors = false,
+                        detectInputArguments = false,
+                        detectJavaToolOptionsEnv = false,
+                        detectJdkJavaOptionsEnv = false,
+                        detectJavaOptionsEnv = false,
+                        detectJmxRemoteProperty = false,
+                        detectJdwp = false,
+                        detectXdebug = false,
+                        detectXrunjdwp = false,
+                        detectDtSocket = false,
+                        detectDtShmem = false,
+                        detectGenericAgentlib = false,
+                        detectGenericAgentpath = false,
+                        detectJavaAgent = false,
+                        detectJmxRemote = false,
+                        extraDetectionTokens = emptyList()
+                    )
+                )
+            )
+        )
+        context(instance.workRes, instance) {
+            instance.execute()
+        }
+
+        val classNode = instance.workRes.inputClassMap[CLASS_NAME]
+            ?: error("Missing test class $CLASS_NAME")
+        val guard = classNode.methods.first { it.findAnnotation(DRAFT_RUNTIME_MATERIAL_GUARD) != null }
+        val constants = guard.instructions.iterator().asSequence()
+            .filterIsInstance<LdcInsnNode>()
+            .map { it.cst }
+            .toSet()
+
+        assertFalse("JAVA_TOOL_OPTIONS" in constants)
+        assertFalse("jdwp" in constants)
+        assertFalse("-javaagent" in constants)
+
+        val tempDir = Files.createTempDirectory("grunteon-runtime-material-no-detect-test")
         writeClasses(instance.workRes.inputClassCollection, tempDir)
         runTestClass(tempDir)
     }

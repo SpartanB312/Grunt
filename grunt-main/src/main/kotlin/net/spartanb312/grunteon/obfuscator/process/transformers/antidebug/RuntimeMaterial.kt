@@ -108,6 +108,51 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
         @IntRangeVal(min = 0, max = 64)
         @SettingName("Constructor limit")
         val constructorLimit: Int = 8,
+        @SettingDesc("Read JVM RuntimeMXBean input arguments as detection source")
+        @SettingName("Detect source: JVM arguments")
+        val detectInputArguments: Boolean = true,
+        @SettingDesc("Read JAVA_TOOL_OPTIONS as detection source")
+        @SettingName("Detect source: JAVA_TOOL_OPTIONS")
+        val detectJavaToolOptionsEnv: Boolean = true,
+        @SettingDesc("Read JDK_JAVA_OPTIONS as detection source")
+        @SettingName("Detect source: JDK_JAVA_OPTIONS")
+        val detectJdkJavaOptionsEnv: Boolean = true,
+        @SettingDesc("Read _JAVA_OPTIONS as detection source")
+        @SettingName("Detect source: _JAVA_OPTIONS")
+        val detectJavaOptionsEnv: Boolean = true,
+        @SettingDesc("Read com.sun.management.jmxremote property as detection source")
+        @SettingName("Detect source: JMX property")
+        val detectJmxRemoteProperty: Boolean = false,
+        @SettingDesc("Detect JDWP tokens")
+        @SettingName("Detect token: jdwp")
+        val detectJdwp: Boolean = true,
+        @SettingDesc("Detect legacy -Xdebug tokens")
+        @SettingName("Detect token: -Xdebug")
+        val detectXdebug: Boolean = true,
+        @SettingDesc("Detect legacy -Xrunjdwp tokens")
+        @SettingName("Detect token: -Xrunjdwp")
+        val detectXrunjdwp: Boolean = true,
+        @SettingDesc("Detect dt_socket debug transport tokens")
+        @SettingName("Detect token: dt_socket")
+        val detectDtSocket: Boolean = true,
+        @SettingDesc("Detect dt_shmem debug transport tokens")
+        @SettingName("Detect token: dt_shmem")
+        val detectDtShmem: Boolean = true,
+        @SettingDesc("Detect generic -agentlib tokens. Disabled by default to avoid profiler/APM false positives")
+        @SettingName("Detect token: -agentlib")
+        val detectGenericAgentlib: Boolean = false,
+        @SettingDesc("Detect generic -agentpath tokens. Disabled by default to avoid profiler/APM false positives")
+        @SettingName("Detect token: -agentpath")
+        val detectGenericAgentpath: Boolean = false,
+        @SettingDesc("Detect generic -javaagent tokens. Disabled by default to avoid instrumentation false positives")
+        @SettingName("Detect token: -javaagent")
+        val detectJavaAgent: Boolean = false,
+        @SettingDesc("Detect JMX remote tokens. Disabled by default because it is not always debugger evidence")
+        @SettingName("Detect token: jmxremote")
+        val detectJmxRemote: Boolean = false,
+        @SettingDesc("Additional lowercase tokens to detect in selected sources")
+        @SettingName("Extra detection tokens")
+        val extraDetectionTokens: List<String> = emptyList(),
         @SettingDesc("Emit draft metadata for ReferenceObfuscate integration")
         @SettingName("Draft material metadata")
         val draftMaterialMetadata: Boolean = true
@@ -131,7 +176,7 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
             // class instead of routing through a shared runtime holder.
             val plan = MaterialPlan.create(classNode, random)
             installMaterialFields(classNode, plan, config)
-            val guardMethod = createGuardMethod(plan.guardMethodName, plan.badMask)
+            val guardMethod = createGuardMethod(plan.guardMethodName, plan.badMask, config)
                 .appendAnnotation(GENERATED_METHOD)
             if (config.draftMaterialMetadata) {
                 appendInvisibleAnnotation(
@@ -383,12 +428,12 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
         }
     }
 
-    private fun createGuardMethod(name: String, baseMask: Int): MethodNode {
+    private fun createGuardMethod(name: String, baseMask: Int, config: Config): MethodNode {
         val start = Label()
         val end = Label()
         val handler = Label()
 
-        // This MVP guard samples stable startup/debugger evidence only. It
+        // This guard samples only user-enabled startup/debugger evidence. It
         // returns a bit mask, not a boolean. The caller decides how that mask
         // perturbs material, keeping detection and response loosely coupled.
         return method(
@@ -406,11 +451,11 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
                 INVOKESPECIAL("java/lang/StringBuilder", "<init>", "()V", false)
                 ASTORE(0)
 
-                +appendRuntimeInputArguments()
-                +appendEnv("JAVA_TOOL_OPTIONS")
-                +appendEnv("JDK_JAVA_OPTIONS")
-                +appendEnv("_JAVA_OPTIONS")
-                +appendProperty("com.sun.management.jmxremote")
+                if (config.detectInputArguments) +appendRuntimeInputArguments()
+                if (config.detectJavaToolOptionsEnv) +appendEnv("JAVA_TOOL_OPTIONS")
+                if (config.detectJdkJavaOptionsEnv) +appendEnv("JDK_JAVA_OPTIONS")
+                if (config.detectJavaOptionsEnv) +appendEnv("_JAVA_OPTIONS")
+                if (config.detectJmxRemoteProperty) +appendPropertyNameWhenSet("com.sun.management.jmxremote")
 
                 ALOAD(0)
                 INVOKEVIRTUAL("java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false)
@@ -420,15 +465,9 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
                 ICONST_0
                 ISTORE(2)
 
-                +appendContains("jdwp", baseMask or 0x0001)
-                +appendContains("-xdebug", baseMask or 0x0002)
-                +appendContains("-xrunjdwp", baseMask or 0x0004)
-                +appendContains("transport=dt_socket", baseMask or 0x0008)
-                +appendContains("transport=dt_shmem", baseMask or 0x0010)
-                +appendContains("-agentlib", baseMask or 0x0020)
-                +appendContains("-agentpath", baseMask or 0x0040)
-                +appendContains("-javaagent", baseMask or 0x0080)
-                +appendContains("jmxremote", baseMask or 0x0100)
+                detectionTokens(config, baseMask).forEach { token ->
+                    +appendContains(token.value, token.mask)
+                }
 
                 ILOAD(2)
                 LABEL(end)
@@ -471,13 +510,43 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
         POP
     }
 
-    private fun appendProperty(name: String): InsnList = instructions {
-        ALOAD(0)
-        LDC(name)
-        INVOKESTATIC("java/lang/System", "getProperty", "(Ljava/lang/String;)Ljava/lang/String;", false)
-        INVOKESTATIC("java/lang/String", "valueOf", "(Ljava/lang/Object;)Ljava/lang/String;", false)
-        INVOKEVIRTUAL("java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false)
-        POP
+    private fun appendPropertyNameWhenSet(name: String): InsnList {
+        val skip = LabelNode()
+        return instructions {
+            LDC(name)
+            INVOKESTATIC("java/lang/System", "getProperty", "(Ljava/lang/String;)Ljava/lang/String;", false)
+            IFNULL(skip)
+            ALOAD(0)
+            LDC(name)
+            INVOKEVIRTUAL("java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false)
+            POP
+            LABEL(skip)
+        }
+    }
+
+    private fun detectionTokens(config: Config, baseMask: Int): List<DetectionToken> {
+        val tokens = mutableListOf<DetectionToken>()
+        fun add(enabled: Boolean, value: String, bit: Int) {
+            if (enabled) tokens += DetectionToken(value, baseMask or bit)
+        }
+        add(config.detectJdwp, "jdwp", 0x0001)
+        add(config.detectXdebug, "-xdebug", 0x0002)
+        add(config.detectXrunjdwp, "-xrunjdwp", 0x0004)
+        add(config.detectDtSocket, "transport=dt_socket", 0x0008)
+        add(config.detectDtShmem, "transport=dt_shmem", 0x0010)
+        add(config.detectGenericAgentlib, "-agentlib", 0x0020)
+        add(config.detectGenericAgentpath, "-agentpath", 0x0040)
+        add(config.detectJavaAgent, "-javaagent", 0x0080)
+        add(config.detectJmxRemote, "jmxremote", 0x0100)
+        config.extraDetectionTokens
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .forEachIndexed { index, token ->
+                val bit = 0x0200 shl (index and 0x7)
+                tokens += DetectionToken(token, baseMask or bit)
+            }
+        return tokens
     }
 
     private fun appendContains(token: String, mask: Int): InsnList {
@@ -524,6 +593,11 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
         methodNode.invisibleAnnotations = methodNode.invisibleAnnotations ?: mutableListOf()
         methodNode.invisibleAnnotations.add(annotation)
     }
+
+    private data class DetectionToken(
+        val value: String,
+        val mask: Int
+    )
 
     private data class MaterialPlan(
         val materialId: String,

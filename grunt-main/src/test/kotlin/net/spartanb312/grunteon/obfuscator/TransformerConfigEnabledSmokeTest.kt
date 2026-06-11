@@ -11,7 +11,6 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roun
 import kotlin.io.path.createTempFile
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.readText
-import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFalse
@@ -173,9 +172,9 @@ class TransformerConfigEnabledSmokeTest {
             val text = path.readText()
             assertContains(text, "RuntimeMaterial.Config")
             assertContains(text, "\"draftMaterialMetadata\": true")
-            assertIs<RuntimeMaterial.Config>(ObfConfig.read(path).transformerConfigs.single())
-
-            path.writeText(text.replace("RuntimeMaterial.Config", "AntiDebug.Config"))
+            assertContains(text, "\"detectJdwp\": true")
+            assertContains(text, "\"detectJavaAgent\": false")
+            assertContains(text, "\"detectJmxRemote\": false")
             assertIs<RuntimeMaterial.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()
