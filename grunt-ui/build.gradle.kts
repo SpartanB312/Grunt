@@ -2,6 +2,7 @@ plugins {
     id("buildsrc.convention.kotlin-jvm")
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.compose.hotReload)
 }
 
 repositories {

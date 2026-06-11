@@ -1,27 +1,27 @@
 [versions]
-kotlin = "2.3.21"
+kotlin = "2.4.0"
 kotlinxSerialization = "1.11.0"
 kotlinDSL = "6.6.4"
-coroutine = "1.10.2"
+coroutine = "1.11.0"
 filekit = "0.14.1"
 
-compose = "1.9.1"
+compose = "1.11.1"
 compose-fluent = "v0.1.0"
-compose-hot-reload = "1.0.0-beta03"
+compose-hot-reload = "1.2.0-alpha02"
 
-junit = "6.0.3"
-gson = "2.13.2"
-asm = "9.9.1"
+junit = "6.1.0"
+gson = "2.14.0"
+asm = "9.10.1"
 fastutil = "8.5.18"
 apache-math3 = "3.6.1"
 apache-lang3 = "3.20.0"
-apache-commons-rng-simple = "1.6"
+apache-commons-rng-simple = "1.7"
 jpbc = "2.0.0"
 
 [plugins]
 kotlinxSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }
-#compose-hotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }
+compose-hotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
 [libraries]
