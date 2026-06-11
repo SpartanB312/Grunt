@@ -10,9 +10,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
-import io.github.composefluent.component.DropdownMenu
-import io.github.composefluent.component.DropdownMenuItem
-import io.github.composefluent.component.Text
+import io.github.composefluent.component.*
 import net.spartanb312.grunteon.obfuscator.process.*
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
@@ -82,25 +80,57 @@ private fun ConfigField(
     property: KProperty1<out Any, *>,
     onChange: (Any?) -> Unit,
 ) {
-    SectionSurface(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(label, color = UiTextPrimary(), fontWeight = FontWeight.SemiBold)
-            if (description != null) Text(
-                description,
-                color = UiTextSecondary(),
-                style = FluentTheme.typography.caption
-            )
-            when (value) {
-                is Boolean -> BooleanField(value, onChange)
-                is String -> StringField(value, onChange)
-                is Int -> IntField(value, property, onChange)
-                is Double -> DoubleField(value, property, onChange)
-                is Enum<*> -> EnumField(value, onChange)
-                is ClassFilterConfig -> NestedConfigField(value = value, onChange = onChange)
-                is List<*> -> ListField(value, onChange)
-                null -> ReadOnlyValue("null", "Nullable fields are not editable in this prototype.")
-                else -> ReadOnlyValue(value::class.simpleName ?: "Value", value.toString())
+    when (value) {
+        is Int -> {
+            val range = property.findAnnotation<IntRangeVal>()
+            if (range != null) {
+                IntSliderField(label, description, value, range, onChange)
+            } else {
+                InspectorCard(label, description) { IntField(value, onChange) }
             }
+        }
+
+        is Double -> {
+            val range = property.findAnnotation<DecimalRangeVal>()
+            if (range != null) {
+                DoubleSliderField(label, description, value, range, onChange)
+            } else {
+                InspectorCard(label, description) { DoubleField(value, onChange) }
+            }
+        }
+
+        is ClassFilterConfig -> NestedConfigField(label, description, value, onChange)
+        is Boolean -> InspectorCard(label, description) { BooleanField(value, onChange) }
+        is String -> InspectorCard(label, description) { StringField(value, onChange) }
+        is Enum<*> -> InspectorCard(label, description) { EnumField(value, onChange) }
+        is List<*> -> InspectorCard(label, description) { ListField(value, onChange) }
+        null -> InspectorCard(label, description) {
+            ReadOnlyValue(
+                "null",
+                "Nullable fields are not editable in this prototype."
+            )
+        }
+        else -> InspectorCard(label, description) {
+            ReadOnlyValue(
+                value::class.simpleName ?: "Value",
+                value.toString()
+            )
+        }
+    }
+}
+
+@Composable
+private fun InspectorCard(
+    label: String,
+    description: String?,
+    content: @Composable () -> Unit,
+) {
+    CardExpanderItem(heading = { Text(label, fontWeight = FontWeight.SemiBold) }, icon = null) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (description != null) {
+                Text(description, color = UiTextSecondary(), style = FluentTheme.typography.caption)
+            }
+            content()
         }
     }
 }
@@ -124,16 +154,7 @@ private fun StringField(value: String, onChange: (Any?) -> Unit) {
 }
 
 @Composable
-private fun IntField(value: Int, property: KProperty1<out Any, *>, onChange: (Any?) -> Unit) {
-    val range = property.findAnnotation<IntRangeVal>()
-    if (range != null) {
-        UiSlider(
-            value = value.toFloat().coerceIn(range.min.toFloat(), range.max.toFloat()),
-            onValueChange = { onChange(it.toInt().coerceIn(range.min, range.max)) },
-            valueRange = range.min.toFloat()..range.max.toFloat(),
-            steps = ((range.max - range.min) / range.step - 1).coerceAtLeast(0)
-        )
-    }
+private fun IntField(value: Int, onChange: (Any?) -> Unit) {
     UiTextField(
         value = value.toString(),
         onValueChange = { text -> text.toIntOrNull()?.let { onChange(it) } },
@@ -143,15 +164,7 @@ private fun IntField(value: Int, property: KProperty1<out Any, *>, onChange: (An
 }
 
 @Composable
-private fun DoubleField(value: Double, property: KProperty1<out Any, *>, onChange: (Any?) -> Unit) {
-    val range = property.findAnnotation<DecimalRangeVal>()
-    if (range != null) {
-        UiSlider(
-            value = value.toFloat().coerceIn(range.min.toFloat(), range.max.toFloat()),
-            onValueChange = { onChange(it.toDouble().coerceIn(range.min, range.max)) },
-            valueRange = range.min.toFloat()..range.max.toFloat(),
-        )
-    }
+private fun DoubleField(value: Double, onChange: (Any?) -> Unit) {
     UiTextField(
         value = "%.4f".format(value).trimEnd('0').trimEnd('.'),
         onValueChange = { text -> text.toDoubleOrNull()?.let { onChange(it) } },
@@ -182,10 +195,130 @@ private fun EnumField(value: Enum<*>, onChange: (Any?) -> Unit) {
 }
 
 @Composable
-private fun NestedConfigField(value: Any, onChange: (Any?) -> Unit) {
-    NestedSurface(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(5.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            ConfigEditor(value = value, onChange = onChange)
+private fun IntSliderField(
+    label: String,
+    description: String?,
+    value: Int,
+    range: IntRangeVal,
+    onChange: (Any?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var typedValue by remember(value) { mutableStateOf(value.toString()) }
+    Expander(
+        expanded = expanded,
+        onExpandedChanged = { expanded = it },
+        heading = { Text(label, fontWeight = FontWeight.SemiBold) },
+        icon = null,
+        trailing = {
+            UiTextField(
+                value = typedValue,
+                onValueChange = { text ->
+                    typedValue = text
+                    text.toIntOrNull()?.let { onChange(it.coerceIn(range.min, range.max)) }
+                },
+                modifier = Modifier.width(112.dp),
+                singleLine = true,
+            )
+        }
+    ) {
+        if (description != null) {
+            Text(
+                description,
+                color = UiTextSecondary(),
+                style = FluentTheme.typography.caption,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
+        CardExpanderItem(heading = {}, icon = null) {
+            UiSlider(
+                value = value.toFloat().coerceIn(range.min.toFloat(), range.max.toFloat()),
+                onValueChange = { onChange(it.toInt().coerceIn(range.min, range.max)) },
+                valueRange = range.min.toFloat()..range.max.toFloat(),
+                steps = ((range.max - range.min) / range.step - 1).coerceAtLeast(0),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun DoubleSliderField(
+    label: String,
+    description: String?,
+    value: Double,
+    range: DecimalRangeVal,
+    onChange: (Any?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var typedValue by remember(value) { mutableStateOf("%.4f".format(value).trimEnd('0').trimEnd('.')) }
+    Expander(
+        expanded = expanded,
+        onExpandedChanged = { expanded = it },
+        heading = { Text(label, fontWeight = FontWeight.SemiBold) },
+        icon = null,
+        trailing = {
+            UiTextField(
+                value = typedValue,
+                onValueChange = { text ->
+                    typedValue = text
+                    text.toDoubleOrNull()?.let { onChange(it.coerceIn(range.min, range.max)) }
+                },
+                modifier = Modifier.width(112.dp),
+                singleLine = true,
+            )
+        }
+    ) {
+        if (description != null) {
+            Text(
+                description,
+                color = UiTextSecondary(),
+                style = FluentTheme.typography.caption,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
+        CardExpanderItem(heading = {}, icon = null) {
+            UiSlider(
+                value = value.toFloat().coerceIn(range.min.toFloat(), range.max.toFloat()),
+                onValueChange = { onChange(it.toDouble().coerceIn(range.min, range.max)) },
+                valueRange = range.min.toFloat()..range.max.toFloat(),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun NestedConfigField(label: String, description: String?, value: Any, onChange: (Any?) -> Unit) {
+    CardExpanderItem(
+        heading = {
+            var expanded by remember { mutableStateOf(false) }
+            Expander(
+                expanded = expanded,
+                onExpandedChanged = { expanded = it },
+                heading = { Text(label, fontWeight = FontWeight.SemiBold) },
+                icon = null,
+                modifier = Modifier.padding(end = 16.dp)
+            ) {
+                if (description != null) {
+                    Text(
+                        description,
+                        color = UiTextSecondary(),
+                        style = FluentTheme.typography.caption,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                }
+                Column(
+                    Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ConfigEditor(value = value, onChange = onChange)
+                }
+            }
+        },
+        icon = null
+    ) {
+        if (description != null) {
+            Text(description, color = UiTextSecondary(), style = FluentTheme.typography.caption)
         }
     }
 }

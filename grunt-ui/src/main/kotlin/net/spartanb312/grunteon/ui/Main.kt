@@ -51,7 +51,7 @@ fun App() {
     val plugins = remember { PluginManager.plugins }
     val uiSettingsPath = remember { defaultUiSettingsPath() }
     val initialUiSettings = remember { loadUiSettings(uiSettingsPath) }
-    var editorReady by remember { mutableStateOf(false) }
+    var editorReady by remember { mutableStateOf(true) }
     var baseConfig by remember { mutableStateOf(ObfConfig()) }
     var configPath by remember { mutableStateOf(defaultConfigPath()) }
     var selectedNodeId by remember { mutableStateOf<Long?>(null) }
@@ -251,7 +251,9 @@ fun App() {
                                     openWorkspace(
                                         config = ObfConfig(),
                                         path = path,
-                                        message = "New config. Save will write to ${path.toAbsolutePath().normalize()}"
+                                        message = "New config. Save will write to ${
+                                            path.toAbsolutePath().normalize()
+                                        }"
                                     )
                                 }
                             }
@@ -289,7 +291,7 @@ fun App() {
                                     search = search,
                                     onSearchChange = { search = it },
                                     onAdd = ::addNode,
-                                    modifier = Modifier.width(290.dp).fillMaxHeight()
+                                    modifier = Modifier.weight(1f).fillMaxHeight()
                                 )
                                 PipelineStack(
                                     nodes = nodes,
@@ -306,7 +308,8 @@ fun App() {
                                     },
                                     onDuplicate = { index ->
                                         val current = nodes[index]
-                                        val copy = current.copy(id = nextNodeId++, config = cloneConfig(current.config))
+                                        val copy =
+                                            current.copy(id = nextNodeId++, config = cloneConfig(current.config))
                                         nodes.add(index + 1, copy)
                                         selectedNodeId = copy.id
                                     },
@@ -333,7 +336,7 @@ fun App() {
                                     definition = nodes.firstOrNull { it.id == selectedNodeId }
                                         ?.let { findDefinition(it.config, definitions) },
                                     onConfigChange = ::updateSelectedConfig,
-                                    modifier = Modifier.width(390.dp).fillMaxHeight()
+                                    modifier = Modifier.weight(1f).fillMaxHeight()
                                 )
                             }
                         }
