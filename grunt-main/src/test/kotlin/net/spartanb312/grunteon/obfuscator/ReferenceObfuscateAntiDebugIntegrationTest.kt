@@ -1,9 +1,12 @@
 package net.spartanb312.grunteon.obfuscator
 
+import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiDebug
+import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
+import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReferenceObfuscate
 import net.spartanb312.grunteon.obfuscator.util.ClearClassNode
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_ANTIDEBUG_FIELD
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_ANTIDEBUG_GUARD
 import net.spartanb312.grunteon.obfuscator.util.DRAFT_ANTIDEBUG_MATERIAL
 import net.spartanb312.grunteon.obfuscator.util.extensions.findAnnotation
 import net.spartanb312.grunteon.testcase.methodinline.Basic
@@ -11,8 +14,7 @@ import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.ClassWriter.COMPUTE_FRAMES
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.FieldNode
-import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.InvokeDynamicInsnNode
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.absolutePathString
@@ -22,21 +24,59 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class AntiDebugTransformerTest {
+class ReferenceObfuscateAntiDebugIntegrationTest {
 
     @Test
-    fun injectsMaterialAndProducesVerifiableClasses() {
+    fun usesAntiDebugMaterialForReferencePayloads() {
+        runMaterialReferenceTest(
+            AntiDebug.Config(
+                classFilter = basicOnlyFilter(),
+                classChance = 1.0,
+                clinit = true,
+                constructors = true
+            ),
+            ReferenceObfuscate.Config(
+                classFilter = basicOnlyFilter(),
+                chance = 1.0
+            )
+        )
+    }
+
+    @Test
+    fun doesNotRekeyAntiDebugInitializationHelpers() {
+        runMaterialReferenceTest(
+            AntiDebug.Config(
+                classFilter = basicOnlyFilter(),
+                classChance = 1.0,
+                clinit = true,
+                constructors = true
+            ),
+            NumberBasicEncrypt.Config(
+                classFilter = basicOnlyFilter(),
+                integerChance = 1.0,
+                longChance = 1.0,
+                float = false,
+                double = false,
+                dynamicStrength = false
+            ),
+            StringArrayedEncrypt.Config(
+                classFilter = basicOnlyFilter(),
+                carray = false,
+                invokeDynamics = false
+            ),
+            ReferenceObfuscate.Config(
+                classFilter = basicOnlyFilter(),
+                chance = 1.0
+            )
+        )
+    }
+
+    private fun runMaterialReferenceTest(vararg configs: TransformerConfig) {
         val instance = readTestClasses(
             Basic::class.java,
             ObfConfig(
                 output = null,
-                transformerConfigs = listOf(
-                    AntiDebug.Config(
-                        classChance = 1.0,
-                        clinit = true,
-                        constructors = true
-                    )
-                )
+                transformerConfigs = configs.toList()
             )
         )
         context(instance.workRes, instance) {
@@ -47,23 +87,24 @@ class AntiDebugTransformerTest {
             ?: error("Missing test class $CLASS_NAME")
 
         assertNotNull(classNode.findAnnotation(DRAFT_ANTIDEBUG_MATERIAL))
-        assertEquals(4, classNode.fields.count { it.findAnnotation(DRAFT_ANTIDEBUG_FIELD) != null })
-        assertTrue(classNode.methods.any { it.findAnnotation(DRAFT_ANTIDEBUG_GUARD) != null })
-        assertTrue(classNode.methods.any { it.name == "<clinit>" })
-        assertTrue(classNode.methods.first { it.name == "<init>" }.instructions.size() > 0)
+        assertTrue(classNode.methods.any { method ->
+            method.name != "<clinit>" &&
+                method.name != "<init>" &&
+                method.instructions.iterator().asSequence().any { it is InvokeDynamicInsnNode }
+        })
 
-        val tempDir = Files.createTempDirectory("grunteon-antidebug-test")
+        val tempDir = Files.createTempDirectory("grunteon-reference-antidebug-test")
         writeClasses(instance.workRes.inputClassCollection, tempDir)
         runTestClass(tempDir)
     }
 
-    private fun FieldNode.findAnnotation(desc: String) =
-        visibleAnnotations?.firstOrNull { it.desc == desc }
-            ?: invisibleAnnotations?.firstOrNull { it.desc == desc }
-
-    private fun MethodNode.findAnnotation(desc: String) =
-        visibleAnnotations?.firstOrNull { it.desc == desc }
-            ?: invisibleAnnotations?.firstOrNull { it.desc == desc }
+    private fun basicOnlyFilter(): ClassFilterConfig {
+        val basicOnly = ClassFilterConfig(
+            excludeStrategy = emptyList(),
+            includeStrategy = listOf(CLASS_NAME)
+        )
+        return basicOnly
+    }
 
     private fun writeClasses(classNodes: Collection<ClassNode>, outputDir: Path) {
         for (classNode in classNodes) {

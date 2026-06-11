@@ -54,18 +54,20 @@ import org.objectweb.asm.tree.MethodNode
  *
  * Runtime model:
  *   raw material space R:
- *     per-class static fields shareA, shareB, poison
+ *     per-class static fields shareA, shareB, canonicalKey, poison
  *
  *   canonical operator T:
- *     clean canonical material is derived from shareA/shareB. Clean
- *     perturbations move raw state inside the same equivalence class:
+ *     clean perturbations move shareA/shareB inside the same raw equivalence
+ *     class:
  *
  *       shareA += delta
  *       shareB -= delta
  *
- *     so T(raw') == T(raw). Suspicious perturbations set sticky poison and
- *     disturb a share, so T(raw') != T(raw). ReferenceObfuscate will later
- *     consume T(raw) as KDF input for BSM payload authentication.
+ *     ReferenceObfuscate consumes canonicalKey + sticky poison as KDF input.
+ *     That lane is intentionally separate from the mutable share pair so BSM
+ *     linkage never observes a transient clean update between the two writes.
+ *     Suspicious perturbations set sticky poison and disturb canonicalKey, so
+ *     T(raw') != T(raw).
  *
  * Execution model:
  *   <clinit> is an opportunistic class-level seed and sampling point.
@@ -196,6 +198,16 @@ class AntiDebug : Transformer<AntiDebug.Config>(
         )
         classNode.fields.add(
             materialField(
+                plan.keyField,
+                "J",
+                plan.materialId,
+                FIELD_ROLE_CANONICAL_KEY,
+                plan.layoutId,
+                config.draftMaterialMetadata
+            )
+        )
+        classNode.fields.add(
+            materialField(
                 plan.poisonField,
                 "I",
                 plan.materialId,
@@ -214,6 +226,7 @@ class AntiDebug : Transformer<AntiDebug.Config>(
                     "id" to plan.materialId,
                     "layout" to plan.layoutId,
                     "canonical" to CANONICAL_SHARE_SUM_STICKY_POISON,
+                    "seed" to plan.canonicalSeed,
                     "role" to classifyRole(classNode),
                     "guard" to GUARD_KIND_INPUT_ARGS,
                     "flags" to MATERIAL_FLAG_REFERENCE_OBF_READY
@@ -315,6 +328,8 @@ class AntiDebug : Transformer<AntiDebug.Config>(
             PUTSTATIC(owner, plan.shareAField, "J")
             LONG(plan.shareBInitial)
             PUTSTATIC(owner, plan.shareBField, "J")
+            LONG(plan.canonicalSeed)
+            PUTSTATIC(owner, plan.keyField, "J")
             ICONST_0
             PUTSTATIC(owner, plan.poisonField, "I")
         })
@@ -355,6 +370,11 @@ class AntiDebug : Transformer<AntiDebug.Config>(
             LONG(badDelta)
             LXOR
             PUTSTATIC(owner, plan.shareAField, "J")
+
+            GETSTATIC(owner, plan.keyField, "J")
+            LONG(badDelta)
+            LXOR
+            PUTSTATIC(owner, plan.keyField, "J")
             GOTO(end)
 
             LABEL(clean)
@@ -510,10 +530,12 @@ class AntiDebug : Transformer<AntiDebug.Config>(
         val layoutId: Int,
         val shareAField: String,
         val shareBField: String,
+        val keyField: String,
         val poisonField: String,
         val guardMethodName: String,
         val shareAInitial: Long,
         val shareBInitial: Long,
+        val canonicalSeed: Long,
         val clinitDelta: Long,
         val initDelta: Long,
         val clinitBadDelta: Long,
@@ -529,12 +551,14 @@ class AntiDebug : Transformer<AntiDebug.Config>(
                 return MaterialPlan(
                     materialId = materialId,
                     layoutId = CANONICAL_SHARE_SUM_STICKY_POISON,
-                    shareAField = uniqueName(classNode, random, "a"),
-                    shareBField = uniqueName(classNode, random, "b"),
-                    poisonField = uniqueName(classNode, random, "p"),
-                    guardMethodName = uniqueName(classNode, random, "g"),
+                shareAField = uniqueName(classNode, random, "a"),
+                shareBField = uniqueName(classNode, random, "b"),
+                keyField = uniqueName(classNode, random, "k"),
+                poisonField = uniqueName(classNode, random, "p"),
+                guardMethodName = uniqueName(classNode, random, "g"),
                     shareAInitial = shareA,
                     shareBInitial = shareB,
+                    canonicalSeed = canonical,
                     clinitDelta = nonZero(random.nextLong()),
                     initDelta = nonZero(random.nextLong()),
                     clinitBadDelta = nonZero(random.nextLong()),
@@ -569,6 +593,7 @@ class AntiDebug : Transformer<AntiDebug.Config>(
         const val FIELD_ROLE_SHARE_A = 1
         const val FIELD_ROLE_SHARE_B = 2
         const val FIELD_ROLE_POISON = 3
+        const val FIELD_ROLE_CANONICAL_KEY = 4
 
         const val CANONICAL_SHARE_SUM_STICKY_POISON = 1
         const val GUARD_KIND_INPUT_ARGS = 1

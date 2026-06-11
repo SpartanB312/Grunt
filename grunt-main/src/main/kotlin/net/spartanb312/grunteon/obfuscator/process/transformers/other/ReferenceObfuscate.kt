@@ -13,6 +13,7 @@ import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
+import net.spartanb312.grunteon.obfuscator.util.extensions.findAnnotation
 import net.spartanb312.grunteon.obfuscator.util.extensions.hasAnnotation
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
@@ -22,7 +23,9 @@ import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicate
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
+import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.FieldNode
 import org.objectweb.asm.tree.InvokeDynamicInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
@@ -203,15 +206,17 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             if (classNode.version < Opcodes.V1_7) return@parForEachRenamedClassesFiltered
             if (classNode.hasAnnotation(DISABLE_REFERENCE_OBF)) return@parForEachRenamedClassesFiltered
 
-            val counter = counter.local
-            val bsmName1 = massiveString
-            val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
             val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, "apply"))
-            val decryptName = massiveString
+            val counter = counter.local
+            val bsmName1 = randomGen.getRandomString(16)//massiveString
+            val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
+            val decryptName = randomGen.getRandomString(16)
+            val material = findAntiDebugMaterial(classNode)
+            val materialKeyName = material?.let { randomGen.getRandomString(16) }
             val decryptKey = randomGen.nextInt()
             context(config, counter) {
-                if (shouldApply(classNode, bsmName1, bsmName2, decryptKey, metadata)) {
-                    val decrypt = createDecryptMethod(decryptName, decryptKey)
+                if (shouldApply(classNode, bsmName1, bsmName2, decryptKey, metadata, material)) {
+                    val decrypt = createDecryptMethod(classNode.name, decryptName, decryptKey, materialKeyName)
                     val decrypt2 = createHeavyDecryptMethod(decryptName)
                     val bsm = createBootstrap(classNode.name, bsmName1, decryptName)
                     val bsm2 = createHeavyBootstrap(
@@ -220,14 +225,19 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                         decryptName,
                         decryptKey
                     )
+                    val materialKey = if (material != null && materialKeyName != null) {
+                        createMaterialKeyMethod(classNode.name, materialKeyName, material)
+                    } else null
                     if (config.reobfBSM) {
                         val methodsAdded = mutableListOf<MethodNode>()
+                        materialKey?.let { methodsAdded.add(it) }
                         methodsAdded.add(decrypt)
                         methodsAdded.add(bsm)
                         methodsAdded.add(decrypt2)
                         methodsAdded.add(bsm2)
                         addedMethods.add(classNode to methodsAdded)
                     }
+                    materialKey?.let { classNode.methods.add(it) }
                     classNode.methods.add(decrypt)
                     classNode.methods.add(bsm)
                     classNode.methods.add(decrypt2)
@@ -255,11 +265,14 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         bsm1: String,
         bsm2: String,
         decryptKey: Int,
-        metadataMap: Map<ClassNode, MetaData>
+        metadataMap: Map<ClassNode, MetaData>,
+        antiDebugMaterial: AntiDebugMaterial?
     ): Boolean {
         var shouldApply = false
+        val materialKey = antiDebugMaterial?.seedFold ?: 0
+        val simpleDecryptKey = decryptKey xor materialKey
         classNode.methods
-            .filter { !it.isAbstract && !it.isNative }
+            .filter { shouldProcessMethod(it, antiDebugMaterial) }
             .forEach { methodNode ->
                 if (!methodNode.hasAnnotation(DISABLE_REFERENCE_OBF)) {
                     val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, methodNode.name, methodNode.desc))
@@ -270,7 +283,11 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                             val metadata = metadataMap.entries.find { (clazz, _) -> clazz.name == insnNode.owner }
                             val metadataKey = insnNode.name + "<>" + insnNode.desc
                             val index = metadata?.value?.d2?.indexOf(metadataKey) ?: -1
-                            val invokeDynamicInsnNode = if (metadata != null && index >= 0) {
+                            // Material-aware callers use the simple BSM payload for now:
+                            // the encrypted owner/name/desc are keyed by the caller-local
+                            // AntiDebug quotient. Heavy metadata stays unchanged until it
+                            // gets its own authenticated material lane.
+                            val invokeDynamicInsnNode = if (antiDebugMaterial == null && metadata != null && index >= 0) {
                                 val magic1 = metadata.value.m1[index]
                                 val magic2 = metadata.value.m2[index]
                                 InvokeDynamicInsnNode(
@@ -314,9 +331,9 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                                         Integer::class.java
                                     ).toMethodDescriptorString(),
                                 ),
-                                encrypt(insnNode.owner.replace("/", "."), decryptKey),
-                                encrypt(insnNode.name, decryptKey),
-                                encrypt(insnNode.desc, decryptKey),
+                                encrypt(insnNode.owner.replace("/", "."), simpleDecryptKey),
+                                encrypt(insnNode.name, simpleDecryptKey),
+                                encrypt(insnNode.desc, simpleDecryptKey),
                                 if (insnNode.opcode == Opcodes.INVOKESTATIC) 0 else 1
                             )
                             methodNode.instructions.insertBefore(insnNode, invokeDynamicInsnNode)
@@ -329,6 +346,21 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                 }
             }
         return shouldApply
+    }
+
+    private fun shouldProcessMethod(methodNode: MethodNode, antiDebugMaterial: AntiDebugMaterial?): Boolean {
+        if (methodNode.isAbstract || methodNode.isNative) return false
+        if (methodNode.hasAnnotation(GENERATED_METHOD)) return false
+        if (antiDebugMaterial != null && (methodNode.name == "<clinit>" || methodNode.name == "<init>")) {
+            // Design note:
+            // material-aware ReferenceObfuscate must not protect AntiDebug's own
+            // bootstrap/initialization lane. Later encryption passes may expand
+            // AntiDebug constants into helper calls inside <clinit>/<init>; if
+            // those calls are re-keyed by material before the material is fully
+            // initialized, the sink trips in clean executions.
+            return false
+        }
+        return true
     }
 
     private fun createBootstrap(className: String, methodName: String, decryptName: String) =
@@ -790,7 +822,12 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         }
     }
 
-    fun createDecryptMethod(methodName: String, key: Int): MethodNode = method(
+    fun createDecryptMethod(
+        className: String,
+        methodName: String,
+        key: Int,
+        materialKeyName: String?
+    ): MethodNode = method(
         PRIVATE + STATIC + SYNTHETIC + BRIDGE,
         methodName,
         "(Ljava/lang/String;)Ljava/lang/String;"
@@ -813,6 +850,10 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             ILOAD(2)
             INVOKEVIRTUAL("java/lang/String", "charAt", "(I)C")
             LDC(key)
+            if (materialKeyName != null) {
+                INVOKESTATIC(className, materialKeyName, "()I")
+                IXOR
+            }
             IXOR
             I2C
             INVOKEVIRTUAL("java/lang/StringBuilder", "append", "(C)Ljava/lang/StringBuilder;")
@@ -830,8 +871,36 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             INVOKEVIRTUAL("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")
             ARETURN
         }
-        MAXS(3, 3)
+        MAXS(if (materialKeyName == null) 3 else 4, 3)
     }
+
+    private fun createMaterialKeyMethod(
+        className: String,
+        methodName: String,
+        material: AntiDebugMaterial
+    ): MethodNode = method(
+        PRIVATE + STATIC + SYNTHETIC + BRIDGE,
+        methodName,
+        "()I"
+    ) {
+        INSTRUCTIONS {
+            // The ReferenceObfuscate side consumes only the canonical quotient:
+            // clean AntiDebug perturbations may churn raw share fields, but the
+            // KDF lane reads canonicalKey + sticky poison so BSM linkage cannot
+            // observe a transient two-field update. Suspicious paths disturb
+            // canonicalKey and/or poison, producing a wrong decrypt key.
+            GETSTATIC(className, material.keyField, "J")
+            DUP2
+            INT(32)
+            LUSHR
+            LXOR
+            L2I
+            GETSTATIC(className, material.poisonField, "I")
+            IXOR
+            IRETURN
+        }
+        MAXS(6, 0)
+    }.appendAnnotation(GENERATED_METHOD)
 
     fun encrypt(string: String, xor: Int): String {
         val stringBuilder = StringBuilder()
@@ -841,6 +910,47 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         return stringBuilder.toString()
     }
 
+    private fun findAntiDebugMaterial(classNode: ClassNode): AntiDebugMaterial? {
+        val materialAnnotation = classNode.findAnnotation(DRAFT_ANTIDEBUG_MATERIAL) ?: return null
+        val materialId = materialAnnotation.value("id") as? String ?: return null
+        val seed = materialAnnotation.value("seed") as? Long ?: return null
+        classNode.findAntiDebugField(materialId, ANTIDEBUG_FIELD_ROLE_SHARE_A, "J") ?: return null
+        classNode.findAntiDebugField(materialId, ANTIDEBUG_FIELD_ROLE_SHARE_B, "J") ?: return null
+        val key = classNode.findAntiDebugField(materialId, ANTIDEBUG_FIELD_ROLE_CANONICAL_KEY, "J") ?: return null
+        val poison = classNode.findAntiDebugField(materialId, ANTIDEBUG_FIELD_ROLE_POISON, "I") ?: return null
+        return AntiDebugMaterial(
+            keyField = key.name,
+            poisonField = poison.name,
+            seedFold = seed.foldToInt()
+        )
+    }
+
+    private fun ClassNode.findAntiDebugField(materialId: String, role: Int, desc: String): FieldNode? {
+        return fields.firstOrNull { field ->
+            if (field.desc != desc) return@firstOrNull false
+            val annotation = field.findAnnotation(DRAFT_ANTIDEBUG_FIELD) ?: return@firstOrNull false
+            annotation.value("id") == materialId && annotation.value("role") == role
+        }
+    }
+
+    private fun AnnotationNode.value(name: String): Any? {
+        val values = values ?: return null
+        var index = 0
+        while (index + 1 < values.size) {
+            if (values[index] == name) return values[index + 1]
+            index += 2
+        }
+        return null
+    }
+
+    private fun Long.foldToInt(): Int = (this xor (this ushr 32)).toInt()
+
+    private data class AntiDebugMaterial(
+        val keyField: String,
+        val poisonField: String,
+        val seedFold: Int
+    )
+
     class MetaData(
         val d1: IntArray,
         val d2: Array<String>,
@@ -849,5 +959,12 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         val m1: IntArray,
         val m2: IntArray
     )
+
+    private companion object {
+        const val ANTIDEBUG_FIELD_ROLE_SHARE_A = 1
+        const val ANTIDEBUG_FIELD_ROLE_SHARE_B = 2
+        const val ANTIDEBUG_FIELD_ROLE_POISON = 3
+        const val ANTIDEBUG_FIELD_ROLE_CANONICAL_KEY = 4
+    }
 
 }
