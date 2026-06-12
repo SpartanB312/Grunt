@@ -1,38 +1,46 @@
 package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import io.github.composefluent.component.Button
-import io.github.composefluent.component.ButtonDefaults
-import io.github.composefluent.component.Text
+import io.github.composefluent.component.*
 
 private val ToolbarTabWidth = 128.dp
 
 @Composable
 fun TopToolbar(uiState: UIState) {
-    Row(
-        modifier = Modifier
-            .width(IntrinsicSize.Max)
-            .height(32.dp)
-            .padding(all = 0.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    TabRow(
+        { uiState.currentPage.ordinal },
+        borderColor = Color.Transparent,
     ) {
-        Box(modifier = Modifier.fillMaxHeight().padding(start = 2.dp)) {
-            GrunteonLogo(Modifier.align(Alignment.Center))
-        }
-        AppPage.entries.forEach {
-            ToolbarTab(
-                label = it.name,
-                selected = uiState.currentPage == it,
-                onClick = { uiState.currentPage = it }
-            )
+        AppPage.entries.forEach { page ->
+            item {
+                val selected = uiState.currentPage == page
+                TabItem(
+                    selected = selected,
+                    onSelectedChanged = { if (it) uiState.currentPage = page },
+                    modifier = Modifier.height(64.dp)
+                ) {
+                    Row(modifier = Modifier.height(100.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            page.name,
+                            modifier = Modifier
+                                .width(ToolbarTabWidth)
+                                .padding(4.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
         }
     }
 }

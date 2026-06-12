@@ -15,6 +15,7 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import io.github.composefluent.*
 import io.github.composefluent.component.Text
+import io.github.composefluent.surface.Card
 import io.github.vinceglb.filekit.FileKit
 import kotlinx.coroutines.launch
 import net.spartanb312.grunteon.obfuscator.Grunteon
@@ -161,8 +162,7 @@ fun App() {
                     modifier = Modifier
                         .fillMaxSize()
                         .background(FluentTheme.colors.background.mica.base)
-                        .padding(all = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(top = 4.dp)
                 ) {
                     if (!editorReady) {
                         WelcomeScreen(
@@ -199,31 +199,40 @@ fun App() {
                         return@ProvideTextStyle
                     }
                     TopToolbar(uiState)
-                    Box(Modifier.weight(1f).fillMaxWidth()) {
-                        when (uiState.currentPage) {
-                            AppPage.General -> GeneralPage(
-                                config = obfConfig,
-                                status = status,
-                                onConfigChange = { obfConfig = it },
-                                onReload = ::reloadConfig,
-                                onSave = ::saveConfig,
-                                modifier = Modifier.fillMaxSize()
-                            )
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(FluentTheme.colors.background.solid.tertiary),
+                    ) {
+                        Box(
+                            Modifier.weight(1f)
+                                .padding(8.dp)
+                        ) {
+                            when (uiState.currentPage) {
+                                AppPage.General -> GeneralPage(
+                                    config = obfConfig,
+                                    status = status,
+                                    onConfigChange = { obfConfig = it },
+                                    onReload = ::reloadConfig,
+                                    onSave = ::saveConfig,
+                                    modifier = Modifier.fillMaxSize()
+                                )
 
-                            AppPage.Editor -> PipelineEditorPage(pipelineEditorState)
-                            AppPage.Obfuscation -> ObfuscationPage(
-                                logs = obfuscationLogs,
-                                running = obfuscationRunning,
-                                onObfuscate = ::runObfuscation,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                            AppPage.Settings -> SettingsPage(
-                                appConfigState,
-                                plugins
-                            )
+                                AppPage.Editor -> PipelineEditorPage(pipelineEditorState)
+                                AppPage.Obfuscation -> ObfuscationPage(
+                                    logs = obfuscationLogs,
+                                    running = obfuscationRunning,
+                                    onObfuscate = ::runObfuscation,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                AppPage.Settings -> SettingsPage(
+                                    appConfigState,
+                                    plugins
+                                )
+                            }
                         }
+                        BottomStatusBar(uiState)
                     }
-                    BottomStatusBar(uiState)
                 }
             }
         }
@@ -232,23 +241,26 @@ fun App() {
 
 @Composable
 private fun BottomStatusBar(uiState: UIState) {
-    Row(
-        modifier = Modifier.fillMaxWidth().height(22.dp).padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            uiState.globalStatus,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            uiState.pageStatus,
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            "$VERSION [$SUBTITLE]",
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.End,
-        )
+    Card(Modifier.fillMaxWidth(), shape = FluentTheme.shapes.intersectionEdge) {
+        Row(
+            modifier = Modifier
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                uiState.globalStatus,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                uiState.pageStatus,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                "$VERSION [$SUBTITLE]",
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.End,
+            )
+        }
     }
 }
