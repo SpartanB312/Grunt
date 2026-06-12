@@ -3,6 +3,7 @@ package net.spartanb312.grunteon.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -11,6 +12,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.FrameWindowScope
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
@@ -19,134 +21,166 @@ import io.github.composefluent.icons.regular.*
 private val ToolbarTabWidth = 128.dp
 
 @Composable
-fun TopToolbar(
+fun FrameWindowScope.TopToolbar(
     uiState: UIState,
     onNewConfig: () -> Unit,
     onOpenConfig: () -> Unit,
     onSaveConfig: () -> Boolean,
     onSaveConfigAs: () -> Unit,
+    isMaximized: Boolean,
+    onMinimize: () -> Unit,
+    onToggleMaximize: () -> Unit,
     onExit: () -> Unit,
 ) {
     Column {
-        MenuBar(
+        Row(
             modifier = Modifier
                 .background(color = FluentTheme.colors.background.mica.base)
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 0.dp)
+                .height(48.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            GrunteonLogo(modifier = Modifier.height(32.dp))
-            MenuBarItem(
-                items = {
-                    MenuFlyoutButton(
-                        onClick = {
-                            onNewConfig()
-                            isFlyoutVisible = false
-                        },
-                        icon = Icons.Default.Document,
-                        text = "New Config",
-                        trailingText = "Ctrl+N",
-                    )
-                    MenuFlyoutButton(
-                        onClick = {
-                            onOpenConfig()
-                            isFlyoutVisible = false
-                        },
-                        icon = Icons.Default.FolderOpen,
-                        text = "Open Config",
-                        trailingText = "Ctrl+O",
-                    )
-                    MenuFlyoutSeparator()
-                    MenuFlyoutButton(
-                        onClick = {
-                            onSaveConfig()
-                            isFlyoutVisible = false
-                        },
-                        icon = Icons.Default.Save,
-                        text = "Save Config",
-                        trailingText = "Ctrl+S",
-                    )
-                    MenuFlyoutButton(
-                        onClick = {
-                            onSaveConfigAs()
-                            isFlyoutVisible = false
-                        },
-                        icon = Icons.Default.SaveEdit,
-                        text = "Save Config As",
-                        trailingText = "Ctrl+Shift+S",
-                    )
-                    MenuFlyoutSeparator()
-                    MenuFlyoutButton(
-                        onClick = {
-                            isFlyoutVisible = false
-                            onExit()
-                        },
-                        icon = Icons.Default.Dismiss,
-                        text = "Exit",
-                    )
-                }
+            GrunteonLogo(modifier = Modifier.fillMaxHeight().padding(start = 12.dp, top = 8.dp, bottom = 4.dp))
+            MenuBar(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 0.dp)
             ) {
-                Text("File")
-            }
+                MenuBarItem(
+                    items = {
+                        MenuFlyoutButton(
+                            onClick = {
+                                onNewConfig()
+                                isFlyoutVisible = false
+                            },
+                            icon = Icons.Default.Document,
+                            text = "New Config",
+                            trailingText = "Ctrl+N",
+                        )
+                        MenuFlyoutButton(
+                            onClick = {
+                                onOpenConfig()
+                                isFlyoutVisible = false
+                            },
+                            icon = Icons.Default.FolderOpen,
+                            text = "Open Config",
+                            trailingText = "Ctrl+O",
+                        )
+                        MenuFlyoutSeparator()
+                        MenuFlyoutButton(
+                            onClick = {
+                                onSaveConfig()
+                                isFlyoutVisible = false
+                            },
+                            icon = Icons.Default.Save,
+                            text = "Save Config",
+                            trailingText = "Ctrl+S",
+                        )
+                        MenuFlyoutButton(
+                            onClick = {
+                                onSaveConfigAs()
+                                isFlyoutVisible = false
+                            },
+                            icon = Icons.Default.SaveEdit,
+                            text = "Save Config As",
+                            trailingText = "Ctrl+Shift+S",
+                        )
+                        MenuFlyoutSeparator()
+                        MenuFlyoutButton(
+                            onClick = {
+                                isFlyoutVisible = false
+                                onExit()
+                            },
+                            icon = Icons.Default.Dismiss,
+                            text = "Exit",
+                        )
+                    }
+                ) {
+                    Text("File")
+                }
 
 
-            MenuBarItem(
-                items = {
-                    MenuFlyoutButton(
-                        onClick = {
-                            // TODO: Run obfuscation
-                        },
-                        icon = Icons.Default.Play,
-                        text = "Run Obfuscation",
-                    )
+                MenuBarItem(
+                    items = {
+                        MenuFlyoutButton(
+                            onClick = {
+                                // TODO: Run obfuscation
+                            },
+                            icon = Icons.Default.Play,
+                            text = "Run Obfuscation",
+                        )
+                    }
+                ) {
+                    Text("Tool")
                 }
-            ) {
-                Text("Tool")
-            }
-            MenuBarItem(
-                items = {
-                    MenuFlyoutButton(
-                        onClick = {
-                            // TODO: Open help page
-                        },
-                        icon = Icons.Default.BookQuestionMark,
-                        text = "Help",
-                    )
-                    MenuFlyoutSeparator()
-                    MenuFlyoutButton(
-                        onClick = {
-                            // TODO: Open GitHub issue page
-                        },
-                        icon = Icons.Default.Bug,
-                        text = "Submit a Bug Report",
-                    )
-                    MenuFlyoutButton(
-                        onClick = {
-                            // TODO: Open GitHub issue page
-                        },
-                        icon = Icons.Default.ChatHelp,
-                        text = "Submit Feature Request",
-                    )
-                    MenuFlyoutSeparator()
-                    MenuFlyoutButton(
-                        onClick = {
-                            isFlyoutVisible = false
-                            onExit()
-                        },
-                        icon = Icons.Default.Globe,
-                        text = "Check for Updates",
-                    )
-                    MenuFlyoutButton(
-                        onClick = {
-                            isFlyoutVisible = false
-                            onExit()
-                        },
-                        icon = Icons.Default.Info,
-                        text = "About",
-                    )
+                MenuBarItem(
+                    items = {
+                        MenuFlyoutButton(
+                            onClick = {
+                                // TODO: Open help page
+                            },
+                            icon = Icons.Default.BookQuestionMark,
+                            text = "Help",
+                        )
+                        MenuFlyoutSeparator()
+                        MenuFlyoutButton(
+                            onClick = {
+                                // TODO: Open GitHub issue page
+                            },
+                            icon = Icons.Default.Bug,
+                            text = "Submit a Bug Report",
+                        )
+                        MenuFlyoutButton(
+                            onClick = {
+                                // TODO: Open GitHub issue page
+                            },
+                            icon = Icons.Default.ChatHelp,
+                            text = "Submit Feature Request",
+                        )
+                        MenuFlyoutSeparator()
+                        MenuFlyoutButton(
+                            onClick = {
+                                isFlyoutVisible = false
+                                onExit()
+                            },
+                            icon = Icons.Default.Globe,
+                            text = "Check for Updates",
+                        )
+                        MenuFlyoutButton(
+                            onClick = {
+                                isFlyoutVisible = false
+                                onExit()
+                            },
+                            icon = Icons.Default.Info,
+                            text = "About",
+                        )
+                    }
+                ) {
+                    Text("Help")
                 }
-            ) {
-                Text("Help")
             }
+            if (isMaximized) {
+                Box(Modifier.weight(1f).fillMaxHeight())
+            } else {
+                WindowDraggableArea(
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                ) {
+                    Box(Modifier.fillMaxSize())
+                }
+            }
+            WindowControlButton(
+                icon = Icons.Default.Subtract,
+                contentDescription = "Minimize",
+                onClick = onMinimize,
+            )
+            WindowControlButton(
+                icon = if (isMaximized) Icons.Default.SquareMultiple else Icons.Default.Square,
+                contentDescription = if (isMaximized) "Restore" else "Maximize",
+                onClick = onToggleMaximize,
+            )
+            WindowControlButton(
+                icon = Icons.Default.Dismiss,
+                contentDescription = "Close",
+                onClick = onExit,
+            )
         }
         TabRow(
             { uiState.currentPage.ordinal },
@@ -193,6 +227,22 @@ private fun ToolbarTab(label: String, selected: Boolean, onClick: () -> Unit) {
         buttonColors = if (selected) ButtonDefaults.accentButtonColors() else ButtonDefaults.buttonColors(),
     ) {
         Text(label, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun WindowControlButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        iconOnly = true,
+        modifier = Modifier.height(32.dp).aspectRatio(1.33f).padding(bottom = 8.dp),
+        buttonColors = ButtonDefaults.subtleButtonColors(),
+    ) {
+        Icon(imageVector = icon, contentDescription = contentDescription)
     }
 }
 

@@ -1,19 +1,21 @@
 package net.spartanb312.grunteon.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowState
-import androidx.compose.ui.window.application
+import androidx.compose.ui.window.*
 import io.github.composefluent.*
 import io.github.composefluent.component.Text
 import io.github.composefluent.surface.Card
@@ -25,7 +27,15 @@ import net.spartanb312.grunteon.obfuscator.SUBTITLE
 import net.spartanb312.grunteon.obfuscator.VERSION
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.util.Logger
+import java.awt.Frame
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
+import java.awt.geom.RoundRectangle2D
 import javax.swing.SwingUtilities
+
+private val WindowCornerRadius = 8.dp
+private val WindowCornerDiameter = WindowCornerRadius * 2.0f
+private val WindowBorderWidth = 2.dp
 
 fun main(args: Array<String>) {
     FileKit.init(appId = "Grunteon")
@@ -35,18 +45,40 @@ fun main(args: Array<String>) {
         PluginManager.freeze()
     }
     application {
+        val windowState = rememberWindowState(width = 1600.dp, height = 900.dp)
         Window(
             onCloseRequest = ::exitApplication,
             title = "Grunteon",
-            state = WindowState(width = 1600.dp, height = 900.dp),
+            state = windowState,
+            undecorated = true,
+            transparent = true,
+            icon = painterResource("logo.svg")
         ) {
-            App(onExit = ::exitApplication)
+            App(
+                isMaximized = windowState.placement == WindowPlacement.Maximized,
+                onMinimize = { window.extendedState = window.extendedState or Frame.ICONIFIED },
+                onToggleMaximize = {
+                    windowState.placement = if (windowState.placement == WindowPlacement.Maximized) {
+                        WindowPlacement.Floating
+                    } else {
+                        WindowPlacement.Maximized
+                    }
+                },
+                onExit = ::exitApplication,
+            )
         }
     }
 }
 
 @Composable
-fun App(onExit: () -> Unit) {
+fun FrameWindowScope.App(
+    isMaximized: Boolean,
+    onMinimize: () -> Unit,
+    onToggleMaximize: () -> Unit,
+    onExit: () -> Unit,
+) {
+    RoundedWindowShape(enabled = !isMaximized)
+
     val plugins = remember { PluginManager.plugins }
     var editorReady by remember { mutableStateOf(true) }
     var configPath by remember { mutableStateOf(defaultConfigPath()) }
@@ -203,7 +235,7 @@ fun App(onExit: () -> Unit) {
             )
         ) {
             ProvideTextStyle(FluentTheme.typography.body) {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .onPreviewKeyEvent {
@@ -229,6 +261,7 @@ fun App(onExit: () -> Unit) {
                         }
                         .background(FluentTheme.colors.background.mica.base)
                 ) {
+                    Column(Modifier.fillMaxSize()) {
 //                    if (!editorReady) {
 //                        WelcomeScreen(
 //                            status = status,
@@ -269,6 +302,9 @@ fun App(onExit: () -> Unit) {
                         onOpenConfig = ::requestOpenConfig,
                         onSaveConfig = ::saveConfig,
                         onSaveConfigAs = ::requestSaveConfigAs,
+                        isMaximized = isMaximized,
+                        onMinimize = onMinimize,
+                        onToggleMaximize = onToggleMaximize,
                         onExit = onExit,
                     )
                     Column(
@@ -305,8 +341,58 @@ fun App(onExit: () -> Unit) {
                         }
                         BottomStatusBar(uiState)
                     }
+                    }
+                    if (!isMaximized) {
+                        Box(
+                            Modifier
+                                .matchParentSize()
+                                .border(
+                                    BorderStroke(
+                                        WindowBorderWidth,
+                                        FluentTheme.colors.stroke.divider.default
+                                    ),
+                                    RoundedCornerShape(WindowCornerRadius)
+                                )
+                        )
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun FrameWindowScope.RoundedWindowShape(enabled: Boolean) {
+    val cornerDiameter = with(LocalDensity.current) { WindowCornerDiameter.toPx().toDouble() }
+
+    DisposableEffect(window, enabled, cornerDiameter) {
+        fun updateShape() {
+            window.shape = if (enabled) {
+                RoundRectangle2D.Double(
+                    0.0,
+                    0.0,
+                    window.width.toDouble(),
+                    window.height.toDouble(),
+                    cornerDiameter,
+                    cornerDiameter,
+                )
+            } else {
+                null
+            }
+        }
+
+        val listener = object : ComponentAdapter() {
+            override fun componentResized(e: ComponentEvent?) {
+                updateShape()
+            }
+        }
+
+        updateShape()
+        window.addComponentListener(listener)
+
+        onDispose {
+            window.removeComponentListener(listener)
+            window.shape = null
         }
     }
 }
