@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +22,7 @@ import io.github.composefluent.background.Layer
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.*
+import net.spartanb312.grunteon.obfuscator.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.Category
 import java.util.*
 
@@ -59,11 +61,7 @@ fun Header(
 
 @Composable
 fun TransformerLibrary(
-    definitions: List<TransformerDefinition>,
-    showHiddenTransformers: Boolean,
-    search: String,
-    onSearchChange: (String) -> Unit,
-    onAdd: (TransformerDefinition) -> Unit,
+    state: PipelineEditorState,
     modifier: Modifier = Modifier,
 ) {
     PanelSurface(
@@ -71,23 +69,26 @@ fun TransformerLibrary(
         description = "Browse available transformers and add them to the pipeline stack.",
         modifier
     ) {
+        var search by remember { mutableStateOf("") }
         Column(
             modifier = Modifier
                 .padding(horizontal = 13.dp)
         ) {
             TextField(
                 value = search,
-                onValueChange = onSearchChange,
+                onValueChange = { search = it },
                 modifier = Modifier.fillMaxWidth().heightIn(min = (1 * 24).dp),
                 placeholder = { Text("Search") },
                 singleLine = true,
             )
         }
-        val visibleDefinitions = if (showHiddenTransformers) definitions else definitions.filterNot { it.isHidden }
-        val filtered = visibleDefinitions.filter {
-            search.isBlank() ||
-                it.label.contains(search, ignoreCase = true) ||
-                it.category.name.contains(search, ignoreCase = true)
+        val visibleDefinitions = state.definitions.filterNot { it.isHidden }
+        val filtered = remember(search) {
+            visibleDefinitions.filter {
+                search.isBlank() ||
+                    it.label.contains(search, ignoreCase = true) ||
+                    it.category.name.contains(search, ignoreCase = true)
+            }
         }
         val listState = rememberLazyListState()
         ScrollbarContainer(
@@ -127,7 +128,7 @@ fun TransformerLibrary(
                                 Layer {
                                     Column {
                                         categoryDefinitions.forEach { definition ->
-                                            LibraryItem(definition, onAdd)
+                                            LibraryItem(state, definition)
                                         }
                                     }
                                 }
@@ -154,7 +155,7 @@ fun categoryToIcon(category: Category): ImageVector = when (category) {
 }
 
 @Composable
-private fun LibraryItem(definition: TransformerDefinition, onAdd: (TransformerDefinition) -> Unit) {
+private fun LibraryItem(state: PipelineEditorState, definition: TransformerDefinition) {
     val labelColor = when {
         definition.isHidden -> FluentTheme.colors.system.caution
         definition.isPluginProvided -> FluentTheme.colors.fillAccent.default
@@ -188,7 +189,7 @@ private fun LibraryItem(definition: TransformerDefinition, onAdd: (TransformerDe
         }
     ) {
         Button(
-            onClick = { onAdd(definition) },
+            onClick = { state.addTransformerAfterSelection(definition) },
             modifier = Modifier
         ) {
             Icon(
@@ -200,16 +201,8 @@ private fun LibraryItem(definition: TransformerDefinition, onAdd: (TransformerDe
 }
 
 @Composable
-fun PipelineStack(
-    nodes: MutableList<PipelineNode>,
-    definitions: List<TransformerDefinition>,
-    selectedNodeId: Long?,
-    orderWarnings: Map<Long, String>,
-    onSelect: (Long) -> Unit,
-    onMove: (Int, Int) -> Unit,
-    onDuplicate: (Int) -> Unit,
-    onDelete: (Int) -> Unit,
-    onEnabledChange: (Long, Boolean) -> Unit,
+fun PipelineStackPanel(
+    state: PipelineEditorState,
     modifier: Modifier = Modifier,
 ) {
     PanelSurface(
@@ -218,6 +211,15 @@ fun PipelineStack(
         modifier = modifier
     ) {
         val listState = rememberLazyListState()
+        val mappingApplierPosition = remember(state.transformerList) {
+            state.transformerList.indexOfLast {
+                findDefinition(it.config, state.definitions)?.transformerPrototype?.category == Category.Renaming
+            }
+        }
+
+        val orderWarnings = remember(state.transformerList) {
+            validateOrder(state.transformerList, state.definitions)
+        }
         ScrollbarContainer(
             modifier = Modifier
                 .weight(1f)
@@ -233,25 +235,9 @@ fun PipelineStack(
                     .clip(FluentTheme.shapes.control)
                     .padding(0.dp, 0.dp, 12.dp, 0.dp),
             ) {
-                items(nodes.size) { index ->
-                    val node = nodes[index]
-                    val definition = findDefinition(node.config, definitions)
-                    PipelineNodeCard(
-                        index = index,
-                        node = node,
-                        definition = definition,
-                        selected = node.id == selectedNodeId,
-                        warning = orderWarnings[node.id],
-                        canMoveUp = index > 0,
-                        canMoveDown = index < nodes.lastIndex,
-                        onSelect = { onSelect(node.id) },
-                        onMoveUp = { onMove(index, index - 1) },
-                        onMoveDown = { onMove(index, index + 1) },
-                        onDuplicate = { onDuplicate(index) },
-                        onDelete = { onDelete(index) },
-                        onEnabledChange = { enabled -> onEnabledChange(node.id, enabled) },
-                    )
-                    if (isVirtualMappingApplierPosition(index, nodes, definitions)) {
+                itemsIndexed(state.transformerList) { index, entry ->
+                    PipelineNodeCard(state, orderWarnings, index, entry)
+                    if (mappingApplierPosition != -1 && index == mappingApplierPosition) {
                         VirtualMappingApplier()
                     }
                 }
@@ -262,25 +248,23 @@ fun PipelineStack(
 
 @Composable
 private fun PipelineNodeCard(
+    state: PipelineEditorState,
+    orderWarnings: Map<Int, List<String>>,
     index: Int,
-    node: PipelineNode,
-    definition: TransformerDefinition?,
-    selected: Boolean,
-    warning: String?,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
-    onSelect: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
-    onDuplicate: () -> Unit,
-    onDelete: () -> Unit,
-    onEnabledChange: (Boolean) -> Unit,
+    entry: TransformerEntry,
 ) {
+    val selected = state.selectedIndex == index
+    val definition = findDefinition(entry.config, state.definitions)
+    val warnings = orderWarnings[index]
     val borderColor = when {
-        warning != null -> FluentTheme.colors.system.caution
+        warnings != null -> FluentTheme.colors.system.caution
         selected -> FluentTheme.colors.fillAccent.default
         else -> FluentTheme.colors.stroke.card.default
     }
+
+    val canMoveUp = index > 0
+    val canMoveDown = index < state.transformerList.size - 1
+
     Box(
         modifier = Modifier
             .background(
@@ -289,7 +273,7 @@ private fun PipelineNodeCard(
             )
             .border(BorderStroke(2.dp, borderColor), FluentTheme.shapes.control)
             .padding(12.dp)
-            .clickable(onClick = onSelect)
+            .clickable(onClick = { state.selectedIndex = index })
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -307,7 +291,7 @@ private fun PipelineNodeCard(
                     UiIconButton(
                         imageVector = Icons.Default.ArrowSortUp,
                         contentDescription = "Move up",
-                        onClick = onMoveUp,
+                        onClick = { state.moveTransformer(index, index - 1) },
                         enabled = canMoveUp,
                         modifier = Modifier.size(32.dp)
                     )
@@ -319,7 +303,7 @@ private fun PipelineNodeCard(
                     UiIconButton(
                         imageVector = Icons.Default.ArrowSortDown,
                         contentDescription = "Move down",
-                        onClick = onMoveDown,
+                        onClick = { state.moveTransformer(index, index + 1) },
                         enabled = canMoveDown,
                         modifier = Modifier.size(32.dp)
                     )
@@ -333,14 +317,19 @@ private fun PipelineNodeCard(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        definition?.label ?: node.config::class.simpleName.orEmpty(),
+                        definition?.label ?: entry.config::class.simpleName.orEmpty(),
                         style = FluentTheme.typography.bodyLarge
                     )
-                    if (warning != null) {
-                        Text(warning, color = FluentTheme.colors.system.caution, style = FluentTheme.typography.caption)
+                    if (warnings != null) {
+                        warnings.forEach { warning ->
+                            Text(
+                                warning,
+                                style = FluentTheme.typography.caption.copy(color = FluentTheme.colors.system.caution)
+                            )
+                        }
                     } else {
                         Text(
-                            definition?.description ?: node.config::class.qualifiedName.orEmpty(),
+                            definition?.description ?: entry.config::class.qualifiedName.orEmpty(),
                             style = FluentTheme.typography.caption,
                         )
                     }
@@ -362,21 +351,19 @@ private fun PipelineNodeCard(
                     verticalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Switcher(
-                        checked = node.config.enabled,
-                        onCheckStateChange = onEnabledChange,
+                        checked = entry.enabled,
+                        onCheckStateChange = { state.transformerList[index] = entry.copy(enabled = it) },
                         text = null
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
-                            onClick = onDuplicate,
-                            modifier = Modifier,
+                            onClick = { state.addTransformerEntryAfterSelection(entry) },
                             iconOnly = true
                         ) {
                             Icon(imageVector = Icons.Default.CopyAdd, contentDescription = "Duplicate")
                         }
                         Button(
-                            onClick = onDelete,
-                            modifier = Modifier,
+                            onClick = { state.transformerList.removeAt(index) },
                             iconOnly = true
                         ) {
                             Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")

@@ -14,6 +14,32 @@ import kotlin.random.Random
 
 @Serializable
 data class ObfConfig(
+    val globalConfig: GlobalConfig = GlobalConfig(),
+    val transformers: List<TransformerEntry> = listOf()
+) {
+    companion object {
+        @OptIn(ExperimentalSerializationApi::class)
+        private fun json() = Json {
+            serializersModule = TransformerConfig.serializersModule()
+            prettyPrint = true
+            encodeDefaults = true
+            prettyPrintIndent = "    "
+            ignoreUnknownKeys = true
+        }
+
+        fun read(path: Path): ObfConfig {
+            return json().decodeFromString(serializer(), path.readText())
+        }
+
+        fun write(config: ObfConfig, path: Path) {
+            val jsonString = json().encodeToString(serializer(), config)
+            path.writeText(jsonString)
+        }
+    }
+}
+
+@Serializable
+data class GlobalConfig(
     // General configs
     @SettingDesc("The input jar that will be obfuscated")
     @SettingName("Input")
@@ -54,9 +80,6 @@ data class ObfConfig(
     @SettingDesc("Dependency missing check")
     @SettingName("Missing check")
     val missingCheck: Boolean = true,
-    @SettingDesc("Show hidden experimental transformers in UI")
-    @SettingName("Show hidden transformers")
-    val showHiddenTransformers: Boolean = false,
     // Features
     @SettingDesc("Corrupt file headers")
     @SettingName("Corrupt headers")
@@ -87,29 +110,15 @@ data class ObfConfig(
     @SettingName("Custom incremental dictionary")
     val customIncrementalDictionary: List<String> = listOf(
         "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n"
-    ),
-    // Transformers
-    val transformerConfigs: List<TransformerConfig> = listOf()
+    )
 ) {
     fun baseSeed(): String = if (controllableRandom) inputSeed else Random.nextInt().toString()
-
-    companion object {
-        @OptIn(ExperimentalSerializationApi::class)
-        private fun json() = Json {
-            serializersModule = TransformerConfig.serializersModule()
-            prettyPrint = true
-            encodeDefaults = true
-            prettyPrintIndent = "    "
-            ignoreUnknownKeys = true
-        }
-
-        fun read(path: Path): ObfConfig {
-            return json().decodeFromString(serializer(), path.readText())
-        }
-
-        fun write(config: ObfConfig, path: Path) {
-            val jsonString = json().encodeToString(serializer(), config)
-            path.writeText(jsonString)
-        }
-    }
 }
+
+@Serializable
+data class TransformerEntry(
+    // TODO: show this somewhere
+    val name: String = "",
+    val enabled: Boolean = true,
+    val config: TransformerConfig,
+)

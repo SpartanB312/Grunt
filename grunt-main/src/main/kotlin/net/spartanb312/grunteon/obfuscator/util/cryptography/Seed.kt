@@ -9,7 +9,7 @@ import java.security.MessageDigest
 context(instance: Grunteon)
 fun getSeed(vararg append: String): ByteArray {
     return MessageDigest.getInstance("SHA-256")
-        .digest(append.fold(instance.obfConfig.baseSeed(), String::plus).toByteArray(StandardCharsets.UTF_8))
+        .digest(append.fold(instance.globalConfig.baseSeed(), String::plus).toByteArray(StandardCharsets.UTF_8))
 }
 
 context(instance: Grunteon)

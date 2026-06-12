@@ -1,8 +1,6 @@
 package net.spartanb312.grunteon.obfuscator.process
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.lang.Languages
-import net.spartanb312.grunteon.obfuscator.lang.MultiText
 import net.spartanb312.grunteon.obfuscator.pipeline.OrderRule
 
 abstract class Transformer<T : TransformerConfig>(
@@ -15,7 +13,7 @@ abstract class Transformer<T : TransformerConfig>(
     var index = -1; private set
 
     context(instance: Grunteon)
-    val transformerSeed: String get() = instance.obfConfig.baseSeed() + name + index
+    val transformerSeed: String get() = instance.globalConfig.baseSeed() + name + index
 
     context(instance: Grunteon)
     internal fun buildStageImpl(pipelineBuilder: PipelineBuilder, config: TransformerConfig) {

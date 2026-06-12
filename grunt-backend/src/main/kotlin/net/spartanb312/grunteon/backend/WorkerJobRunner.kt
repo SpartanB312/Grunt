@@ -12,11 +12,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import kotlin.io.path.createDirectories
-import kotlin.io.path.exists
-import kotlin.io.path.inputStream
-import kotlin.io.path.name
-import kotlin.io.path.outputStream
+import kotlin.io.path.*
 
 object WorkerJobRunner {
     fun run(jobDir: Path) {
@@ -45,14 +41,20 @@ object WorkerJobRunner {
                 emptyList()
             }
 
-            val config = ObfConfig.read(configPath).copy(
-                input = inputPath.toString(),
-                output = outputPath.toString(),
-                libs = libPaths.map { it.toString() },
+            val original = ObfConfig.read(configPath)
+            val config = original.copy(
+                globalConfig = original.globalConfig.copy(
+                    input = inputPath.toString(),
+                    output = outputPath.toString(),
+                    libs = libPaths.map { it.toString() },
+                )
             )
             ObfConfig.write(config, normalizedConfigPath)
 
-            Logger = SimpleLogger("Grunteon-${normalizedJobDir.fileName}", logPath.toString()) { config.profiler }
+            Logger = SimpleLogger(
+                "Grunteon-${normalizedJobDir.fileName}",
+                logPath.toString()
+            ) { config.globalConfig.profiler }
 
             val io = ObfuscationIO(
                 input = PathResourceInput(inputPath),

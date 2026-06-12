@@ -4,7 +4,6 @@ import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 import kotlinx.serialization.serializer
 import net.spartanb312.grunteon.obfuscator.lang.I18NDescriptorPath
 import net.spartanb312.grunteon.obfuscator.util.filters.FilterStrategy
@@ -28,12 +27,12 @@ annotation class IntRangeVal(val min: Int, val max: Int, val step: Int = 1)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class DecimalRangeVal(val min: Double, val max: Double, val step: Double)
 
+@Target(AnnotationTarget.PROPERTY)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class HiddenFromAutoParameter
+
 @Serializable
 abstract class TransformerConfig {
-    @SettingDesc("Enable this transformer config node")
-    @SettingName("Enabled")
-    var enabled: Boolean = true
-
     companion object {
         @OptIn(InternalSerializationApi::class)
         fun serializersModule(): SerializersModule {

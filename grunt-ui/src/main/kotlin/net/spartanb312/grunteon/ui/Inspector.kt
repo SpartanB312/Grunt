@@ -15,143 +15,180 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.*
+import kotlinx.serialization.Transient
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Decimal
 import java.math.RoundingMode
 import kotlin.math.max
+import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty1
-import kotlin.reflect.KParameter
+import kotlin.reflect.KProperty
 import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.memberProperties
-import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
+import kotlin.reflect.jvm.javaField
 
 @Composable
 fun Inspector(
-    node: PipelineNode?,
-    definition: TransformerDefinition?,
-    onConfigChange: (TransformerConfig) -> Unit,
+    state: PipelineEditorState,
     modifier: Modifier = Modifier,
 ) {
-    val transformerName = definition?.label ?: node?.config?.let { it::class.simpleName }
-    val transformerDesc = definition?.description ?: node?.config?.let { it::class.qualifiedName }
+    val selected = state.selectedIndex
+    val entry = state.transformerList.getOrNull(selected)
+    val definition = entry?.let { findDefinition(entry.config, state.definitions) }
+    val transformerName = definition?.label ?: entry?.config?.let { it::class.simpleName }
+    val transformerDesc = definition?.description ?: entry?.config?.let { it::class.qualifiedName }
     PanelSurface(
         if (transformerName == null) "Inspector" else "Inspector - $transformerName",
         transformerDesc ?: "Select a transformer node to edit its Config.",
         modifier
     ) {
-        if (node == null) return@PanelSurface
+        if (entry == null) return@PanelSurface
         Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         ) {
             ConfigEditor(
-                value = node.config,
-                onChange = { updated -> onConfigChange(updated as TransformerConfig) },
+                value = entry.config,
+                onChange = {
+                    state.transformerList[selected] = state.transformerList[selected].copy(config = it)
+                },
             )
         }
     }
 }
 
+
+@Suppress("UNCHECKED_CAST")
 @Composable
-private fun ConfigEditor(value: Any, onChange: (Any) -> Unit) {
-    val constructor = value::class.primaryConstructor
-    if (constructor == null) {
-        ReadOnlyValue("Unsupported config", value.toString())
-        return
-    }
-    constructor.parameters.forEach { parameter ->
-        ConfigField(value, { newValue -> onChange(copyWith(value, parameter, newValue)) }, parameter)
+fun <T : Any> ConfigEditor(
+    value: T,
+    onChange: (T) -> Unit
+) =
+    ConfigEditor(
+        clazz = value::class as KClass<T>,
+        value = value,
+        onChange = onChange
+    )
+
+@Suppress("UNCHECKED_CAST")
+@Composable
+fun <T : Any> ConfigEditor(
+    clazz: KClass<T>,
+    value: T,
+    onChange: (T) -> Unit
+) {
+    val copyFunc = clazz.memberFunctions.find { member -> member.name == "copy" }
+    checkNotNull(copyFunc) { "$clazz is not a data class" }
+    val copyFunParameterOrder = copyFunc.parameters.drop(1).withIndex().associate { it.value.name!! to it.index }
+    val properties = clazz.memberProperties
+        .filter { it.javaField != null }
+        .filter { it.annotations.none { ann -> ann is HiddenFromAutoParameter || ann is Transient } }
+        .sortedBy { copyFunParameterOrder[it.name] ?: Int.MAX_VALUE }
+
+    properties.forEach {
+        val propValue = it.get(value)!!
+        val newParameterFunc = { newValue: Any ->
+            val newParameters = copyFunc.callBy(
+                mapOf(
+                    copyFunc.parameters[0] to value,
+                    copyFunc.parameters[1 + copyFunParameterOrder[it.name]!!] to newValue
+                )
+            ) as T
+            onChange(newParameters)
+        }
+        ConfigField(
+            prop = it,
+            propValue = propValue,
+            onChange = newParameterFunc
+        )
     }
 }
 
+@Suppress("UNCHECKED_CAST")
 @Composable
-private fun ConfigField(value: Any, onChange: (Any?) -> Unit, parameter: KParameter) {
-    val property = value::class.memberProperties.firstOrNull { it.name == parameter.name } ?: return
-    val currentValue = property.getter.call(value)
-    val label = property.findAnnotation<SettingName>()?.enText ?: parameter.name.orEmpty()
-    val description = property.findAnnotation<SettingDesc>()?.enText
-    when (currentValue) {
+private fun ConfigField(
+    prop: KProperty<*>,
+    propValue: Any,
+    onChange: (Any) -> Unit
+) {
+    val label = prop.findAnnotation<SettingName>()?.enText ?: camelCaseToWords(prop.name)
+    val description = prop.findAnnotation<SettingDesc>()?.enText
+    when (propValue) {
+        is String -> InspectorCard(label = label, description = description) {
+            StringField(
+                value = propValue,
+                onChange = onChange
+            )
+        }
         is Int -> {
-            val range = property.findAnnotation<IntRangeVal>()
+            val range = prop.findAnnotation<IntRangeVal>()
             if (range != null) {
                 IntSliderField(
                     label = label,
                     description = description,
-                    value = currentValue,
+                    value = propValue,
                     range = range,
                     onValueChange = onChange
                 )
             } else {
                 InspectorCard(label = label, description = description) {
                     IntField(
-                        value = currentValue,
-                        onChange = onChange
+                        value = propValue,
+                        onValueChange = onChange
                     )
                 }
             }
         }
-
         is Decimal -> {
-            val range = property.findAnnotation<DecimalRangeVal>()
+            val range = prop.findAnnotation<DecimalRangeVal>()
             if (range != null) {
                 DecimalSliderField(
                     label = label,
                     description = description,
-                    value = currentValue,
+                    value = propValue,
                     range = range,
                     onValueChange = onChange
                 )
             } else {
                 InspectorCard(label = label, description = description) {
                     DecimalField(
-                        value = currentValue,
-                        onChange = onChange
+                        value = propValue,
+                        onValueChange = onChange
                     )
                 }
             }
         }
-
-        is ClassFilterConfig -> NestedConfigField(
-            label = label,
-            description = description,
-            value = currentValue,
-            onChange = onChange
-        )
         is Boolean -> InspectorCard(label = label, description = description) {
             BooleanField(
-                value = currentValue,
-                onChange = onChange
-            )
-        }
-        is String -> InspectorCard(label = label, description = description) {
-            StringField(
-                value = currentValue,
+                value = propValue,
                 onChange = onChange
             )
         }
         is Enum<*> -> InspectorCard(label = label, description = description) {
             EnumField(
-                value = currentValue,
+                value = propValue,
                 onChange = onChange
             )
         }
         is List<*> -> InspectorCard(label = label, description = description) {
             ListField(
-                value = currentValue,
+                value = propValue,
                 onChange = onChange
             )
         }
-        null -> InspectorCard(label = label, description = description) {
-            ReadOnlyValue(
-                "null",
-                "Nullable fields are not editable in this prototype."
-            )
-        }
-        else -> InspectorCard(label = label, description = description) {
-            ReadOnlyValue(
-                currentValue::class.simpleName ?: "Value",
-                currentValue.toString()
-            )
+        else -> {
+            val propType = prop.returnType.classifier!! as KClass<Any>
+            when {
+                propType.isData || propValue::class.isData -> {
+                    NestedConfigField(
+                        label = label,
+                        description = description,
+                        value = propValue,
+                        onChange = onChange
+                    )
+                }
+            }
         }
     }
 }
@@ -186,7 +223,7 @@ private fun InspectorCard(
 }
 
 @Composable
-private fun BooleanField(value: Boolean, onChange: (Any?) -> Unit) {
+private fun BooleanField(value: Boolean, onChange: (Any) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(if (value) "On" else "Off", color = FluentTheme.colors.text.text.secondary)
         Switcher(checked = value, onCheckStateChange = { it: Boolean -> onChange(it) }, text = null)
@@ -194,7 +231,7 @@ private fun BooleanField(value: Boolean, onChange: (Any?) -> Unit) {
 }
 
 @Composable
-private fun StringField(value: String, onChange: (Any?) -> Unit) {
+private fun StringField(value: String, onChange: (Any) -> Unit) {
     UiTextField(
         value = value,
         onValueChange = { onChange(it) },
@@ -204,27 +241,27 @@ private fun StringField(value: String, onChange: (Any?) -> Unit) {
 }
 
 @Composable
-private fun IntField(value: Int, onChange: (Any?) -> Unit) {
+private fun IntField(value: Int, onValueChange: (Any) -> Unit) {
     UiTextField(
         value = value.toString(),
-        onValueChange = { text -> text.toIntOrNull()?.let { onChange(it) } },
+        onValueChange = { text -> text.toIntOrNull()?.let { onValueChange(it) } },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
 }
 
 @Composable
-private fun DecimalField(value: Decimal, onChange: (Any?) -> Unit) {
+private fun DecimalField(value: Decimal, onValueChange: (Any) -> Unit) {
     UiTextField(
         value = "%.4f".format(value).trimEnd('0').trimEnd('.'),
-        onValueChange = { text -> text.toBigDecimalOrNull()?.let { onChange(it) } },
+        onValueChange = { text -> text.toBigDecimalOrNull()?.let { onValueChange(it) } },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
 }
 
 @Composable
-private fun EnumField(value: Enum<*>, onChange: (Any?) -> Unit) {
+private fun EnumField(value: Enum<*>, onChange: (Any) -> Unit) {
     var expanded by remember(value::class) { mutableStateOf(false) }
     val constants = value::class.java.enumConstants.orEmpty()
     Box {
@@ -250,7 +287,7 @@ private fun IntSliderField(
     description: String?,
     value: Int,
     range: IntRangeVal,
-    onValueChange: (Any?) -> Unit,
+    onValueChange: (Any) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var typedValue by remember(value) { mutableStateOf(value.toString()) }
@@ -339,7 +376,7 @@ private fun DecimalSliderField(
     description: String?,
     value: Decimal,
     range: DecimalRangeVal,
-    onValueChange: (Any?) -> Unit,
+    onValueChange: (Any) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var typedValue by remember(value) { mutableStateOf(value.toString()) }
@@ -420,7 +457,7 @@ private fun DecimalSliderField(
 }
 
 @Composable
-private fun NestedConfigField(label: String, description: String?, value: Any, onChange: (Any?) -> Unit) {
+private fun NestedConfigField(label: String, description: String?, value: Any, onChange: (Any) -> Unit) {
     CardExpanderItem(
         heading = {
             var expanded by remember { mutableStateOf(false) }
@@ -456,7 +493,7 @@ private fun NestedConfigField(label: String, description: String?, value: Any, o
 }
 
 @Composable
-private fun ListField(value: List<*>, onChange: (Any?) -> Unit) {
+private fun ListField(value: List<*>, onChange: (Any) -> Unit) {
     if (value.all { it == null || it is String }) {
         UiTextField(
             value = value.filterIsInstance<String>().joinToString("\n"),

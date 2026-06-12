@@ -2,21 +2,11 @@ package net.spartanb312.grunteon.ui
 
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
-import io.github.vinceglb.filekit.dialogs.FileKitType
-import io.github.vinceglb.filekit.dialogs.openDirectoryPicker
-import io.github.vinceglb.filekit.dialogs.openFilePicker
-import io.github.vinceglb.filekit.dialogs.openFileSaver
+import io.github.vinceglb.filekit.dialogs.*
 import io.github.vinceglb.filekit.path
 import net.spartanb312.grunteon.obfuscator.ObfConfig
+import kotlin.io.path.*
 import java.nio.file.Path as NioPath
-import kotlin.io.path.Path
-import kotlin.io.path.absolute
-import kotlin.io.path.extension
-import kotlin.io.path.exists
-import kotlin.io.path.isDirectory
-import kotlin.io.path.name
-import kotlin.io.path.nameWithoutExtension
 
 fun loadConfig(path: NioPath): ConfigLoadResult {
     return runCatching {
@@ -24,7 +14,7 @@ fun loadConfig(path: NioPath): ConfigLoadResult {
         ConfigLoadResult(
             config = config,
             path = path,
-            message = "Loaded ${config.transformerConfigs.size} transformer nodes from ${path.toAbsolutePath().normalize()}",
+            message = "Loaded ${config.transformers.size} transformer nodes from ${path.toAbsolutePath().normalize()}",
             success = true,
         )
     }.getOrElse { error ->
