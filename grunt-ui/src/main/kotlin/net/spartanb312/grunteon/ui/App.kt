@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
@@ -39,24 +40,23 @@ fun main(args: Array<String>) {
             title = "Grunteon",
             state = WindowState(width = 1600.dp, height = 900.dp),
         ) {
-            App()
+            App(onExit = ::exitApplication)
         }
     }
 }
 
 @Composable
-fun App() {
+fun App(onExit: () -> Unit) {
     val plugins = remember { PluginManager.plugins }
     var editorReady by remember { mutableStateOf(true) }
     var configPath by remember { mutableStateOf(defaultConfigPath()) }
     var status by remember { mutableStateOf("Choose a config to begin") }
+    val coroutineScope = rememberCoroutineScope()
 
     val appConfigState = remember { mutableStateOf(AppConfig()) }
     var appConfig by appConfigState
 
     var obfuscationRunning by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
-
 
     val darkMode = when (appConfig.themeMode) {
         Auto -> isSystemInDarkTheme()
@@ -78,6 +78,14 @@ fun App() {
         editorReady = true
     }
 
+    fun newConfig(path: java.nio.file.Path) {
+        openWorkspace(
+            config = ObfConfig(),
+            path = path,
+            message = "New config. Save will write to ${path.toAbsolutePath().normalize()}"
+        )
+    }
+
     fun reloadConfig() {
         val loaded = loadConfig(configPath)
         if (loaded.success) {
@@ -87,9 +95,46 @@ fun App() {
         }
     }
 
-    fun saveConfig() {
-        ObfConfig.write(obfConfig, configPath)
-        status = "Saved ${obfConfig.transformers.size} transformer nodes to ${configPath.toAbsolutePath().normalize()}"
+    fun saveConfigTo(path: java.nio.file.Path): Boolean {
+        return runCatching {
+            ObfConfig.write(obfConfig, path)
+        }.onSuccess {
+            configPath = path
+            status = "Saved ${obfConfig.transformers.size} transformer nodes to ${path.toAbsolutePath().normalize()}"
+        }.onFailure {
+            status = "Failed to save ${path.toAbsolutePath().normalize()}: ${it.message}"
+        }.isSuccess
+    }
+
+    fun saveConfig(): Boolean {
+        return saveConfigTo(configPath)
+    }
+
+    fun openConfigFrom(path: java.nio.file.Path) {
+        val loaded = loadConfig(path)
+        if (loaded.success) {
+            openWorkspace(loaded.config, loaded.path, loaded.message)
+        } else {
+            status = loaded.message
+        }
+    }
+
+    fun requestNewConfig() {
+        coroutineScope.launch {
+            chooseNewConfigPath()?.let(::newConfig)
+        }
+    }
+
+    fun requestOpenConfig() {
+        coroutineScope.launch {
+            chooseConfigPath()?.let(::openConfigFrom)
+        }
+    }
+
+    fun requestSaveConfigAs() {
+        coroutineScope.launch {
+            chooseSaveConfigPath(configPath)?.let(::saveConfigTo)
+        }
     }
     fun appendObfuscationLog(line: String) {
         SwingUtilities.invokeLater {
@@ -161,44 +206,71 @@ fun App() {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .onPreviewKeyEvent {
+                            if (it.type != KeyEventType.KeyDown || !it.isCtrlPressed) return@onPreviewKeyEvent false
+                            when (it.key) {
+                                Key.N -> {
+                                    requestNewConfig()
+                                    true
+                                }
+
+                                Key.O -> {
+                                    requestOpenConfig()
+                                    true
+                                }
+
+                                Key.S -> {
+                                    if (it.isShiftPressed) requestSaveConfigAs() else saveConfig()
+                                    true
+                                }
+
+                                else -> false
+                            }
+                        }
                         .background(FluentTheme.colors.background.mica.base)
-                        .padding(top = 4.dp)
                 ) {
-                    if (!editorReady) {
-                        WelcomeScreen(
-                            status = status,
-                            onOpenConfig = {
-                                coroutineScope.launch {
-                                    val path = chooseConfigPath()
-                                    if (path != null) {
-                                        val loaded = loadConfig(path)
-                                        if (loaded.success) {
-                                            openWorkspace(loaded.config, loaded.path, loaded.message)
-                                        } else {
-                                            status = loaded.message
-                                        }
-                                    }
-                                }
-                            },
-                            onNewConfig = {
-                                coroutineScope.launch {
-                                    val path = chooseNewConfigPath()
-                                    if (path != null) {
-                                        openWorkspace(
-                                            config = ObfConfig(),
-                                            path = path,
-                                            message = "New config. Save will write to ${
-                                                path.toAbsolutePath().normalize()
-                                            }"
-                                        )
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        return@ProvideTextStyle
-                    }
-                    TopToolbar(uiState)
+//                    if (!editorReady) {
+//                        WelcomeScreen(
+//                            status = status,
+//                            onOpenConfig = {
+//                                coroutineScope.launch {
+//                                    val path = chooseConfigPath()
+//                                    if (path != null) {
+//                                        val loaded = loadConfig(path)
+//                                        if (loaded.success) {
+//                                            openWorkspace(loaded.config, loaded.path, loaded.message)
+//                                        } else {
+//                                            status = loaded.message
+//                                        }
+//                                    }
+//                                }
+//                            },
+//                            onNewConfig = {
+//                                coroutineScope.launch {
+//                                    val path = chooseNewConfigPath()
+//                                    if (path != null) {
+//                                        openWorkspace(
+//                                            config = ObfConfig(),
+//                                            path = path,
+//                                            message = "New config. Save will write to ${
+//                                                path.toAbsolutePath().normalize()
+//                                            }"
+//                                        )
+//                                    }
+//                                }
+//                            },
+//                            modifier = Modifier.fillMaxSize()
+//                        )
+//                        return@ProvideTextStyle
+//                    }
+                    TopToolbar(
+                        uiState = uiState,
+                        onNewConfig = ::requestNewConfig,
+                        onOpenConfig = ::requestOpenConfig,
+                        onSaveConfig = ::saveConfig,
+                        onSaveConfigAs = ::requestSaveConfigAs,
+                        onExit = onExit,
+                    )
                     Column(
                         Modifier
                             .fillMaxWidth()

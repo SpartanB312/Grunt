@@ -27,7 +27,7 @@ fun SettingsPage(
         PanelSurface(
             title = "App Configuration",
             description = "Configure Grunteon GUI behavior and appearance.",
-            modifier = Modifier.weight(1f).fillMaxWidth()
+            modifier = Modifier.weight(0.5f).fillMaxWidth()
         ) {
             ScrollPanel {
                 ConfigEditor(
@@ -39,7 +39,7 @@ fun SettingsPage(
         PanelSurface(
             title = "Plugins",
             description = "Loaded ${plugins.size} plugin(s).",
-            modifier = Modifier.weight(1f).fillMaxWidth()
+            modifier = Modifier.weight(0.5f).fillMaxWidth()
         ) {
             ScrollPanel {
                 if (plugins.isEmpty()) {

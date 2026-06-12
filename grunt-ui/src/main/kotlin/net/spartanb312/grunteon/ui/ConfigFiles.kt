@@ -50,6 +50,16 @@ suspend fun chooseNewConfigPath(): NioPath? {
     )?.toNioPath()?.ensureExtension("json")
 }
 
+suspend fun chooseSaveConfigPath(currentPath: NioPath): NioPath? {
+    return FileKit.openFileSaver(
+        suggestedName = currentPath.nameWithoutExtension,
+        defaultExtension = "json",
+        allowedExtensions = setOf("json"),
+        directory = initialChooserDirectory(currentPath).toPlatformFile(),
+        dialogSettings = fileDialogSettings("Save config as"),
+    )?.toNioPath()?.ensureExtension("json")
+}
+
 suspend fun chooseInputPath(currentValue: String): NioPath? {
     val initialPath = resolveChooserPath(currentValue, Path("input.jar"))
     return FileKit.openFilePicker(
