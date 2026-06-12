@@ -6,8 +6,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -16,8 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
-import io.github.composefluent.component.Switcher
-import io.github.composefluent.component.Text
+import io.github.composefluent.background.Layer
+import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.*
 
@@ -63,36 +63,67 @@ fun TransformerLibrary(
     onAdd: (TransformerDefinition) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PanelSurface(modifier) {
-        Column(Modifier.fillMaxHeight().padding(horizontal = 12.dp, vertical = 12.dp)) {
-            Text("Transformer Library", fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            UiTextField(
+    PanelSurface(
+        title = "Transformer Library",
+        description = "Browse available transformers and add them to the pipeline stack.",
+        modifier
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 13.dp)
+        ) {
+            TextField(
                 value = search,
                 onValueChange = onSearchChange,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = (1 * 24).dp),
+                placeholder = { Text("Search") },
                 singleLine = true,
-                label = "Search",
             )
             Spacer(Modifier.height(8.dp))
-            val visibleDefinitions = if (showHiddenTransformers) definitions else definitions.filterNot { it.isHidden }
-            val filtered = visibleDefinitions.filter {
-                search.isBlank() ||
-                    it.label.contains(search, ignoreCase = true) ||
-                    it.category.name.contains(search, ignoreCase = true)
-            }
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        }
+        val visibleDefinitions = if (showHiddenTransformers) definitions else definitions.filterNot { it.isHidden }
+        val filtered = visibleDefinitions.filter {
+            search.isBlank() ||
+                it.label.contains(search, ignoreCase = true) ||
+                it.category.name.contains(search, ignoreCase = true)
+        }
+        val listState = rememberLazyListState()
+        ScrollbarContainer(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(12.dp, 8.dp, 0.dp, 8.dp),
+            adapter = rememberScrollbarAdapter(listState),
+        ) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(UiPanelShape)
+                    .padding(0.dp, 0.dp, 12.dp, 0.dp),
+            ) {
                 filtered.groupBy { it.category }.forEach { (category, categoryDefinitions) ->
                     item {
-                        Text(
-                            category.name,
-                            color = FluentTheme.colors.text.text.secondary,
-                            style = FluentTheme.typography.bodyStrong,
-                            modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
-                        )
-                    }
-                    items(categoryDefinitions) { definition ->
-                        LibraryItem(definition, onAdd)
+                        var visible by remember { mutableStateOf(false) }
+                        Expander(
+                            visible,
+                            { visible = it },
+                            icon = null,
+                            heading = {
+                                Text(
+                                    category.name,
+                                    style = FluentTheme.typography.bodyStrong,
+                                )
+                            }
+                        ) {
+                            Layer {
+                                Column {
+                                    categoryDefinitions.forEach { definition ->
+                                        LibraryItem(definition, onAdd)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -107,22 +138,41 @@ private fun LibraryItem(definition: TransformerDefinition, onAdd: (TransformerDe
         definition.isPluginProvided -> FluentTheme.colors.fillAccent.default
         else -> FluentTheme.colors.text.text.primary
     }
-    SectionSurface(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(definition.label, color = labelColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    CardExpanderItem(
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Circle,
+                contentDescription = null
+            )
+        },
+        heading = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+            ) {
+                Text(
+                    definition.label,
+                    style = FluentTheme.typography.body.copy(color = labelColor),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(
                     definition.description,
-                    color = FluentTheme.colors.text.text.secondary, maxLines = 2, overflow = TextOverflow.Ellipsis
+                    style = FluentTheme.typography.caption,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            UiOutlinedButton(onClick = { onAdd(definition) }) {
-                Text("Add")
-            }
+        }
+    ) {
+        Button(
+            onClick = { onAdd(definition) },
+            modifier = Modifier
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add transformer"
+            )
         }
     }
 }
@@ -140,16 +190,24 @@ fun PipelineStack(
     onEnabledChange: (Long, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PanelSurface(modifier) {
-        Column(Modifier.fillMaxHeight().padding(horizontal = 12.dp, vertical = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Pipeline Stack", fontWeight = FontWeight.Bold)
-                    Text("Execution order is top to bottom. Duplicate transformers are allowed.")
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    PanelSurface(
+        title = "Pipeline Stack",
+        description = "Execution order is top to bottom. Duplicate transformers are allowed.",
+        modifier = modifier
+    ) {
+        val listState = rememberLazyListState()
+        ScrollbarContainer(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .background(color = FluentTheme.colors.background.layer.default),
+            adapter = rememberScrollbarAdapter(listState)
+        ) {
+            LazyColumn(
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
                 items(nodes.size) { index ->
                     val node = nodes[index]
                     val definition = findDefinition(node.config, definitions)
@@ -219,7 +277,7 @@ private fun PipelineNodeCard(
                     enabled = canMoveUp,
                     modifier = Modifier.size(32.dp)
                 )
-                io.github.composefluent.component.Icon(
+                Icon(
                     imageVector = Icons.Default.ReOrderDotsVertical,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),

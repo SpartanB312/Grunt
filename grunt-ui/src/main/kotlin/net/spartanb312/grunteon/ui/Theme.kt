@@ -13,13 +13,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
+import io.github.composefluent.background.Layer
 import io.github.composefluent.component.*
 
 const val BaseFontScale = 1.0f
 const val MinFontScale = 0.5f
 const val DefaultFontScale = 1.0f
 const val MaxFontScale = 4.0f
-val UiCornerRadius: Dp = 4.dp
+val UiCornerRadius: Dp = 8.dp
 val UiPanelShape = RoundedCornerShape(UiCornerRadius)
 val UiControlShape = RoundedCornerShape(UiCornerRadius)
 
@@ -33,30 +34,33 @@ fun PanelSurface(
     title: String,
     description: String?,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+    content: @Composable ColumnScope.() -> Unit
 ) {
-    FramedSurface(
-        color = FluentTheme.colors.background.card.default,
+    Layer(
         modifier = Modifier
+            .background(color = FluentTheme.colors.background.layer.default)
             .then(modifier),
     ) {
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(all = 12.dp)
+                .padding(2.dp)
         ) {
-            Text(
-                title,
-                style = FluentTheme.typography.subtitle,
-            )
-            if (description != null) {
-                Spacer(Modifier.height(4.dp))
+            Column(
+                Modifier
+                    .padding(10.dp)
+            ) {
                 Text(
-                    description,
-                    color = FluentTheme.colors.text.text.secondary
+                    title,
+                    style = FluentTheme.typography.subtitle,
                 )
+                if (description != null) {
+                    Text(
+                        description,
+                        color = FluentTheme.colors.text.text.secondary
+                    )
+                }
             }
-            Spacer(Modifier.height(16.dp))
             content()
         }
     }
