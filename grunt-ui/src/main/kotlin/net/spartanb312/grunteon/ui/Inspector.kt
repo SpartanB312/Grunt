@@ -195,7 +195,7 @@ private fun ConfigField(
         is Enum<*> -> InspectorCard(label = label, description = description) {
             EnumField(
                 value = propValue,
-                onChange = onChange
+                onValueChange = onChange
             )
         }
         is List<*> ->
@@ -299,21 +299,28 @@ private fun DecimalField(value: Decimal, onValueChange: (Any) -> Unit) {
 }
 
 @Composable
-private fun EnumField(value: Enum<*>, onChange: (Any) -> Unit) {
-    var expanded by remember(value::class) { mutableStateOf(false) }
-    val constants = value::class.java.enumConstants.orEmpty()
-    Box {
-        UiOutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-            Text(value.name)
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            constants.forEach { constant ->
-                DropdownMenuItem(
-                    onClick = {
-                        expanded = false
-                        onChange(constant)
-                    }
-                ) { Text(constant.name) }
+private fun EnumField(value: Enum<*>, onValueChange: (Any) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    fun enumName(enumConst: Enum<*>): String =
+        enumConst.name
+    DropDownButton(
+        onClick = { expanded = true },
+    ) {
+        Text(enumName(value))
+    }
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = { expanded = false },
+    ) {
+        val enumClass = value::class.java
+        enumClass.enumConstants.forEach { enumConst ->
+            DropdownMenuItem(
+                onClick = {
+                    onValueChange(enumConst)
+                    expanded = false
+                },
+            ) {
+                Text(enumName(enumConst))
             }
         }
     }
@@ -374,27 +381,36 @@ private fun IntSliderField(
         }
     ) {
         val sliderStep = range.step
+        val sliderStepDecimal = range.step.toBigDecimal()
         val sliderMin = range.min
         val sliderMax = range.max
-        val steps = max((sliderMax - sliderMin - 1) / sliderStep, 1)
+        fun Float.snappedValue(): Decimal {
+            return (this.toBigDecimal() / sliderStepDecimal).setScale(0, RoundingMode.HALF_UP) * sliderStepDecimal
+        }
         val sliderState = remember(fieldFocus) {
             SliderState(
                 value.toFloat(),
-                steps,
+                max((sliderMax - sliderMin - 1) / sliderStep, 1),
                 true,
-                { },
+                {
+                    if (!fieldFocus) {
+                        onValueChange(it.snappedValue().toInt())
+                    }
+                },
                 sliderMin.toFloat()..sliderMax.toFloat()
             )
         }
-        sliderState.value = value.toFloat()
         sliderStateOnValueChangeProp.set(sliderState) {
-            typedValue = sliderState.nearestValue().toInt().toString()
+            typedValue = sliderState.nearestValue().snappedValue().toString()
         }
         CardExpanderItem(heading = {}) {
             Slider(
                 state = sliderState,
                 showTickMark = false,
                 modifier = Modifier.fillMaxWidth(),
+                tooltipContent = {
+                    Text(sliderState.nearestValue().snappedValue().toString())
+                }
             )
         }
     }
@@ -465,30 +481,34 @@ private fun DecimalSliderField(
         val sliderStep = range.step.toBigDecimal()
         val sliderMin = range.min.toBigDecimal()
         val sliderMax = range.max.toBigDecimal()
-        val steps = max(((sliderMax - sliderMin) / sliderStep).toInt() - 1, 1)
-        val sliderState = remember(fieldFocus) {
+        fun Float.snappedValue(): Decimal {
+            return (this.toBigDecimal() / sliderStep).setScale(0, RoundingMode.HALF_UP) * sliderStep
+        }
+
+        val sliderState = remember(fieldFocus, value) {
             SliderState(
                 value.toFloat(),
-                steps,
+                max(((sliderMax - sliderMin) / sliderStep).toInt() - 1, 1),
                 true,
                 {
-                    onValueChange((it.toBigDecimal() / sliderStep).setScale(0, RoundingMode.HALF_UP) * sliderStep)
+                    if (!fieldFocus) {
+                        onValueChange(it.snappedValue())
+                    }
                 },
                 sliderMin.toFloat()..sliderMax.toFloat()
             )
         }
-        sliderState.value = value.toFloat()
         sliderStateOnValueChangeProp.set(sliderState) {
-            val newValue =
-                (sliderState.nearestValue().toBigDecimal() / sliderStep).setScale(0, RoundingMode.HALF_UP) * sliderStep
-            typedValue = newValue.toString()
+            typedValue = sliderState.nearestValue().snappedValue().toString()
         }
         CardExpanderItem(heading = {}, icon = null) {
             Slider(
                 state = sliderState,
                 showTickMark = false,
-                modifier = Modifier.fillMaxWidth()
-                    .padding(end = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+                tooltipContent = {
+                    Text(sliderState.nearestValue().snappedValue().toString())
+                }
             )
         }
     }
@@ -722,7 +742,7 @@ private fun <E : Any> ListField(
                 is Enum<*> -> ListEntryCard(index) {
                     EnumField(
                         value = item,
-                        onChange = onChange
+                        onValueChange = onChange
                     )
                 }
                 else -> {

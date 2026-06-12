@@ -42,4 +42,5 @@ enum class AppPage {
 class UIState {
     var globalStatus by mutableStateOf("Ready")
     var pageStatus by mutableStateOf("")
+    var currentPage by mutableStateOf(AppPage.General)
 }

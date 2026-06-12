@@ -2,31 +2,20 @@ package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.Button
 import io.github.composefluent.component.ButtonDefaults
 import io.github.composefluent.component.Text
-import net.spartanb312.grunteon.obfuscator.plugin.LoadedPlugin
-import java.nio.file.Path as NioPath
 
 private val ToolbarTabWidth = 128.dp
 
 @Composable
-fun TopToolbar(
-    page: AppPage,
-    onPageChange: (AppPage) -> Unit,
-) {
+fun TopToolbar(uiState: UIState) {
     Row(
         modifier = Modifier
             .width(IntrinsicSize.Max)
@@ -38,27 +27,13 @@ fun TopToolbar(
         Box(modifier = Modifier.fillMaxHeight().padding(start = 2.dp)) {
             GrunteonLogo(Modifier.align(Alignment.Center))
         }
-        ToolbarTab(
-            label = "General",
-            selected = page == AppPage.General,
-            onClick = { onPageChange(AppPage.General) }
-        )
-        ToolbarTab(
-            label = "Pipeline Editor",
-            selected = page == AppPage.Editor,
-            onClick = { onPageChange(AppPage.Editor) }
-        )
-        ToolbarTab(
-            label = "Obfuscation",
-            selected = page == AppPage.Obfuscation,
-            onClick = { onPageChange(AppPage.Obfuscation) }
-        )
-        ToolbarTab(
-            label = "Settings",
-            selected = page == AppPage.Settings,
-            onClick = { onPageChange(AppPage.Settings) }
-        )
-        Spacer(Modifier.weight(1f))
+        AppPage.entries.forEach {
+            ToolbarTab(
+                label = it.name,
+                selected = uiState.currentPage == it,
+                onClick = { uiState.currentPage = it }
+            )
+        }
     }
 }
 
@@ -79,189 +54,5 @@ private fun ToolbarTab(label: String, selected: Boolean, onClick: () -> Unit) {
         buttonColors = if (selected) ButtonDefaults.accentButtonColors() else ButtonDefaults.buttonColors(),
     ) {
         Text(label, textAlign = TextAlign.Center)
-    }
-}
-
-@Composable
-fun SettingsPage(
-    fontScale: Float,
-    onFontScaleChange: (Float) -> Unit,
-    themeMode: ThemeMode,
-    onThemeModeChange: (ThemeMode) -> Unit,
-    uiLogLevel: UiLogLevel,
-    onUiLogLevelChange: (UiLogLevel) -> Unit,
-    configPath: NioPath,
-    uiSettingsPath: NioPath,
-    status: String,
-    plugins: List<LoadedPlugin>,
-    modifier: Modifier = Modifier,
-) {
-    val settingsScroll = rememberScrollState()
-    val pluginsScroll = rememberScrollState()
-    PanelSurface(modifier) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(18.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp)
-        ) {
-            Column(
-                modifier = Modifier.weight(1f).fillMaxHeight().verticalScroll(settingsScroll),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Settings", style = FluentTheme.typography.title, fontWeight = FontWeight.Bold)
-                    Text(
-                        "Workspace preferences for the editor prototype.",
-                        color = FluentTheme.colors.text.text.secondary
-                    )
-                }
-                SettingsSection {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text("Font Size", fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    "Scale all editor text without changing the pipeline data.",
-                                    color = FluentTheme.colors.text.text.secondary
-                                )
-                            }
-                            Text("${"%.0f".format(fontScale * 100)}%", fontFamily = FontFamily.Monospace)
-                        }
-                        UiSlider(
-                            value = fontScale,
-                            onValueChange = { onFontScaleChange(it.coerceIn(MinFontScale, MaxFontScale)) },
-                            valueRange = MinFontScale..MaxFontScale,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            UiOutlinedButton(onClick = { onFontScaleChange(0.9f) }) { Text("Small") }
-                            UiOutlinedButton(onClick = { onFontScaleChange(DefaultFontScale) }) { Text("Default") }
-                            UiOutlinedButton(onClick = { onFontScaleChange(1.15f) }) { Text("Large") }
-                        }
-                    }
-                }
-                SettingsSection {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Obfuscation Log Level", fontWeight = FontWeight.SemiBold)
-                            Text(
-                                "Minimum logger level shown in the Obfuscation console.",
-                                color = FluentTheme.colors.text.text.secondary
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (uiLogLevel == UiLogLevel.Info) {
-                                UiButton(onClick = { onUiLogLevelChange(UiLogLevel.Info) }) { Text("INFO") }
-                            } else {
-                                UiOutlinedButton(onClick = { onUiLogLevelChange(UiLogLevel.Info) }) { Text("INFO") }
-                            }
-                            if (uiLogLevel == UiLogLevel.Debug) {
-                                UiButton(onClick = { onUiLogLevelChange(UiLogLevel.Debug) }) { Text("DEBUG") }
-                            } else {
-                                UiOutlinedButton(onClick = { onUiLogLevelChange(UiLogLevel.Debug) }) { Text("DEBUG") }
-                            }
-                        }
-                    }
-                }
-                SettingsSection {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Theme", fontWeight = FontWeight.SemiBold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (themeMode == ThemeMode.Dark) {
-                                UiButton(onClick = { onThemeModeChange(ThemeMode.Dark) }) { Text("Dark") }
-                            } else {
-                                UiOutlinedButton(onClick = { onThemeModeChange(ThemeMode.Dark) }) { Text("Dark") }
-                            }
-                            if (themeMode == ThemeMode.Light) {
-                                UiButton(onClick = { onThemeModeChange(ThemeMode.Light) }) { Text("Light") }
-                            } else {
-                                UiOutlinedButton(onClick = { onThemeModeChange(ThemeMode.Light) }) { Text("Light") }
-                            }
-                        }
-                    }
-                }
-                SettingsSection {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("UI Settings", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            uiSettingsPath.toAbsolutePath().normalize().toString(),
-                            fontFamily = FontFamily.Monospace,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text("Config", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            configPath.toAbsolutePath().normalize().toString(),
-                            fontFamily = FontFamily.Monospace,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(status, color = FluentTheme.colors.text.text.secondary)
-                    }
-                }
-            }
-            Column(
-                modifier = Modifier.weight(1f).fillMaxHeight().verticalScroll(pluginsScroll),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Plugins", style = FluentTheme.typography.title, fontWeight = FontWeight.Bold)
-                    Text("${plugins.size} loaded plugin(s).", color = FluentTheme.colors.text.text.secondary)
-                }
-                if (plugins.isEmpty()) {
-                    SettingsSection {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("No plugins loaded", fontWeight = FontWeight.SemiBold)
-                            Text(
-                                "Only built-in transformers are available.",
-                                color = FluentTheme.colors.text.text.secondary
-                            )
-                        }
-                    }
-                } else {
-                    plugins.forEach { plugin ->
-                        PluginSection(plugin)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsSection(content: @Composable () -> Unit) {
-    SectionSurface(Modifier.fillMaxWidth(), content = content)
-}
-
-@Composable
-private fun PluginSection(plugin: LoadedPlugin) {
-    val metadata = plugin.metadata
-    SettingsSection {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(metadata.name, fontWeight = FontWeight.SemiBold)
-            Text(
-                "Plugin ID: ${metadata.id}",
-                color = FluentTheme.colors.text.text.secondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                "Version: ${metadata.version} ",
-                color = FluentTheme.colors.text.text.secondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                "Entry: ${metadata.entryClass}",
-                fontFamily = FontFamily.Monospace,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val file = metadata.file.toString()
-            if (file.isNotBlank()) {
-                Text(
-                    file,
-                    color = FluentTheme.colors.text.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
     }
 }

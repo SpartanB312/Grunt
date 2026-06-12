@@ -72,18 +72,13 @@ fun TransformerLibrary(
         modifier
     ) {
         var search by remember { mutableStateOf("") }
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 13.dp)
-        ) {
             TextField(
                 value = search,
                 onValueChange = { search = it },
-                modifier = Modifier.fillMaxWidth().heightIn(min = (1 * 24).dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 13.dp),
                 placeholder = { Text("Search") },
                 singleLine = true,
             )
-        }
         val visibleDefinitions = state.definitions.filterNot { it.isHidden }
         val filtered = remember(search) {
             visibleDefinitions.filter {

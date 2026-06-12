@@ -285,14 +285,11 @@ class PipelineEditorState(
 
 @Composable
 fun PipelineEditorPage(
-    uiState: UIState,
-    obfConfigState: MutableState<ObfConfig>
+    state: PipelineEditorState,
 ) {
-    val state = remember { PipelineEditorState(uiState, obfConfigState) }
-
     Row(
         modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         TransformerLibrary(
             state = state,

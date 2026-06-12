@@ -4,7 +4,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -16,17 +18,34 @@ import io.github.composefluent.FluentTheme
 import io.github.composefluent.background.Layer
 import io.github.composefluent.component.*
 
-const val BaseFontScale = 1.0f
-const val MinFontScale = 0.5f
-const val DefaultFontScale = 1.0f
-const val MaxFontScale = 4.0f
 val UiCornerRadius: Dp = 8.dp
 val UiPanelShape = RoundedCornerShape(UiCornerRadius)
-val UiControlShape = RoundedCornerShape(UiCornerRadius)
 
 enum class ThemeMode {
+    Auto,
     Dark,
     Light,
+}
+
+@Composable
+fun ScrollPanel(
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val scrollState = rememberScrollState()
+    ScrollbarContainer(
+        modifier = Modifier
+            .padding(12.dp, 8.dp, 0.dp, 8.dp),
+        adapter = rememberScrollbarAdapter(scrollState)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(FluentTheme.shapes.control)
+                .padding(0.dp, 0.dp, 12.dp, 0.dp)
+                .verticalScroll(scrollState),
+            content = content
+        )
+    }
 }
 
 @Composable
@@ -74,11 +93,6 @@ fun PanelSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit)
 @Composable
 fun SectionSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     FramedSurface(color = FluentTheme.colors.background.card.secondary, modifier = modifier, content = content)
-}
-
-@Composable
-fun NestedSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    FramedSurface(color = FluentTheme.colors.background.layer.default, modifier = modifier, content = content)
 }
 
 @Composable

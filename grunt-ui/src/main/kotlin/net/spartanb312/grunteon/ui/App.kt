@@ -1,11 +1,11 @@
 package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
@@ -46,20 +46,22 @@ fun main(args: Array<String>) {
 @Composable
 fun App() {
     val plugins = remember { PluginManager.plugins }
-    val uiSettingsPath = remember { defaultUiSettingsPath() }
-    val initialUiSettings = remember { loadUiSettings(uiSettingsPath) }
     var editorReady by remember { mutableStateOf(true) }
     var configPath by remember { mutableStateOf(defaultConfigPath()) }
     var status by remember { mutableStateOf("Choose a config to begin") }
-    var page by remember { mutableStateOf(AppPage.Editor) }
-    var fontScale by remember { mutableStateOf(initialUiSettings.fontScale) }
-    var themeMode by remember { mutableStateOf(initialUiSettings.themeMode) }
-    var uiLogLevel by remember { mutableStateOf(initialUiSettings.uiLogLevel) }
+
+    val appConfigState = remember { mutableStateOf(AppConfig()) }
+    var appConfig by appConfigState
+
     var obfuscationRunning by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-    val baseDensity = LocalDensity.current
-    val fluentColors =
-        if (themeMode == ThemeMode.Dark) darkColors(Color(0xFF0078D4)) else lightColors(Color(0xFF0078D4))
+
+
+    val darkMode = when (appConfig.themeMode) {
+        Auto -> isSystemInDarkTheme()
+        Light -> false
+        Dark -> true
+    }
 
     val obfuscationLogs = remember { mutableStateListOf<String>() }
     val uiState = remember { UIState() }
@@ -71,7 +73,7 @@ fun App() {
         obfConfig = config
         configPath = path
         status = message
-        page = AppPage.General
+        uiState.currentPage = AppPage.General
         editorReady = true
     }
 
@@ -88,43 +90,6 @@ fun App() {
         ObfConfig.write(obfConfig, configPath)
         status = "Saved ${obfConfig.transformers.size} transformer nodes to ${configPath.toAbsolutePath().normalize()}"
     }
-
-    fun persistUiSettings(settings: UiSettings) {
-        saveUiSettings(settings, uiSettingsPath).onFailure {
-            status = "Failed to save UI settings to ${uiSettingsPath.toAbsolutePath().normalize()}: ${it.message}"
-        }
-    }
-
-    fun updateFontScale(value: Float) {
-        val next = UiSettings(
-            fontScale = value.coerceIn(MinFontScale, MaxFontScale),
-            themeMode = themeMode,
-            uiLogLevel = uiLogLevel,
-        )
-        fontScale = next.fontScale
-        persistUiSettings(next)
-    }
-
-    fun updateThemeMode(value: ThemeMode) {
-        val next = UiSettings(
-            fontScale = fontScale,
-            themeMode = value,
-            uiLogLevel = uiLogLevel,
-        )
-        themeMode = next.themeMode
-        persistUiSettings(next)
-    }
-
-    fun updateUiLogLevel(value: UiLogLevel) {
-        val next = UiSettings(
-            fontScale = fontScale,
-            themeMode = themeMode,
-            uiLogLevel = value,
-        )
-        uiLogLevel = next.uiLogLevel
-        persistUiSettings(next)
-    }
-
     fun appendObfuscationLog(line: String) {
         SwingUtilities.invokeLater {
             obfuscationLogs.add(line)
@@ -140,7 +105,7 @@ fun App() {
         Thread(
             {
                 val previousLogger = Logger
-                Logger = UiLogger("Grunteon", uiLogLevel, ::appendObfuscationLog)
+                Logger = UiLogger("Grunteon", appConfig.uiLogLevel, ::appendObfuscationLog)
                 try {
                     Logger.info("Starting obfuscation with ${runConfig.transformers.count { it.enabled }} enabled transformer nodes")
                     val instance = Grunteon.create(runConfig)
@@ -169,9 +134,15 @@ fun App() {
         }
     }
 
+    val pipelineEditorState = remember { PipelineEditorState(uiState, obfConfigState) }
+
     CompositionLocalProvider(
-        LocalDensity provides Density(baseDensity.density, BaseFontScale * fontScale),
+        LocalDensity provides Density(
+            LocalDensity.current.density * appConfig.uiScale.toFloat(),
+            appConfig.fontScale.toFloat()
+        ),
     ) {
+        val fluentColors = if (darkMode) darkColors() else lightColors()
         FluentTheme(
             colors = fluentColors,
             typography = Typography(
@@ -190,7 +161,8 @@ fun App() {
                     modifier = Modifier
                         .fillMaxSize()
                         .background(FluentTheme.colors.background.mica.base)
-                        .padding(start = 10.dp, top = 8.dp, end = 10.dp)
+                        .padding(all = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (!editorReady) {
                         WelcomeScreen(
@@ -226,14 +198,9 @@ fun App() {
                         )
                         return@ProvideTextStyle
                     }
-
-                    TopToolbar(
-                        page = page,
-                        onPageChange = { page = it },
-                    )
-                    Spacer(Modifier.height(10.dp))
+                    TopToolbar(uiState)
                     Box(Modifier.weight(1f).fillMaxWidth()) {
-                        when (page) {
+                        when (uiState.currentPage) {
                             AppPage.General -> GeneralPage(
                                 config = obfConfig,
                                 status = status,
@@ -243,26 +210,16 @@ fun App() {
                                 modifier = Modifier.fillMaxSize()
                             )
 
-                            AppPage.Editor -> PipelineEditorPage(uiState, obfConfigState)
+                            AppPage.Editor -> PipelineEditorPage(pipelineEditorState)
                             AppPage.Obfuscation -> ObfuscationPage(
                                 logs = obfuscationLogs,
                                 running = obfuscationRunning,
                                 onObfuscate = ::runObfuscation,
                                 modifier = Modifier.fillMaxSize()
                             )
-
                             AppPage.Settings -> SettingsPage(
-                                fontScale = fontScale,
-                                onFontScaleChange = ::updateFontScale,
-                                themeMode = themeMode,
-                                onThemeModeChange = ::updateThemeMode,
-                                uiLogLevel = uiLogLevel,
-                                onUiLogLevelChange = ::updateUiLogLevel,
-                                configPath = configPath,
-                                uiSettingsPath = uiSettingsPath,
-                                status = status,
-                                plugins = plugins,
-                                modifier = Modifier.fillMaxSize()
+                                appConfigState,
+                                plugins
                             )
                         }
                     }
