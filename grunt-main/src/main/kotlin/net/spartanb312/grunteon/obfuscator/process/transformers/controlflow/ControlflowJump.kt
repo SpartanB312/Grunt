@@ -47,8 +47,6 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Chance to wrap an eligible Flow edge with an opaque junk branch.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)

@@ -135,8 +135,12 @@ private fun ConfigField(
     propValue: Any,
     onChange: (Any) -> Unit
 ) {
-    val label = prop.findAnnotation<SettingName>()?.enText ?: camelCaseToWords(prop.name)
+    val label = prop.findAnnotation<SettingName>()?.enText
+        ?: propValue::class.findAnnotation<SettingName>()?.enText
+        ?: camelCaseToWords(prop.name)
     val description = prop.findAnnotation<SettingDesc>()?.enText
+        ?: propValue::class.findAnnotation<SettingDesc>()?.enText
+
     when (propValue) {
         is String -> InspectorCard(label = label, description = description) {
             StringField(

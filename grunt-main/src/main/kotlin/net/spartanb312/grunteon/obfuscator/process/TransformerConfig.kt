@@ -11,12 +11,12 @@ import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
 import kotlin.reflect.KClass
 
 @Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.PROPERTY)
+@Target(AnnotationTarget.PROPERTY, AnnotationTarget.CLASS)
 annotation class SettingDesc(val enText: String)
 
 // Optional, will fallback to property name if not present
 @Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.PROPERTY)
+@Target(AnnotationTarget.PROPERTY, AnnotationTarget.CLASS)
 annotation class SettingName(val enText: String)
 
 @Target(AnnotationTarget.PROPERTY)
@@ -53,6 +53,8 @@ abstract class TransformerConfig {
 
 @Serializable
 @I18NDescriptorPath("process.common")
+@SettingDesc("Specify class include/exclude rules")
+@SettingName("Class filter")
 data class ClassFilterConfig(
     @SettingDesc("Specify class exclusions")
     @SettingName("Exclude strategy")

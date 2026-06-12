@@ -43,8 +43,6 @@ class MethodInliner : Transformer<MethodInliner.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Maximum real instruction count for inline candidates, including return")
         @IntRangeVal(min = 1, max = 128, step = 1)

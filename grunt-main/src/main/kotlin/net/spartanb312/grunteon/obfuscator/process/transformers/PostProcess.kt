@@ -23,8 +23,6 @@ class PostProcess : Transformer<PostProcess.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Remap manifest")
         @SettingName("Manifest")

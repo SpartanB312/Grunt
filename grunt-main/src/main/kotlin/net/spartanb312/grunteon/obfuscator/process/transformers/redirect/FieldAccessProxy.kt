@@ -30,8 +30,6 @@ class FieldAccessProxy : Transformer<FieldAccessProxy.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("The chance that attempt to replace put/set to getter/setter")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)

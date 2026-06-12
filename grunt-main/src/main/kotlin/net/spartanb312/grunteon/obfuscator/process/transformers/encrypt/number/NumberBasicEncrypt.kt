@@ -42,8 +42,6 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
     // TODO: hide chances when disabled
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Encrypt integers")
         @SettingName("Integer")

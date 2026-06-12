@@ -55,8 +55,6 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Dictionary for renamer")
         @SettingName("Dictionary")

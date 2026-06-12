@@ -37,8 +37,6 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Encrypt integers with SPECK32/64")
         @SettingName("Integer")

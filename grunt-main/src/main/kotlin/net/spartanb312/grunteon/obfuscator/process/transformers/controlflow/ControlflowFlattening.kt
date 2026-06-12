@@ -37,8 +37,6 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Run ASM BasicInterpreter after exporting Flow IR bytecode")
         @SettingName("Verify bytecode")

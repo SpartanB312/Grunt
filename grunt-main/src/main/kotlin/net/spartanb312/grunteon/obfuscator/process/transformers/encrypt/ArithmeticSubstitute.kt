@@ -31,8 +31,6 @@ class ArithmeticSubstitute : Transformer<ArithmeticSubstitute.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Ops replace rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
