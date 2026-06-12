@@ -272,15 +272,17 @@ private fun PipelineNodeCard(
                 FluentTheme.shapes.control
             )
             .border(BorderStroke(2.dp, borderColor), FluentTheme.shapes.control)
-            .padding(12.dp)
-            .clickable(onClick = { state.selectedIndex = index })
+            .clickable(onClick = { state.selectedIndex = index }),
     ) {
         Row(
+            modifier = Modifier
+                .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
-                Modifier.weight(1.0f).fillMaxWidth(),
+                Modifier.weight(1.0f)
+                    .fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
