@@ -277,7 +277,6 @@ fun App() {
                     TopToolbar(
                         page = page,
                         onPageChange = { page = it },
-                        fontScale = fontScale,
                     )
                     Spacer(Modifier.height(10.dp))
                     Box(Modifier.weight(1f).fillMaxWidth()) {
