@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,14 +15,16 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.LocalTextStyle
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.Add
-import io.github.composefluent.icons.regular.CopyAdd
+import io.github.composefluent.icons.regular.Copy
 import io.github.composefluent.icons.regular.Delete
+import io.github.composefluent.icons.regular.Dismiss
 import io.github.composefluent.scheme.collectVisualState
 import kotlinx.serialization.Transient
 import net.spartanb312.grunteon.obfuscator.process.*
@@ -65,7 +68,8 @@ fun Inspector(
                 modifier = Modifier
                     .fillMaxHeight()
                     .clip(FluentTheme.shapes.control)
-                    .padding(0.dp, 0.dp, 12.dp, 0.dp),
+                    .padding(0.dp, 0.dp, 12.dp, 0.dp)
+                    .verticalScroll(scrollState),
             ) {
                 ConfigEditor(
                     value = entry.config,
@@ -558,7 +562,7 @@ private fun <E : Any> ListField(
                         iconOnly = true
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CopyAdd,
+                            imageVector = Icons.Default.Copy,
                             contentDescription = "Duplicate Entry"
                         )
                     }
@@ -639,13 +643,23 @@ private fun <E : Any> ListField(
                     iconOnly = true
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        imageVector = Icons.Default.Dismiss,
                         contentDescription = "Clear list"
                     )
                 }
             }
         }
     ) {
+        if (listUpdater.isEmpty()) {
+            Text(
+                "Empty List",
+                modifier = Modifier.padding(12.dp)
+                    .fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                style = FluentTheme.typography.caption
+            )
+            return@Expander
+        }
         listUpdater.forEachIndexed { index, item ->
             val onChange = { newItem: Any ->
                 listUpdater[index] = newItem as E

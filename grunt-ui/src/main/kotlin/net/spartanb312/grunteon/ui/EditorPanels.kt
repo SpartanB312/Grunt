@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.onClick
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -200,6 +202,7 @@ private fun LibraryItem(state: PipelineEditorState, definition: TransformerDefin
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PipelineStackPanel(
     state: PipelineEditorState,
@@ -211,13 +214,13 @@ fun PipelineStackPanel(
         modifier = modifier
     ) {
         val listState = rememberLazyListState()
-        val mappingApplierPosition = remember(state.transformerList) {
+        val mappingApplierPosition = remember(state.transformerProperty) {
             state.transformerList.indexOfLast {
                 findDefinition(it.config, state.definitions)?.transformerPrototype?.category == Category.Renaming
             }
         }
 
-        val orderWarnings = remember(state.transformerList) {
+        val orderWarnings = remember(state.transformerProperty) {
             validateOrder(state.transformerList, state.definitions)
         }
         ScrollbarContainer(
@@ -233,11 +236,12 @@ fun PipelineStackPanel(
                 modifier = Modifier
                     .fillMaxHeight()
                     .clip(FluentTheme.shapes.control)
-                    .padding(0.dp, 0.dp, 12.dp, 0.dp),
+                    .padding(0.dp, 0.dp, 12.dp, 0.dp)
+                    .onClick { state.selectedIndex = -1 }
             ) {
                 itemsIndexed(state.transformerList) { index, entry ->
                     PipelineNodeCard(state, orderWarnings, index, entry)
-                    if (mappingApplierPosition != -1 && index == mappingApplierPosition) {
+                    if (index == mappingApplierPosition) {
                         VirtualMappingApplier()
                     }
                 }
@@ -389,7 +393,7 @@ private fun VirtualMappingApplier() {
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                "MappingApplier inserted automatically after the last renamer source",
+                "Mapping applier inserted automatically after the last renamer.",
                 color = FluentTheme.colors.text.text.secondary
             )
         }

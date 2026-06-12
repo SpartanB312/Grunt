@@ -251,7 +251,7 @@ class PipelineEditorState(
     }
 
     fun addTransformerEntryAfterSelection(newEntry: TransformerEntry) {
-        addTransformerEntry(selectedIndex, newEntry)
+        addTransformerEntry(if (selectedIndex != -1) selectedIndex + 1 else -1, newEntry)
     }
 
     fun addTransformer(index: Int, definition: TransformerDefinition) {
@@ -259,7 +259,7 @@ class PipelineEditorState(
     }
 
     fun addTransformerAfterSelection(definition: TransformerDefinition) {
-        addTransformer(selectedIndex, definition)
+        addTransformer(if (selectedIndex != -1) selectedIndex + 1 else -1, definition)
     }
 
     fun moveTransformer(fromIndex: Int, toIndex: Int) {
