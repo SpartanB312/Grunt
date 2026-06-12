@@ -3,8 +3,7 @@ package net.spartanb312.grunteon.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -27,6 +26,40 @@ val UiControlShape = RoundedCornerShape(UiCornerRadius)
 enum class ThemeMode {
     Dark,
     Light,
+}
+
+@Composable
+fun PanelSurface(
+    title: String,
+    description: String?,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    FramedSurface(
+        color = FluentTheme.colors.background.card.default,
+        modifier = Modifier
+            .then(modifier),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(all = 12.dp)
+        ) {
+            Text(
+                title,
+                style = FluentTheme.typography.subtitle,
+            )
+            if (description != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    description,
+                    color = FluentTheme.colors.text.text.secondary
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            content()
+        }
+    }
 }
 
 @Composable
@@ -139,11 +172,6 @@ fun UiTextField(
             { Text(it, color = FluentTheme.colors.text.text.secondary, style = FluentTheme.typography.caption) }
         },
     )
-}
-
-@Composable
-fun UiSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Switcher(checked = checked, onCheckStateChange = onCheckedChange, text = null)
 }
 
 @Composable

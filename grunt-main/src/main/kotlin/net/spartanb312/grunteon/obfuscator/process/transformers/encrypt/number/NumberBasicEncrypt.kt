@@ -50,28 +50,28 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
         @SettingDesc("Encrypt integers")
         @SettingName("Integer")
         val integer: Boolean = true,
-        @SettingDesc("Integer encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Integer encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Integer chance")
         val integerChance: Double = 1.0,
         @SettingDesc("Encrypt longs")
         @SettingName("Long")
         val long: Boolean = true,
-        @SettingDesc("Long encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Long encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Long chance")
         val longChance: Double = 1.0,
         @SettingDesc("Encrypt floats")
         @SettingName("Float")
         val float: Boolean = true,
-        @SettingDesc("Float encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Float encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Float chance")
         val floatChance: Double = 1.0,
         @SettingDesc("Encrypt doubles")
         @SettingName("Double")
         val double: Boolean = true,
-        @SettingDesc("Double encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Double encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Double chance")
         val doubleChance: Double = 1.0,

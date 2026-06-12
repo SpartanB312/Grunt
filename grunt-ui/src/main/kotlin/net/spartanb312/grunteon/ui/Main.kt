@@ -222,7 +222,7 @@ fun App() {
         FluentTheme(
             colors = fluentColors,
             typography = Typography(
-                caption = FluentTheme.typography.caption.copy(fluentColors.text.text.primary),
+                caption = FluentTheme.typography.caption.copy(fluentColors.text.text.tertiary),
                 body = FluentTheme.typography.body.copy(fluentColors.text.text.primary),
                 bodyStrong = FluentTheme.typography.bodyStrong.copy(fluentColors.text.text.primary),
                 bodyLarge = FluentTheme.typography.bodyLarge.copy(fluentColors.text.text.primary),

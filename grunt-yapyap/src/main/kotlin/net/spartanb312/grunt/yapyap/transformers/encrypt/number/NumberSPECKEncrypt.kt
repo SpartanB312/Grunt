@@ -52,7 +52,7 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
         @SettingDesc("Encrypt doubles through SPECK64/128 bit encryption")
         @SettingName("Double")
         val double: Boolean = true,
-        @SettingDesc("Number encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Number encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Chance")
         val chance: Double = 1.0,

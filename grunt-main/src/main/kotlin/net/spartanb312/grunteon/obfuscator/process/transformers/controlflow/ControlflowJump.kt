@@ -1,58 +1,24 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow
 
 import kotlinx.serialization.Serializable
-import net.spartanb312.grunt.ir.flow.core.FlowBlock
-import net.spartanb312.grunt.ir.flow.core.FlowBlockId
-import net.spartanb312.grunt.ir.flow.core.FlowBlockKind
-import net.spartanb312.grunt.ir.flow.core.FlowBytecodeSlice
-import net.spartanb312.grunt.ir.flow.core.FlowEdge
-import net.spartanb312.grunt.ir.flow.core.FlowEdgeFlag
-import net.spartanb312.grunt.ir.flow.core.FlowEdgeId
-import net.spartanb312.grunt.ir.flow.core.FlowEdgeSemantics
-import net.spartanb312.grunt.ir.flow.core.FlowFrame
-import net.spartanb312.grunt.ir.flow.core.FlowFrameValue
-import net.spartanb312.grunt.ir.flow.core.FlowGotoJump
-import net.spartanb312.grunt.ir.flow.core.FlowGotoMode
-import net.spartanb312.grunt.ir.flow.core.FlowIfJump
-import net.spartanb312.grunt.ir.flow.core.FlowMethod
-import net.spartanb312.grunt.ir.flow.core.FlowPort
-import net.spartanb312.grunt.ir.flow.core.FlowPredicateGuarantee
-import net.spartanb312.grunt.ir.flow.core.FlowSwitchJump
-import net.spartanb312.grunt.ir.flow.core.FlowVerifier
+import net.spartanb312.grunt.ir.flow.core.*
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExportOptions
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.DecimalRangeVal
-import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.globalScopeValue
-import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
-import net.spartanb312.grunteon.obfuscator.process.post
-import net.spartanb312.grunteon.obfuscator.process.pre
-import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
+import net.spartanb312.grunteon.obfuscator.pipeline.before
+import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowOpaquePredicateProcessor
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorRegistry
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeGenerator
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowOpaquePredicateProcessor
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorOptions
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorRegistry
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
-import net.spartanb312.grunteon.obfuscator.pipeline.before
-import net.spartanb312.grunteon.obfuscator.util.DISABLE_CONTROL_FLOW
-import net.spartanb312.grunteon.obfuscator.util.IGNORE_JUNK_CODE
-import net.spartanb312.grunteon.obfuscator.util.Logger
-import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
+import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
-import net.spartanb312.grunteon.obfuscator.util.getRandomString
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
 import net.spartanb312.grunteon.obfuscator.util.extensions.isMixinClass
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
@@ -84,11 +50,11 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @SettingDesc("Specify class include/exclude rules")
         @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc("Chance to wrap an eligible Flow edge with an opaque junk branch. Range: 0.0..1.0")
+        @SettingDesc("Chance to wrap an eligible Flow edge with an opaque junk branch.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Junk branch chance")
         val chance: Double = 0.25,
-        @SettingDesc("Chance to expand an eligible IF jump into opaque true gates with fake junk branches. Range: 0.0..1.0")
+        @SettingDesc("Chance to expand an eligible IF jump into opaque true gates with fake junk branches.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Mangled IF chance")
         val mangledIfChance: Double = 0.25,
@@ -100,19 +66,19 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @IntRangeVal(min = 0, max = 32)
         @SettingName("Max mangled IFs per method")
         val maxMangledIfsPerMethod: Int = 4,
-        @SettingDesc("Chance that a mangled IF fake branch loops back to its gate instead of returning through JunkCode. Range: 0.0..1.0")
+        @SettingDesc("Chance that a mangled IF fake branch loops back to its gate instead of returning through JunkCode.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Mangled fake loop chance")
         val mangledFakeLoopChance: Double = 0.35,
-        @SettingDesc("Chance that a fake junk branch emits a junk prelude and jumps to a shared terminal junk exit instead of owning its own terminator. Range: 0.0..1.0")
+        @SettingDesc("Chance that a fake junk branch emits a junk prelude and jumps to a shared terminal junk exit instead of owning its own terminator.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Shared junk exit chance")
         val sharedJunkExitChance: Double = 0.65,
-        @SettingDesc("Chance that a terminal junk exit throws null instead of returning a junk value. Range: 0.0..1.0")
+        @SettingDesc("Chance that a terminal junk exit throws null instead of returning a junk value.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Junk terminal throw chance")
         val junkTerminalThrowChance: Double = 0.2,
-        @SettingDesc("Chance to place a junk landing block immediately after a CFF dispatcher switch. Range: 0.0..1.0")
+        @SettingDesc("Chance to place a junk landing block immediately after a CFF dispatcher switch.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Dispatcher landing junk chance")
         val dispatcherLandingJunkChance: Double = 0.0,
@@ -144,7 +110,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @IntRangeVal(min = 0, max = 8)
         @SettingName("Predicate max chain steps")
         val predicateProcessorMaxChainSteps: Int = 2,
-        @SettingDesc("Chance that an opaque predicate gate uses ThreadLocalRandom.nextInt(bound) with lightweight processor actions. Range: 0.0..1.0")
+        @SettingDesc("Chance that an opaque predicate gate uses ThreadLocalRandom.nextInt(bound) with lightweight processor actions.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Predicate random bound chance")
         val predicateRandomBoundChance: Double = 0.15,

@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Switcher
 import io.github.composefluent.component.Text
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.*
@@ -259,7 +260,7 @@ private fun PipelineNodeCard(
                 verticalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.height(90.dp)
             ) {
-                UiSwitch(checked = node.config.enabled, onCheckedChange = onEnabledChange)
+                Switcher(checked = node.config.enabled, onCheckStateChange = onEnabledChange, text = null)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     UiIconButton(
                         imageVector = Icons.Default.CopyAdd,

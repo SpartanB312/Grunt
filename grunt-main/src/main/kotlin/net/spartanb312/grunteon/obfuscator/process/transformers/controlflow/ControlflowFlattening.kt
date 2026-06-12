@@ -6,48 +6,22 @@ import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
 import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.before
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.DecimalRangeVal
-import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.globalScopeValue
+import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
-import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
-import net.spartanb312.grunteon.obfuscator.process.post
-import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
-import net.spartanb312.grunteon.obfuscator.process.seq
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorComplexity
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorRegistry
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattenOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattener
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowStateKeyMode
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowStateKeyProcessor
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.*
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
+import net.spartanb312.grunteon.obfuscator.util.extensions.*
 import net.spartanb312.grunteon.obfuscator.util.getRandomString
-import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
-import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
-import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
-import net.spartanb312.grunteon.obfuscator.util.extensions.isMixinClass
-import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
-import net.spartanb312.grunteon.obfuscator.util.extensions.isSynthetic
-import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
-import java.util.concurrent.atomic.AtomicLong
 
 @Transformer.Description(
     "process.controlflow.controlflow_flattening.desc",
@@ -104,11 +78,11 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @SettingDesc("Allow dispatcher fake cases to terminate through generated JunkCode")
         @SettingName("Junk cases")
         val junkCases: Boolean = true,
-        @SettingDesc("Chance that one fake dispatcher case becomes a terminal JunkCode case. Range: 0.0..1.0")
+        @SettingDesc("Chance that one fake dispatcher case becomes a terminal JunkCode case.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Junk case chance")
         val junkCaseChance: Double = 0.35,
-        @SettingDesc("Chance that CFF fake switch cases reuse a compatible terminal fake case target. Range: 0.0..1.0")
+        @SettingDesc("Chance that CFF fake switch cases reuse a compatible terminal fake case target.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Shared fake case terminator chance")
         val sharedFakeCaseTerminatorChance: Double = 0.65,
@@ -134,7 +108,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @SettingDesc("How CFF emits dispatcher state key updates. Processor mode moves key operations into generated methods that can be further protected by ReferenceObfuscate, making static analysis less direct")
         @SettingName("State key mode")
         val stateKeyMode: FlowStateKeyMode = FlowStateKeyMode.Mixed,
-        @SettingDesc("Chance that one state key update uses a generated processor in Mixed mode. Range: 0.0..1.0")
+        @SettingDesc("Chance that one state key update uses a generated processor in Mixed mode.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("State key processor chance")
         val stateKeyProcessorChance: Double = 0.5,
@@ -171,7 +145,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @SettingDesc("Place a suitable real block immediately after a dispatcher switch without making it a switch target")
         @SettingName("Dispatcher trailing real block")
         val dispatcherTrailingRealBlock: Boolean = false,
-        @SettingDesc("Chance that one dispatcher switch is followed by an unrelated real block. Range: 0.0..1.0")
+        @SettingDesc("Chance that one dispatcher switch is followed by an unrelated real block.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Dispatcher trailing real chance")
         val dispatcherTrailingRealBlockChance: Double = 1.0,

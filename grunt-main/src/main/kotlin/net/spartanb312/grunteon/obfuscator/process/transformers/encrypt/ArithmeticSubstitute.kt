@@ -36,7 +36,7 @@ class ArithmeticSubstitute : Transformer<ArithmeticSubstitute.Config>(
         @SettingDesc("Specify class include/exclude rules")
         @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc("Ops replace rate. Range: 0.0..1.0")
+        @SettingDesc("Ops replace rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Chance")
         val chance: Double = 0.3,
