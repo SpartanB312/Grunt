@@ -1,13 +1,19 @@
 package net.spartanb312.grunteon.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.onClick
 import androidx.compose.foundation.window.WindowDraggableArea
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -17,6 +23,7 @@ import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.*
+import kotlinx.coroutines.launch
 
 private val ToolbarTabWidth = 128.dp
 
@@ -210,14 +217,31 @@ fun FrameWindowScope.TopToolbar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GrunteonLogo(modifier: Modifier = Modifier) {
+    val scope = rememberCoroutineScope()
+    val rotation = remember { Animatable(0f) }
+    var targetRotation by remember { mutableFloatStateOf(0f) }
+
     Image(
         painter = painterResource("logo.svg"),
         contentDescription = "Grunteon",
-        modifier = modifier,
+        modifier = modifier
+            .graphicsLayer { rotationZ = rotation.value }
+            .onClick {
+                targetRotation += 360.0f * 2.0f
+                scope.launch {
+                    rotation.animateTo(
+                        targetRotation,
+                        initialVelocity = rotation.velocity * 4.0f,
+                        animationSpec = tween(durationMillis = 500, easing = LinearOutSlowInEasing)
+                    )
+                }
+            },
     )
 }
+
 
 @Composable
 private fun ToolbarTab(label: String, selected: Boolean, onClick: () -> Unit) {
