@@ -25,8 +25,7 @@ dependencies {
 
 compose.desktop {
     application {
-        this.
-        mainClass = "net.spartanb312.grunteon.ui.MainKt"
+        this.mainClass = "net.spartanb312.grunteon.ui.AppKt"
         nativeDistributions {
             packageName = "Grunteon"
             packageVersion = rootProject.version.toString()
