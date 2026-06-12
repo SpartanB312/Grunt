@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -20,6 +21,8 @@ import io.github.composefluent.background.Layer
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.*
+import net.spartanb312.grunteon.obfuscator.process.Category
+import java.util.*
 
 @Composable
 fun Header(
@@ -79,7 +82,6 @@ fun TransformerLibrary(
                 placeholder = { Text("Search") },
                 singleLine = true,
             )
-            Spacer(Modifier.height(8.dp))
         }
         val visibleDefinitions = if (showHiddenTransformers) definitions else definitions.filterNot { it.isHidden }
         val filtered = visibleDefinitions.filter {
@@ -98,37 +100,57 @@ fun TransformerLibrary(
             LazyColumn(
                 state = listState,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .clip(UiPanelShape)
+                    .fillMaxHeight()
+                    .clip(FluentTheme.shapes.control)
                     .padding(0.dp, 0.dp, 12.dp, 0.dp),
             ) {
-                filtered.groupBy { it.category }.forEach { (category, categoryDefinitions) ->
-                    item {
-                        var visible by remember { mutableStateOf(false) }
-                        Expander(
-                            visible,
-                            { visible = it },
-                            icon = null,
-                            heading = {
-                                Text(
-                                    category.name,
-                                    style = FluentTheme.typography.bodyStrong,
-                                )
-                            }
-                        ) {
-                            Layer {
-                                Column {
-                                    categoryDefinitions.forEach { definition ->
-                                        LibraryItem(definition, onAdd)
+                filtered.groupByTo(EnumMap(Category::class.java)) { it.category }
+                    .forEach { (category, categoryDefinitions) ->
+                        item {
+                            var visible by remember { mutableStateOf(false) }
+                            Expander(
+                                visible,
+                                { visible = it },
+                                icon = {
+                                    Icon(
+                                        imageVector = categoryToIcon(category),
+                                        contentDescription = null
+                                    )
+                                },
+                                heading = {
+                                    Text(
+                                        category.name,
+                                        style = FluentTheme.typography.bodyStrong,
+                                    )
+                                }
+                            ) {
+                                Layer {
+                                    Column {
+                                        categoryDefinitions.forEach { definition ->
+                                            LibraryItem(definition, onAdd)
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
             }
         }
     }
+}
+
+fun categoryToIcon(category: Category): ImageVector = when (category) {
+    Category.Encryption -> Icons.Regular.LockClosed
+    Category.Controlflow -> Icons.Regular.Flowchart
+    Category.AntiDebug -> Icons.Regular.Bug
+    Category.Authentication -> Icons.Regular.Fingerprint
+    Category.Exploit -> Icons.Regular.TargetArrow
+    Category.Miscellaneous -> Icons.Regular.MoreCircle
+    Category.Optimization -> Icons.Regular.FlashCheckmark
+    Category.Redirect -> Icons.Regular.Router
+    Category.Renaming -> Icons.Regular.TextChangeCase
+    Category.Other -> Icons.Regular.PuzzlePiece
+    Category.PostProcess -> Icons.Regular.WrenchScrewdriver
 }
 
 @Composable
@@ -200,13 +222,16 @@ fun PipelineStack(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .background(color = FluentTheme.colors.background.layer.default),
+                .padding(12.dp, 8.dp, 0.dp, 8.dp),
             adapter = rememberScrollbarAdapter(listState)
         ) {
             LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .clip(FluentTheme.shapes.control)
+                    .padding(0.dp, 0.dp, 12.dp, 0.dp),
             ) {
                 items(nodes.size) { index ->
                     val node = nodes[index]
@@ -258,80 +283,105 @@ private fun PipelineNodeCard(
     }
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 118.dp)
-            .clip(UiPanelShape)
-            .background(if (selected) FluentTheme.colors.fillAccent.tertiary.copy(alpha = 0.45f) else FluentTheme.colors.background.card.secondary)
-            .border(BorderStroke(1.dp, borderColor), UiPanelShape)
+            .background(
+                if (selected) FluentTheme.colors.background.card.tertiary else FluentTheme.colors.background.card.default,
+                FluentTheme.shapes.control
+            )
+            .border(BorderStroke(2.dp, borderColor), FluentTheme.shapes.control)
+            .padding(12.dp)
             .clickable(onClick = onSelect)
     ) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                Modifier.weight(1.0f).fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                UiIconButton(
-                    imageVector = Icons.Default.ArrowSortUp,
-                    contentDescription = "Move up",
-                    onClick = onMoveUp,
-                    enabled = canMoveUp,
-                    modifier = Modifier.size(32.dp)
-                )
-                Icon(
-                    imageVector = Icons.Default.ReOrderDotsVertical,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-                UiIconButton(
-                    imageVector = Icons.Default.ArrowSortDown,
-                    contentDescription = "Move down",
-                    onClick = onMoveDown,
-                    enabled = canMoveDown,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-            Text(
-                "#${index + 1}",
-                color = FluentTheme.colors.text.text.secondary,
-                fontFamily = FontFamily.Monospace,
-                modifier = Modifier.padding(top = 26.dp)
-            )
-            Column(Modifier.weight(1f).padding(top = 22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(definition?.label ?: node.config::class.simpleName.orEmpty(), fontWeight = FontWeight.SemiBold)
-                    Text(definition?.category?.name ?: "Unknown", color = FluentTheme.colors.text.text.secondary)
-                }
-                if (warning != null) {
-                    Text(warning, color = FluentTheme.colors.system.caution, style = FluentTheme.typography.caption)
-                } else {
-                    Text(
-                        definition?.description ?: node.config::class.qualifiedName.orEmpty(),
-                        color = FluentTheme.colors.text.text.secondary
+                    UiIconButton(
+                        imageVector = Icons.Default.ArrowSortUp,
+                        contentDescription = "Move up",
+                        onClick = onMoveUp,
+                        enabled = canMoveUp,
+                        modifier = Modifier.size(32.dp)
                     )
+                    Icon(
+                        imageVector = Icons.Default.ReOrderDotsVertical,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    UiIconButton(
+                        imageVector = Icons.Default.ArrowSortDown,
+                        contentDescription = "Move down",
+                        onClick = onMoveDown,
+                        enabled = canMoveDown,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                Text(
+                    "#${index + 1}",
+                    color = FluentTheme.colors.text.text.secondary,
+                    fontFamily = FontFamily.Monospace
+                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        definition?.label ?: node.config::class.simpleName.orEmpty(),
+                        style = FluentTheme.typography.bodyLarge
+                    )
+                    if (warning != null) {
+                        Text(warning, color = FluentTheme.colors.system.caution, style = FluentTheme.typography.caption)
+                    } else {
+                        Text(
+                            definition?.description ?: node.config::class.qualifiedName.orEmpty(),
+                            style = FluentTheme.typography.caption,
+                        )
+                    }
                 }
             }
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.height(90.dp)
+
+            Row(
+                modifier = Modifier.height(100.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(32.dp)
             ) {
-                Switcher(checked = node.config.enabled, onCheckStateChange = onEnabledChange, text = null)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    UiIconButton(
-                        imageVector = Icons.Default.CopyAdd,
-                        contentDescription = "Duplicate",
-                        onClick = onDuplicate,
-                        modifier = Modifier.size(32.dp)
+                Text(
+                    definition?.category?.name ?: "Unknown",
+                    color = FluentTheme.colors.text.text.tertiary,
+                )
+                Column(
+                    modifier = Modifier.fillMaxHeight(),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Switcher(
+                        checked = node.config.enabled,
+                        onCheckStateChange = onEnabledChange,
+                        text = null
                     )
-                    UiIconButton(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        onClick = onDelete,
-                        modifier = Modifier.size(32.dp)
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = onDuplicate,
+                            modifier = Modifier,
+                            iconOnly = true
+                        ) {
+                            Icon(imageVector = Icons.Default.CopyAdd, contentDescription = "Duplicate")
+                        }
+                        Button(
+                            onClick = onDelete,
+                            modifier = Modifier,
+                            iconOnly = true
+                        ) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
+                        }
+                    }
                 }
             }
         }
@@ -340,11 +390,19 @@ private fun PipelineNodeCard(
 
 @Composable
 private fun VirtualMappingApplier() {
-    NestedSurface(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp)) {
-        Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("MappingApplier", color = FluentTheme.colors.text.text.secondary, fontFamily = FontFamily.Monospace)
-            Spacer(Modifier.width(10.dp))
-            Text("auto inserted after the last renamer source", color = FluentTheme.colors.text.text.secondary)
+    Box(
+        modifier = Modifier.fillMaxWidth()
+            .background(color = FluentTheme.colors.background.layer.default)
+    ) {
+        Row(
+            Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "MappingApplier inserted automatically after the last renamer source",
+                color = FluentTheme.colors.text.text.secondary
+            )
         }
     }
 }

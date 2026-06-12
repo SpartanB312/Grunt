@@ -339,14 +339,14 @@ fun App() {
                                                 )
                                             }
                                         },
-                                        modifier = Modifier.weight(1f).fillMaxHeight()
+                                        modifier = Modifier.weight(1.25f).fillMaxHeight()
                                     )
                                     Inspector(
                                         node = nodes.firstOrNull { it.id == selectedNodeId },
                                         definition = nodes.firstOrNull { it.id == selectedNodeId }
                                             ?.let { findDefinition(it.config, definitions) },
                                         onConfigChange = ::updateSelectedConfig,
-                                        modifier = Modifier.weight(1f).fillMaxHeight()
+                                        modifier = Modifier.weight(1.5f).fillMaxHeight()
                                     )
                                 }
                             }

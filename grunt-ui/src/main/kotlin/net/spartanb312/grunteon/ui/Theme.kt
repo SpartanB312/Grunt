@@ -89,7 +89,7 @@ fun FramedSurface(
 ) {
     Box(
         modifier = modifier
-            .clip(UiPanelShape)
+            .clip(FluentTheme.shapes.control)
             .background(color)
             .border(BorderStroke(1.dp, FluentTheme.colors.stroke.card.default), UiPanelShape)
     ) {
