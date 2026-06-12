@@ -76,86 +76,99 @@ class DataClassUpdater<S : Any, T : Any>(
     }
 }
 
-class DataClassListUpdater<E>(val updater: DataClassUpdater<*, List<E>>) : MutableList<E> {
+class ListUpdater<E>(
+    val valueGet: () -> List<E>,
+    val valueSet: (List<E>) -> Unit
+) : MutableList<E> {
+    constructor(dataClassUpdater: DataClassUpdater<*, List<E>>) : this(
+        valueGet = { dataClassUpdater.value },
+        valueSet = { dataClassUpdater.value = it }
+    )
+
+    var value
+        get() = valueGet()
+        set(newValue) = valueSet(newValue)
+
+
     override val size: Int
-        get() = updater.value.size
+        get() = value.size
 
     override fun add(element: E): Boolean {
-        val newList = updater.value + element
-        updater.value = newList
+        val newList = value + element
+        value = newList
         return true
     }
 
     override fun remove(element: E): Boolean {
-        val newList = updater.value - element
-        val removed = newList.size != updater.value.size
-        updater.value = newList
+        val newList = value - element
+        val removed = newList.size != value.size
+        value = newList
         return removed
     }
 
     override fun addAll(elements: Collection<E>): Boolean {
-        val newList = updater.value + elements
-        val changed = newList.size != updater.value.size
-        updater.value = newList
+        val newList = value + elements
+        val changed = newList.size != value.size
+        value = newList
         return changed
     }
 
     override fun addAll(index: Int, elements: Collection<E>): Boolean {
         val newList = MutableList(index) {
-            updater.value[it]
+            value[it]
         }
         newList.addAll(elements)
-        newList.addAll(updater.value.subList(index, updater.value.size))
-        updater.value = newList
+        newList.addAll(value.subList(index, value.size))
+        value = newList
         return true
     }
 
     override fun removeAll(elements: Collection<E>): Boolean {
-        val newList = updater.value - elements
-        val changed = newList.size != updater.value.size
-        updater.value = newList
+        val newList = value - elements
+        val changed = newList.size != value.size
+        value = newList
         return changed
     }
 
     override fun retainAll(elements: Collection<E>): Boolean {
-        val newList = updater.value.filter { it in elements }
-        val changed = newList.size != updater.value.size
-        updater.value = newList
+        val newList = value.filter { it in elements }
+        val changed = newList.size != value.size
+        value = newList
         return changed
     }
 
     override fun clear() {
-        updater.value = emptyList()
+        value = emptyList()
     }
 
     override fun set(index: Int, element: E): E {
-        val current = updater.value
+        val current = value
         val oldElement = current[index]
         val newList = current.toMutableList().also { it[index] = element }
-        updater.value = newList
+        value = newList
         return oldElement
     }
 
     override fun add(index: Int, element: E) {
-        val current = updater.value
+        val current = value
         val newList = current.toMutableList().also { it.add(index, element) }
-        updater.value = newList
+        value = newList
     }
 
     override fun removeAt(index: Int): E {
-        val current = updater.value
+        val current = value
         val oldElement = current[index]
         val newList = current.toMutableList().also { it.removeAt(index) }
-        updater.value = newList
+        value = newList
         return oldElement
     }
 
     override fun listIterator(): MutableListIterator<E> {
-        return Iterator(updater.value.listIterator())
+        return Iterator(value.listIterator())
     }
 
     override fun listIterator(index: Int): MutableListIterator<E> {
-        return Iterator(updater.value.listIterator(index))
+        return Iterator(value.listIterator(index))
     }
 
     override fun subList(fromIndex: Int, toIndex: Int): MutableList<E> {
@@ -163,31 +176,31 @@ class DataClassListUpdater<E>(val updater: DataClassUpdater<*, List<E>>) : Mutab
     }
 
     override fun isEmpty(): Boolean {
-        return updater.value.isEmpty()
+        return value.isEmpty()
     }
 
     override fun contains(element: E): Boolean {
-        return updater.value.contains(element)
+        return value.contains(element)
     }
 
     override fun containsAll(elements: Collection<E>): Boolean {
-        return updater.value.containsAll(elements)
+        return value.containsAll(elements)
     }
 
     override fun get(index: Int): E {
-        return updater.value[index]
+        return value[index]
     }
 
     override fun indexOf(element: E): Int {
-        return updater.value.indexOf(element)
+        return value.indexOf(element)
     }
 
     override fun lastIndexOf(element: E): Int {
-        return updater.value.lastIndexOf(element)
+        return value.lastIndexOf(element)
     }
 
     override fun iterator(): MutableIterator<E> {
-        return Iterator(updater.value.listIterator())
+        return Iterator(value.listIterator())
     }
 
     private class Iterator<E>(val raw: ListIterator<E>) : ListIterator<E> by raw, MutableListIterator<E> {
@@ -210,10 +223,23 @@ class PipelineEditorState(
     obfConfigState: MutableState<ObfConfig>
 ) {
     val definitions = transformerDefinitions()
-    var selectedIndex by mutableStateOf(-1)
+    var selectedIndexState by mutableStateOf(-1)
+    var selectedIndex: Int
+        get() {
+            if (selectedIndexState !in transformerList.indices) selectedIndexState = -1
+            return selectedIndexState
+        }
+        set(value) {
+            selectedIndexState = if (value !in transformerList.indices) {
+                -1
+            } else {
+                value
+            }
+        }
+
     val dataClassUpdater = DataClassUpdater(obfConfigState, ObfConfig::transformers)
     var transformerProperty by dataClassUpdater
-    val transformerList = DataClassListUpdater(dataClassUpdater)
+    val transformerList = ListUpdater(dataClassUpdater)
 
     fun addTransformerEntry(index: Int, newEntry: TransformerEntry) {
         require(index in -1..transformerList.size) { "Index out of bounds: $index" }
@@ -237,28 +263,23 @@ class PipelineEditorState(
     }
 
     fun moveTransformer(fromIndex: Int, toIndex: Int) {
-        require(fromIndex in transformerList.indices) { "From index out of bounds: $fromIndex" }
-        require(toIndex in transformerList.indices) { "To index out of bounds: $toIndex" }
-        val newList = if (fromIndex < toIndex) {
-            List(transformerList.size) { i ->
-                when (i) {
-                    in 0..<fromIndex -> transformerList[i]
-                    in fromIndex..<toIndex -> transformerList[i + 1]
-                    toIndex -> transformerList[fromIndex]
-                    else -> transformerList[i]
-                }
-            }
-        } else {
-            List(transformerList.size) { i ->
-                when (i) {
-                    in 0..<toIndex -> transformerList[i]
-                    toIndex -> transformerList[fromIndex]
-                    in toIndex..<fromIndex -> transformerList[i - 1]
-                    else -> transformerList[i]
-                }
-            }
+        val current = transformerProperty
+        require(fromIndex in current.indices) { "From index out of bounds: $fromIndex" }
+        require(toIndex in current.indices) { "To index out of bounds: $toIndex" }
+        if (fromIndex == toIndex) return
+
+        val moved = current[fromIndex]
+        val newList = current.toMutableList().also {
+            it.removeAt(fromIndex)
+            it.add(toIndex, moved)
         }
         transformerProperty = newList
+        selectedIndex = when {
+            selectedIndex == fromIndex -> toIndex
+            fromIndex < toIndex && selectedIndex in (fromIndex + 1)..toIndex -> selectedIndex - 1
+            toIndex < fromIndex && selectedIndex in toIndex..<fromIndex -> selectedIndex + 1
+            else -> selectedIndex
+        }
     }
 }
 

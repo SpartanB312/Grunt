@@ -229,7 +229,7 @@ fun PipelineStackPanel(
         ) {
             LazyColumn(
                 state = listState,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
                     .fillMaxHeight()
                     .clip(FluentTheme.shapes.control)

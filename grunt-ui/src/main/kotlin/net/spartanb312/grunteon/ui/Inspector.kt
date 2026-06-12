@@ -1,20 +1,28 @@
 package net.spartanb312.grunteon.ui
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
+import io.github.composefluent.LocalTextStyle
 import io.github.composefluent.component.*
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.Add
+import io.github.composefluent.icons.regular.CopyAdd
+import io.github.composefluent.icons.regular.Delete
+import io.github.composefluent.scheme.collectVisualState
 import kotlinx.serialization.Transient
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Decimal
@@ -45,15 +53,27 @@ fun Inspector(
         modifier
     ) {
         if (entry == null) return@PanelSurface
-        Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        val scrollState = rememberScrollState()
+        ScrollbarContainer(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(12.dp, 8.dp, 0.dp, 8.dp),
+            adapter = rememberScrollbarAdapter(scrollState)
         ) {
-            ConfigEditor(
-                value = entry.config,
-                onChange = {
-                    state.transformerList[selected] = state.transformerList[selected].copy(config = it)
-                },
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .clip(FluentTheme.shapes.control)
+                    .padding(0.dp, 0.dp, 12.dp, 0.dp),
+            ) {
+                ConfigEditor(
+                    value = entry.config,
+                    onChange = {
+                        state.transformerList[selected] = state.transformerList[selected].copy(config = it)
+                    },
+                )
+            }
         }
     }
 }
@@ -64,8 +84,7 @@ fun Inspector(
 fun <T : Any> ConfigEditor(
     value: T,
     onChange: (T) -> Unit
-) =
-    ConfigEditor(
+) = ConfigEditor(
         clazz = value::class as KClass<T>,
         value = value,
         onChange = onChange
@@ -118,7 +137,7 @@ private fun ConfigField(
         is String -> InspectorCard(label = label, description = description) {
             StringField(
                 value = propValue,
-                onChange = onChange
+                onValueChange = onChange
             )
         }
         is Int -> {
@@ -171,14 +190,16 @@ private fun ConfigField(
                 onChange = onChange
             )
         }
-        is List<*> -> InspectorCard(label = label, description = description) {
+        is List<*> ->
             ListField(
-                value = propValue,
-                onChange = onChange
+                prop,
+                label = label,
+                description = description,
+                value = propValue as List<Any>,
+                onValueChange = onChange
             )
-        }
         else -> {
-            val propType = prop.returnType.classifier!! as KClass<Any>
+            val propType = propValue::class
             when {
                 propType.isData || propValue::class.isData -> {
                     NestedConfigField(
@@ -187,6 +208,9 @@ private fun ConfigField(
                         value = propValue,
                         onChange = onChange
                     )
+                }
+                else -> InspectorCard(label, description) {
+                    ReadOnlyValue(propValue.toString())
                 }
             }
         }
@@ -203,7 +227,7 @@ private fun InspectorCard(
         icon = null,
         heading = {
             Column(
-                modifier = Modifier.fillMaxWidth(0.5f)
+                modifier = Modifier.fillMaxWidth(0.7f)
             ) {
                 Text(
                     label,
@@ -218,7 +242,13 @@ private fun InspectorCard(
                 }
             }
         },
-        dropdown = content
+        dropdown = {
+            Box(
+                modifier = Modifier.padding(vertical = 12.dp)
+            ) {
+                content()
+            }
+        }
     )
 }
 
@@ -231,10 +261,10 @@ private fun BooleanField(value: Boolean, onChange: (Any) -> Unit) {
 }
 
 @Composable
-private fun StringField(value: String, onChange: (Any) -> Unit) {
-    UiTextField(
+private fun StringField(value: String, onValueChange: (Any) -> Unit) {
+    TextField(
         value = value,
-        onValueChange = { onChange(it) },
+        onValueChange = { onValueChange(it) },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
@@ -242,9 +272,9 @@ private fun StringField(value: String, onChange: (Any) -> Unit) {
 
 @Composable
 private fun IntField(value: Int, onValueChange: (Any) -> Unit) {
-    UiTextField(
+    TextField(
         value = value.toString(),
-        onValueChange = { text -> text.toIntOrNull()?.let { onValueChange(it) } },
+        onValueChange = { it.toIntOrNull()?.let { onValueChange(it) } },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
@@ -252,9 +282,9 @@ private fun IntField(value: Int, onValueChange: (Any) -> Unit) {
 
 @Composable
 private fun DecimalField(value: Decimal, onValueChange: (Any) -> Unit) {
-    UiTextField(
-        value = "%.4f".format(value).trimEnd('0').trimEnd('.'),
-        onValueChange = { text -> text.toBigDecimalOrNull()?.let { onValueChange(it) } },
+    TextField(
+        value = value.toString(),
+        onValueChange = { it.toBigDecimalOrNull()?.let { onValueChange(it) } },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
@@ -464,55 +494,273 @@ private fun NestedConfigField(label: String, description: String?, value: Any, o
             Expander(
                 expanded = expanded,
                 onExpandedChanged = { expanded = it },
-                heading = { Text(label, fontWeight = FontWeight.SemiBold) },
+                heading = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(0.5f)
+                    ) {
+                        Text(
+                            label,
+                            style = FluentTheme.typography.bodyStrong,
+                        )
+                        if (description != null) {
+                            Text(
+                                description,
+                                color = FluentTheme.colors.text.text.secondary,
+                                style = FluentTheme.typography.caption
+                            )
+                        }
+                    }
+                },
                 icon = null,
-                modifier = Modifier.padding(end = 16.dp)
+                modifier = Modifier
+                    .padding(end = 16.dp)
             ) {
+                ConfigEditor(value = value, onChange = onChange)
+            }
+        },
+        icon = null
+    )
+}
+
+@Suppress("UNCHECKED_CAST")
+@Composable
+private fun <E : Any> ListField(
+    prop: KProperty<*>,
+    label: String,
+    description: String?,
+    value: List<E>,
+    onValueChange: (List<E>) -> Unit
+) {
+    val listUpdater = ListUpdater({ value }, onValueChange)
+
+    @Composable
+    fun ListEntryCard(index: Int, content: @Composable () -> Unit) {
+        CardExpanderItem(
+            icon = null,
+            heading = {
+                Text("#${index}", color = FluentTheme.colors.text.text.secondary)
+                Spacer(modifier = Modifier.width(24.dp))
+            },
+            dropdown = {
+                Row(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        Modifier.weight(1.0f)
+                    ) {
+                        content()
+                    }
+                    Button(
+                        onClick = {
+                            listUpdater.add(index, value[index])
+                        },
+                        iconOnly = true
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CopyAdd,
+                            contentDescription = "Duplicate Entry"
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            listUpdater.removeAt(index)
+                        },
+                        iconOnly = true
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Entry"
+                        )
+                    }
+                }
+            }
+        )
+    }
+
+    var expanded by remember { mutableStateOf(false) }
+    val newEntry: (() -> Unit)? = when (prop.returnType.arguments.first().type?.classifier) {
+        String::class -> {
+            { listUpdater.add("" as E) }
+        }
+        Int::class -> {
+            { listUpdater.add(0 as E) }
+        }
+        Decimal::class -> {
+            { listUpdater.add(Decimal.ZERO as E) }
+        }
+        Boolean::class -> {
+            { listUpdater.add(false as E) }
+        }
+        else -> null
+    }
+
+    Expander(
+        expanded = expanded,
+        onExpandedChanged = { expanded = it },
+        icon = null,
+        heading = {
+            Column(
+                modifier = Modifier.fillMaxWidth(0.5f)
+            ) {
+                Text(
+                    label,
+                    style = FluentTheme.typography.bodyStrong,
+                )
                 if (description != null) {
                     Text(
                         description,
                         color = FluentTheme.colors.text.text.secondary,
-                        style = FluentTheme.typography.caption,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        style = FluentTheme.typography.caption
                     )
-                }
-                Column(
-                    Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ConfigEditor(value = value, onChange = onChange)
                 }
             }
         },
-        icon = null
+        trailing = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (newEntry != null) {
+                    Button(
+                        onClick = newEntry,
+                        iconOnly = true
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add entry"
+                        )
+                    }
+                }
+                Button(
+                    onClick = {
+                        listUpdater.clear()
+                    },
+                    iconOnly = true
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Clear list"
+                    )
+                }
+            }
+        }
     ) {
-        if (description != null) {
-            Text(description, color = FluentTheme.colors.text.text.secondary, style = FluentTheme.typography.caption)
+        listUpdater.forEachIndexed { index, item ->
+            val onChange = { newItem: Any ->
+                listUpdater[index] = newItem as E
+            }
+            when (item) {
+                is String -> ListEntryCard(index) {
+                    StringField(
+                        value = item,
+                        onValueChange = onChange
+                    )
+                }
+                is Int -> {
+                    val range = prop.findAnnotation<IntRangeVal>()
+                    if (range != null) {
+                        IntSliderField(
+                            label = label,
+                            description = description,
+                            value = item,
+                            range = range,
+                            onValueChange = onChange
+                        )
+                    } else {
+                        ListEntryCard(index) {
+                            IntField(
+                                value = item,
+                                onValueChange = onChange
+                            )
+                        }
+                    }
+                }
+                is Decimal -> {
+                    val range = prop.findAnnotation<DecimalRangeVal>()
+                    if (range != null) {
+                        DecimalSliderField(
+                            label = label,
+                            description = description,
+                            value = item,
+                            range = range,
+                            onValueChange = onChange
+                        )
+                    } else {
+                        ListEntryCard(index) {
+                            DecimalField(
+                                value = item,
+                                onValueChange = onChange
+                            )
+                        }
+                    }
+                }
+                is Boolean -> ListEntryCard(index) {
+                    BooleanField(
+                        value = item,
+                        onChange = onChange
+                    )
+                }
+                is Enum<*> -> ListEntryCard(index) {
+                    EnumField(
+                        value = item,
+                        onChange = onChange
+                    )
+                }
+                else -> {
+                    val propType = item::class
+                    when {
+                        propType.isData -> {
+                            NestedConfigField(
+                                label = label,
+                                description = description,
+                                value = item,
+                                onChange = onChange
+                            )
+                        }
+                        else -> InspectorCard(label, description) {
+                            ReadOnlyValue(item.toString())
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun ListField(value: List<*>, onChange: (Any) -> Unit) {
-    if (value.all { it == null || it is String }) {
-        UiTextField(
-            value = value.filterIsInstance<String>().joinToString("\n"),
-            onValueChange = { text -> onChange(text.lines().filter { it.isNotBlank() }) },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 4,
-            maxLines = 8,
-        )
-    } else {
-        ReadOnlyValue("List", value.joinToString())
-    }
-}
-
-@Composable
-private fun ReadOnlyValue(label: String, text: String) {
-    NestedSurface {
-        Column(Modifier.fillMaxWidth().padding(10.dp)) {
-            Text(label, color = FluentTheme.colors.text.text.secondary)
-            Text(text, color = FluentTheme.colors.text.text.primary, fontFamily = FontFamily.Monospace)
+private fun ReadOnlyValue(text: String) {
+    val interactionSource1 = remember<MutableInteractionSource> { MutableInteractionSource() }
+    val color = TextFieldDefaults.defaultTextFieldColors()
+        .schemeFor(interactionSource1.collectVisualState(false, focusFirst = true))
+    BasicTextField(
+        modifier = Modifier,
+        value = text,
+        onValueChange = {},
+        textStyle = LocalTextStyle.current.copy(color = color.contentColor, fontFamily = FontFamily.Monospace),
+        enabled = true,
+        readOnly = true,
+        singleLine = false,
+        visualTransformation = VisualTransformation.None,
+        maxLines = Int.MAX_VALUE,
+        keyboardActions = KeyboardActions(),
+        cursorBrush = color.cursorBrush,
+        keyboardOptions = KeyboardOptions.Default,
+        interactionSource = interactionSource1,
+        decorationBox = { innerTextField ->
+            TextFieldDefaults.DecorationBox(
+                color = color,
+                interactionSource = interactionSource1,
+                innerTextField = innerTextField,
+                value = text,
+                enabled = true,
+                placeholder = null,
+                leadingIcon = null,
+                onClearClick = null,
+                header = null,
+                trailing = null,
+                shape = FluentTheme.shapes.control
+            )
         }
-    }
+    )
 }
