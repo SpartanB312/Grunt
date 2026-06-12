@@ -15,10 +15,10 @@ import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.*
 
-const val BaseFontScale = 0.85f
-const val MinFontScale = 0.8f
+const val BaseFontScale = 1.0f
+const val MinFontScale = 0.5f
 const val DefaultFontScale = 1.0f
-const val MaxFontScale = 1.3f
+const val MaxFontScale = 4.0f
 val UiCornerRadius: Dp = 4.dp
 val UiPanelShape = RoundedCornerShape(UiCornerRadius)
 val UiControlShape = RoundedCornerShape(UiCornerRadius)

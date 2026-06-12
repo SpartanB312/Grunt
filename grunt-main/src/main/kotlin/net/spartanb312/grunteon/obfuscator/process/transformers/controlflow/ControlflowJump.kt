@@ -53,11 +53,11 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @SettingDesc("Chance to wrap an eligible Flow edge with an opaque junk branch.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Junk branch chance")
-        val chance: Double = 0.25,
+        val chance: Decimal = 0.25.toDecimal(),
         @SettingDesc("Chance to expand an eligible IF jump into opaque true gates with fake junk branches.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Mangled IF chance")
-        val mangledIfChance: Double = 0.25,
+        val mangledIfChance: Decimal = 0.25.toDecimal(),
         @SettingDesc("Maximum junk branches inserted into one method")
         @IntRangeVal(min = 1, max = 32)
         @SettingName("Max branches per method")
@@ -69,19 +69,19 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @SettingDesc("Chance that a mangled IF fake branch loops back to its gate instead of returning through JunkCode.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Mangled fake loop chance")
-        val mangledFakeLoopChance: Double = 0.35,
+        val mangledFakeLoopChance: Decimal = 0.35.toDecimal(),
         @SettingDesc("Chance that a fake junk branch emits a junk prelude and jumps to a shared terminal junk exit instead of owning its own terminator.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Shared junk exit chance")
-        val sharedJunkExitChance: Double = 0.65,
+        val sharedJunkExitChance: Decimal = 0.65.toDecimal(),
         @SettingDesc("Chance that a terminal junk exit throws null instead of returning a junk value.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Junk terminal throw chance")
-        val junkTerminalThrowChance: Double = 0.2,
+        val junkTerminalThrowChance: Decimal = 0.2.toDecimal(),
         @SettingDesc("Chance to place a junk landing block immediately after a CFF dispatcher switch.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Dispatcher landing junk chance")
-        val dispatcherLandingJunkChance: Double = 0.0,
+        val dispatcherLandingJunkChance: Decimal = 0.0.toDecimal(),
         @SettingDesc("Maximum dispatcher-adjacent junk landing blocks inserted into one method")
         @IntRangeVal(min = 0, max = 32)
         @SettingName("Max dispatcher landing junk blocks")
@@ -113,7 +113,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @SettingDesc("Chance that an opaque predicate gate uses ThreadLocalRandom.nextInt(bound) with lightweight processor actions.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Predicate random bound chance")
-        val predicateRandomBoundChance: Double = 0.15,
+        val predicateRandomBoundChance: Decimal = 0.15.toDecimal(),
         @SettingDesc("Minimum main arithmetic steps in random-bound predicate processor actions")
         @IntRangeVal(min = 1, max = 8)
         @SettingName("Random bound predicate min main steps")
@@ -204,7 +204,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                     maxExtraSteps = config.predicateProcessorMaxExtraSteps,
                     minChainSteps = config.predicateProcessorMinChainSteps,
                     maxChainSteps = config.predicateProcessorMaxChainSteps,
-                    randomBoundChance = config.predicateRandomBoundChance,
+                    randomBoundChance = config.predicateRandomBoundChance.toDouble(),
                     randomBoundMinMainSteps = config.randomBoundPredicateMinMainSteps,
                     randomBoundMaxMainSteps = config.randomBoundPredicateMaxMainSteps,
                     randomBoundMinExtraSteps = config.randomBoundPredicateMinExtraSteps,
@@ -317,13 +317,13 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val imported = JvmFlowImporter().import(owner.name, this)
         val result = FlowJunkBranchInserter(
             options = JunkBranchOptions(
-                chance = config.chance.coerceIn(0.0, 1.0),
-                mangledIfChance = config.mangledIfChance.coerceIn(0.0, 1.0),
+                chance = config.chance.toDouble().coerceIn(0.0, 1.0),
+                mangledIfChance = config.mangledIfChance.toDouble().coerceIn(0.0, 1.0),
                 maxBranchesPerMethod = config.maxBranchesPerMethod.coerceAtLeast(1),
                 maxMangledIfsPerMethod = config.maxMangledIfsPerMethod.coerceAtLeast(0),
-                mangledFakeLoopChance = config.mangledFakeLoopChance.coerceIn(0.0, 1.0),
-                sharedJunkExitChance = config.sharedJunkExitChance.coerceIn(0.0, 1.0),
-                dispatcherLandingJunkChance = config.dispatcherLandingJunkChance.coerceIn(0.0, 1.0),
+                mangledFakeLoopChance = config.mangledFakeLoopChance.toDouble().coerceIn(0.0, 1.0),
+                sharedJunkExitChance = config.sharedJunkExitChance.toDouble().coerceIn(0.0, 1.0),
+                dispatcherLandingJunkChance = config.dispatcherLandingJunkChance.toDouble().coerceIn(0.0, 1.0),
                 maxDispatcherLandingJunkBlocksPerMethod = config.maxDispatcherLandingJunkBlocksPerMethod.coerceAtLeast(0),
                 junkCodeOptions = JunkCodeOptions(
                     maxPreludeCalls = config.maxPreludeCalls.coerceAtLeast(0),
@@ -331,7 +331,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                     useNaturalReferenceValues = config.naturalReferenceValues,
                     useAssignableJunkReturns = config.assignableJunkReturns,
                     junkReturnChance = 0.35,
-                    terminalThrowChance = config.junkTerminalThrowChance
+                    terminalThrowChance = config.junkTerminalThrowChance.toDouble()
                 )
             ),
             callPool = pool,

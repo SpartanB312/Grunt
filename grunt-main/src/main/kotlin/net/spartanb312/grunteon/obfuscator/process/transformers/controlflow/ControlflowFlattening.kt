@@ -12,12 +12,10 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junk
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.*
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
-import net.spartanb312.grunteon.obfuscator.util.Logger
-import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
+import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
-import net.spartanb312.grunteon.obfuscator.util.getRandomString
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
@@ -81,11 +79,11 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @SettingDesc("Chance that one fake dispatcher case becomes a terminal JunkCode case.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Junk case chance")
-        val junkCaseChance: Double = 0.35,
+        val junkCaseChance: Decimal = 0.35.toDecimal(),
         @SettingDesc("Chance that CFF fake switch cases reuse a compatible terminal fake case target.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Shared fake case terminator chance")
-        val sharedFakeCaseTerminatorChance: Double = 0.65,
+        val sharedFakeCaseTerminatorChance: Decimal = 0.65.toDecimal(),
         @SettingDesc("Maximum junk call preludes emitted before a junk terminal return")
         @IntRangeVal(min = 0, max = 8)
         @SettingName("Max junk prelude calls")
@@ -111,7 +109,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @SettingDesc("Chance that one state key update uses a generated processor in Mixed mode.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("State key processor chance")
-        val stateKeyProcessorChance: Double = 0.5,
+        val stateKeyProcessorChance: Decimal = 0.5.toDecimal(),
         @SettingDesc("Complexity profile for generated state key processor actions. Light keeps actions short while still mixing salt; Balanced and Heavy restore progressively stronger arithmetic expressions")
         @SettingName("Key processor complexity")
         val keyProcessorComplexity: CffKeyProcessorComplexity = CffKeyProcessorComplexity.Light,
@@ -148,7 +146,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @SettingDesc("Chance that one dispatcher switch is followed by an unrelated real block.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Dispatcher trailing real chance")
-        val dispatcherTrailingRealBlockChance: Double = 1.0,
+        val dispatcherTrailingRealBlockChance: Decimal = 1.0.toDecimal(),
         @SettingDesc("Maximum executable JVM instructions before importing Flow IR; 0 disables this limit")
         @SettingName("Max executable instructions")
         val maxExecutableInstructions: Int = 0,
@@ -357,8 +355,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 maxDispatcherIslands = config.maxDispatcherIslands,
                 fakeCasesPerDispatcher = config.fakeCasesPerDispatcher,
                 junkCases = config.junkCases,
-                junkCaseChance = config.junkCaseChance,
-                sharedFakeCaseTerminatorChance = config.sharedFakeCaseTerminatorChance,
+                junkCaseChance = config.junkCaseChance.toDouble(),
+                sharedFakeCaseTerminatorChance = config.sharedFakeCaseTerminatorChance.toDouble(),
                 junkCodeOptions = JunkCodeOptions(
                     maxPreludeCalls = config.maxJunkPreludeCalls.coerceAtLeast(0),
                     useJunkCallPrelude = junkCallPool?.isEmpty() == false,
@@ -369,10 +367,10 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 minStateOpsPerCase = config.minStateOpsPerCase,
                 maxStateOpsPerCase = config.maxStateOpsPerCase,
                 stateKeyMode = config.stateKeyMode,
-                stateKeyProcessorChance = config.stateKeyProcessorChance,
+                stateKeyProcessorChance = config.stateKeyProcessorChance.toDouble(),
                 shuffleRegionBlocks = config.shuffleRegionBlocks,
                 dispatcherTrailingRealBlock = config.dispatcherTrailingRealBlock,
-                dispatcherTrailingRealBlockChance = config.dispatcherTrailingRealBlockChance
+                dispatcherTrailingRealBlockChance = config.dispatcherTrailingRealBlockChance.toDouble()
             ),
             randomGen,
             hierarchy,

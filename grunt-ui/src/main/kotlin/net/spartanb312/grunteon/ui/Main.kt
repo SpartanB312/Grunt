@@ -36,7 +36,7 @@ fun main(args: Array<String>) {
         Window(
             onCloseRequest = ::exitApplication,
             title = "Grunteon",
-            state = WindowState(width = 1440.dp, height = 860.dp),
+            state = WindowState(width = 1600.dp, height = 900.dp),
         ) {
             App()
         }

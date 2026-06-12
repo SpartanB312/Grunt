@@ -16,11 +16,11 @@ import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.*
 import net.spartanb312.grunteon.obfuscator.process.*
+import net.spartanb312.grunteon.obfuscator.util.Decimal
 import java.math.RoundingMode
 import kotlin.math.max
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.KParameter
-import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
@@ -79,7 +79,7 @@ private fun ConfigField(value: Any, onChange: (Any?) -> Unit, parameter: KParame
                     description = description,
                     value = currentValue,
                     range = range,
-                    onChange = onChange
+                    onValueChange = onChange
                 )
             } else {
                 InspectorCard(label = label, description = description) {
@@ -91,10 +91,10 @@ private fun ConfigField(value: Any, onChange: (Any?) -> Unit, parameter: KParame
             }
         }
 
-        is Double -> {
+        is Decimal -> {
             val range = property.findAnnotation<DecimalRangeVal>()
             if (range != null) {
-                DoubleSliderField(
+                DecimalSliderField(
                     label = label,
                     description = description,
                     value = currentValue,
@@ -103,7 +103,7 @@ private fun ConfigField(value: Any, onChange: (Any?) -> Unit, parameter: KParame
                 )
             } else {
                 InspectorCard(label = label, description = description) {
-                    DoubleField(
+                    DecimalField(
                         value = currentValue,
                         onChange = onChange
                     )
@@ -151,53 +151,6 @@ private fun ConfigField(value: Any, onChange: (Any?) -> Unit, parameter: KParame
             ReadOnlyValue(
                 currentValue::class.simpleName ?: "Value",
                 currentValue.toString()
-            )
-        }
-    }
-}
-
-@Composable
-private fun ConfigField(
-    label: String,
-    description: String?,
-    value: Any?,
-    property: KProperty1<out Any, *>,
-    onChange: (Any?) -> Unit,
-) {
-    when (value) {
-        is Int -> {
-            val range = property.findAnnotation<IntRangeVal>()
-            if (range != null) {
-                IntSliderField(label, description, value, range, onChange)
-            } else {
-                InspectorCard(label, description) { IntField(value, onChange) }
-            }
-        }
-
-        is Double -> {
-            val range = property.findAnnotation<DecimalRangeVal>()
-            if (range != null) {
-                DoubleSliderField(label, description, value, range, onChange)
-            } else {
-                InspectorCard(label, description) { DoubleField(value, onChange) }
-            }
-        }
-
-        is ClassFilterConfig -> NestedConfigField(label, description, value, onChange)
-        is Boolean -> InspectorCard(label, description) { BooleanField(value, onChange) }
-        is String -> InspectorCard(label, description) { StringField(value, onChange) }
-        is Enum<*> -> InspectorCard(label, description) { EnumField(value, onChange) }
-        is List<*> -> InspectorCard(label, description) { ListField(value, onChange) }
-        null -> InspectorCard(label, description) {
-            ReadOnlyValue(
-                "null",
-                "Nullable fields are not editable in this prototype."
-            )
-        }
-        else -> InspectorCard(label, description) {
-            ReadOnlyValue(
-                value::class.simpleName ?: "Value",
-                value.toString()
             )
         }
     }
@@ -261,10 +214,10 @@ private fun IntField(value: Int, onChange: (Any?) -> Unit) {
 }
 
 @Composable
-private fun DoubleField(value: Double, onChange: (Any?) -> Unit) {
+private fun DecimalField(value: Decimal, onChange: (Any?) -> Unit) {
     UiTextField(
         value = "%.4f".format(value).trimEnd('0').trimEnd('.'),
-        onValueChange = { text -> text.toDoubleOrNull()?.let { onChange(it) } },
+        onValueChange = { text -> text.toBigDecimalOrNull()?.let { onChange(it) } },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
@@ -297,69 +250,6 @@ private fun IntSliderField(
     description: String?,
     value: Int,
     range: IntRangeVal,
-    onChange: (Any?) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    var typedValue by remember(value) { mutableStateOf(value.toString()) }
-    Expander(
-        expanded = expanded,
-        onExpandedChanged = { expanded = it },
-        heading = {
-            Column(
-                modifier = Modifier.fillMaxWidth(0.5f)
-            ) {
-                Text(
-                    label,
-                    style = FluentTheme.typography.bodyStrong,
-                )
-                if (description != null) {
-                    Text(
-                        description,
-                        color = FluentTheme.colors.text.text.secondary,
-                        style = FluentTheme.typography.caption
-                    )
-                }
-            }
-        },
-        icon = null,
-        trailing = {
-            UiTextField(
-                value = typedValue,
-                onValueChange = { text ->
-                    typedValue = text
-                    text.toIntOrNull()?.let { onChange(it.coerceIn(range.min, range.max)) }
-                },
-                modifier = Modifier.width(112.dp),
-                singleLine = true,
-            )
-        }
-    ) {
-        CardExpanderItem(heading = {}, icon = null) {
-            UiSlider(
-                value = value.toFloat().coerceIn(range.min.toFloat(), range.max.toFloat()),
-                onValueChange = { onChange(it.toInt().coerceIn(range.min, range.max)) },
-                valueRange = range.min.toFloat()..range.max.toFloat(),
-                steps = ((range.max - range.min) / range.step - 1).coerceAtLeast(0),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Suppress("UNCHECKED_CAST")
-private val sliderStateOnValueChangeProp = SliderState::class.memberProperties
-    .find { it.name == "onValueChange" }!!
-    .run {
-        isAccessible = true
-        this as KMutableProperty1<SliderState, (Float) -> Unit>
-    }
-
-@Composable
-private fun DoubleSliderField(
-    label: String,
-    description: String?,
-    value: Double,
-    range: DecimalRangeVal,
     onValueChange: (Any?) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -408,10 +298,10 @@ private fun DoubleSliderField(
             )
         }
     ) {
-        val sliderStep = range.step.toBigDecimal()
-        val sliderMin = range.min.toBigDecimal()
-        val sliderMax = range.max.toBigDecimal()
-        val steps = max(((sliderMax - sliderMin) / sliderStep).toInt() - 1, 1)
+        val sliderStep = range.step
+        val sliderMin = range.min
+        val sliderMax = range.max
+        val steps = max((sliderMax - sliderMin - 1) / sliderStep, 1)
         val sliderState = remember(fieldFocus) {
             SliderState(
                 value.toFloat(),
@@ -423,15 +313,107 @@ private fun DoubleSliderField(
         }
         sliderState.value = value.toFloat()
         sliderStateOnValueChangeProp.set(sliderState) {
-            val newValue =
-                (sliderState.nearestValue().toBigDecimal() / sliderStep).setScale(0, RoundingMode.HALF_UP) * sliderStep
-            onValueChange(newValue.toDouble())
+            typedValue = sliderState.nearestValue().toInt().toString()
         }
         CardExpanderItem(heading = {}) {
             Slider(
                 state = sliderState,
                 showTickMark = false,
                 modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Suppress("UNCHECKED_CAST")
+private val sliderStateOnValueChangeProp = SliderState::class.memberProperties
+    .find { it.name == "onValueChange" }!!
+    .run {
+        isAccessible = true
+        this as KMutableProperty1<SliderState, (Float) -> Unit>
+    }
+
+@Composable
+private fun DecimalSliderField(
+    label: String,
+    description: String?,
+    value: Decimal,
+    range: DecimalRangeVal,
+    onValueChange: (Any?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var typedValue by remember(value) { mutableStateOf(value.toString()) }
+    var fieldFocus by remember { mutableStateOf(false) }
+
+    Expander(
+        expanded = expanded,
+        onExpandedChanged = { expanded = it },
+        heading = {
+            Column(
+                modifier = Modifier.fillMaxWidth(0.5f)
+            ) {
+                Text(
+                    label,
+                    style = FluentTheme.typography.bodyStrong,
+                )
+                if (description != null) {
+                    Text(
+                        description,
+                        color = FluentTheme.colors.text.text.secondary,
+                        style = FluentTheme.typography.caption
+                    )
+                }
+            }
+        },
+        icon = null,
+        trailing = {
+            TextField(
+                value = typedValue,
+                onValueChange = { str ->
+                    typedValue = str
+                    str.toBigDecimalOrNull()?.let {
+                        onValueChange(it)
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardActions = KeyboardActions.Default,
+                modifier = Modifier.onFocusChanged { state ->
+                    fieldFocus = state.isFocused
+                    if (!state.isFocused) {
+                        typedValue = value.toString()
+                    }
+                }
+            )
+        },
+    ) {
+        val sliderStep = range.step.toBigDecimal()
+        val sliderMin = range.min.toBigDecimal()
+        val sliderMax = range.max.toBigDecimal()
+        val steps = max(((sliderMax - sliderMin) / sliderStep).toInt() - 1, 1)
+        val sliderState = remember(fieldFocus) {
+            SliderState(
+                value.toFloat(),
+                steps,
+                true,
+                {
+                    onValueChange((it.toBigDecimal() / sliderStep).setScale(0, RoundingMode.HALF_UP) * sliderStep)
+                },
+                sliderMin.toFloat()..sliderMax.toFloat()
+            )
+        }
+        sliderState.value = value.toFloat()
+        sliderStateOnValueChangeProp.set(sliderState) {
+            val newValue =
+                (sliderState.nearestValue().toBigDecimal() / sliderStep).setScale(0, RoundingMode.HALF_UP) * sliderStep
+            typedValue = newValue.toString()
+        }
+        CardExpanderItem(heading = {}, icon = null) {
+            Slider(
+                state = sliderState,
+                showTickMark = false,
+                modifier = Modifier.fillMaxWidth()
+                    .padding(end = 8.dp),
             )
         }
     }
