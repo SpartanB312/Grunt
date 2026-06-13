@@ -19,6 +19,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.redirect.invoke_proxy.desc",
     "Redirect method invokes"

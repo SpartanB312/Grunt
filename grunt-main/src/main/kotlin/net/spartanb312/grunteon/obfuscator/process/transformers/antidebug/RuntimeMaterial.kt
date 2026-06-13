@@ -15,6 +15,7 @@ import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
 import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
 import net.spartanb312.grunteon.obfuscator.process.SettingDesc
 import net.spartanb312.grunteon.obfuscator.process.SettingName
+import net.spartanb312.grunteon.obfuscator.process.StableLevel
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
@@ -81,6 +82,7 @@ import org.objectweb.asm.tree.MethodNode
  *   and guard kind for future ReferenceObfuscate consumption. They are internal
  *   metadata only and are registered in INTERNAL so PostProcess removes them.
  */
+@Transformer.Stability(StableLevel.Experimental)
 @Transformer.Description(
     "process.antidebug.runtime_material.desc",
     "Inject distributed runtime material perturbation"

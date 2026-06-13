@@ -33,6 +33,19 @@ abstract class Transformer<T : TransformerConfig>(
         val key: String,
         val enText: String,
     )
+
+    annotation class Stability(
+        val level: StableLevel
+    )
 }
 
 annotation class HiddenTransformer
+
+enum class StableLevel(val level: Int) {
+    RockSolid(5), // very stable
+    Stable(4), // stable
+    Moderate(3), // standard
+    Unstable(2), // unstable
+    Experimental(1), // very unstable
+    Developing(0), // unusable
+}

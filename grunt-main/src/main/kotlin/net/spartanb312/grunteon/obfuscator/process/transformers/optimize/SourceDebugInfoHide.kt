@@ -16,6 +16,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import net.spartanb312.grunteon.obfuscator.util.interfaces.DisplayEnum
 import org.objectweb.asm.tree.LineNumberNode
 
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.optimize.source_debug_info_hide.desc",
     "Remove source file information and line numbers"

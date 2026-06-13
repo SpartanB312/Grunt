@@ -18,6 +18,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.JumpInsnNode
 
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.optimize.dead_code_remove.desc",
     "Remove useless instruction sequences"

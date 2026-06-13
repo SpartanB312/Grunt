@@ -15,6 +15,7 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 import java.util.concurrent.ConcurrentHashMap
 
+@Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.miscellaneous.parameter_obfuscate.desc",
     "Obfuscate parameters to object type"

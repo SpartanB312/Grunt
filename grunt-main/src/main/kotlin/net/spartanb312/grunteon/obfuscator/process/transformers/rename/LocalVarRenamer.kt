@@ -18,6 +18,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 /**
  * Last update on 2026/03/31 by FluixCarvin
  */
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.rename.local_var_renamer.desc",
     "Renaming local variables"

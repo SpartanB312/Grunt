@@ -48,6 +48,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junk
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.pipeline.before
+import net.spartanb312.grunteon.obfuscator.process.StableLevel
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.hierarchy.ClassHierarchyFlowTypeHierarchy
 import net.spartanb312.grunteon.obfuscator.util.DISABLE_CONTROL_FLOW
 import net.spartanb312.grunteon.obfuscator.util.IGNORE_JUNK_CODE
@@ -70,6 +71,7 @@ import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 
+@Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.controlflow.controlflow_jump.desc",
     "Insert verifier-safe junk branches through Flow IR"
@@ -235,7 +237,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                     .getRandomString(10),
                 classExists = {
                     instance.workRes.inputClassMap.containsKey(it) ||
-                        instance.workRes.libraryClassMap.containsKey(it)
+                            instance.workRes.libraryClassMap.containsKey(it)
                 },
                 options = OpaquePredicateProcessorOptions(
                     minMainSteps = config.predicateProcessorMinMainSteps,
@@ -260,7 +262,10 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val dispatcherLandingJunkCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), config.workerBatchSize.coerceAtLeast(1)) { classNode ->
+        parForEachClassesFiltered(
+            config.classFilter.buildFilterStrategy(),
+            config.workerBatchSize.coerceAtLeast(1)
+        ) { classNode ->
             if (classNode.isExcluded(DISABLE_CONTROL_FLOW) || classNode.isExcluded(IGNORE_JUNK_CODE)) {
                 return@parForEachClassesFiltered
             }
@@ -801,8 +806,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             if (next in switchTargets(method)) return false
             if (next.isSwitchTrampoline(method)) return false
             return next.kind == FlowBlockKind.Original ||
-                next.kind == FlowBlockKind.Split ||
-                next.kind == FlowBlockKind.Junk
+                    next.kind == FlowBlockKind.Split ||
+                    next.kind == FlowBlockKind.Junk
         }
 
         private fun FlowBlock.switchTargets(method: FlowMethod): Set<FlowBlock> {

@@ -7,6 +7,7 @@ import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.other.shuffle_members.desc",
     "Shuffle members in classes"

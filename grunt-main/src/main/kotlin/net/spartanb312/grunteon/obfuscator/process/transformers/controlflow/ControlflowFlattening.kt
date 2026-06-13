@@ -15,6 +15,7 @@ import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
 import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
 import net.spartanb312.grunteon.obfuscator.process.SettingDesc
 import net.spartanb312.grunteon.obfuscator.process.SettingName
+import net.spartanb312.grunteon.obfuscator.process.StableLevel
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.globalScopeValue
@@ -52,6 +53,7 @@ import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 import java.util.concurrent.atomic.AtomicLong
 
+@Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.controlflow.controlflow_flattening.desc",
     "Flatten method control flow through Flow IR dispatcher islands"

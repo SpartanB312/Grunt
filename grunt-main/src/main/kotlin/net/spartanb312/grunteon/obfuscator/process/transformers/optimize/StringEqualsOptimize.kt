@@ -12,6 +12,7 @@ import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.match
 import org.objectweb.asm.tree.MethodInsnNode
 
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.optimize.string_equals_optimize.desc",
     "Redirect string equals() and equalsIgnoreCase()"

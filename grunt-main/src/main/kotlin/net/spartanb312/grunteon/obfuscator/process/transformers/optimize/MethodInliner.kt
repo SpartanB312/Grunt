@@ -20,7 +20,7 @@ import org.objectweb.asm.tree.*
  * @author StaR4y
  * @since 2026/5/21
  */
-
+@Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.optimize.method_inliner.desc",
     "Inline small same-class methods"

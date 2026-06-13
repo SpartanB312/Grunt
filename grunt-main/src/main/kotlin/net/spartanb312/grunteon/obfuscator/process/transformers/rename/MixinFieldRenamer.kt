@@ -9,6 +9,7 @@ import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
 import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
 import net.spartanb312.grunteon.obfuscator.process.SettingDesc
 import net.spartanb312.grunteon.obfuscator.process.SettingName
+import net.spartanb312.grunteon.obfuscator.process.StableLevel
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.barrier
@@ -29,6 +30,7 @@ import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 
 @HiddenTransformer
+@Transformer.Stability(StableLevel.Developing)
 @Transformer.Description(
     "process.rename.mixin_field_renamer.desc",
     "Renaming fields in mixin classes"

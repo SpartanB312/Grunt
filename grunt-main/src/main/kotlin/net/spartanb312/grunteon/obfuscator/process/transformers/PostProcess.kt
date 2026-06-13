@@ -13,6 +13,7 @@ import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.extensions.removeAnnotations
 import java.nio.charset.StandardCharsets
 
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.other.post_process.desc",
     "Post resource process. Manifest/YML/JSON remap"

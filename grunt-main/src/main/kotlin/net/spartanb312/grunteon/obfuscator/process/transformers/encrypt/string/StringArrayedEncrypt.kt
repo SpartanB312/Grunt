@@ -25,6 +25,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
 import kotlin.random.Random
 
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.encrypt.string.string_arrayed_encrypt.desc",
     "Encrypt string and replace ldc to array load"

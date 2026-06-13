@@ -9,6 +9,7 @@ import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.massiveBlankString
 import net.spartanb312.grunteon.obfuscator.util.massiveString
 
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.other.decompiler_crasher.desc",
     "Crash decompilers"

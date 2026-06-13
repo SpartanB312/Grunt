@@ -16,6 +16,7 @@ import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
 import org.objectweb.asm.Opcodes
 
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.other.fake_synthetic_bridge.desc",
     "Insert fake synthetic bridge flag"

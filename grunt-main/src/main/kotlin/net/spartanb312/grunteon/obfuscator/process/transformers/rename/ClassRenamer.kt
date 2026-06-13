@@ -20,6 +20,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
  * TODO: Reflection remap
  * TODO: Resource remap
  */
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.rename.class_renamer.desc",
     "Renaming classes"

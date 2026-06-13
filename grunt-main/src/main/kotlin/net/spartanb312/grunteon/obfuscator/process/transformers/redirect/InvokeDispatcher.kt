@@ -22,6 +22,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
+@Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.redirect.invoke_dispatcher.desc",
     "Redirect multiple method invokes to a single dispatcher"

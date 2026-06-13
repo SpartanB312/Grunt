@@ -35,6 +35,7 @@ import java.lang.invoke.MethodType
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.other.reference_obfuscate.desc",
     "Using invokedynamics to hide reference"

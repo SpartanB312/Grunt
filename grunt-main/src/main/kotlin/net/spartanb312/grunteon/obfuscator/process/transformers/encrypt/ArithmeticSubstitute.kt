@@ -24,6 +24,7 @@ import net.spartanb312.grunteon.obfuscator.util.numerical.replaceIXOR
 import org.objectweb.asm.Opcodes
 
 @HiddenTransformer
+@Transformer.Stability(StableLevel.Unstable)
 @Transformer.Description(
     "process.encrypt.arithmetic_substitute.desc",
     "Replace arithmetic ops to substitutions"

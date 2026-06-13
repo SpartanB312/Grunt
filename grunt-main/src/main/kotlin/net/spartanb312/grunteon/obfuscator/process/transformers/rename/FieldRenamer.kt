@@ -20,6 +20,7 @@ import net.spartanb312.grunteon.obfuscator.util.extensions.isStatic
  * Last update on 2026/03/31 by FluixCarvin
  * TODO: Reflection remap
  */
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.rename.field_renamer.desc",
     "Renaming fields"

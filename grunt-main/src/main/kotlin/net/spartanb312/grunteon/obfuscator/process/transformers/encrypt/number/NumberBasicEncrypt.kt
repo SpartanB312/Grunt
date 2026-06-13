@@ -32,6 +32,7 @@ import org.objectweb.asm.tree.LdcInsnNode
 /**
  * Last update on 2026/03/25 by FluixCarvin
  */
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.encrypt.number.number_basic_encrypt.desc",
     "Encrypt numbers via some basic methods"
