@@ -16,6 +16,7 @@ import org.objectweb.asm.tree.LookupSwitchInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.TableSwitchInsnNode
+import org.objectweb.asm.tree.TypeInsnNode
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipFile
@@ -161,6 +162,34 @@ class ControlflowJumpTransformerTest {
         val method = classNode.methods.single { it.name == "choose" }
 
         assertTrue(method.instructions.toArray().any { it.opcode == Opcodes.ATHROW })
+    }
+
+    @Test
+    fun routesEligibleEdgeThroughExceptionBridge() {
+        val classNode = runControlflowJump(
+            ControlflowJump.Config(
+                chance = 0.0,
+                mangledIfChance = 0.0,
+                dispatcherLandingJunkChance = 0.0,
+                exceptionBridgeChance = 1.0,
+                maxExceptionBridgesPerMethod = 1,
+                verifyBytecode = true
+            )
+        )
+        val method = classNode.methods.single { it.name == "choose" }
+        val bridge = method.tryCatchBlocks.first { it.type == "java/lang/RuntimeException" }
+        val nodes = method.instructions.toArray().toList()
+
+        assertTrue(method.tryCatchBlocks.any { it.type == "java/lang/RuntimeException" })
+        assertTrue(nodes.any { it.opcode == Opcodes.ATHROW })
+        assertTrue(
+            nodes.any {
+                it is TypeInsnNode &&
+                    it.opcode == Opcodes.NEW &&
+                    it.desc == "java/lang/RuntimeException"
+            }
+        )
+        assertTrue(kotlin.math.abs(nodes.indexOf(bridge.handler) - nodes.indexOf(bridge.end)) > 1)
     }
 
     @Test

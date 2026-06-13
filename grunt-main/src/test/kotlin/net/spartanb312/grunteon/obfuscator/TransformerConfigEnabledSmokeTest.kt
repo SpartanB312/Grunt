@@ -142,6 +142,8 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"junkTerminalThrowChance\": 0.2")
             assertContains(text, "\"dispatcherLandingJunkChance\": 0.0")
             assertContains(text, "\"maxDispatcherLandingJunkBlocksPerMethod\": 4")
+            assertContains(text, "\"exceptionBridgeChance\": 0.0")
+            assertContains(text, "\"maxExceptionBridgesPerMethod\": 4")
             assertContains(text, "\"predicateProcessorMinMainSteps\": 1")
             assertContains(text, "\"predicateProcessorMaxMainSteps\": 2")
             assertContains(text, "\"predicateProcessorMinExtraSteps\": 0")

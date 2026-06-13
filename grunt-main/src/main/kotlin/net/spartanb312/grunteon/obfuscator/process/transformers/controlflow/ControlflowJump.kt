@@ -40,6 +40,8 @@ import net.spartanb312.grunteon.obfuscator.process.post
 import net.spartanb312.grunteon.obfuscator.process.pre
 import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowExceptionBridgeInserter
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowExceptionBridgeOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowOpaquePredicateProcessor
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorRegistry
@@ -125,6 +127,14 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @IntRangeVal(min = 0, max = 32)
         @SettingName("Max dispatcher landing junk blocks")
         val maxDispatcherLandingJunkBlocksPerMethod: Int = 4,
+        @SettingDesc("Chance to reroute an eligible real Flow edge through a throw/catch bridge. Range: 0.0..1.0")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Exception bridge chance")
+        val exceptionBridgeChance: Double = 0.0,
+        @SettingDesc("Maximum throw/catch bridges inserted into one method")
+        @IntRangeVal(min = 0, max = 32)
+        @SettingName("Max exception bridges")
+        val maxExceptionBridgesPerMethod: Int = 4,
         @SettingDesc("Minimum main arithmetic steps in generated opaque predicate processor actions")
         @IntRangeVal(min = 1, max = 8)
         @SettingName("Predicate min main steps")
@@ -260,6 +270,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val branchCounter = reducibleScopeValue { MergeableCounter() }
         val mangledIfCounter = reducibleScopeValue { MergeableCounter() }
         val dispatcherLandingJunkCounter = reducibleScopeValue { MergeableCounter() }
+        val exceptionBridgeCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
 
         parForEachClassesFiltered(
@@ -314,6 +325,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                                 branchCounter.local.add(result.branches)
                                 mangledIfCounter.local.add(result.mangledIfs)
                                 dispatcherLandingJunkCounter.local.add(result.dispatcherLandingJunkBlocks)
+                                exceptionBridgeCounter.local.add(result.exceptionBridges)
                             }
                             result.method
                         },
@@ -344,6 +356,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             Logger.info("    Inserted ${branchCounter.global.get()} junk branches")
             Logger.info("    Mangled ${mangledIfCounter.global.get()} conditional jumps")
             Logger.info("    Placed ${dispatcherLandingJunkCounter.global.get()} dispatcher landing junk blocks")
+            Logger.info("    Routed ${exceptionBridgeCounter.global.get()} edges through exception bridges")
             Logger.info("    Generated ${predicateRegistry.classCount} predicate processor classes")
             Logger.info("    Added ${predicateRegistry.actionCount} predicate processor actions")
             Logger.info("    Transformed ${methodCounter.global.get()} methods")
@@ -376,6 +389,10 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 sharedJunkExitChance = config.sharedJunkExitChance.coerceIn(0.0, 1.0),
                 dispatcherLandingJunkChance = config.dispatcherLandingJunkChance.coerceIn(0.0, 1.0),
                 maxDispatcherLandingJunkBlocksPerMethod = config.maxDispatcherLandingJunkBlocksPerMethod.coerceAtLeast(0),
+                exceptionBridgeOptions = FlowExceptionBridgeOptions(
+                    chance = config.exceptionBridgeChance.coerceIn(0.0, 1.0),
+                    maxBridgesPerMethod = config.maxExceptionBridgesPerMethod.coerceAtLeast(0)
+                ),
                 junkCodeOptions = JunkCodeOptions(
                     maxPreludeCalls = config.maxPreludeCalls.coerceAtLeast(0),
                     useJunkCallPrelude = !pool.isEmpty(),
@@ -413,7 +430,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             changed = true,
             branches = result.branches,
             mangledIfs = result.mangledIfs,
-            dispatcherLandingJunkBlocks = result.dispatcherLandingJunkBlocks
+            dispatcherLandingJunkBlocks = result.dispatcherLandingJunkBlocks,
+            exceptionBridges = result.exceptionBridges
         )
     }
 
@@ -440,6 +458,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val sharedJunkExitChance: Double,
         val dispatcherLandingJunkChance: Double,
         val maxDispatcherLandingJunkBlocksPerMethod: Int,
+        val exceptionBridgeOptions: FlowExceptionBridgeOptions,
         val junkCodeOptions: JunkCodeOptions
     )
 
@@ -447,7 +466,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val changed: Boolean,
         val branches: Int = 0,
         val mangledIfs: Int = 0,
-        val dispatcherLandingJunkBlocks: Int = 0
+        val dispatcherLandingJunkBlocks: Int = 0,
+        val exceptionBridges: Int = 0
     )
 
     private data class JunkBranchMethod(
@@ -455,7 +475,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val changed: Boolean,
         val branches: Int = 0,
         val mangledIfs: Int = 0,
-        val dispatcherLandingJunkBlocks: Int = 0
+        val dispatcherLandingJunkBlocks: Int = 0,
+        val exceptionBridges: Int = 0
     )
 
     private class FlowJunkBranchInserter(
@@ -479,12 +500,17 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 junkExits,
                 maxBranches = options.maxBranchesPerMethod - dispatcherLandingJunkBlocks
             )
+            val exceptionBridges = FlowExceptionBridgeInserter(
+                options = options.exceptionBridgeOptions,
+                random = random
+            ).insert(method).bridges
 
             return JunkBranchResult(
-                changed = branches != 0 || mangledIfs != 0,
+                changed = branches != 0 || mangledIfs != 0 || exceptionBridges != 0,
                 branches = branches,
                 mangledIfs = mangledIfs,
-                dispatcherLandingJunkBlocks = dispatcherLandingJunkBlocks
+                dispatcherLandingJunkBlocks = dispatcherLandingJunkBlocks,
+                exceptionBridges = exceptionBridges
             )
         }
 
