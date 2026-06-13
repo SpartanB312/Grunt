@@ -8,7 +8,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.onClick
-import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +34,7 @@ fun FrameWindowScope.TopToolbar(
     onSaveConfig: () -> Boolean,
     onSaveConfigAs: () -> Unit,
     isMaximized: Boolean,
+    showWindowControls: Boolean,
     onMinimize: () -> Unit,
     onToggleMaximize: () -> Unit,
     onExit: () -> Unit,
@@ -164,30 +164,24 @@ fun FrameWindowScope.TopToolbar(
                     Text("Help")
                 }
             }
-            if (isMaximized) {
-                Box(Modifier.weight(1f).fillMaxHeight())
-            } else {
-                WindowDraggableArea(
-                    modifier = Modifier.weight(1f).fillMaxHeight()
-                ) {
-                    Box(Modifier.fillMaxSize())
-                }
+            Box(Modifier.weight(1f).fillMaxHeight())
+            if (showWindowControls) {
+                WindowControlButton(
+                    icon = Icons.Default.Subtract,
+                    contentDescription = "Minimize",
+                    onClick = onMinimize,
+                )
+                WindowControlButton(
+                    icon = if (isMaximized) Icons.Default.SquareMultiple else Icons.Default.Square,
+                    contentDescription = if (isMaximized) "Restore" else "Maximize",
+                    onClick = onToggleMaximize,
+                )
+                WindowControlButton(
+                    icon = Icons.Default.Dismiss,
+                    contentDescription = "Close",
+                    onClick = onExit,
+                )
             }
-            WindowControlButton(
-                icon = Icons.Default.Subtract,
-                contentDescription = "Minimize",
-                onClick = onMinimize,
-            )
-            WindowControlButton(
-                icon = if (isMaximized) Icons.Default.SquareMultiple else Icons.Default.Square,
-                contentDescription = if (isMaximized) "Restore" else "Maximize",
-                onClick = onToggleMaximize,
-            )
-            WindowControlButton(
-                icon = Icons.Default.Dismiss,
-                contentDescription = "Close",
-                onClick = onExit,
-            )
         }
         TabRow(
             { uiState.currentPage.ordinal },

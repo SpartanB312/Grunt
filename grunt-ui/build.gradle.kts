@@ -17,6 +17,7 @@ dependencies {
     implementation(project(":grunt-main"))
 
     implementation(libs.filekit.dialogs)
+    implementation(libs.flatlaf)
     implementation(libs.kotlinReflect)
     implementation(compose.desktop.currentOs)
     implementation(libs.compose.fluent)
@@ -26,6 +27,7 @@ dependencies {
 compose.desktop {
     application {
         this.mainClass = "net.spartanb312.grunteon.ui.AppKt"
+        jvmArgs += listOf("--enable-native-access=ALL-UNNAMED")
         nativeDistributions {
             packageName = "Grunteon"
             packageVersion = rootProject.version.toString()

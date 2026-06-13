@@ -1,11 +1,8 @@
 package net.spartanb312.grunteon.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,6 +13,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
+import com.formdev.flatlaf.FlatClientProperties
+import com.formdev.flatlaf.FlatDarkLaf
 import io.github.composefluent.*
 import io.github.composefluent.component.Text
 import io.github.composefluent.surface.Card
@@ -28,16 +27,17 @@ import net.spartanb312.grunteon.obfuscator.VERSION
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import java.awt.Frame
-import java.awt.event.ComponentAdapter
-import java.awt.event.ComponentEvent
-import java.awt.geom.RoundRectangle2D
+import javax.swing.JDialog
+import javax.swing.JFrame
 import javax.swing.SwingUtilities
+import javax.swing.Timer
 
-private val WindowCornerRadius = 8.dp
-private val WindowCornerDiameter = WindowCornerRadius * 2.0f
-private val WindowBorderWidth = 2.dp
+private val TitleBarCaptionHeight = 48.dp
+private val TitleBarCaptionStartInset = 228.dp
+private val TitleBarCaptionEndInset = 132.dp
 
 fun main(args: Array<String>) {
+    configureWindowDecorations()
     FileKit.init(appId = "Grunteon")
     if (!args.contains("--disablePlugin")) {
         PluginManager.loadPlugins()
@@ -50,8 +50,6 @@ fun main(args: Array<String>) {
             onCloseRequest = ::exitApplication,
             title = "Grunteon",
             state = windowState,
-            undecorated = true,
-            transparent = true,
             icon = painterResource("logo.svg")
         ) {
             App(
@@ -70,6 +68,14 @@ fun main(args: Array<String>) {
     }
 }
 
+private fun configureWindowDecorations() {
+    System.setProperty("flatlaf.useWindowDecorations", "true")
+    System.setProperty("flatlaf.menuBarEmbedded", "true")
+    JFrame.setDefaultLookAndFeelDecorated(true)
+    JDialog.setDefaultLookAndFeelDecorated(true)
+    FlatDarkLaf.setup()
+}
+
 @Composable
 fun FrameWindowScope.App(
     isMaximized: Boolean,
@@ -77,7 +83,7 @@ fun FrameWindowScope.App(
     onToggleMaximize: () -> Unit,
     onExit: () -> Unit,
 ) {
-    RoundedWindowShape(enabled = !isMaximized)
+    FullWindowContentEffect()
 
     val plugins = remember { PluginManager.plugins }
     var editorReady by remember { mutableStateOf(true) }
@@ -303,6 +309,7 @@ fun FrameWindowScope.App(
                         onSaveConfig = ::saveConfig,
                         onSaveConfigAs = ::requestSaveConfigAs,
                         isMaximized = isMaximized,
+                        showWindowControls = true,
                         onMinimize = onMinimize,
                         onToggleMaximize = onToggleMaximize,
                         onExit = onExit,
@@ -342,19 +349,6 @@ fun FrameWindowScope.App(
                         BottomStatusBar(uiState)
                     }
                     }
-                    if (!isMaximized) {
-                        Box(
-                            Modifier
-                                .matchParentSize()
-                                .border(
-                                    BorderStroke(
-                                        WindowBorderWidth,
-                                        FluentTheme.colors.stroke.divider.default
-                                    ),
-                                    RoundedCornerShape(WindowCornerRadius)
-                                )
-                        )
-                    }
                 }
             }
         }
@@ -362,37 +356,64 @@ fun FrameWindowScope.App(
 }
 
 @Composable
-private fun FrameWindowScope.RoundedWindowShape(enabled: Boolean) {
-    val cornerDiameter = with(LocalDensity.current) { WindowCornerDiameter.toPx().toDouble() }
+private fun FrameWindowScope.FullWindowContentEffect() {
+    val captionHeight = with(LocalDensity.current) { TitleBarCaptionHeight.roundToPx() }
+    val captionStartInset = with(LocalDensity.current) { TitleBarCaptionStartInset.roundToPx() }
+    val captionEndInset = with(LocalDensity.current) { TitleBarCaptionEndInset.roundToPx() }
 
-    DisposableEffect(window, enabled, cornerDiameter) {
-        fun updateShape() {
-            window.shape = if (enabled) {
-                RoundRectangle2D.Double(
-                    0.0,
-                    0.0,
-                    window.width.toDouble(),
-                    window.height.toDouble(),
-                    cornerDiameter,
-                    cornerDiameter,
+    DisposableEffect(window, captionHeight, captionStartInset, captionEndInset) {
+        var installedHwnd = 0L
+        var attempts = 0
+
+        fun applyRootPaneProperties() {
+            val rootPane = window.rootPane
+            rootPane.putClientProperty(FlatClientProperties.FULL_WINDOW_CONTENT, true)
+            rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_HEIGHT, captionHeight)
+            rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_ICON, false)
+            rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_TITLE, false)
+            rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_ICONIFFY, false)
+            rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_MAXIMIZE, false)
+            rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_CLOSE, false)
+            rootPane.revalidate()
+            rootPane.repaint()
+        }
+
+        val installTimer = Timer(50, null).apply {
+            initialDelay = 0
+            addActionListener {
+                applyRootPaneProperties()
+                installedHwnd = WindowsCaptionHitTest.installOrUpdate(
+                    window = window,
+                    captionHeight = captionHeight,
+                    captionStartInset = captionStartInset,
+                    captionEndInset = captionEndInset,
                 )
-            } else {
-                null
+                if (installedHwnd != 0L) {
+                    println("WindowsCaptionHitTest: installed hwnd=0x${installedHwnd.toString(16)}")
+                    stop()
+                } else if (++attempts >= 40) {
+                    println("WindowsCaptionHitTest: failed to install")
+                    stop()
+                }
             }
         }
 
-        val listener = object : ComponentAdapter() {
-            override fun componentResized(e: ComponentEvent?) {
-                updateShape()
-            }
+        SwingUtilities.invokeLater {
+            installTimer.start()
         }
-
-        updateShape()
-        window.addComponentListener(listener)
 
         onDispose {
-            window.removeComponentListener(listener)
-            window.shape = null
+            installTimer.stop()
+            SwingUtilities.invokeLater {
+                WindowsCaptionHitTest.uninstall(installedHwnd)
+                window.rootPane.putClientProperty(FlatClientProperties.FULL_WINDOW_CONTENT, null)
+                window.rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_HEIGHT, null)
+                window.rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_ICON, null)
+                window.rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_TITLE, null)
+                window.rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_ICONIFFY, null)
+                window.rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_MAXIMIZE, null)
+                window.rootPane.putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_CLOSE, null)
+            }
         }
     }
 }
