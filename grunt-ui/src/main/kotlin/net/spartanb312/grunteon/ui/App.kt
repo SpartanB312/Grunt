@@ -302,18 +302,18 @@ fun FrameWindowScope.App(
 //                        )
 //                        return@ProvideTextStyle
 //                    }
-                    TopToolbar(
-                        uiState = uiState,
-                        onNewConfig = ::requestNewConfig,
-                        onOpenConfig = ::requestOpenConfig,
-                        onSaveConfig = ::saveConfig,
-                        onSaveConfigAs = ::requestSaveConfigAs,
-                        isMaximized = isMaximized,
-                        showWindowControls = true,
-                        onMinimize = onMinimize,
-                        onToggleMaximize = onToggleMaximize,
-                        onExit = onExit,
-                    )
+                        TopToolbar(
+                            uiState = uiState,
+                            onNewConfig = ::requestNewConfig,
+                            onOpenConfig = ::requestOpenConfig,
+                            onSaveConfig = ::saveConfig,
+                            onSaveConfigAs = ::requestSaveConfigAs,
+                            isMaximized = isMaximized,
+                            showWindowControls = true,
+                            onMinimize = onMinimize,
+                            onToggleMaximize = onToggleMaximize,
+                            onExit = onExit,
+                        )
                     Column(
                         Modifier
                             .fillMaxWidth()

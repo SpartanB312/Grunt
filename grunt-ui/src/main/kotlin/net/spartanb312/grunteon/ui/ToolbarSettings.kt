@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.FrameWindowScope
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
@@ -27,7 +26,7 @@ import kotlinx.coroutines.launch
 private val ToolbarTabWidth = 128.dp
 
 @Composable
-fun FrameWindowScope.TopToolbar(
+fun TopToolbar(
     uiState: UIState,
     onNewConfig: () -> Unit,
     onOpenConfig: () -> Unit,
@@ -165,22 +164,34 @@ fun FrameWindowScope.TopToolbar(
                 }
             }
             Box(Modifier.weight(1f).fillMaxHeight())
-            if (showWindowControls) {
-                WindowControlButton(
-                    icon = Icons.Default.Subtract,
-                    contentDescription = "Minimize",
-                    onClick = onMinimize,
-                )
-                WindowControlButton(
-                    icon = if (isMaximized) Icons.Default.SquareMultiple else Icons.Default.Square,
-                    contentDescription = if (isMaximized) "Restore" else "Maximize",
-                    onClick = onToggleMaximize,
-                )
-                WindowControlButton(
-                    icon = Icons.Default.Dismiss,
-                    contentDescription = "Close",
-                    onClick = onExit,
-                )
+            Row(
+                modifier = Modifier.fillMaxHeight(),
+                verticalAlignment = Alignment.Top
+            ) {
+                if (showWindowControls) {
+                    WindowControlButton(
+                        icon = Icons.Default.Subtract,
+                        contentDescription = "Minimize",
+                        buttonColors = ButtonDefaults.subtleButtonColors(),
+                        onClick = onMinimize,
+                    )
+                    WindowControlButton(
+                        icon = if (isMaximized) Icons.Default.SquareMultiple else Icons.Default.Square,
+                        contentDescription = if (isMaximized) "Restore" else "Maximize",
+                        buttonColors = ButtonDefaults.subtleButtonColors(),
+                        onClick = onToggleMaximize,
+                    )
+                    val defaultSubtle = ButtonDefaults.subtleButtonColors()
+                    WindowControlButton(
+                        icon = Icons.Default.Dismiss,
+                        contentDescription = "Close",
+                        buttonColors = ButtonDefaults.subtleButtonColors(
+                            hovered = defaultSubtle.hovered.copy(fillColor = Color(0xFFC42B1C)),
+                            pressed = defaultSubtle.pressed.copy(fillColor = Color(0xFFB3271C))
+                        ),
+                        onClick = onExit,
+                    )
+                }
             }
         }
         TabRow(
@@ -236,29 +247,18 @@ private fun GrunteonLogo(modifier: Modifier = Modifier) {
     )
 }
 
-
-@Composable
-private fun ToolbarTab(label: String, selected: Boolean, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.width(ToolbarTabWidth),
-        buttonColors = if (selected) ButtonDefaults.accentButtonColors() else ButtonDefaults.buttonColors(),
-    ) {
-        Text(label, textAlign = TextAlign.Center)
-    }
-}
-
 @Composable
 private fun WindowControlButton(
     icon: ImageVector,
     contentDescription: String,
+    buttonColors: ButtonColorScheme,
     onClick: () -> Unit,
 ) {
     Button(
         onClick = onClick,
         iconOnly = true,
-        modifier = Modifier.height(32.dp).aspectRatio(1.33f).padding(bottom = 8.dp),
-        buttonColors = ButtonDefaults.subtleButtonColors(),
+        modifier = Modifier.height(40.dp).aspectRatio(1.33f).padding(bottom = 8.dp, top = 0.dp),
+        buttonColors = buttonColors,
     ) {
         Icon(imageVector = icon, contentDescription = contentDescription)
     }
