@@ -403,7 +403,7 @@ private fun IntSliderField(
         sliderStateOnValueChangeProp.set(sliderState) {
             typedValue = sliderState.nearestValue().snappedValue().toString()
         }
-        CardExpanderItem(heading = {}) {
+        CardExpanderItem(heading = {}, icon = null) {
             Slider(
                 state = sliderState,
                 showTickMark = false,
