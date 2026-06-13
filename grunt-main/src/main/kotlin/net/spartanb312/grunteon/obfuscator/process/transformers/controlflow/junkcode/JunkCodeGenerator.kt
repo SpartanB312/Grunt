@@ -13,6 +13,7 @@ import net.spartanb312.grunt.ir.flow.core.FlowThrowJump
 import net.spartanb312.grunt.ir.flow.core.categorySize
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
 import net.spartanb312.grunteon.obfuscator.util.IGNORE_JUNK_CODE
+import net.spartanb312.grunteon.obfuscator.util.ANTI_LLM_JUNK_CALL
 import net.spartanb312.grunteon.obfuscator.util.extensions.hasAnnotation
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
@@ -55,12 +56,24 @@ private val primitiveSorts = setOf(
 private val intLikeSorts = setOf(Type.BOOLEAN, Type.BYTE, Type.CHAR, Type.SHORT, Type.INT)
 private val referenceSorts = setOf(Type.ARRAY, Type.OBJECT)
 private val arraySuperTypes = setOf("java/lang/Object", "java/lang/Cloneable", "java/io/Serializable")
+private val safeStringArgumentTypes = setOf("java/lang/String", "java/lang/Object", "java/lang/CharSequence")
+
+typealias JunkStringProvider = (UniformRandomProvider) -> String?
+
+fun junkStringProvider(values: List<String>): JunkStringProvider? {
+    return if (values.isEmpty()) {
+        null
+    } else {
+        { random -> values[random.nextInt(values.size)] }
+    }
+}
 
 class JunkCodeGenerator(
     private val callPool: JunkCallPool,
     private val hierarchy: ClassHierarchy,
     private val options: JunkCodeOptions,
-    private val random: UniformRandomProvider
+    private val random: UniformRandomProvider,
+    private val stringProvider: JunkStringProvider? = null
 ) {
     fun createTerminalBlock(id: FlowBlockId, method: FlowMethod, entryFrame: FlowFrame): FlowBlock {
         val body = FlowBytecodeSlice(mutableListOf())
@@ -200,6 +213,13 @@ class JunkCodeGenerator(
             Type.LONG -> pushLong(naturalLong())
             Type.FLOAT -> pushFloat(naturalFloat())
             Type.DOUBLE -> pushDouble(naturalDouble())
+            Type.OBJECT -> {
+                if (type.internalName in safeStringArgumentTypes) {
+                    LdcInsnNode(nextStringValue())
+                } else {
+                    error("Unsupported junk call object argument type ${type.descriptor}")
+                }
+            }
             else -> error("Unsupported junk call argument type ${type.descriptor}")
         }
     }
@@ -220,11 +240,17 @@ class JunkCodeGenerator(
     }
 
     private fun stringValue(): GeneratedValue {
-        val values = arrayOf("", "0", "1", "true", "false", "null", "value", "key")
         return GeneratedValue(
-            FlowBytecodeSlice(mutableListOf(LdcInsnNode(values[random.nextInt(values.size)]))),
+            FlowBytecodeSlice(mutableListOf(LdcInsnNode(nextStringValue()))),
             FlowFrameValue.Object("java/lang/String")
         )
+    }
+
+    private fun nextStringValue(): String {
+        val provided = stringProvider?.invoke(random)
+        if (!provided.isNullOrEmpty()) return provided
+        val values = arrayOf("", "0", "1", "true", "false", "null", "value", "key")
+        return values[random.nextInt(values.size)]
     }
 
     private fun booleanWrapperValue(): GeneratedValue {
@@ -489,7 +515,11 @@ class JunkCallPool private constructor(
             if (!isPublic || !isStatic || isNative || isAbstract) return false
             if (name.startsWith("<")) return false
             if (hasAnnotation(IGNORE_JUNK_CODE)) return false
-            return Type.getArgumentTypes(desc).all { it.sort in primitiveSorts }
+            val allowStringArguments = hasAnnotation(ANTI_LLM_JUNK_CALL)
+            return Type.getArgumentTypes(desc).all {
+                it.sort in primitiveSorts ||
+                    (allowStringArguments && it.sort == Type.OBJECT && it.internalName in safeStringArgumentTypes)
+            }
         }
 
         private fun isReturnAssignable(actual: Type, expected: Type, hierarchy: ClassHierarchy): Boolean {

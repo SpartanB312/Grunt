@@ -73,6 +73,8 @@ val DRAFT_RUNTIME_MATERIAL_FIELD = "Lnet/spartanb312/grunteon/annotation/interna
 val DRAFT_RUNTIME_MATERIAL_GUARD = "Lnet/spartanb312/grunteon/annotation/internal/RuntimeMaterialGuard;"
 val STRING_BLACKLIST = "Lnet/spartanb312/grunteon/annotation/internal/StringBlacklist;"
 val REFLECTION_METADATA = "Lnet/spartanb312/grunteon/annotation/internal/ReflectionMetadata;"
+val ANTI_LLM = "Lnet/spartanb312/grunteon/annotation/internal/AntiLLM;"
+val ANTI_LLM_JUNK_CALL = "Lnet/spartanb312/grunteon/annotation/internal/AntiLLMJunkCall;"
 
 @Deprecated("Use DRAFT_RUNTIME_MATERIAL")
 val DRAFT_ANTIDEBUG_MATERIAL = DRAFT_RUNTIME_MATERIAL
@@ -94,5 +96,7 @@ val INTERNAL = mutableSetOf(
     DRAFT_RUNTIME_MATERIAL_FIELD,
     DRAFT_RUNTIME_MATERIAL_GUARD,
     STRING_BLACKLIST,
-    REFLECTION_METADATA
+    REFLECTION_METADATA,
+    ANTI_LLM,
+    ANTI_LLM_JUNK_CALL
 )

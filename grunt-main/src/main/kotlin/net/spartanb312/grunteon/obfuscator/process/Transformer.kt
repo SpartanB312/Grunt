@@ -41,6 +41,8 @@ abstract class Transformer<T : TransformerConfig>(
 
 annotation class HiddenTransformer
 
+annotation class DeprecatedTransformer
+
 enum class StableLevel(val level: Int) {
     RockSolid(5), // very stable
     Stable(4), // stable

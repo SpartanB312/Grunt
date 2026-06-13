@@ -1,57 +1,29 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow
 
 import kotlinx.serialization.Serializable
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExportOptions
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowAnalyzerMode
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowTypeHierarchy
+import net.spartanb312.grunt.ir.flow.jvm.*
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.before
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.DecimalRangeVal
-import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.StableLevel
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.globalScopeValue
+import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
-import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
-import net.spartanb312.grunteon.obfuscator.process.post
-import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
-import net.spartanb312.grunteon.obfuscator.process.seq
+import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.hierarchy.ClassHierarchyFlowTypeHierarchy
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorComplexity
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.CffKeyProcessorRegistry
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattenOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowControlFlowFlattener
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowStateKeyMode
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowStateKeyProcessor
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkStringProvider
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.junkStringProvider
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.*
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
+import net.spartanb312.grunteon.obfuscator.util.extensions.*
 import net.spartanb312.grunteon.obfuscator.util.getRandomString
-import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
-import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
-import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
-import net.spartanb312.grunteon.obfuscator.util.extensions.isMixinClass
-import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
-import net.spartanb312.grunteon.obfuscator.util.extensions.isSynthetic
-import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
-import java.util.concurrent.atomic.AtomicLong
 
 @Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
@@ -231,6 +203,9 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 null
             }
         }
+        val junkStringProviderKey = globalScopeValue {
+            junkStringProvider(instance.workRes.getStringPool(WorkResources.ANTI_LLM_STRING_POOL))
+        }
         val keyProcessorRegistryKey = globalScopeValue {
             if (config.stateKeyMode == FlowStateKeyMode.Inline) {
                 null
@@ -280,6 +255,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                                 randomGen,
                                 hierarchy,
                                 junkCallPoolKey.global,
+                                junkStringProviderKey.global,
                                 keyProcessorRegistryKey.global?.methodProcessor(
                                     owner = classNode.name,
                                     ownerVersion = classNode.version,
@@ -378,6 +354,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         randomGen: UniformRandomProvider,
         hierarchy: ClassHierarchy?,
         junkCallPool: JunkCallPool?,
+        junkStringProvider: JunkStringProvider?,
         stateKeyProcessor: FlowStateKeyProcessor?,
         flowAnalyzerMode: JvmFlowAnalyzerMode,
         flowTypeHierarchy: JvmFlowTypeHierarchy
@@ -420,6 +397,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             randomGen,
             hierarchy,
             junkCallPool,
+            junkStringProvider,
             stateKeyProcessor,
             setOfNotNull(ownerInternalName, ownerSuperName)
         ).flatten(imported.method)

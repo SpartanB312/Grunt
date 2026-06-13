@@ -1,64 +1,20 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow
 
 import kotlinx.serialization.Serializable
-import net.spartanb312.grunt.ir.flow.core.FlowBlock
-import net.spartanb312.grunt.ir.flow.core.FlowBlockId
-import net.spartanb312.grunt.ir.flow.core.FlowBlockKind
-import net.spartanb312.grunt.ir.flow.core.FlowBytecodeSlice
-import net.spartanb312.grunt.ir.flow.core.FlowEdge
-import net.spartanb312.grunt.ir.flow.core.FlowEdgeFlag
-import net.spartanb312.grunt.ir.flow.core.FlowEdgeId
-import net.spartanb312.grunt.ir.flow.core.FlowEdgeSemantics
-import net.spartanb312.grunt.ir.flow.core.FlowFrame
-import net.spartanb312.grunt.ir.flow.core.FlowFrameValue
-import net.spartanb312.grunt.ir.flow.core.FlowGotoJump
-import net.spartanb312.grunt.ir.flow.core.FlowGotoMode
-import net.spartanb312.grunt.ir.flow.core.FlowIfJump
-import net.spartanb312.grunt.ir.flow.core.FlowMethod
-import net.spartanb312.grunt.ir.flow.core.FlowPort
-import net.spartanb312.grunt.ir.flow.core.FlowPredicateGuarantee
-import net.spartanb312.grunt.ir.flow.core.FlowSwitchJump
-import net.spartanb312.grunt.ir.flow.core.FlowVerifier
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowAnalyzerMode
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExportOptions
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowTypeHierarchy
+import net.spartanb312.grunt.ir.flow.core.*
+import net.spartanb312.grunt.ir.flow.jvm.*
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.DecimalRangeVal
-import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.globalScopeValue
-import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
-import net.spartanb312.grunteon.obfuscator.process.post
-import net.spartanb312.grunteon.obfuscator.process.pre
-import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
-import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowExceptionBridgeInserter
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowExceptionBridgeOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowOpaquePredicateProcessor
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorRegistry
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeGenerator
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.pipeline.before
-import net.spartanb312.grunteon.obfuscator.process.StableLevel
+import net.spartanb312.grunteon.obfuscator.process.*
+import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
+import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.hierarchy.ClassHierarchyFlowTypeHierarchy
-import net.spartanb312.grunteon.obfuscator.util.DISABLE_CONTROL_FLOW
-import net.spartanb312.grunteon.obfuscator.util.IGNORE_JUNK_CODE
-import net.spartanb312.grunteon.obfuscator.util.Logger
-import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.*
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.*
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
+import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
-import net.spartanb312.grunteon.obfuscator.util.getRandomString
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
 import net.spartanb312.grunteon.obfuscator.util.extensions.isMixinClass
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
@@ -84,6 +40,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
 ) {
     init {
         before(FakeSyntheticBridge::class.java, "ControlflowJump should run before FakeSyntheticBridge")
+
     }
 
     @Serializable
@@ -241,6 +198,9 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             }.filterNot { it.isMixinClass }
             JunkCallPool.build(classes)
         }
+        val junkStringProviderKey = globalScopeValue {
+            junkStringProvider(instance.workRes.getStringPool(WorkResources.ANTI_LLM_STRING_POOL))
+        }
         val predicateProcessorRegistryKey = globalScopeValue {
             OpaquePredicateProcessorRegistry(
                 classMarker = Xoshiro256PPRandom(getSeed("ControlflowJump", "PredicateProcessor", "classMarker"))
@@ -302,6 +262,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                             hierarchy = hierarchy,
                             flowTypeHierarchy = flowTypeHierarchy,
                             pool = pool,
+                            stringProvider = junkStringProviderKey.global,
                             predicateProcessor = predicateProcessorRegistryKey.global.methodProcessor(
                                 owner = classNode.name,
                                 ownerVersion = classNode.version,
@@ -372,6 +333,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         hierarchy: ClassHierarchy,
         flowTypeHierarchy: JvmFlowTypeHierarchy,
         pool: JunkCallPool,
+        stringProvider: JunkStringProvider?,
         predicateProcessor: FlowOpaquePredicateProcessor,
         random: UniformRandomProvider
     ): JunkBranchMethod {
@@ -404,6 +366,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             ),
             callPool = pool,
             hierarchy = hierarchy,
+            stringProvider = stringProvider,
             predicateProcessor = predicateProcessor,
             random = random
         ).insert(imported.method)
@@ -483,6 +446,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         private val options: JunkBranchOptions,
         private val callPool: JunkCallPool,
         private val hierarchy: ClassHierarchy,
+        private val stringProvider: JunkStringProvider?,
         private val predicateProcessor: FlowOpaquePredicateProcessor,
         private val random: UniformRandomProvider
     ) {
@@ -490,7 +454,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
 
         fun insert(method: FlowMethod): JunkBranchResult {
             val ids = MutableFlowIds(method)
-            val junk = JunkCodeGenerator(callPool, hierarchy, options.junkCodeOptions, random)
+            val junk = JunkCodeGenerator(callPool, hierarchy, options.junkCodeOptions, random, stringProvider)
             val junkExits = JunkExitPlanner(method, ids, junk)
             val mangledIfs = insertMangledIfs(method, ids, junk, junkExits)
             val dispatcherLandingJunkBlocks = insertDispatcherLandingJunkBlocks(method, ids, junkExits)

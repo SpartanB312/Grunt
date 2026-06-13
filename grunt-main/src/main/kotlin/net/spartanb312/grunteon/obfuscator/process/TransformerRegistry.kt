@@ -10,6 +10,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roun
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.ArithmeticSubstitute
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
+import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiLLM
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.DeclaredFieldsExtract
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.ParameterObfuscate
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.ClassShrink
@@ -56,6 +57,7 @@ object TransformerRegistry {
         entry({ SourceDebugInfoHide() }, { SourceDebugInfoHide.Config() }),
         entry({ StringEqualsOptimize() }, { StringEqualsOptimize.Config() }),
         entry({ MethodInliner() }, { MethodInliner.Config() }),
+        entry({ AntiLLM() }, { AntiLLM.Config() }),
         entry({ ControlflowFlattening() }, { ControlflowFlattening.Config() }),
         entry({ ControlflowFlatteningSSA() }, { ControlflowFlatteningSSA.Config() }),
         entry({ ControlflowJump() }, { ControlflowJump.Config() }),
