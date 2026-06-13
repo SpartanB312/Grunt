@@ -71,6 +71,8 @@ val PHANTOM_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomField;
 val DRAFT_RUNTIME_MATERIAL = "Lnet/spartanb312/grunteon/annotation/internal/RuntimeMaterial;"
 val DRAFT_RUNTIME_MATERIAL_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/RuntimeMaterialField;"
 val DRAFT_RUNTIME_MATERIAL_GUARD = "Lnet/spartanb312/grunteon/annotation/internal/RuntimeMaterialGuard;"
+val STRING_BLACKLIST = "Lnet/spartanb312/grunteon/annotation/internal/StringBlacklist;"
+val REFLECTION_METADATA = "Lnet/spartanb312/grunteon/annotation/internal/ReflectionMetadata;"
 
 @Deprecated("Use DRAFT_RUNTIME_MATERIAL")
 val DRAFT_ANTIDEBUG_MATERIAL = DRAFT_RUNTIME_MATERIAL
@@ -90,5 +92,7 @@ val INTERNAL = mutableSetOf(
     PHANTOM_FIELD,
     DRAFT_RUNTIME_MATERIAL,
     DRAFT_RUNTIME_MATERIAL_FIELD,
-    DRAFT_RUNTIME_MATERIAL_GUARD
+    DRAFT_RUNTIME_MATERIAL_GUARD,
+    STRING_BLACKLIST,
+    REFLECTION_METADATA
 )

@@ -22,6 +22,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.StringE
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.DecompilerCrasher
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReferenceObfuscate
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReflectionSupport
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.ShuffleMembers
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.Watermark
 import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.FieldAccessProxy
@@ -60,6 +61,7 @@ object TransformerRegistry {
         entry({ ControlflowJump() }, { ControlflowJump.Config() }),
         entry({ FlowIRRoundTrip() }, { FlowIRRoundTrip.Config() }),
         entry({ SSARoundTrip() }, { SSARoundTrip.Config() }),
+        entry({ ReflectionSupport() }, { ReflectionSupport.Config() }),
         entry({ ArithmeticSubstitute() }, { ArithmeticSubstitute.Config() }),
         entry({ NumberBasicEncrypt() }, { NumberBasicEncrypt.Config() }),
         entry({ StringArrayedEncrypt() }, { StringArrayedEncrypt.Config() }),

@@ -12,11 +12,12 @@ import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.hasAnnotations
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
+import net.spartanb312.grunteon.obfuscator.util.extensions.isAnnotation
 import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
 import org.objectweb.asm.Opcodes
 
-@Transformer.Stability(StableLevel.Stable)
+@Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.other.fake_synthetic_bridge.desc",
     "Insert fake synthetic bridge flag"
@@ -43,6 +44,7 @@ class FakeSyntheticBridge : Transformer<FakeSyntheticBridge.Config>(
         }
         val counter = reducibleScopeValue { MergeableCounter() }
         parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+            if (classNode.isAnnotation) return@parForEachClassesFiltered
             val counter = counter.local
             // Synthetic
             if (!classNode.access.isSynthetic && !classNode.hasAnnotations) {

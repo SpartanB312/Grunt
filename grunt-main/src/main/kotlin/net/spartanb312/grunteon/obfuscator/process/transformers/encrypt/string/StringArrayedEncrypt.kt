@@ -81,11 +81,13 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
                 if (method.isExcluded(DISABLE_STRING_ENCRYPT)) return@forEach
                 val excluded = methodExPredicate.matchedAnyBy(methodFullDesc(classNode, method))
                 if (excluded) return@forEach
+                val stringBlacklist = method.stringBlacklist()
                 method.instructions.asSequence()
                     .filter { it is LdcInsnNode && it.cst is String && (it.cst as String).isNotEmpty() }
                     .shuffled()
                     .forEach { instruction ->
                         val originalString = (instruction as LdcInsnNode).cst as String
+                        if (stringBlacklist.contains(originalString)) return@forEach
                         // Skip duplicate strings
                         val existingIndex = stringsToEncrypt[originalString]
                         stringsToEncrypt.putIfAbsent(originalString, existingIndex ?: stringsToEncrypt.size)
@@ -149,12 +151,14 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
                     INVOKESTATIC(classNode.name, arrayInitMethod.name, arrayInitMethod.desc)
                 })
                 classNode.methods.forEach { methodNode ->
+                    val stringBlacklist = methodNode.stringBlacklist()
                     methodNode.instructions.asSequence()
                         .filter { it is LdcInsnNode && it.cst is String && (it.cst as String).isNotEmpty() }
                         .shuffled()
                         .forEach { instruction ->
                             val originalString = (instruction as LdcInsnNode).cst as String
-                            val index = stringsToEncrypt[originalString]!!
+                            if (stringBlacklist.contains(originalString)) return@forEach
+                            val index = stringsToEncrypt[originalString] ?: return@forEach
                             methodNode.instructions.insert(instruction, instructions {
                                 GETSTATIC(classNode.name, poolField.name, poolField.desc)
                                 INT(index)
