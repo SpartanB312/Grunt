@@ -1,11 +1,14 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.other
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import net.spartanb312.genesis.kotlin.annotation
 import net.spartanb312.genesis.kotlin.clazz
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.*
@@ -20,15 +23,29 @@ import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
 import net.spartanb312.grunteon.obfuscator.util.filters.NamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicates
+import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
+import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
+import org.objectweb.asm.tree.InsnList
+import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.InvokeDynamicInsnNode
+import org.objectweb.asm.tree.IntInsnNode
+import org.objectweb.asm.tree.JumpInsnNode
+import org.objectweb.asm.tree.LabelNode
+import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.TryCatchBlockNode
+import org.objectweb.asm.tree.TypeInsnNode
+import org.objectweb.asm.tree.analysis.Analyzer
+import org.objectweb.asm.tree.analysis.BasicInterpreter
+import org.objectweb.asm.tree.analysis.BasicValue
+import org.objectweb.asm.tree.analysis.Frame
 import java.lang.invoke.CallSite
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
@@ -260,15 +277,247 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         }
         // Force sync
         barrier()
-        // Reobfuscate TODO
+        // Reobf
         if (config.reobfBSM) seq {
             runBlocking {
-
+                addedMethods.forEach { (classNode, methods) ->
+                    methods.forEach { method ->
+                        launch(Dispatchers.Default) {
+                            reobfuscateBootstrapMethod(classNode, method)
+                        }
+                    }
+                }
             }
         }
         post {
             Logger.info(" - ReferenceObfuscate:")
             Logger.info("    Replaced ${counter.global.get()} invokes")
+        }
+    }
+
+    context(instance: Grunteon)
+    private fun reobfuscateBootstrapMethod(classNode: ClassNode, methodNode: MethodNode) {
+        methodNode.localVariables.clear()
+        val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, methodNode.name, methodNode.desc, "reobf"))
+        methodNode.instructions.toArray().forEach { instruction ->
+            val replacement = when {
+                instruction is LdcInsnNode && instruction.cst is String ->
+                    randomGen.reobfuscateString(instruction.cst as String)
+
+                instruction.intConstantValue() != null ->
+                    randomGen.reobfuscateInt(instruction.intConstantValue()!!)
+
+                instruction.longConstantValue() != null ->
+                    randomGen.reobfuscateLong(instruction.longConstantValue()!!)
+
+                else -> null
+            }
+            if (replacement != null) {
+                methodNode.instructions.insertBefore(instruction, replacement)
+                methodNode.instructions.remove(instruction)
+            }
+        }
+        methodNode.reobfuscateGotoEdges(classNode.name, randomGen)
+    }
+
+    private fun MethodNode.reobfuscateGotoEdges(owner: String, random: UniformRandomProvider): Int {
+        if (!instructions.endsWithTerminalInstruction()) return 0
+        val frames = runCatching {
+            Analyzer(BasicInterpreter()).analyze(owner, this)
+        }.getOrNull() ?: return 0
+        val instructionArray = instructions.toArray()
+        val candidates = instructionArray
+            .withIndex()
+            .filter { (index, instruction) ->
+                instruction is JumpInsnNode &&
+                    instruction.opcode == Opcodes.GOTO &&
+                    instruction.isEligibleExceptionBridge(index, instructionArray, frames)
+            }
+            .map { it.value as JumpInsnNode }
+            .toMutableList()
+        candidates.shuffle(random)
+        val candidateSet = candidates.toSet()
+        val bridgePlans = candidates.mapNotNull { goto ->
+            val gotoIndex = instructionArray.indexOf(goto)
+            val anchor = instructionArray.findDistantHandlerAnchor(gotoIndex, candidateSet, frames, random)
+                ?: return@mapNotNull null
+            goto to anchor
+        }
+
+        var inserted = 0
+        for ((goto, handlerAnchor) in bridgePlans) {
+            if (inserted >= REOBF_MAX_EXCEPTION_BRIDGES_PER_METHOD) break
+            val target = goto.label
+            val trapStart = LabelNode()
+            val trapEnd = LabelNode()
+            val handler = LabelNode()
+
+            instructions.insertBefore(goto, InsnList().apply {
+                add(trapStart)
+                add(TypeInsnNode(Opcodes.NEW, REOBF_EXCEPTION_BRIDGE_INTERNAL_NAME))
+                add(InsnNode(Opcodes.DUP))
+                add(MethodInsnNode(
+                    Opcodes.INVOKESPECIAL,
+                    REOBF_EXCEPTION_BRIDGE_INTERNAL_NAME,
+                    "<init>",
+                    "()V",
+                    false
+                ))
+                add(InsnNode(Opcodes.ATHROW))
+                add(trapEnd)
+            })
+            instructions.remove(goto)
+
+            instructions.insert(handlerAnchor, InsnList().apply {
+                add(handler)
+                add(InsnNode(Opcodes.POP))
+                add(JumpInsnNode(Opcodes.GOTO, target))
+            })
+            tryCatchBlocks.add(
+                0,
+                TryCatchBlockNode(
+                    trapStart,
+                    trapEnd,
+                    handler,
+                    REOBF_EXCEPTION_BRIDGE_INTERNAL_NAME
+                )
+            )
+            inserted++
+        }
+        return inserted
+    }
+
+    private fun Array<AbstractInsnNode>.findDistantHandlerAnchor(
+        gotoIndex: Int,
+        candidateSet: Set<AbstractInsnNode>,
+        frames: Array<Frame<BasicValue>?>,
+        random: UniformRandomProvider
+    ): AbstractInsnNode? {
+        if (gotoIndex < 0) return null
+        val anchors = withIndex()
+            .filter { (index, instruction) ->
+                frames.getOrNull(index) != null &&
+                instruction !in candidateSet &&
+                    instruction.isHandlerAnchor() &&
+                    index.distanceTo(gotoIndex) >= REOBF_MIN_EXCEPTION_BRIDGE_DISTANCE
+            }
+            .map { it.value }
+            .toMutableList()
+        if (anchors.isEmpty()) return null
+        return anchors[random.nextInt(anchors.size)]
+    }
+
+    private fun AbstractInsnNode.isHandlerAnchor(): Boolean {
+        return opcode == Opcodes.GOTO ||
+            opcode == Opcodes.ATHROW ||
+            opcode in Opcodes.IRETURN..Opcodes.RETURN
+    }
+
+    private fun Int.distanceTo(other: Int): Int {
+        val distance = this - other
+        return if (distance < 0) -distance else distance
+    }
+
+    private fun UniformRandomProvider.reobfuscateString(value: String): InsnList = instructions {
+        NEW("java/lang/String")
+        DUP
+        +reobfuscateInt(value.length)
+        NEWARRAY(Opcodes.T_CHAR)
+        value.forEachIndexed { index, char ->
+            val key = nextInt()
+            DUP
+            +reobfuscateInt(index)
+            +reobfuscateInt(char.code xor key)
+            +reobfuscateInt(key)
+            IXOR
+            I2C
+            CASTORE
+        }
+        INVOKESPECIAL("java/lang/String", "<init>", "([C)V")
+    }
+
+    private fun UniformRandomProvider.reobfuscateInt(value: Int): InsnList = instructions {
+        val key = nextInt()
+        INT(value xor key)
+        INT(key)
+        IXOR
+    }
+
+    private fun UniformRandomProvider.reobfuscateLong(value: Long): InsnList = instructions {
+        val key = nextLong()
+        LONG(value xor key)
+        LONG(key)
+        LXOR
+    }
+
+    private fun JumpInsnNode.isEligibleExceptionBridge(
+        index: Int,
+        instructions: Array<AbstractInsnNode>,
+        frames: Array<Frame<BasicValue>?>
+    ): Boolean {
+        val sourceFrame = frames.getOrNull(index) ?: return false
+        if (sourceFrame.stackSize != 0) return false
+        val targetIndex = instructions.indexOf(label)
+        if (targetIndex < 0) return false
+        val targetFrame = frames.frameAtOrAfter(targetIndex, instructions) ?: return false
+        return targetFrame.stackSize == 0
+    }
+
+    private fun Array<Frame<BasicValue>?>.frameAtOrAfter(
+        index: Int,
+        instructions: Array<AbstractInsnNode>
+    ): Frame<BasicValue>? {
+        var cursor = index
+        while (cursor < size && cursor < instructions.size) {
+            this[cursor]?.let { return it }
+            cursor++
+        }
+        return null
+    }
+
+    private fun InsnList.endsWithTerminalInstruction(): Boolean {
+        var instruction = last
+        while (instruction != null) {
+            val opcode = instruction.opcode
+            if (opcode >= 0) return opcode == Opcodes.GOTO ||
+                opcode == Opcodes.ATHROW ||
+                opcode in Opcodes.IRETURN..Opcodes.RETURN
+            instruction = instruction.previous
+        }
+        return false
+    }
+
+    private fun <T> MutableList<T>.shuffle(random: UniformRandomProvider) {
+        for (index in lastIndex downTo 1) {
+            val swapIndex = random.nextInt(index + 1)
+            val value = this[index]
+            this[index] = this[swapIndex]
+            this[swapIndex] = value
+        }
+    }
+
+    private fun AbstractInsnNode.intConstantValue(): Int? {
+        return when (opcode) {
+            in Opcodes.ICONST_M1..Opcodes.ICONST_5 -> opcode - Opcodes.ICONST_0
+            Opcodes.BIPUSH, Opcodes.SIPUSH -> (this as IntInsnNode).operand
+            Opcodes.LDC -> {
+                val constant = (this as LdcInsnNode).cst
+                constant as? Int
+            }
+
+            else -> null
+        }
+    }
+
+    private fun AbstractInsnNode.longConstantValue(): Long? {
+        return when (opcode) {
+            in Opcodes.LCONST_0..Opcodes.LCONST_1 -> (opcode - Opcodes.LCONST_0).toLong()
+            Opcodes.LDC -> {
+                val constant = (this as LdcInsnNode).cst
+                constant as? Long
+            }
+
+            else -> null
         }
     }
 
@@ -939,8 +1188,10 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         val seed = materialAnnotation.value("seed") as? Long ?: return null
         classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_SHARE_A, "J") ?: return null
         classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_SHARE_B, "J") ?: return null
-        val key = classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_CANONICAL_KEY, "J") ?: return null
-        val poison = classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_POISON, "I") ?: return null
+        val key = classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_CANONICAL_KEY, "J")
+            ?: return null
+        val poison =
+            classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_POISON, "I") ?: return null
         return RuntimeMaterial(
             keyField = key.name,
             poisonField = poison.name,
@@ -988,6 +1239,9 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         const val RUNTIME_MATERIAL_FIELD_ROLE_SHARE_B = 2
         const val RUNTIME_MATERIAL_FIELD_ROLE_POISON = 3
         const val RUNTIME_MATERIAL_FIELD_ROLE_CANONICAL_KEY = 4
+        const val REOBF_EXCEPTION_BRIDGE_INTERNAL_NAME = "java/lang/RuntimeException"
+        const val REOBF_MAX_EXCEPTION_BRIDGES_PER_METHOD = 3
+        const val REOBF_MIN_EXCEPTION_BRIDGE_DISTANCE = 1
     }
 
 }
