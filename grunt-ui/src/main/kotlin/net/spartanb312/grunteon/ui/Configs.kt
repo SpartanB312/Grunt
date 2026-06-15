@@ -23,6 +23,7 @@ import io.github.composefluent.icons.regular.Copy
 import io.github.composefluent.icons.regular.Delete
 import io.github.composefluent.icons.regular.Dismiss
 import io.github.composefluent.scheme.collectVisualState
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Transient
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Decimal
@@ -36,6 +37,13 @@ import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaField
+
+private data class PathBrowseSpec(
+    val browseLabel: String,
+    val browse: suspend (currentValue: String) -> String?,
+    val browseDirectoryLabel: String? = null,
+    val browseDirectory: (suspend (currentValue: String) -> String?)? = null,
+)
 
 @Suppress("UNCHECKED_CAST")
 @Composable
@@ -108,12 +116,21 @@ private fun ConfigField(
         )
     }
 
+    val pathBrowseSpec = prop.pathBrowseSpec()
     when (propValue) {
         is String -> InspectorCard(label = label, description = description) {
-            StringField(
-                value = propValue,
-                onValueChange = onChange
-            )
+            if (pathBrowseSpec != null) {
+                PathField(
+                    value = propValue,
+                    onValueChange = onChange,
+                    browseSpec = pathBrowseSpec
+                )
+            } else {
+                StringField(
+                    value = propValue,
+                    onValueChange = onChange
+                )
+            }
         }
         is Int -> {
             val range = prop.findAnnotation<IntRangeVal>()
@@ -528,6 +545,7 @@ private fun <E : Any> ListField(
     onValueChange: (List<E>) -> Unit
 ) {
     val listUpdater = ListUpdater({ value }, onValueChange)
+    val pathBrowseSpec = prop.pathBrowseSpec()
 
     @Composable
     fun ListEntryCard(index: Int, content: @Composable () -> Unit) {
@@ -658,10 +676,18 @@ private fun <E : Any> ListField(
             }
             when (item) {
                 is String -> ListEntryCard(index) {
-                    StringField(
-                        value = item,
-                        onValueChange = onChange
-                    )
+                    if (pathBrowseSpec != null) {
+                        PathField(
+                            value = item,
+                            onValueChange = onChange,
+                            browseSpec = pathBrowseSpec
+                        )
+                    } else {
+                        StringField(
+                            value = item,
+                            onValueChange = onChange
+                        )
+                    }
                 }
                 is Int -> {
                     val range = prop.findAnnotation<IntRangeVal>()
@@ -734,6 +760,26 @@ private fun <E : Any> ListField(
     }
 }
 
+private fun KProperty<*>.pathBrowseSpec(): PathBrowseSpec? = when (name) {
+    "input" -> PathBrowseSpec(
+        browseLabel = "File",
+        browse = { chooseInputPath(it)?.toString() },
+        browseDirectoryLabel = "Dir",
+        browseDirectory = { chooseInputDirectory(it)?.toString() }
+    )
+    "output" -> PathBrowseSpec(
+        browseLabel = "Browse",
+        browse = { chooseOutputPath(it)?.toString() }
+    )
+    "libs" -> PathBrowseSpec(
+        browseLabel = "File",
+        browse = { chooseInputPath(it)?.toString() },
+        browseDirectoryLabel = "Dir",
+        browseDirectory = { chooseInputDirectory(it)?.toString() }
+    )
+    else -> null
+}
+
 @Composable
 private fun ReadOnlyValue(text: String) {
     val interactionSource1 = remember<MutableInteractionSource> { MutableInteractionSource() }
@@ -769,4 +815,47 @@ private fun ReadOnlyValue(text: String) {
             )
         }
     )
+}
+
+@Composable
+private fun PathField(
+    value: String,
+    onValueChange: (Any) -> Unit,
+    browseSpec: PathBrowseSpec,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TextField(
+            value = value,
+            onValueChange = { onValueChange(it) },
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+        )
+        Button(
+            onClick = {
+                coroutineScope.launch {
+                    browseSpec.browse(value)?.let { onValueChange(it) }
+                }
+            },
+            modifier = Modifier.width(if (browseSpec.browseDirectory == null) 96.dp else 72.dp)
+        ) {
+            Text(browseSpec.browseLabel)
+        }
+        if (browseSpec.browseDirectory != null && browseSpec.browseDirectoryLabel != null) {
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        browseSpec.browseDirectory.invoke(value)?.let { onValueChange(it) }
+                    }
+                },
+                modifier = Modifier.width(72.dp)
+            ) {
+                Text(browseSpec.browseDirectoryLabel)
+            }
+        }
+    }
 }
