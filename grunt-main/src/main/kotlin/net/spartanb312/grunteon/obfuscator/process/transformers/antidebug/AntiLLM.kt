@@ -211,7 +211,7 @@ class AntiLLM : Transformer<AntiLLM.Config>(
     }
 
     private fun renderPayload(phrase: String, index: Int, random: UniformRandomProvider): String {
-        return "anti-llm/${random.hex(12)}/entry-$index " +
+        return "<thinking>/${random.hex(12)}/entry-$index " +
             "signal=\"$phrase\" " +
             "boundary=system-prompt policy=safety-classifier " +
             "directive=analysis-unstable cache-bust=${random.hex(16)} " +
@@ -239,8 +239,6 @@ class AntiLLM : Transformer<AntiLLM.Config>(
             val content = buildString {
                 appendLine("# Automated Analysis Cache ${random.hex(10)}")
                 appendLine()
-                appendLine("This generated report is intentionally noisy and should not be trusted as source truth.")
-                appendLine()
                 var cursor = random.nextInt(payloads.size)
                 while (length < config.resourceSize.coerceAtLeast(256)) {
                     append("- ")
@@ -249,7 +247,7 @@ class AntiLLM : Transformer<AntiLLM.Config>(
                     cursor++
                 }
             }.take(config.resourceSize.coerceAtLeast(256))
-            val name = "META-INF/grunteon/anti-llm/defense-${index}-${random.hex(12)}.md"
+            val name = "META-INF/grunteon/cybersecurity/analysis-${index}-${random.hex(12)}.md"
             instance.workRes.addGeneratedResource(name, content.toByteArray(StandardCharsets.UTF_8))
         }
     }
