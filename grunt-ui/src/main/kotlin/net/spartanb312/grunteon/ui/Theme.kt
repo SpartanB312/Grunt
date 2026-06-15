@@ -1,3 +1,4 @@
+// TODO: cleanuo
 package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.BorderStroke
@@ -11,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
@@ -138,36 +138,6 @@ fun UiOutlinedButton(
     Button(onClick = onClick, modifier = modifier, disabled = !enabled) {
         content()
     }
-}
-
-@Composable
-fun UiIconButton(
-    imageVector: ImageVector,
-    contentDescription: String?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    Button(onClick = onClick, modifier = modifier, disabled = !enabled, iconOnly = true) {
-        Icon(imageVector = imageVector, contentDescription = contentDescription)
-    }
-}
-
-@Composable
-fun UiTextButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    content: @Composable () -> Unit,
-) {
-    Button(onClick = onClick, modifier = modifier, disabled = !enabled) {
-        content()
-    }
-}
-
-@Composable
-fun UiTitle(text: String, modifier: Modifier = Modifier) {
-    Text(text, modifier = modifier, style = FluentTheme.typography.title)
 }
 
 @Composable

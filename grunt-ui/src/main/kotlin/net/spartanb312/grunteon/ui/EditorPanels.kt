@@ -1,10 +1,14 @@
 package net.spartanb312.grunteon.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -16,10 +20,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.background.Layer
 import io.github.composefluent.component.*
@@ -28,6 +38,99 @@ import io.github.composefluent.icons.regular.*
 import net.spartanb312.grunteon.obfuscator.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.Category
 import java.util.*
+
+private data class DragCardBounds(
+    val top: Float,
+    val bottom: Float,
+) {
+    val center: Float get() = (top + bottom) / 2f
+    val height: Float get() = bottom - top
+}
+
+private class PipelineDragState {
+    private val cardBounds = mutableStateMapOf<Int, DragCardBounds>()
+
+    var draggedIndex by mutableStateOf<Int?>(null)
+        private set
+    var hoveredIndex by mutableStateOf<Int?>(null)
+        private set
+    var dragOffsetY by mutableFloatStateOf(0f)
+        private set
+    val isDragging: Boolean
+        get() = draggedIndex != null
+
+    fun onCardMeasured(index: Int, top: Float, height: Float) {
+        cardBounds[index] = DragCardBounds(top, top + height)
+        if (draggedIndex != null) updateHoveredIndex()
+    }
+
+    fun onCardDisposed(index: Int) {
+        cardBounds.remove(index)
+    }
+
+    fun startDrag(index: Int) {
+        draggedIndex = index
+        hoveredIndex = index
+        dragOffsetY = 0f
+    }
+
+    fun dragBy(deltaY: Float) {
+        if (draggedIndex == null) return
+        dragOffsetY += deltaY
+        updateHoveredIndex()
+    }
+
+    fun finishDrag(onMove: (fromIndex: Int, toIndex: Int) -> Unit) {
+        val fromIndex = draggedIndex
+        val toIndex = hoveredIndex
+        reset()
+        if (fromIndex != null && toIndex != null && fromIndex != toIndex) {
+            onMove(fromIndex, toIndex)
+        }
+    }
+
+    fun cancelDrag() {
+        reset()
+    }
+
+    fun previewOffsetFor(index: Int): Float {
+        val draggedIndex = draggedIndex ?: return 0f
+        val hoveredIndex = hoveredIndex ?: return 0f
+        if (index == draggedIndex || draggedIndex == hoveredIndex) return 0f
+
+        val slotDistance = cardBounds[draggedIndex]?.slotDistance(draggedIndex, cardBounds) ?: return 0f
+        return when {
+            draggedIndex < hoveredIndex && index in (draggedIndex + 1)..hoveredIndex -> -slotDistance
+            hoveredIndex < draggedIndex && index in hoveredIndex..<draggedIndex -> slotDistance
+            else -> 0f
+        }
+    }
+
+    private fun updateHoveredIndex() {
+        val draggedIndex = draggedIndex ?: return
+        val draggedBounds = cardBounds[draggedIndex] ?: return
+        val draggedCenter = draggedBounds.center + dragOffsetY
+        hoveredIndex = cardBounds
+            .minByOrNull { (_, bounds) -> kotlin.math.abs(bounds.center - draggedCenter) }
+            ?.key
+            ?: draggedIndex
+    }
+
+    private fun reset() {
+        draggedIndex = null
+        hoveredIndex = null
+        dragOffsetY = 0f
+    }
+
+    private fun DragCardBounds.slotDistance(
+        index: Int,
+        boundsMap: Map<Int, DragCardBounds>,
+    ): Float {
+        boundsMap[index + 1]?.let { next -> return next.top - top }
+        boundsMap[index - 1]?.let { previous -> return top - previous.top }
+        return height
+    }
+}
 
 @Composable
 fun TransformerLibrary(
@@ -171,6 +274,7 @@ fun PipelineStackPanel(
     state: PipelineEditorState,
     modifier: Modifier = Modifier,
 ) {
+    val dragState = remember { PipelineDragState() }
     PanelSurface(
         title = "Pipeline Stack",
         description = "Execution order is top to bottom. Duplicate transformers are allowed.",
@@ -203,7 +307,13 @@ fun PipelineStackPanel(
                     .onClick { state.selectedIndex = -1 }
             ) {
                 itemsIndexed(state.transformerList) { index, entry ->
-                    TransformerCard(state, orderWarnings, index, entry)
+                    TransformerCard(
+                        state = state,
+                        orderWarnings = orderWarnings,
+                        index = index,
+                        entry = entry,
+                        dragState = dragState
+                    )
                     if (index == mappingApplierPosition) {
                         VirtualMappingApplier()
                     }
@@ -219,18 +329,43 @@ private fun TransformerCard(
     orderWarnings: Map<Int, List<String>>,
     index: Int,
     entry: TransformerEntry,
+    dragState: PipelineDragState,
 ) {
     val selected = state.selectedIndex == index
     val definition = findDefinition(entry.config, state.definitions)
     val warnings = orderWarnings[index]
+    val isDragged = dragState.draggedIndex == index
+    val isDropTarget = dragState.hoveredIndex == index && !isDragged
+    val motionSpec = if (dragState.isDragging) {
+        spring<Float>(stiffness = 650f, dampingRatio = 0.82f)
+    } else {
+        snap()
+    }
+    val previewOffset by animateFloatAsState(
+        targetValue = if (isDragged) 0f else dragState.previewOffsetFor(index),
+        animationSpec = motionSpec,
+        label = "pipelineCardPreviewOffset"
+    )
+    val dragScale by animateFloatAsState(
+        targetValue = if (isDragged) 1.03f else 1f,
+        animationSpec = motionSpec,
+        label = "pipelineCardScale"
+    )
+    val dragAlpha by animateFloatAsState(
+        targetValue = if (isDragged) 0.96f else 1f,
+        animationSpec = motionSpec,
+        label = "pipelineCardAlpha"
+    )
     val borderColor = when {
         warnings != null -> FluentTheme.colors.system.caution
+        isDropTarget -> FluentTheme.colors.fillAccent.default
         selected -> FluentTheme.colors.fillAccent.default
         else -> FluentTheme.colors.stroke.card.default
     }
 
-    val canMoveUp = index > 0
-    val canMoveDown = index < state.transformerList.size - 1
+    DisposableEffect(index) {
+        onDispose { dragState.onCardDisposed(index) }
+    }
 
     Box(
         modifier = Modifier
@@ -239,38 +374,52 @@ private fun TransformerCard(
                 if (selected) FluentTheme.colors.background.card.tertiary else FluentTheme.colors.background.card.default,
                 FluentTheme.shapes.control
             )
-            .height(120.dp)
+            .height(96.dp)
             .border(BorderStroke(2.dp, borderColor), FluentTheme.shapes.control)
+            .onGloballyPositioned {
+                dragState.onCardMeasured(index, it.positionInParent().y, it.size.height.toFloat())
+            }
+            .zIndex(if (isDragged) 1f else 0f)
+            .graphicsLayer {
+                translationY = if (isDragged) dragState.dragOffsetY else previewOffset
+                scaleX = dragScale
+                scaleY = dragScale
+                alpha = dragAlpha
+            }
             .clickable(onClick = { state.selectedIndex = index }),
     ) {
         Row(
             modifier = Modifier.padding(12.dp).fillMaxHeight(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            Column(
-                modifier = Modifier.fillMaxHeight(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(48.dp)
+                    .pointerInput(index) {
+                        detectDragGestures(
+                            onDragStart = { _: Offset ->
+                                state.selectedIndex = index
+                                dragState.startDrag(index)
+                            },
+                            onDragEnd = {
+                                dragState.finishDrag(state::moveTransformer)
+                            },
+                            onDragCancel = {
+                                dragState.cancelDrag()
+                            }
+                        ) { change, dragAmount ->
+                            change.consume()
+                            dragState.dragBy(dragAmount.y)
+                        }
+                    },
+                contentAlignment = Alignment.Center
             ) {
-                UiIconButton(
-                    imageVector = Icons.Default.ArrowSortUp,
-                    contentDescription = "Move up",
-                    onClick = { state.moveTransformer(index, index - 1) },
-                    enabled = canMoveUp,
-                    modifier = Modifier.size(32.dp)
-                )
                 Icon(
                     imageVector = Icons.Default.ReOrderDotsVertical,
-                    contentDescription = null,
+                    contentDescription = "Drag to reorder",
                     modifier = Modifier.size(20.dp),
-                )
-                UiIconButton(
-                    imageVector = Icons.Default.ArrowSortDown,
-                    contentDescription = "Move down",
-                    onClick = { state.moveTransformer(index, index + 1) },
-                    enabled = canMoveDown,
-                    modifier = Modifier.size(32.dp)
                 )
             }
             Column(
