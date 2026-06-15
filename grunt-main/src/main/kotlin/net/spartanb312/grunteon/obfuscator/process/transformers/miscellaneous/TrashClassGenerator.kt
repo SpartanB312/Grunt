@@ -38,6 +38,7 @@ import net.spartanb312.grunteon.obfuscator.process.SettingName
 import net.spartanb312.grunteon.obfuscator.process.StableLevel
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
+import net.spartanb312.grunteon.obfuscator.process.globalScopeValue
 import net.spartanb312.grunteon.obfuscator.process.post
 import net.spartanb312.grunteon.obfuscator.process.resource.NameGenerator
 import net.spartanb312.grunteon.obfuscator.process.seq
@@ -135,15 +136,16 @@ class TrashClassGenerator : Transformer<TrashClassGenerator.Config>(
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
-        val plans = buildPlans(config)
+        val plans = globalScopeValue { buildPlans(config) }
 
         seq {
-            plans.forEach { plan ->
+            plans.global.forEach { plan ->
                 instance.workRes.addGeneratedClass(plan.toClassNode(config))
             }
         }
 
         post {
+            val plans = plans.global
             Logger.info(" - TrashClassGenerator:")
             Logger.info("    Generated ${plans.size} trash classes")
             Logger.info("    Generated ${plans.sumOf { it.fieldCount }} fields")
