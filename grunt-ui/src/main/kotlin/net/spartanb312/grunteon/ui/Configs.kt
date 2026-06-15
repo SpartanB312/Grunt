@@ -63,21 +63,22 @@ fun <T : Any> ConfigEditor(
         .filter { it.annotations.none { ann -> ann is HiddenFromAutoParameter || ann is Transient } }
         .sortedBy { copyFunParameterOrder[it.name] ?: Int.MAX_VALUE }
 
-    properties.forEach {
-        val propValue = it.get(value)!!
+    properties.forEachIndexed { index, property ->
+        val propValue = property.get(value)!!
         val newParameterFunc = { newValue: Any ->
             val newParameters = copyFunc.callBy(
                 mapOf(
                     copyFunc.parameters[0] to value,
-                    copyFunc.parameters[1 + copyFunParameterOrder[it.name]!!] to newValue
+                    copyFunc.parameters[1 + copyFunParameterOrder[property.name]!!] to newValue
                 )
             ) as T
             onChange(newParameters)
         }
         ConfigField(
-            prop = it,
-            propValue = propValue,
-            onChange = newParameterFunc
+            index,
+            property,
+            propValue,
+            newParameterFunc
         )
     }
 }
@@ -85,15 +86,27 @@ fun <T : Any> ConfigEditor(
 @Suppress("UNCHECKED_CAST")
 @Composable
 private fun ConfigField(
+    index: Int,
     prop: KProperty<*>,
     propValue: Any,
     onChange: (Any) -> Unit
 ) {
+    val section = prop.findAnnotation<SettingSection>()?.enText
+        ?: propValue::class.findAnnotation<SettingSection>()?.enText
+
     val label = prop.findAnnotation<SettingName>()?.enText
         ?: propValue::class.findAnnotation<SettingName>()?.enText
         ?: camelCaseToWords(prop.name)
     val description = prop.findAnnotation<SettingDesc>()?.enText
         ?: propValue::class.findAnnotation<SettingDesc>()?.enText
+
+    if (section != null) {
+        Text(
+            section,
+            style = FluentTheme.typography.bodyStrong,
+            modifier = Modifier.padding(start = 2.dp, top = if (index == 0) 2.dp else 32.dp, bottom = 8.dp)
+        )
+    }
 
     when (propValue) {
         is String -> InspectorCard(label = label, description = description) {

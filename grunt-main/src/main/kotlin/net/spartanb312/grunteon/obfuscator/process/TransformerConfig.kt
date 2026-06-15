@@ -12,6 +12,10 @@ import kotlin.reflect.KClass
 
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.PROPERTY, AnnotationTarget.CLASS)
+annotation class SettingSection(val enText: String)
+
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.PROPERTY, AnnotationTarget.CLASS)
 annotation class SettingDesc(val enText: String)
 
 // Optional, will fallback to property name if not present
