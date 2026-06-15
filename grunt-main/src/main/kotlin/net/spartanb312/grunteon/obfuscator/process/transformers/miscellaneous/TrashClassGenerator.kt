@@ -2,46 +2,18 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous
 
 import kotlinx.serialization.Serializable
 import net.spartanb312.genesis.kotlin.clazz
-import net.spartanb312.genesis.kotlin.extensions.FINAL
-import net.spartanb312.genesis.kotlin.extensions.Java8
-import net.spartanb312.genesis.kotlin.extensions.PRIVATE
-import net.spartanb312.genesis.kotlin.extensions.PUBLIC
-import net.spartanb312.genesis.kotlin.extensions.STATIC
-import net.spartanb312.genesis.kotlin.extensions.SUPER
-import net.spartanb312.genesis.kotlin.extensions.SYNTHETIC
-import net.spartanb312.genesis.kotlin.extensions.insn.ALOAD
-import net.spartanb312.genesis.kotlin.extensions.insn.ARETURN
-import net.spartanb312.genesis.kotlin.extensions.insn.IADD
-import net.spartanb312.genesis.kotlin.extensions.insn.ILOAD
-import net.spartanb312.genesis.kotlin.extensions.insn.IMUL
-import net.spartanb312.genesis.kotlin.extensions.insn.IOR
-import net.spartanb312.genesis.kotlin.extensions.insn.IRETURN
-import net.spartanb312.genesis.kotlin.extensions.insn.ISTORE
-import net.spartanb312.genesis.kotlin.extensions.insn.ISUB
-import net.spartanb312.genesis.kotlin.extensions.insn.IXOR
-import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESPECIAL
-import net.spartanb312.genesis.kotlin.extensions.insn.INVOKESTATIC
-import net.spartanb312.genesis.kotlin.extensions.insn.LDC
-import net.spartanb312.genesis.kotlin.extensions.insn.RETURN
-import net.spartanb312.genesis.kotlin.extensions.INT
+import net.spartanb312.genesis.kotlin.extensions.*
+import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.field
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.pipeline.before
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.DecimalRangeVal
-import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.StableLevel
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.globalScopeValue
-import net.spartanb312.grunteon.obfuscator.process.post
+import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.NameGenerator
-import net.spartanb312.grunteon.obfuscator.process.seq
+import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.trashgen.DEFAULT_TRASH_CLASS_PROVIDER
+import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.trashgen.TrashClassProviderContext
+import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.trashgen.TrashClassProviderRegistry
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_CLASS
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_FIELD
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_METHOD
@@ -78,6 +50,12 @@ class TrashClassGenerator : Transformer<TrashClassGenerator.Config>(
 
     @Serializable
     data class Config(
+        @SettingDesc("Provider used to generate trash classes. Built-in provider: genesis")
+        @SettingName("Provider")
+        val provider: String = DEFAULT_TRASH_CLASS_PROVIDER,
+        @SettingDesc("Provider-specific options reserved for external providers. Use key=value entries")
+        @SettingName("Provider options")
+        val providerOptions: List<String> = emptyList(),
         @SettingDesc("Number of generated trash classes")
         @IntRangeVal(min = 0, max = 4096)
         @SettingName("Class count")
@@ -132,25 +110,71 @@ class TrashClassGenerator : Transformer<TrashClassGenerator.Config>(
         @SettingDesc("Attach Grunteon generated annotations for PostProcess cleanup")
         @SettingName("Generated markers")
         val generatedMarkers: Boolean = true,
-    ) : TransformerConfig()
+    ) : TransformerConfig() {
+        fun providerOptionMap(): Map<String, String> {
+            val parsed = linkedMapOf<String, String>()
+            providerOptions.forEach { entry ->
+                val normalized = entry.trim()
+                if (normalized.isEmpty()) return@forEach
+                val separator = normalized.indexOf('=')
+                if (separator <= 0) return@forEach
+                val key = normalized.substring(0, separator).trim()
+                if (key.isEmpty()) return@forEach
+                parsed[key] = normalized.substring(separator + 1).trim()
+            }
+            return parsed
+        }
+    }
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
-        val plans = globalScopeValue { buildPlans(config) }
+        val generated = globalScopeValue { generateClasses(config) }
 
         seq {
-            plans.global.forEach { plan ->
-                instance.workRes.addGeneratedClass(plan.toClassNode(config))
+            generated.global.classes.forEach { classNode ->
+                instance.workRes.addGeneratedClass(classNode)
             }
         }
 
         post {
-            val plans = plans.global
+            val generated = generated.global
             Logger.info(" - TrashClassGenerator:")
-            Logger.info("    Generated ${plans.size} trash classes")
-            Logger.info("    Generated ${plans.sumOf { it.fieldCount }} fields")
-            Logger.info("    Generated ${plans.sumOf { it.methods.size }} methods")
+            Logger.info("    Provider ${generated.providerId}")
+            Logger.info("    Generated ${generated.classes.size} trash classes")
+            Logger.info("    Generated ${generated.classes.sumOf { it.fields?.size ?: 0 }} fields")
+            Logger.info("    Generated ${generated.classes.sumOf { it.methods?.size ?: 0 }} methods")
         }
+    }
+
+    context(instance: Grunteon)
+    private fun generateClasses(config: Config): GeneratedClasses {
+        val provider = TrashClassProviderRegistry.find(config.provider)
+        if (provider != null) {
+            return GeneratedClasses(
+                providerId = provider.id,
+                classes = provider.generate(
+                    TrashClassProviderContext(
+                        instance = instance,
+                        transformerSeed = transformerSeed,
+                        config = config,
+                        providerOptions = config.providerOptions,
+                        providerOptionMap = config.providerOptionMap()
+                    )
+                )
+            )
+        }
+
+        if (config.provider.trim() != DEFAULT_TRASH_CLASS_PROVIDER) {
+            Logger.warn(
+                "TrashClassGenerator provider '${config.provider}' is not registered. " +
+                    "Falling back to $DEFAULT_TRASH_CLASS_PROVIDER."
+            )
+        }
+
+        return GeneratedClasses(
+            providerId = DEFAULT_TRASH_CLASS_PROVIDER,
+            classes = buildPlans(config).map { it.toClassNode(config) }
+        )
     }
 
     context(instance: Grunteon)
@@ -265,6 +289,11 @@ class TrashClassGenerator : Transformer<TrashClassGenerator.Config>(
             if (usedMembers.add(name)) return name
         }
     }
+
+    private data class GeneratedClasses(
+        val providerId: String,
+        val classes: List<ClassNode>
+    )
 
     private data class TrashClassPlan(
         val name: String,
