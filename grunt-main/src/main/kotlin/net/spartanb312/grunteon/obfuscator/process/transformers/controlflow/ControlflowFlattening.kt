@@ -141,6 +141,9 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @IntRangeVal(min = 0, max = 16)
         @SettingName("Key processor max chain steps")
         val keyProcessorMaxChainSteps: Int = 0,
+        @SettingDesc("Mark generated state key processor methods as native codegen candidates")
+        @SettingName("Key processor native candidate")
+        val keyProcessorNativeCandidate: Boolean = false,
         @SettingDesc("Shuffle physical layout order of Flow blocks selected into the flattened region")
         @SettingName("Shuffle region blocks")
         val shuffleRegionBlocks: Boolean = false,
@@ -220,7 +223,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                         minExtraSteps = config.keyProcessorMinExtraSteps,
                         maxExtraSteps = config.keyProcessorMaxExtraSteps,
                         minChainSteps = config.keyProcessorMinChainSteps,
-                        maxChainSteps = config.keyProcessorMaxChainSteps
+                        maxChainSteps = config.keyProcessorMaxChainSteps,
+                        nativeCandidate = config.keyProcessorNativeCandidate
                     )
                 )
             }

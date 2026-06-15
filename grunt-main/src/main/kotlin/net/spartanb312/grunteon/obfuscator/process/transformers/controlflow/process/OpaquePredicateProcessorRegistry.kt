@@ -15,6 +15,7 @@ import net.spartanb312.grunt.ir.flow.core.FlowJumpInput
 import net.spartanb312.grunt.ir.flow.core.FlowPredicateGuarantee
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_CLASS
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_METHOD
+import net.spartanb312.grunteon.obfuscator.util.NATIVE_INCLUDED
 import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Opcodes
@@ -38,7 +39,8 @@ internal data class OpaquePredicateProcessorOptions(
     val randomBoundMaxChainSteps: Int = 1,
     val randomBoundMin: Int = 3,
     val randomBoundMax: Int = 17,
-    val randomBoundMaxDelta: Int = 8
+    val randomBoundMaxDelta: Int = 8,
+    val nativeCandidate: Boolean = false
 ) {
     val mainStepRange: IntRange
         get() = normalizedIntRange(minMainSteps, maxMainSteps, minimum = 1)
@@ -190,7 +192,8 @@ internal class OpaquePredicateProcessorRegistry(
         return classes.computeIfAbsent(owner) {
             ProcessorClassPlan(
                 name = processorClassName(owner),
-                version = ownerVersion.takeIf { it > 0 } ?: Opcodes.V1_8
+                version = ownerVersion.takeIf { it > 0 } ?: Opcodes.V1_8,
+                nativeCandidate = options.nativeCandidate
             )
         }
     }
@@ -276,7 +279,8 @@ internal class OpaquePredicateProcessorRegistry(
 
     private class ProcessorClassPlan(
         val name: String,
-        private val version: Int
+        private val version: Int,
+        private val nativeCandidate: Boolean
     ) {
         private val actions = ConcurrentHashMap<String, PredicateActionPlan>()
 
@@ -329,7 +333,7 @@ internal class OpaquePredicateProcessorRegistry(
             ) {
                 actions.values
                     .sortedBy { it.name }
-                    .forEach { +it.toMethodNode() }
+                    .forEach { +it.toMethodNode(nativeCandidate) }
             }.appendAnnotation(GENERATED_CLASS)
         }
     }
@@ -349,8 +353,8 @@ internal class OpaquePredicateProcessorRegistry(
         val comparison: Comparison,
         val compareValue: IntConstChain
     ) {
-        fun toMethodNode(): MethodNode {
-            return method(
+        fun toMethodNode(nativeCandidate: Boolean): MethodNode {
+            val node = method(
                 PUBLIC + STATIC,
                 name,
                 ActionDesc
@@ -376,6 +380,8 @@ internal class OpaquePredicateProcessorRegistry(
                 }
                 MAXS(10, 3)
             }.appendAnnotation(GENERATED_METHOD)
+            if (nativeCandidate) node.appendAnnotation(NATIVE_INCLUDED)
+            return node
         }
 
         companion object {

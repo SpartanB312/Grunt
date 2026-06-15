@@ -106,8 +106,6 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
             for (indy in indyNodes) {
                 val helperName = nextHelperName(config.helperPrefix, method.name, methodIndyIndex++, existingNames)
                 val helper = createIndyHelper(this, helperName, indy)
-                helper.appendAnnotation(NATIVE_JVM_BRIDGE)
-                helper.appendAnnotation(NATIVE_EXCLUDED)
                 helpers += helper
 
                 instructions.insertBefore(
@@ -166,6 +164,8 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
         helper.maxLocals = local
         helper.maxStack = maxOf(argTypes.sumOf { it.size }, returnType.size)
         helper.appendAnnotation(GENERATED_METHOD)
+        helper.appendAnnotation(NATIVE_JVM_BRIDGE)
+        helper.appendAnnotation(NATIVE_EXCLUDED)
         return helper
     }
 

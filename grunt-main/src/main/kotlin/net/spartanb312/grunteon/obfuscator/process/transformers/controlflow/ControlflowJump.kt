@@ -142,6 +142,9 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @IntRangeVal(min = 0, max = 8)
         @SettingName("Random bound predicate max chain steps")
         val randomBoundPredicateMaxChainSteps: Int = 1,
+        @SettingDesc("Mark generated opaque predicate processor methods as native codegen candidates")
+        @SettingName("Predicate native candidate")
+        val predicateProcessorNativeCandidate: Boolean = false,
         @SettingDesc("Maximum junk call preludes emitted before a junk terminal return")
         @IntRangeVal(min = 0, max = 8)
         @SettingName("Max prelude calls")
@@ -220,7 +223,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                     randomBoundMinExtraSteps = config.randomBoundPredicateMinExtraSteps,
                     randomBoundMaxExtraSteps = config.randomBoundPredicateMaxExtraSteps,
                     randomBoundMinChainSteps = config.randomBoundPredicateMinChainSteps,
-                    randomBoundMaxChainSteps = config.randomBoundPredicateMaxChainSteps
+                    randomBoundMaxChainSteps = config.randomBoundPredicateMaxChainSteps,
+                    nativeCandidate = config.predicateProcessorNativeCandidate
                 )
             )
         }

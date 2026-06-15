@@ -11,6 +11,7 @@ import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_CLASS
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_METHOD
+import net.spartanb312.grunteon.obfuscator.util.NATIVE_INCLUDED
 import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
 import net.spartanb312.grunteon.obfuscator.util.interfaces.DisplayEnum
 import org.apache.commons.rng.UniformRandomProvider
@@ -52,7 +53,8 @@ data class CffKeyProcessorOptions(
     val minExtraSteps: Int = 0,
     val maxExtraSteps: Int = 1,
     val minChainSteps: Int = 0,
-    val maxChainSteps: Int = 0
+    val maxChainSteps: Int = 0,
+    val nativeCandidate: Boolean = false
 ) {
     val mainStepRange: IntRange
         get() = normalizedIntRange(minMainSteps, maxMainSteps, minimum = 1)
@@ -102,7 +104,8 @@ class CffKeyProcessorRegistry(
         return classes.computeIfAbsent(owner) {
             ProcessorClassPlan(
                 name = processorClassName(owner),
-                version = ownerVersion.takeIf { it > 0 } ?: Opcodes.V1_8
+                version = ownerVersion.takeIf { it > 0 } ?: Opcodes.V1_8,
+                nativeCandidate = options.nativeCandidate
             )
         }
     }
@@ -145,7 +148,8 @@ class CffKeyProcessorRegistry(
 
     private class ProcessorClassPlan(
         val name: String,
-        private val version: Int
+        private val version: Int,
+        private val nativeCandidate: Boolean
     ) {
         private val actions = ConcurrentHashMap<String, ProcessorActionPlan>()
 
@@ -181,7 +185,7 @@ class CffKeyProcessorRegistry(
             ) {
                 actions.values
                     .sortedBy { it.name }
-                    .forEach { +it.toMethodNode() }
+                    .forEach { +it.toMethodNode(nativeCandidate) }
             }.appendAnnotation(GENERATED_CLASS)
         }
     }
@@ -196,8 +200,8 @@ class CffKeyProcessorRegistry(
         val steps: List<ActionStep>,
         val correction: FinalCorrection
     ) {
-        fun toMethodNode(): MethodNode {
-            return method(
+        fun toMethodNode(nativeCandidate: Boolean): MethodNode {
+            val node = method(
                 PUBLIC + STATIC,
                 name,
                 ActionDesc
@@ -222,6 +226,8 @@ class CffKeyProcessorRegistry(
                 }
                 MAXS(8, 2)
             }.appendAnnotation(GENERATED_METHOD)
+            if (nativeCandidate) node.appendAnnotation(NATIVE_INCLUDED)
+            return node
         }
 
         companion object {
