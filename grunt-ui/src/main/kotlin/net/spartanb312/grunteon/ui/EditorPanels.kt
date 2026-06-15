@@ -445,12 +445,11 @@ private fun TransformerCard(
                 }
 
                 if (warnings != null) {
-                    warnings.forEach { warning ->
-                        Text(
-                            warning,
-                            style = FluentTheme.typography.caption.copy(color = FluentTheme.colors.system.caution)
-                        )
-                    }
+                    Text(
+                        warnings.joinToString("\n"),
+                        style = FluentTheme.typography.caption.copy(color = FluentTheme.colors.system.caution),
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 } else {
                     Text(
                         definition?.description ?: entry.config::class.qualifiedName.orEmpty(),
