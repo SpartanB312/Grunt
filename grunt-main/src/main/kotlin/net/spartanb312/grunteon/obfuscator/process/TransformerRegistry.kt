@@ -14,6 +14,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiLL
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.DeclaredFieldsExtract
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.ParameterObfuscate
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.TrashClassGenerator
+import net.spartanb312.grunteon.obfuscator.process.transformers.nativecode.NativePreProcessor
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.ClassShrink
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.EnumOptimize
@@ -86,6 +87,7 @@ object TransformerRegistry {
         entry({ ShuffleMembers() }, { ShuffleMembers.Config() }),
         entry({ TrashClassGenerator() }, { TrashClassGenerator.Config() }),
         entry({ Watermark() }, { Watermark.Config() }),
+        entry({ NativePreProcessor() }, { NativePreProcessor.Config() }),
         entry({ PostProcess() }, { PostProcess.Config() }),
     )
 

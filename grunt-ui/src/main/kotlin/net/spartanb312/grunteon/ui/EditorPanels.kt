@@ -220,6 +220,7 @@ fun categoryToIcon(category: Category): ImageVector = when (category) {
     Category.Renaming -> Icons.Regular.TextChangeCase
     Category.Other -> Icons.Regular.PuzzlePiece
     Category.PostProcess -> Icons.Regular.WrenchScrewdriver
+    Category.Native -> Icons.Regular.Accessibility
 }
 
 @Composable

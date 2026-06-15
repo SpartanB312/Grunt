@@ -76,15 +76,6 @@ val REFLECTION_METADATA = "Lnet/spartanb312/grunteon/annotation/internal/Reflect
 val ANTI_LLM = "Lnet/spartanb312/grunteon/annotation/internal/AntiLLM;"
 val ANTI_LLM_JUNK_CALL = "Lnet/spartanb312/grunteon/annotation/internal/AntiLLMJunkCall;"
 
-@Deprecated("Use DRAFT_RUNTIME_MATERIAL")
-val DRAFT_ANTIDEBUG_MATERIAL = DRAFT_RUNTIME_MATERIAL
-
-@Deprecated("Use DRAFT_RUNTIME_MATERIAL_FIELD")
-val DRAFT_ANTIDEBUG_FIELD = DRAFT_RUNTIME_MATERIAL_FIELD
-
-@Deprecated("Use DRAFT_RUNTIME_MATERIAL_GUARD")
-val DRAFT_ANTIDEBUG_GUARD = DRAFT_RUNTIME_MATERIAL_GUARD
-
 val INTERNAL = mutableSetOf(
     GENERATED_CLASS,
     GENERATED_METHOD,
@@ -100,3 +91,11 @@ val INTERNAL = mutableSetOf(
     ANTI_LLM,
     ANTI_LLM_JUNK_CALL
 )
+
+
+/**
+ * Native codegen
+ */
+val NATIVE_JVM_BRIDGE = "Lnet/spartanb312/grunteon/annotation/native/NativeJVMBridge;"
+val NATIVE_EXCLUDED = "Lnet/spartanb312/grunteon/annotation/native/NativeExcluded;"
+val NATIVE_INCLUDED = "Lnet/spartanb312/grunteon/annotation/native/NativeIncluded;"

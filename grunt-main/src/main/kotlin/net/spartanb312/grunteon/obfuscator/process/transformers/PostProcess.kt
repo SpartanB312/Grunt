@@ -59,6 +59,7 @@ class PostProcess : Transformer<PostProcess.Config>(
         after(Category.Redirect, "Post process should run after redirect category")
         after(Category.Renaming, "Post process should run after renaming category")
         after(Category.Other, "Post process should run after other category")
+        after(Category.Native, "Post process should run after native category")
     }
 
     context(instance: Grunteon, _: PipelineBuilder)

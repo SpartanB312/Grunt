@@ -55,7 +55,7 @@ the near future
 
 * [X] Declared fields extractor
 * [X] Parameter obfuscation
-* [ ] Trash class generator
+* [X] Trash class generator
 * [ ] HardwareID authenticator
 
 ### Anti debug
@@ -78,6 +78,7 @@ the near future
 * [X] Decompiler crasher
 * [X] Fake synthetic bridge
 * [X] Reference obfuscate
+* [X] Reflection support
 * [X] Shuffle members
 * [X] Watermark
 
