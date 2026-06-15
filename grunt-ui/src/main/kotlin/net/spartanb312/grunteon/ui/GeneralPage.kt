@@ -2,11 +2,11 @@ package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.Text
@@ -15,145 +15,19 @@ import net.spartanb312.grunteon.obfuscator.ObfConfig
 
 @Composable
 fun GeneralPage(
-    config: ObfConfig,
-    status: String,
-    onConfigChange: (ObfConfig) -> Unit,
-    onReload: () -> Unit,
-    onSave: () -> Unit,
-    modifier: Modifier = Modifier,
+    obsConfigState: MutableState<ObfConfig>,
 ) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+    var globalConfig by DataClassUpdater(obsConfigState, ObfConfig::globalConfig)
+    PanelSurface(
+        title = "General Configuration",
+        description = "Top-level obfuscation config options.",
+        modifier = Modifier.fillMaxSize()
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "General",
-                    style = FluentTheme.typography.title,
-                    color = FluentTheme.colors.text.text.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Text("Top-level ObfConfig options.", color = FluentTheme.colors.text.text.secondary)
-            }
-            Text(status, color = FluentTheme.colors.text.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            UiOutlinedButton(onClick = onReload) { Text("Reload") }
-            UiButton(onClick = onSave) { Text("Save config") }
-        }
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-//            PanelSurface(Modifier.weight(2f).fillMaxSize()) {
-//                Row(
-//                    modifier = Modifier.fillMaxSize().padding(18.dp),
-//                    horizontalArrangement = Arrangement.spacedBy(18.dp)
-//                ) {
-//                    Column(
-//                        modifier = Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
-//                        verticalArrangement = Arrangement.spacedBy(18.dp)
-//                    ) {
-//                        GeneralSection("Input / Output") {
-//                            PathOption(
-//                                label = "Input jar",
-//                                value = config.input,
-//                                onChange = { onConfigChange(config.copy(input = it)) },
-//                                onBrowse = { chooseInputPath(config.input)?.toString() },
-//                                onBrowseDirectory = { chooseInputDirectory(config.input)?.toString() },
-//                            )
-//                            PathOption(
-//                                label = "Output jar",
-//                                value = config.output.orEmpty(),
-//                                onChange = {
-//                                    onConfigChange(config.copy(output = it.ifBlank { null }))
-//                                },
-//                                onBrowse = { chooseOutputPath(config.output.orEmpty())?.toString() }
-//                            )
-//                            StringListOption("Libraries", config.libs) { onConfigChange(config.copy(libs = it)) }
-//                        }
-//                        GeneralSection("Filters") {
-//                            StringListOption("Global exclusions", config.exclusions) {
-//                                onConfigChange(config.copy(exclusions = it))
-//                            }
-//                            StringListOption("Mixin exclusions", config.mixinExclusions) {
-//                                onConfigChange(config.copy(mixinExclusions = it))
-//                            }
-//                        }
-//                        GeneralSection("Random / Diagnostics") {
-//                            BooleanOption("Controllable random", config.controllableRandom) {
-//                                onConfigChange(config.copy(controllableRandom = it))
-//                            }
-//                            StringOption("Input seed", config.inputSeed) { onConfigChange(config.copy(inputSeed = it)) }
-//                            BooleanOption("Dump mappings", config.dumpMappings) {
-//                                onConfigChange(config.copy(dumpMappings = it))
-//                            }
-//                            BooleanOption("Profiler", config.profiler) { onConfigChange(config.copy(profiler = it)) }
-//                            BooleanOption("Force compute max", config.forceComputeMax) {
-//                                onConfigChange(config.copy(forceComputeMax = it))
-//                            }
-//                            BooleanOption("Missing dependency check", config.missingCheck) {
-//                                onConfigChange(config.copy(missingCheck = it))
-//                            }
-//                            BooleanOption("Show hidden transformers", config.showHiddenTransformers) {
-//                                onConfigChange(config.copy(showHiddenTransformers = it))
-//                            }
-//                        }
-//                    }
-//                    Column(
-//                        modifier = Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
-//                        verticalArrangement = Arrangement.spacedBy(18.dp)
-//                    ) {
-//                        GeneralSection("Jar Output") {
-//                            BooleanOption("Corrupt headers", config.corruptHeaders) {
-//                                onConfigChange(config.copy(corruptHeaders = it))
-//                            }
-//                            BooleanOption("Corrupt CRC32", config.corruptCRC32) {
-//                                onConfigChange(config.copy(corruptCRC32 = it))
-//                            }
-//                            BooleanOption("Remove time stamps", config.removeTimeStamps) {
-//                                onConfigChange(config.copy(removeTimeStamps = it))
-//                            }
-//                            IntSliderOption("Compression level", config.compressionLevel, 0..9) {
-//                                onConfigChange(config.copy(compressionLevel = it))
-//                            }
-//                            StringOption("Archive comment", config.archiveComment) {
-//                                onConfigChange(config.copy(archiveComment = it))
-//                            }
-//                            StringListOption("Remove file prefixes", config.fileRemovePrefix) {
-//                                onConfigChange(config.copy(fileRemovePrefix = it))
-//                            }
-//                            StringListOption("Remove file suffixes", config.fileRemoveSuffix) {
-//                                onConfigChange(config.copy(fileRemoveSuffix = it))
-//                            }
-//                        }
-//                        GeneralSection("Dictionary") {
-//                            StringOption("Custom dictionary file", config.customDictionary) {
-//                                onConfigChange(config.copy(customDictionary = it))
-//                            }
-//                            StringListOption("Custom incremental dictionary", config.customIncrementalDictionary) {
-//                                onConfigChange(config.copy(customIncrementalDictionary = it))
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-            GeneralTipsPlaceholder(
-                modifier = Modifier.weight(1f).fillMaxSize()
+        ScrollPanel {
+            ConfigEditor(
+                value = globalConfig,
+                onChange = { globalConfig = it },
             )
-        }
-    }
-}
-
-@Composable
-private fun GeneralTipsPlaceholder(modifier: Modifier = Modifier) {
-    SectionSurface(modifier.fillMaxWidth().heightIn(min = 180.dp)) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Tips", color = FluentTheme.colors.text.text.primary, fontWeight = FontWeight.SemiBold)
-            Text("Reserved for contextual help.", color = FluentTheme.colors.text.text.secondary)
         }
     }
 }

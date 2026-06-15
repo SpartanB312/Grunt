@@ -324,15 +324,7 @@ fun FrameWindowScope.App(
                                 .padding(8.dp)
                         ) {
                             when (uiState.currentPage) {
-                                AppPage.General -> GeneralPage(
-                                    config = obfConfig,
-                                    status = status,
-                                    onConfigChange = { obfConfig = it },
-                                    onReload = ::reloadConfig,
-                                    onSave = ::saveConfig,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-
+                                AppPage.General -> GeneralPage(obfConfigState)
                                 AppPage.Editor -> PipelineEditorPage(pipelineEditorState)
                                 AppPage.Obfuscation -> ObfuscationPage(
                                     logs = obfuscationLogs,
