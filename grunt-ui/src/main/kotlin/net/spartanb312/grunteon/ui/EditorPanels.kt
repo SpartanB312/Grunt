@@ -235,7 +235,7 @@ fun PipelineStackPanel(
                     .onClick { state.selectedIndex = -1 }
             ) {
                 itemsIndexed(state.transformerList) { index, entry ->
-                    PipelineNodeCard(state, orderWarnings, index, entry)
+                    TransformerCard(state, orderWarnings, index, entry)
                     if (index == mappingApplierPosition) {
                         VirtualMappingApplier()
                     }
@@ -246,7 +246,7 @@ fun PipelineStackPanel(
 }
 
 @Composable
-private fun PipelineNodeCard(
+private fun TransformerCard(
     state: PipelineEditorState,
     orderWarnings: Map<Int, List<String>>,
     index: Int,
@@ -266,109 +266,105 @@ private fun PipelineNodeCard(
 
     Box(
         modifier = Modifier
+            .fillMaxWidth()
             .background(
                 if (selected) FluentTheme.colors.background.card.tertiary else FluentTheme.colors.background.card.default,
                 FluentTheme.shapes.control
             )
+            .height(120.dp)
             .border(BorderStroke(2.dp, borderColor), FluentTheme.shapes.control)
             .clickable(onClick = { state.selectedIndex = index }),
     ) {
         Row(
-            modifier = Modifier
-                .padding(12.dp),
+            modifier = Modifier.padding(12.dp).fillMaxHeight(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
-            Row(
-                Modifier.weight(1.0f)
-                    .fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    UiIconButton(
-                        imageVector = Icons.Default.ArrowSortUp,
-                        contentDescription = "Move up",
-                        onClick = { state.moveTransformer(index, index - 1) },
-                        enabled = canMoveUp,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Icon(
-                        imageVector = Icons.Default.ReOrderDotsVertical,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    UiIconButton(
-                        imageVector = Icons.Default.ArrowSortDown,
-                        contentDescription = "Move down",
-                        onClick = { state.moveTransformer(index, index + 1) },
-                        enabled = canMoveDown,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-                Text(
-                    "#${index + 1}",
-                    color = FluentTheme.colors.text.text.secondary,
-                    fontFamily = FontFamily.Monospace
+                UiIconButton(
+                    imageVector = Icons.Default.ArrowSortUp,
+                    contentDescription = "Move up",
+                    onClick = { state.moveTransformer(index, index - 1) },
+                    enabled = canMoveUp,
+                    modifier = Modifier.size(32.dp)
                 )
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Icon(
+                    imageVector = Icons.Default.ReOrderDotsVertical,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                UiIconButton(
+                    imageVector = Icons.Default.ArrowSortDown,
+                    contentDescription = "Move down",
+                    onClick = { state.moveTransformer(index, index + 1) },
+                    enabled = canMoveDown,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(1.0f)
+                    .padding(4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    Text(
+                        "#${index}",
+                        color = FluentTheme.colors.text.text.secondary,
+                        fontFamily = FontFamily.Monospace
+                    )
                     Text(
                         definition?.label ?: entry.config::class.simpleName.orEmpty(),
                         style = FluentTheme.typography.bodyLarge
                     )
-                    if (warnings != null) {
-                        warnings.forEach { warning ->
-                            Text(
-                                warning,
-                                style = FluentTheme.typography.caption.copy(color = FluentTheme.colors.system.caution)
-                            )
-                        }
-                    } else {
+                }
+
+                if (warnings != null) {
+                    warnings.forEach { warning ->
                         Text(
-                            definition?.description ?: entry.config::class.qualifiedName.orEmpty(),
-                            style = FluentTheme.typography.caption,
+                            warning,
+                            style = FluentTheme.typography.caption.copy(color = FluentTheme.colors.system.caution)
                         )
                     }
+                } else {
+                    Text(
+                        definition?.description ?: entry.config::class.qualifiedName.orEmpty(),
+                        style = FluentTheme.typography.caption,
+                    )
                 }
             }
 
-            Row(
-                modifier = Modifier.height(100.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(32.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight(),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(
-                    definition?.category?.name ?: "Unknown",
-                    color = FluentTheme.colors.text.text.tertiary,
+                Switcher(
+                    checked = entry.enabled,
+                    onCheckStateChange = { state.transformerList[index] = entry.copy(enabled = it) },
+                    text = null
                 )
-                Column(
-                    modifier = Modifier.fillMaxHeight(),
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Switcher(
-                        checked = entry.enabled,
-                        onCheckStateChange = { state.transformerList[index] = entry.copy(enabled = it) },
-                        text = null
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = { state.addTransformerEntryAfterSelection(entry) },
-                            iconOnly = true
-                        ) {
-                            Icon(imageVector = Icons.Default.CopyAdd, contentDescription = "Duplicate")
-                        }
-                        Button(
-                            onClick = { state.transformerList.removeAt(index) },
-                            iconOnly = true
-                        ) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
-                        }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { state.addTransformerEntryAfterSelection(entry) },
+                        iconOnly = true
+                    ) {
+                        Icon(imageVector = Icons.Default.CopyAdd, contentDescription = "Duplicate")
+                    }
+                    Button(
+                        onClick = { state.transformerList.removeAt(index) },
+                        iconOnly = true
+                    ) {
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
                     }
                 }
             }
