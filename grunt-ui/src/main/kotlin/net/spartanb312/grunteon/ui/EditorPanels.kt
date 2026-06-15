@@ -232,7 +232,7 @@ private fun LibraryItem(state: PipelineEditorState, definition: TransformerDefin
     CardExpanderItem(
         icon = {
             Icon(
-                imageVector = Icons.Default.Circle,
+                imageVector = Icons.Default.CircleSmall,
                 contentDescription = null
             )
         },

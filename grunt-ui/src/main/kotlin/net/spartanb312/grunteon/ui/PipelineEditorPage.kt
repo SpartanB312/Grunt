@@ -1,13 +1,26 @@
 package net.spartanb312.grunteon.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.ButtonDefaults
 import net.spartanb312.grunteon.obfuscator.ObfConfig
 import net.spartanb312.grunteon.obfuscator.TransformerEntry
+import java.awt.Cursor
 import kotlin.reflect.*
 import kotlin.reflect.full.memberFunctions
 
@@ -287,21 +300,118 @@ class PipelineEditorState(
 fun PipelineEditorPage(
     state: PipelineEditorState,
 ) {
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    val initialTotalWeight = 1f + 1.25f + 1.5f
+    var libraryWeight by remember { mutableFloatStateOf(1f / initialTotalWeight) }
+    var stackWeight by remember { mutableFloatStateOf(1.25f / initialTotalWeight) }
+    val handleWidth = 12.dp
+    val minPanelWidth = 280.dp
+    val density = LocalDensity.current
+
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
     ) {
-        TransformerLibrary(
-            state = state,
-            modifier = Modifier.weight(1f)
-        )
-        PipelineStackPanel(
-            state = state,
-            modifier = Modifier.weight(1.25f)
-        )
-        Inspector(
-            state,
-            modifier = Modifier.weight(1.5f)
+        val totalPanelWidthPx = remember(maxWidth, density) {
+            with(density) { (maxWidth.toPx() - handleWidth.toPx() * 2).coerceAtLeast(1f) }
+        }
+        val minWeight = remember(maxWidth, density) {
+            with(density) { (minPanelWidth.toPx() / totalPanelWidthPx).coerceAtMost(0.3f) }
+        }
+
+        LaunchedEffect(minWeight) {
+            val normalizedLibrary = libraryWeight.coerceIn(minWeight, 1f - 2 * minWeight)
+            val normalizedStack = stackWeight.coerceIn(minWeight, 1f - normalizedLibrary - minWeight)
+            if (normalizedLibrary != libraryWeight) libraryWeight = normalizedLibrary
+            if (normalizedStack != stackWeight) stackWeight = normalizedStack
+        }
+        val rightWeight = (1f - libraryWeight - stackWeight).coerceAtLeast(minWeight)
+
+        Row(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            TransformerLibrary(
+                state = state,
+                modifier = Modifier
+                    .weight(libraryWeight)
+                    .fillMaxHeight()
+            )
+            PanelResizeHandle(
+                width = handleWidth,
+                onDrag = { deltaPx ->
+                    val deltaWeight = deltaPx / totalPanelWidthPx
+                    val pairTotal = libraryWeight + stackWeight
+                    libraryWeight = (libraryWeight + deltaWeight)
+                        .coerceIn(minWeight, pairTotal - minWeight)
+                    stackWeight = pairTotal - libraryWeight
+                }
+            )
+            PipelineStackPanel(
+                state = state,
+                modifier = Modifier
+                    .weight(stackWeight)
+                    .fillMaxHeight()
+            )
+            PanelResizeHandle(
+                width = handleWidth,
+                onDrag = { deltaPx ->
+                    val deltaWeight = deltaPx / totalPanelWidthPx
+                    stackWeight = (stackWeight + deltaWeight)
+                        .coerceIn(minWeight, 1f - libraryWeight - minWeight)
+                }
+            )
+            Inspector(
+                state,
+                modifier = Modifier
+                    .weight(rightWeight)
+                    .fillMaxHeight()
+            )
+        }
+    }
+}
+
+@Composable
+private fun PanelResizeHandle(
+    width: Dp,
+    onDrag: (Float) -> Unit,
+) {
+    var dragging by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    Box(
+        modifier = Modifier
+            .width(width)
+            .fillMaxHeight()
+            .hoverable(interactionSource = interactionSource)
+            .pointerHoverIcon(icon = PointerIcon(Cursor.getPredefinedCursor(Cursor.E_RESIZE_CURSOR)))
+            .pointerInput(onDrag) {
+                detectDragGestures(
+                    onDragStart = { dragging = true },
+                    onDragEnd = { dragging = false },
+                    onDragCancel = { dragging = false }
+                ) { change, dragAmount ->
+                    change.consume()
+                    onDrag(dragAmount.x)
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        val buttonColors = ButtonDefaults.buttonColors()
+        val color = when {
+            dragging -> buttonColors.pressed
+            isHovered -> buttonColors.hovered
+            else -> buttonColors.default
+        }
+        Box(
+            modifier = Modifier
+                .padding(4.dp)
+                .fillMaxWidth()
+                .fillMaxHeight(0.9f)
+                .graphicsLayer {
+                    alpha = if (dragging) 1f else 0.65f
+                }
+                .background(
+                    color = color.fillColor,
+                    shape = FluentTheme.shapes.control
+                )
         )
     }
 }
