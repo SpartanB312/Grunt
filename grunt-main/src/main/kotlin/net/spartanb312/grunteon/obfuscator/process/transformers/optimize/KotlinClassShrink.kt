@@ -17,6 +17,7 @@ import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.LdcInsnNode
 
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.optimize.kotlin_class_shrink.desc",
     "Remove kotlin metadata and intrinsics check"

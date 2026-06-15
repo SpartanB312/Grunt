@@ -11,6 +11,7 @@ import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
 
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.other.watermark.desc",
     "Add watermarks"

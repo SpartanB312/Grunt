@@ -20,6 +20,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.redirect.field_access_proxy.desc",
     "Redirect get/put field operations to getter/setter"

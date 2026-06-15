@@ -1,11 +1,14 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.other
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import net.spartanb312.genesis.kotlin.annotation
 import net.spartanb312.genesis.kotlin.clazz
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.*
@@ -15,19 +18,36 @@ import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
 import net.spartanb312.grunteon.obfuscator.util.filters.NamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicates
+import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
+import org.objectweb.asm.tree.AbstractInsnNode
+import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.FieldNode
+import org.objectweb.asm.tree.InsnList
+import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.InvokeDynamicInsnNode
+import org.objectweb.asm.tree.IntInsnNode
+import org.objectweb.asm.tree.JumpInsnNode
+import org.objectweb.asm.tree.LabelNode
+import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.TryCatchBlockNode
+import org.objectweb.asm.tree.TypeInsnNode
+import org.objectweb.asm.tree.analysis.Analyzer
+import org.objectweb.asm.tree.analysis.BasicInterpreter
+import org.objectweb.asm.tree.analysis.BasicValue
+import org.objectweb.asm.tree.analysis.Frame
 import java.lang.invoke.CallSite
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.other.reference_obfuscate.desc",
     "Using invokedynamics to hide reference"
@@ -197,15 +217,19 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             if (classNode.version < Opcodes.V1_7) return@parForEachRenamedClassesFiltered
             if (classNode.hasAnnotation(DISABLE_REFERENCE_OBF)) return@parForEachRenamedClassesFiltered
 
+            val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, "apply"))
             val counter = counter.local
             val bsmName1 = massiveString
             val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
-            val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, "apply"))
-            val decryptName = massiveString
+            val decryptName = bsmName1.substring(2, bsmName1.length - 1)
+            val material = findRuntimeMaterial(classNode)
+            val materialKeyName = material?.let { bsmName1.substring(1, bsmName1.length - 2) }
+            val plainBsmName = material?.let { bsmName1.substring(1, bsmName1.length - 3) }
+            val plainDecryptName = material?.let { bsmName1.substring(1, bsmName1.length - 3) }
             val decryptKey = randomGen.nextInt()
             context(config, counter) {
-                if (shouldApply(classNode, bsmName1, bsmName2, decryptKey, metadata)) {
-                    val decrypt = createDecryptMethod(decryptName, decryptKey)
+                if (shouldApply(classNode, bsmName1, bsmName2, plainBsmName, decryptKey, metadata, material)) {
+                    val decrypt = createDecryptMethod(classNode.name, decryptName, decryptKey, materialKeyName)
                     val decrypt2 = createHeavyDecryptMethod(decryptName)
                     val bsm = createBootstrap(classNode.name, bsmName1, decryptName)
                     val bsm2 = createHeavyBootstrap(
@@ -214,14 +238,29 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                         decryptName,
                         decryptKey
                     )
+                    val materialKey = if (material != null && materialKeyName != null) {
+                        createMaterialKeyMethod(classNode.name, materialKeyName, material)
+                    } else null
+                    val plainDecrypt = if (material != null && plainDecryptName != null) {
+                        createDecryptMethod(classNode.name, plainDecryptName, decryptKey, null)
+                    } else null
+                    val plainBsm = if (material != null && plainBsmName != null && plainDecryptName != null) {
+                        createBootstrap(classNode.name, plainBsmName, plainDecryptName)
+                    } else null
                     if (config.reobfBSM) {
                         val methodsAdded = mutableListOf<MethodNode>()
+                        materialKey?.let { methodsAdded.add(it) }
+                        plainDecrypt?.let { methodsAdded.add(it) }
+                        plainBsm?.let { methodsAdded.add(it) }
                         methodsAdded.add(decrypt)
                         methodsAdded.add(bsm)
                         methodsAdded.add(decrypt2)
                         methodsAdded.add(bsm2)
                         addedMethods.add(classNode to methodsAdded)
                     }
+                    materialKey?.let { classNode.methods.add(it) }
+                    plainDecrypt?.let { classNode.methods.add(it) }
+                    plainBsm?.let { classNode.methods.add(it) }
                     classNode.methods.add(decrypt)
                     classNode.methods.add(bsm)
                     classNode.methods.add(decrypt2)
@@ -231,10 +270,16 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         }
         // Force sync
         barrier()
-        // Reobfuscate TODO
+        // Reobf
         if (config.reobfBSM) seq {
             runBlocking {
-
+                addedMethods.forEach { (classNode, methods) ->
+                    methods.forEach { method ->
+                        launch(Dispatchers.Default) {
+                            reobfuscateBootstrapMethod(classNode, method)
+                        }
+                    }
+                }
             }
         }
         post {
@@ -243,19 +288,252 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         }
     }
 
+    context(instance: Grunteon)
+    private fun reobfuscateBootstrapMethod(classNode: ClassNode, methodNode: MethodNode) {
+        methodNode.localVariables.clear()
+        val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, methodNode.name, methodNode.desc, "reobf"))
+        methodNode.instructions.toArray().forEach { instruction ->
+            val replacement = when {
+                instruction is LdcInsnNode && instruction.cst is String ->
+                    randomGen.reobfuscateString(instruction.cst as String)
+
+                instruction.intConstantValue() != null ->
+                    randomGen.reobfuscateInt(instruction.intConstantValue()!!)
+
+                instruction.longConstantValue() != null ->
+                    randomGen.reobfuscateLong(instruction.longConstantValue()!!)
+
+                else -> null
+            }
+            if (replacement != null) {
+                methodNode.instructions.insertBefore(instruction, replacement)
+                methodNode.instructions.remove(instruction)
+            }
+        }
+        methodNode.reobfuscateGotoEdges(classNode.name, randomGen)
+    }
+
+    private fun MethodNode.reobfuscateGotoEdges(owner: String, random: UniformRandomProvider): Int {
+        if (!instructions.endsWithTerminalInstruction()) return 0
+        val frames = runCatching {
+            Analyzer(BasicInterpreter()).analyze(owner, this)
+        }.getOrNull() ?: return 0
+        val instructionArray = instructions.toArray()
+        val candidates = instructionArray
+            .withIndex()
+            .filter { (index, instruction) ->
+                instruction is JumpInsnNode &&
+                    instruction.opcode == Opcodes.GOTO &&
+                    instruction.isEligibleExceptionBridge(index, instructionArray, frames)
+            }
+            .map { it.value as JumpInsnNode }
+            .toMutableList()
+        candidates.shuffle(random)
+        val candidateSet = candidates.toSet()
+        val bridgePlans = candidates.mapNotNull { goto ->
+            val gotoIndex = instructionArray.indexOf(goto)
+            val anchor = instructionArray.findDistantHandlerAnchor(gotoIndex, candidateSet, frames, random)
+                ?: return@mapNotNull null
+            goto to anchor
+        }
+
+        var inserted = 0
+        for ((goto, handlerAnchor) in bridgePlans) {
+            if (inserted >= REOBF_MAX_EXCEPTION_BRIDGES_PER_METHOD) break
+            val target = goto.label
+            val trapStart = LabelNode()
+            val trapEnd = LabelNode()
+            val handler = LabelNode()
+
+            instructions.insertBefore(goto, InsnList().apply {
+                add(trapStart)
+                add(TypeInsnNode(Opcodes.NEW, REOBF_EXCEPTION_BRIDGE_INTERNAL_NAME))
+                add(InsnNode(Opcodes.DUP))
+                add(MethodInsnNode(
+                    Opcodes.INVOKESPECIAL,
+                    REOBF_EXCEPTION_BRIDGE_INTERNAL_NAME,
+                    "<init>",
+                    "()V",
+                    false
+                ))
+                add(InsnNode(Opcodes.ATHROW))
+                add(trapEnd)
+            })
+            instructions.remove(goto)
+
+            instructions.insert(handlerAnchor, InsnList().apply {
+                add(handler)
+                add(InsnNode(Opcodes.POP))
+                add(JumpInsnNode(Opcodes.GOTO, target))
+            })
+            tryCatchBlocks.add(
+                0,
+                TryCatchBlockNode(
+                    trapStart,
+                    trapEnd,
+                    handler,
+                    REOBF_EXCEPTION_BRIDGE_INTERNAL_NAME
+                )
+            )
+            inserted++
+        }
+        return inserted
+    }
+
+    private fun Array<AbstractInsnNode>.findDistantHandlerAnchor(
+        gotoIndex: Int,
+        candidateSet: Set<AbstractInsnNode>,
+        frames: Array<Frame<BasicValue>?>,
+        random: UniformRandomProvider
+    ): AbstractInsnNode? {
+        if (gotoIndex < 0) return null
+        val anchors = withIndex()
+            .filter { (index, instruction) ->
+                frames.getOrNull(index) != null &&
+                instruction !in candidateSet &&
+                    instruction.isHandlerAnchor() &&
+                    index.distanceTo(gotoIndex) >= REOBF_MIN_EXCEPTION_BRIDGE_DISTANCE
+            }
+            .map { it.value }
+            .toMutableList()
+        if (anchors.isEmpty()) return null
+        return anchors[random.nextInt(anchors.size)]
+    }
+
+    private fun AbstractInsnNode.isHandlerAnchor(): Boolean {
+        return opcode == Opcodes.GOTO ||
+            opcode == Opcodes.ATHROW ||
+            opcode in Opcodes.IRETURN..Opcodes.RETURN
+    }
+
+    private fun Int.distanceTo(other: Int): Int {
+        val distance = this - other
+        return if (distance < 0) -distance else distance
+    }
+
+    private fun UniformRandomProvider.reobfuscateString(value: String): InsnList = instructions {
+        NEW("java/lang/String")
+        DUP
+        +reobfuscateInt(value.length)
+        NEWARRAY(Opcodes.T_CHAR)
+        value.forEachIndexed { index, char ->
+            val key = nextInt()
+            DUP
+            +reobfuscateInt(index)
+            +reobfuscateInt(char.code xor key)
+            +reobfuscateInt(key)
+            IXOR
+            I2C
+            CASTORE
+        }
+        INVOKESPECIAL("java/lang/String", "<init>", "([C)V")
+    }
+
+    private fun UniformRandomProvider.reobfuscateInt(value: Int): InsnList = instructions {
+        val key = nextInt()
+        INT(value xor key)
+        INT(key)
+        IXOR
+    }
+
+    private fun UniformRandomProvider.reobfuscateLong(value: Long): InsnList = instructions {
+        val key = nextLong()
+        LONG(value xor key)
+        LONG(key)
+        LXOR
+    }
+
+    private fun JumpInsnNode.isEligibleExceptionBridge(
+        index: Int,
+        instructions: Array<AbstractInsnNode>,
+        frames: Array<Frame<BasicValue>?>
+    ): Boolean {
+        val sourceFrame = frames.getOrNull(index) ?: return false
+        if (sourceFrame.stackSize != 0) return false
+        val targetIndex = instructions.indexOf(label)
+        if (targetIndex < 0) return false
+        val targetFrame = frames.frameAtOrAfter(targetIndex, instructions) ?: return false
+        return targetFrame.stackSize == 0
+    }
+
+    private fun Array<Frame<BasicValue>?>.frameAtOrAfter(
+        index: Int,
+        instructions: Array<AbstractInsnNode>
+    ): Frame<BasicValue>? {
+        var cursor = index
+        while (cursor < size && cursor < instructions.size) {
+            this[cursor]?.let { return it }
+            cursor++
+        }
+        return null
+    }
+
+    private fun InsnList.endsWithTerminalInstruction(): Boolean {
+        var instruction = last
+        while (instruction != null) {
+            val opcode = instruction.opcode
+            if (opcode >= 0) return opcode == Opcodes.GOTO ||
+                opcode == Opcodes.ATHROW ||
+                opcode in Opcodes.IRETURN..Opcodes.RETURN
+            instruction = instruction.previous
+        }
+        return false
+    }
+
+    private fun <T> MutableList<T>.shuffle(random: UniformRandomProvider) {
+        for (index in lastIndex downTo 1) {
+            val swapIndex = random.nextInt(index + 1)
+            val value = this[index]
+            this[index] = this[swapIndex]
+            this[swapIndex] = value
+        }
+    }
+
+    private fun AbstractInsnNode.intConstantValue(): Int? {
+        return when (opcode) {
+            in Opcodes.ICONST_M1..Opcodes.ICONST_5 -> opcode - Opcodes.ICONST_0
+            Opcodes.BIPUSH, Opcodes.SIPUSH -> (this as IntInsnNode).operand
+            Opcodes.LDC -> {
+                val constant = (this as LdcInsnNode).cst
+                constant as? Int
+            }
+
+            else -> null
+        }
+    }
+
+    private fun AbstractInsnNode.longConstantValue(): Long? {
+        return when (opcode) {
+            in Opcodes.LCONST_0..Opcodes.LCONST_1 -> (opcode - Opcodes.LCONST_0).toLong()
+            Opcodes.LDC -> {
+                val constant = (this as LdcInsnNode).cst
+                constant as? Long
+            }
+
+            else -> null
+        }
+    }
+
     context(instance: Grunteon, counter: MergeableCounter, config: Config)
     private fun shouldApply(
         classNode: ClassNode,
         bsm1: String,
         bsm2: String,
+        plainBsm: String?,
         decryptKey: Int,
-        metadataMap: Map<ClassNode, MetaData>
+        metadataMap: Map<ClassNode, MetaData>,
+        runtimeMaterial: RuntimeMaterial?
     ): Boolean {
         var shouldApply = false
         classNode.methods
-            .filter { !it.isAbstract && !it.isNative }
+            .filter { shouldProcessMethod(it) }
             .forEach { methodNode ->
                 if (!methodNode.hasAnnotation(DISABLE_REFERENCE_OBF)) {
+                    val methodMaterial = materialForMethod(methodNode, runtimeMaterial)
+                    val simpleDecryptKey = decryptKey xor (methodMaterial?.seedFold ?: 0)
+                    val simpleBsm = if (runtimeMaterial != null && methodMaterial == null) {
+                        plainBsm ?: bsm1
+                    } else bsm1
                     val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, methodNode.name, methodNode.desc))
                     methodNode.instructions.filter {
                         it is MethodInsnNode && it.opcode != Opcodes.INVOKESPECIAL
@@ -264,7 +542,14 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                             val metadata = metadataMap.entries.find { (clazz, _) -> clazz.name == insnNode.owner }
                             val metadataKey = insnNode.name + "<>" + insnNode.desc
                             val index = metadata?.value?.d2?.indexOf(metadataKey) ?: -1
-                            val invokeDynamicInsnNode = if (metadata != null && index >= 0) {
+                            // Material-aware callers use simple BSM payloads for now.
+                            // Normal methods are keyed by the caller-local RuntimeMaterial
+                            // quotient. <clinit>/<init> fall back to plain simple BSM:
+                            // they still hide references, but do not read material while
+                            // the material lane itself is being initialized or perturbed.
+                            // Heavy metadata stays unchanged until it gets its own
+                            // authenticated material lane.
+                            val invokeDynamicInsnNode = if (runtimeMaterial == null && metadata != null && index >= 0) {
                                 val magic1 = metadata.value.m1[index]
                                 val magic2 = metadata.value.m2[index]
                                 InvokeDynamicInsnNode(
@@ -291,12 +576,12 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                                     if (insnNode.opcode == Opcodes.INVOKESTATIC) 0 else 1
                                 )
                             } else InvokeDynamicInsnNode(
-                                bsm1,
+                                simpleBsm,
                                 if (insnNode.opcode == Opcodes.INVOKESTATIC) insnNode.desc
                                 else insnNode.desc.replace("(", "(Ljava/lang/Object;"),
                                 H_INVOKESTATIC(
                                     classNode.name,
-                                    bsm1,
+                                    simpleBsm,
                                     MethodType.methodType(
                                         CallSite::class.java,
                                         MethodHandles.Lookup::class.java,
@@ -308,9 +593,9 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                                         Integer::class.java
                                     ).toMethodDescriptorString(),
                                 ),
-                                encrypt(insnNode.owner.replace("/", "."), decryptKey),
-                                encrypt(insnNode.name, decryptKey),
-                                encrypt(insnNode.desc, decryptKey),
+                                encrypt(insnNode.owner.replace("/", "."), simpleDecryptKey),
+                                encrypt(insnNode.name, simpleDecryptKey),
+                                encrypt(insnNode.desc, simpleDecryptKey),
                                 if (insnNode.opcode == Opcodes.INVOKESTATIC) 0 else 1
                             )
                             methodNode.instructions.insertBefore(insnNode, invokeDynamicInsnNode)
@@ -323,6 +608,24 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                 }
             }
         return shouldApply
+    }
+
+    private fun shouldProcessMethod(methodNode: MethodNode): Boolean {
+        if (methodNode.isAbstract || methodNode.isNative) return false
+        if (methodNode.hasAnnotation(GENERATED_METHOD)) return false
+        return true
+    }
+
+    private fun materialForMethod(methodNode: MethodNode, runtimeMaterial: RuntimeMaterial?): RuntimeMaterial? {
+        if (runtimeMaterial == null) return null
+        // Design note:
+        // <clinit>/<init> are still protected by ReferenceObfuscate, but they
+        // deliberately fall back to plain simple BSM. Later passes may expand
+        // RuntimeMaterial constants into helper calls in these methods; re-keying
+        // those helpers by material would read the material lane while it is
+        // being initialized or perturbed.
+        if (methodNode.name == "<clinit>" || methodNode.name == "<init>") return null
+        return runtimeMaterial
     }
 
     private fun createBootstrap(className: String, methodName: String, decryptName: String) =
@@ -784,7 +1087,12 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         }
     }
 
-    fun createDecryptMethod(methodName: String, key: Int): MethodNode = method(
+    fun createDecryptMethod(
+        className: String,
+        methodName: String,
+        key: Int,
+        materialKeyName: String?
+    ): MethodNode = method(
         PRIVATE + STATIC + SYNTHETIC + BRIDGE,
         methodName,
         "(Ljava/lang/String;)Ljava/lang/String;"
@@ -807,6 +1115,10 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             ILOAD(2)
             INVOKEVIRTUAL("java/lang/String", "charAt", "(I)C")
             LDC(key)
+            if (materialKeyName != null) {
+                INVOKESTATIC(className, materialKeyName, "()I")
+                IXOR
+            }
             IXOR
             I2C
             INVOKEVIRTUAL("java/lang/StringBuilder", "append", "(C)Ljava/lang/StringBuilder;")
@@ -824,8 +1136,36 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             INVOKEVIRTUAL("java/lang/StringBuilder", "toString", "()Ljava/lang/String;")
             ARETURN
         }
-        MAXS(3, 3)
+        MAXS(if (materialKeyName == null) 3 else 4, 3)
     }
+
+    private fun createMaterialKeyMethod(
+        className: String,
+        methodName: String,
+        material: RuntimeMaterial
+    ): MethodNode = method(
+        PRIVATE + STATIC + SYNTHETIC + BRIDGE,
+        methodName,
+        "()I"
+    ) {
+        INSTRUCTIONS {
+            // The ReferenceObfuscate side consumes only the canonical quotient:
+            // clean RuntimeMaterial perturbations may churn raw share fields, but the
+            // KDF lane reads canonicalKey + sticky poison so BSM linkage cannot
+            // observe a transient two-field update. Suspicious paths disturb
+            // canonicalKey and/or poison, producing a wrong decrypt key.
+            GETSTATIC(className, material.keyField, "J")
+            DUP2
+            INT(32)
+            LUSHR
+            LXOR
+            L2I
+            GETSTATIC(className, material.poisonField, "I")
+            IXOR
+            IRETURN
+        }
+        MAXS(6, 0)
+    }.appendAnnotation(GENERATED_METHOD)
 
     fun encrypt(string: String, xor: Int): String {
         val stringBuilder = StringBuilder()
@@ -835,6 +1175,49 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         return stringBuilder.toString()
     }
 
+    private fun findRuntimeMaterial(classNode: ClassNode): RuntimeMaterial? {
+        val materialAnnotation = classNode.findAnnotation(DRAFT_RUNTIME_MATERIAL) ?: return null
+        val materialId = materialAnnotation.value("id") as? String ?: return null
+        val seed = materialAnnotation.value("seed") as? Long ?: return null
+        classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_SHARE_A, "J") ?: return null
+        classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_SHARE_B, "J") ?: return null
+        val key = classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_CANONICAL_KEY, "J")
+            ?: return null
+        val poison =
+            classNode.findRuntimeMaterialField(materialId, RUNTIME_MATERIAL_FIELD_ROLE_POISON, "I") ?: return null
+        return RuntimeMaterial(
+            keyField = key.name,
+            poisonField = poison.name,
+            seedFold = seed.foldToInt()
+        )
+    }
+
+    private fun ClassNode.findRuntimeMaterialField(materialId: String, role: Int, desc: String): FieldNode? {
+        return fields.firstOrNull { field ->
+            if (field.desc != desc) return@firstOrNull false
+            val annotation = field.findAnnotation(DRAFT_RUNTIME_MATERIAL_FIELD) ?: return@firstOrNull false
+            annotation.value("id") == materialId && annotation.value("role") == role
+        }
+    }
+
+    private fun AnnotationNode.value(name: String): Any? {
+        val values = values ?: return null
+        var index = 0
+        while (index + 1 < values.size) {
+            if (values[index] == name) return values[index + 1]
+            index += 2
+        }
+        return null
+    }
+
+    private fun Long.foldToInt(): Int = (this xor (this ushr 32)).toInt()
+
+    private data class RuntimeMaterial(
+        val keyField: String,
+        val poisonField: String,
+        val seedFold: Int
+    )
+
     class MetaData(
         val d1: IntArray,
         val d2: Array<String>,
@@ -843,5 +1226,15 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         val m1: IntArray,
         val m2: IntArray
     )
+
+    private companion object {
+        const val RUNTIME_MATERIAL_FIELD_ROLE_SHARE_A = 1
+        const val RUNTIME_MATERIAL_FIELD_ROLE_SHARE_B = 2
+        const val RUNTIME_MATERIAL_FIELD_ROLE_POISON = 3
+        const val RUNTIME_MATERIAL_FIELD_ROLE_CANONICAL_KEY = 4
+        const val REOBF_EXCEPTION_BRIDGE_INTERNAL_NAME = "java/lang/RuntimeException"
+        const val REOBF_MAX_EXCEPTION_BRIDGES_PER_METHOD = 3
+        const val REOBF_MIN_EXCEPTION_BRIDGE_DISTANCE = 1
+    }
 
 }

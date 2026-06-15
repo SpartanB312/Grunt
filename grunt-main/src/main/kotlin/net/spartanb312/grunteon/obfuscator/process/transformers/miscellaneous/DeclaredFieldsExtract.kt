@@ -22,6 +22,7 @@ import java.lang.reflect.Modifier
  * Last update on 2026/03/31 by FluixCarvin
  * @author jonesdevelopment
  */
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.miscellaneous.declared_fields_extract.desc",
     "Extract field initialization to <init> or <clinit>"

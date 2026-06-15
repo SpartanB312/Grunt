@@ -2,19 +2,15 @@ package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow
 
 import kotlinx.serialization.Serializable
 import net.spartanb312.grunt.ir.flow.core.*
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExportOptions
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
+import net.spartanb312.grunt.ir.flow.jvm.*
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeGenerator
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowOpaquePredicateProcessor
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorOptions
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorRegistry
+import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.hierarchy.ClassHierarchyFlowTypeHierarchy
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.*
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.*
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
@@ -33,6 +29,7 @@ import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 
+@Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.controlflow.controlflow_jump.desc",
     "Insert verifier-safe junk branches through Flow IR"
@@ -43,6 +40,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
 ) {
     init {
         before(FakeSyntheticBridge::class.java, "ControlflowJump should run before FakeSyntheticBridge")
+
     }
 
     @Serializable
@@ -84,6 +82,14 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @IntRangeVal(min = 0, max = 32)
         @SettingName("Max dispatcher landing junk blocks")
         val maxDispatcherLandingJunkBlocksPerMethod: Int = 4,
+        @SettingDesc("Chance to reroute an eligible real Flow edge through a throw/catch bridge. Range: 0.0..1.0")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Exception bridge chance")
+        val exceptionBridgeChance: Double = 0.0,
+        @SettingDesc("Maximum throw/catch bridges inserted into one method")
+        @IntRangeVal(min = 0, max = 32)
+        @SettingName("Max exception bridges")
+        val maxExceptionBridgesPerMethod: Int = 4,
         @SettingDesc("Minimum main arithmetic steps in generated opaque predicate processor actions")
         @IntRangeVal(min = 1, max = 8)
         @SettingName("Predicate min main steps")
@@ -152,6 +158,9 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @SettingDesc("Run ASM BasicInterpreter after exporting Flow IR bytecode")
         @SettingName("Verify bytecode")
         val verifyBytecode: Boolean = true,
+        @SettingDesc("Analyzer used before importing methods into Flow IR")
+        @SettingName("Flow analyzer")
+        val flowAnalyzer: JvmFlowAnalyzerMode = JvmFlowAnalyzerMode.Hierarchy,
         @SettingDesc("Keep going when one method cannot be transformed")
         @SettingName("Ignore failures")
         val ignoreFailures: Boolean = false,
@@ -187,13 +196,16 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             }.filterNot { it.isMixinClass }
             JunkCallPool.build(classes)
         }
+        val junkStringProviderKey = globalScopeValue {
+            junkStringProvider(instance.workRes.getStringPool(WorkResources.ANTI_LLM_STRING_POOL))
+        }
         val predicateProcessorRegistryKey = globalScopeValue {
             OpaquePredicateProcessorRegistry(
                 classMarker = Xoshiro256PPRandom(getSeed("ControlflowJump", "PredicateProcessor", "classMarker"))
                     .getRandomString(10),
                 classExists = {
                     instance.workRes.inputClassMap.containsKey(it) ||
-                        instance.workRes.libraryClassMap.containsKey(it)
+                            instance.workRes.libraryClassMap.containsKey(it)
                 },
                 options = OpaquePredicateProcessorOptions(
                     minMainSteps = config.predicateProcessorMinMainSteps,
@@ -216,14 +228,19 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val branchCounter = reducibleScopeValue { MergeableCounter() }
         val mangledIfCounter = reducibleScopeValue { MergeableCounter() }
         val dispatcherLandingJunkCounter = reducibleScopeValue { MergeableCounter() }
+        val exceptionBridgeCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), config.workerBatchSize.coerceAtLeast(1)) { classNode ->
+        parForEachClassesFiltered(
+            config.classFilter.buildFilterStrategy(),
+            config.workerBatchSize.coerceAtLeast(1)
+        ) { classNode ->
             if (classNode.isExcluded(DISABLE_CONTROL_FLOW) || classNode.isExcluded(IGNORE_JUNK_CODE)) {
                 return@parForEachClassesFiltered
             }
 
             val hierarchy = hierarchyKey.global
+            val flowTypeHierarchy = ClassHierarchyFlowTypeHierarchy(hierarchy)
             val pool = junkCallPoolKey.global
             val transformedMethods = classNode.methods.map { methodNode ->
                 if (methodNode.isAbstract || methodNode.isNative || methodNode.name == "<init>") {
@@ -241,7 +258,9 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                             owner = classNode,
                             config = config,
                             hierarchy = hierarchy,
+                            flowTypeHierarchy = flowTypeHierarchy,
                             pool = pool,
+                            stringProvider = junkStringProviderKey.global,
                             predicateProcessor = predicateProcessorRegistryKey.global.methodProcessor(
                                 owner = classNode.name,
                                 ownerVersion = classNode.version,
@@ -265,6 +284,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                                 branchCounter.local.add(result.branches)
                                 mangledIfCounter.local.add(result.mangledIfs)
                                 dispatcherLandingJunkCounter.local.add(result.dispatcherLandingJunkBlocks)
+                                exceptionBridgeCounter.local.add(result.exceptionBridges)
                             }
                             result.method
                         },
@@ -295,6 +315,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             Logger.info("    Inserted ${branchCounter.global.get()} junk branches")
             Logger.info("    Mangled ${mangledIfCounter.global.get()} conditional jumps")
             Logger.info("    Placed ${dispatcherLandingJunkCounter.global.get()} dispatcher landing junk blocks")
+            Logger.info("    Routed ${exceptionBridgeCounter.global.get()} edges through exception bridges")
             Logger.info("    Generated ${predicateRegistry.classCount} predicate processor classes")
             Logger.info("    Added ${predicateRegistry.actionCount} predicate processor actions")
             Logger.info("    Transformed ${methodCounter.global.get()} methods")
@@ -308,11 +329,16 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         owner: ClassNode,
         config: Config,
         hierarchy: ClassHierarchy,
+        flowTypeHierarchy: JvmFlowTypeHierarchy,
         pool: JunkCallPool,
+        stringProvider: JunkStringProvider?,
         predicateProcessor: FlowOpaquePredicateProcessor,
         random: UniformRandomProvider
     ): JunkBranchMethod {
-        val imported = JvmFlowImporter().import(owner.name, this)
+        val imported = JvmFlowImporter(
+            analyzerMode = config.flowAnalyzer,
+            typeHierarchy = flowTypeHierarchy
+        ).import(owner.name, this)
         val result = FlowJunkBranchInserter(
             options = JunkBranchOptions(
                 chance = config.chance.toDouble().coerceIn(0.0, 1.0),
@@ -323,6 +349,10 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 sharedJunkExitChance = config.sharedJunkExitChance.toDouble().coerceIn(0.0, 1.0),
                 dispatcherLandingJunkChance = config.dispatcherLandingJunkChance.toDouble().coerceIn(0.0, 1.0),
                 maxDispatcherLandingJunkBlocksPerMethod = config.maxDispatcherLandingJunkBlocksPerMethod.coerceAtLeast(0),
+                exceptionBridgeOptions = FlowExceptionBridgeOptions(
+                    chance = config.exceptionBridgeChance.coerceIn(0.0, 1.0),
+                    maxBridgesPerMethod = config.maxExceptionBridgesPerMethod.coerceAtLeast(0)
+                ),
                 junkCodeOptions = JunkCodeOptions(
                     maxPreludeCalls = config.maxPreludeCalls.coerceAtLeast(0),
                     useJunkCallPrelude = !pool.isEmpty(),
@@ -334,6 +364,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             ),
             callPool = pool,
             hierarchy = hierarchy,
+            stringProvider = stringProvider,
             predicateProcessor = predicateProcessor,
             random = random
         ).insert(imported.method)
@@ -346,7 +377,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 access = access,
                 signature = signature,
                 exceptions = exceptions?.toList() ?: emptyList()
-            )
+            ),
+            flowTypeHierarchy
         ).export(imported.method)
         copyMethodMetadataTo(exported)
 
@@ -359,7 +391,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             changed = true,
             branches = result.branches,
             mangledIfs = result.mangledIfs,
-            dispatcherLandingJunkBlocks = result.dispatcherLandingJunkBlocks
+            dispatcherLandingJunkBlocks = result.dispatcherLandingJunkBlocks,
+            exceptionBridges = result.exceptionBridges
         )
     }
 
@@ -386,6 +419,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val sharedJunkExitChance: Double,
         val dispatcherLandingJunkChance: Double,
         val maxDispatcherLandingJunkBlocksPerMethod: Int,
+        val exceptionBridgeOptions: FlowExceptionBridgeOptions,
         val junkCodeOptions: JunkCodeOptions
     )
 
@@ -393,7 +427,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val changed: Boolean,
         val branches: Int = 0,
         val mangledIfs: Int = 0,
-        val dispatcherLandingJunkBlocks: Int = 0
+        val dispatcherLandingJunkBlocks: Int = 0,
+        val exceptionBridges: Int = 0
     )
 
     private data class JunkBranchMethod(
@@ -401,13 +436,15 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val changed: Boolean,
         val branches: Int = 0,
         val mangledIfs: Int = 0,
-        val dispatcherLandingJunkBlocks: Int = 0
+        val dispatcherLandingJunkBlocks: Int = 0,
+        val exceptionBridges: Int = 0
     )
 
     private class FlowJunkBranchInserter(
         private val options: JunkBranchOptions,
         private val callPool: JunkCallPool,
         private val hierarchy: ClassHierarchy,
+        private val stringProvider: JunkStringProvider?,
         private val predicateProcessor: FlowOpaquePredicateProcessor,
         private val random: UniformRandomProvider
     ) {
@@ -415,7 +452,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
 
         fun insert(method: FlowMethod): JunkBranchResult {
             val ids = MutableFlowIds(method)
-            val junk = JunkCodeGenerator(callPool, hierarchy, options.junkCodeOptions, random)
+            val junk = JunkCodeGenerator(callPool, hierarchy, options.junkCodeOptions, random, stringProvider)
             val junkExits = JunkExitPlanner(method, ids, junk)
             val mangledIfs = insertMangledIfs(method, ids, junk, junkExits)
             val dispatcherLandingJunkBlocks = insertDispatcherLandingJunkBlocks(method, ids, junkExits)
@@ -425,12 +462,17 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 junkExits,
                 maxBranches = options.maxBranchesPerMethod - dispatcherLandingJunkBlocks
             )
+            val exceptionBridges = FlowExceptionBridgeInserter(
+                options = options.exceptionBridgeOptions,
+                random = random
+            ).insert(method).bridges
 
             return JunkBranchResult(
-                changed = branches != 0 || mangledIfs != 0,
+                changed = branches != 0 || mangledIfs != 0 || exceptionBridges != 0,
                 branches = branches,
                 mangledIfs = mangledIfs,
-                dispatcherLandingJunkBlocks = dispatcherLandingJunkBlocks
+                dispatcherLandingJunkBlocks = dispatcherLandingJunkBlocks,
+                exceptionBridges = exceptionBridges
             )
         }
 
@@ -752,8 +794,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
             if (next in switchTargets(method)) return false
             if (next.isSwitchTrampoline(method)) return false
             return next.kind == FlowBlockKind.Original ||
-                next.kind == FlowBlockKind.Split ||
-                next.kind == FlowBlockKind.Junk
+                    next.kind == FlowBlockKind.Split ||
+                    next.kind == FlowBlockKind.Junk
         }
 
         private fun FlowBlock.switchTargets(method: FlowMethod): Set<FlowBlock> {

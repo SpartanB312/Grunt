@@ -4,7 +4,7 @@ import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.*
 import io.github.vinceglb.filekit.path
-import net.spartanb312.grunteon.obfuscator.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import kotlin.io.path.*
 import java.nio.file.Path as NioPath
 

@@ -6,7 +6,9 @@ import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
+import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
@@ -20,6 +22,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
+@Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.redirect.invoke_dispatcher.desc",
     "Redirect multiple method invokes to a single dispatcher"
@@ -50,6 +53,11 @@ class InvokeDispatcher : Transformer<InvokeDispatcher.Config>(
     ) : TransformerConfig()
 
     private lateinit var methodExPredicate: NamePredicates
+
+    init {
+        before(FieldAccessProxy::class.java, "InvokeDispatcher should run before FieldAccessProxy")
+        before(InvokeProxy::class.java, "InvokeDispatcher should run before InvokeProxy")
+    }
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {

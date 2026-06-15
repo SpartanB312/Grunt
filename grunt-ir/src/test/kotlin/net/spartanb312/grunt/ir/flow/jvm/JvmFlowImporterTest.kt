@@ -156,6 +156,109 @@ class JvmFlowImporterTest {
     }
 
     @Test
+    fun preservesAaloadElementTypeForReferenceArrays() {
+        val useString = LabelNode()
+        val method = MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "fromStringPool", "()V", null, null).apply {
+            instructions = InsnList().apply {
+                add(FieldInsnNode(Opcodes.GETSTATIC, "example/Test", "strings", "[Ljava/lang/String;"))
+                add(InsnNode(Opcodes.ICONST_0))
+                add(InsnNode(Opcodes.AALOAD))
+                add(VarInsnNode(Opcodes.ASTORE, 0))
+                add(JumpInsnNode(Opcodes.GOTO, useString))
+                add(useString)
+                add(VarInsnNode(Opcodes.ALOAD, 0))
+                add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "length", "()I", false))
+                add(InsnNode(Opcodes.POP))
+                add(InsnNode(Opcodes.RETURN))
+            }
+            maxLocals = 1
+            maxStack = 2
+        }
+
+        val flow = JvmFlowImporter().import("example/Test", method).method
+
+        assertEquals(2, flow.blocks.size)
+        assertEquals(FlowFrameValue.Object("java/lang/String"), flow.blocks[1].entryFrame.locals.single())
+    }
+
+    @Test
+    fun hierarchyAnalyzerMergesReferencesWithConfiguredCommonSuperClass() {
+        val right = LabelNode()
+        val join = LabelNode()
+        val method = MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "mergeRefs", "(Z)V", null, null).apply {
+            instructions = InsnList().apply {
+                add(VarInsnNode(Opcodes.ILOAD, 0))
+                add(JumpInsnNode(Opcodes.IFEQ, right))
+                add(FieldInsnNode(Opcodes.GETSTATIC, "example/Test", "left", "Lexample/Left;"))
+                add(JumpInsnNode(Opcodes.GOTO, join))
+                add(right)
+                add(FieldInsnNode(Opcodes.GETSTATIC, "example/Test", "right", "Lexample/Right;"))
+                add(join)
+                add(VarInsnNode(Opcodes.ASTORE, 1))
+                add(InsnNode(Opcodes.RETURN))
+            }
+            maxLocals = 2
+            maxStack = 1
+        }
+        val hierarchy = object : JvmFlowTypeHierarchy {
+            override fun isSubType(childInternalName: String, parentInternalName: String): Boolean {
+                return childInternalName == parentInternalName ||
+                    parentInternalName == "example/Base" && childInternalName in setOf("example/Left", "example/Right")
+            }
+
+            override fun commonSuperClass(type1InternalName: String, type2InternalName: String): String {
+                if (setOf(type1InternalName, type2InternalName) == setOf("example/Left", "example/Right")) {
+                    return "example/Base"
+                }
+                return super.commonSuperClass(type1InternalName, type2InternalName)
+            }
+        }
+
+        val imported = JvmFlowImporter(
+            analyzerMode = JvmFlowAnalyzerMode.Hierarchy,
+            typeHierarchy = hierarchy
+        ).import("example/Test", method)
+        val flow = imported.method
+
+        val joinBlock = flow.blocks.single { block ->
+            block.body.instructions.firstOrNull { it.opcode >= 0 }?.opcode == Opcodes.ASTORE
+        }
+        assertEquals(FlowFrameValue.Object("example/Base"), joinBlock.entryFrame.stack.single())
+        JvmFlowExporter(imported.metadata, typeHierarchy = hierarchy).export(flow)
+    }
+
+    @Test
+    fun hierarchyAnalyzerMergesDifferentArrayDimensionsPrecisely() {
+        val right = LabelNode()
+        val join = LabelNode()
+        val method = MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "mergeArrays", "(Z)V", null, null).apply {
+            instructions = InsnList().apply {
+                add(VarInsnNode(Opcodes.ILOAD, 0))
+                add(JumpInsnNode(Opcodes.IFEQ, right))
+                add(FieldInsnNode(Opcodes.GETSTATIC, "example/Test", "strings", "[[Ljava/lang/String;"))
+                add(JumpInsnNode(Opcodes.GOTO, join))
+                add(right)
+                add(FieldInsnNode(Opcodes.GETSTATIC, "example/Test", "objects", "[Ljava/lang/Object;"))
+                add(join)
+                add(VarInsnNode(Opcodes.ASTORE, 1))
+                add(InsnNode(Opcodes.RETURN))
+            }
+            maxLocals = 2
+            maxStack = 1
+        }
+
+        val flow = JvmFlowImporter(
+            analyzerMode = JvmFlowAnalyzerMode.Hierarchy,
+            typeHierarchy = JvmFlowTypeHierarchy.Empty
+        ).import("example/Test", method).method
+
+        val joinBlock = flow.blocks.single { block ->
+            block.body.instructions.firstOrNull { it.opcode >= 0 }?.opcode == Opcodes.ASTORE
+        }
+        assertEquals(FlowFrameValue.Object("[Ljava/lang/Object;"), joinBlock.entryFrame.stack.single())
+    }
+
+    @Test
     fun importsMethodsWithStaleMaxStackAfterPriorTransforms() {
         val method = MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "stale", "()V", null, null).apply {
             instructions = InsnList().apply {

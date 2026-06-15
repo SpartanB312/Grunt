@@ -1,6 +1,8 @@
 package net.spartanb312.grunteon.obfuscator
 
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove
+import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.exp.ControlflowFlatteningSSA
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
@@ -140,6 +142,8 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"junkTerminalThrowChance\": 0.2")
             assertContains(text, "\"dispatcherLandingJunkChance\": 0.0")
             assertContains(text, "\"maxDispatcherLandingJunkBlocksPerMethod\": 4")
+            assertContains(text, "\"exceptionBridgeChance\": 0.0")
+            assertContains(text, "\"maxExceptionBridgesPerMethod\": 4")
             assertContains(text, "\"predicateProcessorMinMainSteps\": 1")
             assertContains(text, "\"predicateProcessorMaxMainSteps\": 2")
             assertContains(text, "\"predicateProcessorMinExtraSteps\": 0")
@@ -152,6 +156,28 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"randomBoundPredicateMinChainSteps\": 1")
             assertContains(text, "\"randomBoundPredicateMaxChainSteps\": 1")
             assertIs<ControlflowJump.Config>(ObfConfig.read(path).transformerConfigs.single())
+        } finally {
+            path.deleteIfExists()
+        }
+    }
+
+    @Test
+    fun roundTripsRuntimeMaterialConfig() {
+        val path = createTempFile("grunteon-runtime-material-config", ".json")
+        try {
+            ObfConfig.write(
+                ObfConfig(
+                    transformerConfigs = listOf(RuntimeMaterial.Config())
+                ),
+                path
+            )
+            val text = path.readText()
+            assertContains(text, "RuntimeMaterial.Config")
+            assertContains(text, "\"draftMaterialMetadata\": true")
+            assertContains(text, "\"detectJdwp\": true")
+            assertContains(text, "\"detectJavaAgent\": false")
+            assertContains(text, "\"detectJmxRemote\": false")
+            assertIs<RuntimeMaterial.Config>(ObfConfig.read(path).transformerConfigs.single())
         } finally {
             path.deleteIfExists()
         }

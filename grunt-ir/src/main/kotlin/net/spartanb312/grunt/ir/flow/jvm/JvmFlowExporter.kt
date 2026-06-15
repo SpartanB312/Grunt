@@ -43,11 +43,12 @@ data class JvmFlowExportOptions(
 
 class JvmFlowExporter(
     private val metadata: JvmFlowMetadata = JvmFlowMetadata(),
-    private val options: JvmFlowExportOptions = JvmFlowExportOptions()
+    private val options: JvmFlowExportOptions = JvmFlowExportOptions(),
+    private val typeHierarchy: JvmFlowTypeHierarchy = JvmFlowTypeHierarchy.Empty
 ) {
     fun export(flow: FlowMethod): MethodNode {
         if (options.verifyBeforeExport) {
-            FlowVerifier.verify(flow).requireValid()
+            FlowVerifier.verify(flow, JvmFlowFrameAssignability(typeHierarchy)::isAssignable).requireValid()
         }
 
         val access = options.access ?: metadata.access

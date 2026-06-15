@@ -4,7 +4,7 @@ import net.spartanb312.grunt.yapyap.transformers.encrypt.number.NumberAttributeB
 import net.spartanb312.grunt.yapyap.transformers.encrypt.number.NumberSPECKEncrypt
 import net.spartanb312.grunt.yapyap.transformers.encrypt.string.StringAttributeBasedEncrypt
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening

@@ -12,6 +12,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
 
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.optimize.class_shrink.desc",
     "Shrinking classes by removing inner classes, unused labels, NOPs, method signatures"

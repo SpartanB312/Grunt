@@ -37,17 +37,12 @@ the near future
 * [X] Verifier
 * [X] Bogus jump
 * [X] Mangled jump
-* [ ] Reversed jump
+* [X] Exception bridge
 * [X] Dispatcher landing block
 * [X] Anti-static simulation
 * [X] Runtime dynamic predicate
 * [X] Shared terminator
 * [X] Junk code
-
-### Controlflow exception
-
-* [ ] Verifier
-* [ ] Exception bridge
 
 ### Encrypt
 
@@ -62,7 +57,11 @@ the near future
 * [X] Parameter obfuscation
 * [ ] Trash class generator
 * [ ] HardwareID authenticator
-* [ ] Anti debug
+
+### Anti debug
+
+* [X] Runtime material
+* [X] AntiLLM
 
 ### Optimize
 

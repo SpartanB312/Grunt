@@ -68,11 +68,35 @@ val PHANTOM_CLASS = "Lnet/spartanb312/grunteon/annotation/internal/PhantomClass;
 val PHANTOM_METHOD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomMethod;"
 val PHANTOM_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/PhantomField;"
 
+val DRAFT_RUNTIME_MATERIAL = "Lnet/spartanb312/grunteon/annotation/internal/RuntimeMaterial;"
+val DRAFT_RUNTIME_MATERIAL_FIELD = "Lnet/spartanb312/grunteon/annotation/internal/RuntimeMaterialField;"
+val DRAFT_RUNTIME_MATERIAL_GUARD = "Lnet/spartanb312/grunteon/annotation/internal/RuntimeMaterialGuard;"
+val STRING_BLACKLIST = "Lnet/spartanb312/grunteon/annotation/internal/StringBlacklist;"
+val REFLECTION_METADATA = "Lnet/spartanb312/grunteon/annotation/internal/ReflectionMetadata;"
+val ANTI_LLM = "Lnet/spartanb312/grunteon/annotation/internal/AntiLLM;"
+val ANTI_LLM_JUNK_CALL = "Lnet/spartanb312/grunteon/annotation/internal/AntiLLMJunkCall;"
+
+@Deprecated("Use DRAFT_RUNTIME_MATERIAL")
+val DRAFT_ANTIDEBUG_MATERIAL = DRAFT_RUNTIME_MATERIAL
+
+@Deprecated("Use DRAFT_RUNTIME_MATERIAL_FIELD")
+val DRAFT_ANTIDEBUG_FIELD = DRAFT_RUNTIME_MATERIAL_FIELD
+
+@Deprecated("Use DRAFT_RUNTIME_MATERIAL_GUARD")
+val DRAFT_ANTIDEBUG_GUARD = DRAFT_RUNTIME_MATERIAL_GUARD
+
 val INTERNAL = mutableSetOf(
     GENERATED_CLASS,
     GENERATED_METHOD,
     GENERATED_FIELD,
     PHANTOM_CLASS,
     PHANTOM_METHOD,
-    PHANTOM_FIELD
+    PHANTOM_FIELD,
+    DRAFT_RUNTIME_MATERIAL,
+    DRAFT_RUNTIME_MATERIAL_FIELD,
+    DRAFT_RUNTIME_MATERIAL_GUARD,
+    STRING_BLACKLIST,
+    REFLECTION_METADATA,
+    ANTI_LLM,
+    ANTI_LLM_JUNK_CALL
 )

@@ -15,6 +15,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.MethodInsnNode
 
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.optimize.enum_optimize.desc",
     "Optimize enum values() calls"

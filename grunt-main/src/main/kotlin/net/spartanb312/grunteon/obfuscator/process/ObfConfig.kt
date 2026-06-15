@@ -1,4 +1,4 @@
-package net.spartanb312.grunteon.obfuscator
+package net.spartanb312.grunteon.obfuscator.process
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable

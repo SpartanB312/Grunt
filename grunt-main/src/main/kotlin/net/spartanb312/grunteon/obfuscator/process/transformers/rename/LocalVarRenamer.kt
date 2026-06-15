@@ -18,6 +18,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 /**
  * Last update on 2026/03/31 by FluixCarvin
  */
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.rename.local_var_renamer.desc",
     "Renaming local variables"
@@ -59,20 +60,17 @@ class LocalVarRenamer : Transformer<LocalVarRenamer.Config>(
         )
     ) : TransformerConfig()
 
-    private lateinit var methodExPredicate: NamePredicates
+
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
-        pre {
-            //Logger.info(" > LocalVarRenamer: Transforming local variables...")
-            // TODO: there is a better way to do this instead of lateinit var
-            methodExPredicate = buildMethodNamePredicates(config.exclusion)
-        }
         val counter = reducibleScopeValue { MergeableCounter() }
+        val methodExPredicate = globalScopeValue { buildMethodNamePredicates(config.exclusion) }
         val dictionary = globalScopeValue { NameGenerator.getDictionary(config.dictionary) }
         parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
             val counter = counter.local
             val dictionary = dictionary.global
+            val methodExPredicate = methodExPredicate.global
             classNode.methods.asSequence()
                 .filter { !it.isAbstract && !it.isNative }
                 .forEach { method ->

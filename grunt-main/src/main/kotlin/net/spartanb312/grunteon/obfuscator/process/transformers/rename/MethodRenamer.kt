@@ -31,6 +31,7 @@ import org.objectweb.asm.Type
  * Invokedynamic remap
  * TODO: Reflection remap
  */
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.rename.method_renamer.desc",
     "Renaming methods"

@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator.process
 
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
+import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.exp.ControlflowFlatteningSSA
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
@@ -9,6 +10,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roun
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.ArithmeticSubstitute
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
+import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiLLM
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.DeclaredFieldsExtract
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.ParameterObfuscate
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.ClassShrink
@@ -21,6 +23,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.StringE
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.DecompilerCrasher
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReferenceObfuscate
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReflectionSupport
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.ShuffleMembers
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.Watermark
 import net.spartanb312.grunteon.obfuscator.process.transformers.redirect.FieldAccessProxy
@@ -54,16 +57,19 @@ object TransformerRegistry {
         entry({ SourceDebugInfoHide() }, { SourceDebugInfoHide.Config() }),
         entry({ StringEqualsOptimize() }, { StringEqualsOptimize.Config() }),
         entry({ MethodInliner() }, { MethodInliner.Config() }),
+        entry({ AntiLLM() }, { AntiLLM.Config() }),
         entry({ ControlflowFlattening() }, { ControlflowFlattening.Config() }),
         entry({ ControlflowFlatteningSSA() }, { ControlflowFlatteningSSA.Config() }),
         entry({ ControlflowJump() }, { ControlflowJump.Config() }),
         entry({ FlowIRRoundTrip() }, { FlowIRRoundTrip.Config() }),
         entry({ SSARoundTrip() }, { SSARoundTrip.Config() }),
+        entry({ ReflectionSupport() }, { ReflectionSupport.Config() }),
         entry({ ArithmeticSubstitute() }, { ArithmeticSubstitute.Config() }),
         entry({ NumberBasicEncrypt() }, { NumberBasicEncrypt.Config() }),
         entry({ StringArrayedEncrypt() }, { StringArrayedEncrypt.Config() }),
         entry({ DeclaredFieldsExtract() }, { DeclaredFieldsExtract.Config() }),
         entry({ ParameterObfuscate() }, { ParameterObfuscate.Config() }),
+        entry({ RuntimeMaterial() }, { RuntimeMaterial.Config() }),
         entry({ InvokeDispatcher() }, { InvokeDispatcher.Config() }),
         entry({ InvokeProxy() }, { InvokeProxy.Config() }),
         entry({ FieldAccessProxy() }, { FieldAccessProxy.Config() }),

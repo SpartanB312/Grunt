@@ -21,10 +21,10 @@ import io.github.composefluent.surface.Card
 import io.github.vinceglb.filekit.FileKit
 import kotlinx.coroutines.launch
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.ObfConfig
 import net.spartanb312.grunteon.obfuscator.SUBTITLE
 import net.spartanb312.grunteon.obfuscator.VERSION
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import java.awt.Frame
 import javax.swing.JDialog

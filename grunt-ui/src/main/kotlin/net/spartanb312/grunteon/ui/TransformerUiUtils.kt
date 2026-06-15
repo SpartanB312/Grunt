@@ -1,10 +1,6 @@
 package net.spartanb312.grunteon.ui
 
-import net.spartanb312.grunteon.obfuscator.TransformerEntry
-import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.TransformerRegistry
+import net.spartanb312.grunteon.obfuscator.process.*
 
 fun findDefinition(
     config: TransformerConfig,

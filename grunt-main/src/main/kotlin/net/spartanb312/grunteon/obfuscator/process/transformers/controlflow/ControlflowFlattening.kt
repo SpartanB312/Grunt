@@ -1,15 +1,17 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.controlflow
 
 import kotlinx.serialization.Serializable
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExportOptions
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowExporter
-import net.spartanb312.grunt.ir.flow.jvm.JvmFlowImporter
+import net.spartanb312.grunt.ir.flow.jvm.*
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
+import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.hierarchy.ClassHierarchyFlowTypeHierarchy
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkStringProvider
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.junkStringProvider
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.*
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.util.*
@@ -21,6 +23,7 @@ import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 
+@Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.controlflow.controlflow_flattening.desc",
     "Flatten method control flow through Flow IR dispatcher islands"
@@ -41,6 +44,9 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @SettingDesc("Run ASM BasicInterpreter after exporting Flow IR bytecode")
         @SettingName("Verify bytecode")
         val verifyBytecode: Boolean = true,
+        @SettingDesc("Analyzer used before importing methods into Flow IR")
+        @SettingName("Flow analyzer")
+        val flowAnalyzer: JvmFlowAnalyzerMode = JvmFlowAnalyzerMode.Hierarchy,
         @SettingDesc("Include method entry block in dispatcher flattening")
         @SettingName("Include method entry")
         val includeMethodEntry: Boolean = true,
@@ -175,7 +181,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val skippedCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
         val hierarchyKey = globalScopeValue {
-            if (config.junkCases) {
+            if (config.junkCases || config.flowAnalyzer == JvmFlowAnalyzerMode.Hierarchy) {
                 ClassHierarchy.build(instance.workRes.allClassCollection, instance.workRes::getClassNode)
             } else {
                 null
@@ -192,6 +198,9 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             } else {
                 null
             }
+        }
+        val junkStringProviderKey = globalScopeValue {
+            junkStringProvider(instance.workRes.getStringPool(WorkResources.ANTI_LLM_STRING_POOL))
         }
         val keyProcessorRegistryKey = globalScopeValue {
             if (config.stateKeyMode == FlowStateKeyMode.Inline) {
@@ -218,6 +227,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         }
 
         parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), config.workerBatchSize.coerceAtLeast(1)) { classNode ->
+            val hierarchy = hierarchyKey.global
+            val flowTypeHierarchy = hierarchy?.let(::ClassHierarchyFlowTypeHierarchy) ?: JvmFlowTypeHierarchy.Empty
             val transformedMethods = classNode.methods.map { methodNode ->
                 if (methodNode.isAbstract || methodNode.isNative) {
                     methodNode
@@ -238,15 +249,18 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                                 classNode.superName,
                                 config,
                                 randomGen,
-                                hierarchyKey.global,
+                                hierarchy,
                                 junkCallPoolKey.global,
+                                junkStringProviderKey.global,
                                 keyProcessorRegistryKey.global?.methodProcessor(
                                     owner = classNode.name,
                                     ownerVersion = classNode.version,
                                     methodMarker = Xoshiro256PPRandom(
                                         getSeed(classNode.name, methodNode.name, methodNode.desc, "CffKeyProcessor", "methodMarker")
                                     ).getRandomString(8)
-                                )
+                                ),
+                                config.flowAnalyzer,
+                                flowTypeHierarchy
                             )
                         }.fold(
                             onSuccess = { result ->
@@ -336,9 +350,15 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         randomGen: UniformRandomProvider,
         hierarchy: ClassHierarchy?,
         junkCallPool: JunkCallPool?,
-        stateKeyProcessor: FlowStateKeyProcessor?
+        junkStringProvider: JunkStringProvider?,
+        stateKeyProcessor: FlowStateKeyProcessor?,
+        flowAnalyzerMode: JvmFlowAnalyzerMode,
+        flowTypeHierarchy: JvmFlowTypeHierarchy
     ): FlattenedMethod {
-        val imported = JvmFlowImporter().import(ownerInternalName, this)
+        val imported = JvmFlowImporter(
+            analyzerMode = flowAnalyzerMode,
+            typeHierarchy = flowTypeHierarchy
+        ).import(ownerInternalName, this)
         if (config.maxFlowBlocks > 0 && imported.method.blocks.size > config.maxFlowBlocks) {
             return FlattenedMethod(this, changed = false, reason = "flowBlocks=${imported.method.blocks.size} > ${config.maxFlowBlocks}")
         }
@@ -373,6 +393,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             randomGen,
             hierarchy,
             junkCallPool,
+            junkStringProvider,
             stateKeyProcessor,
             setOfNotNull(ownerInternalName, ownerSuperName)
         ).flatten(imported.method)
@@ -386,7 +407,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                 access = access,
                 signature = signature,
                 exceptions = exceptions?.toList() ?: emptyList()
-            )
+            ),
+            flowTypeHierarchy
         ).export(imported.method)
         copyMethodMetadataTo(exported)
 

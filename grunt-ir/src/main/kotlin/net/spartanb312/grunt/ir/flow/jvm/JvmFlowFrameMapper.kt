@@ -30,7 +30,11 @@ object JvmFlowFrameMapper {
             BasicValue.DOUBLE_VALUE -> FlowFrameValue.Double
             BasicValue.REFERENCE_VALUE -> FlowFrameValue.Object("java/lang/Object")
             BasicValue.RETURNADDRESS_VALUE -> FlowFrameValue.Unknown("returnAddress")
-            else -> value.type?.let(::type) ?: FlowFrameValue.Unknown()
+            else -> if (value.type?.sort == Type.OBJECT && value.type?.internalName == JvmFlowNullInternalName) {
+                FlowFrameValue.Null
+            } else {
+                value.type?.let(::type) ?: FlowFrameValue.Unknown()
+            }
         }
     }
 

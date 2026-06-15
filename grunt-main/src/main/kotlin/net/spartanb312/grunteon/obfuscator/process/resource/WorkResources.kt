@@ -37,7 +37,8 @@ class WorkResources private constructor(
      * Input classes in input/output set, maps name to class node.
      * Also included in allClasses.
      */
-    val inputClassMap: MutableMap<String, ClassNode>
+    val inputClassMap: MutableMap<String, ClassNode>,
+    private val stringPools: ConcurrentHashMap<String, List<String>> = ConcurrentHashMap()
 ) {
     val inputClassCollection: Collection<ClassNode> get() = inputClassMap.values
     val librariesClassCollection: Collection<ClassNode> get() = libraryClassMap.values
@@ -57,6 +58,19 @@ class WorkResources private constructor(
 
     fun addGeneratedResource(name: String, content: ByteArray) {
         generatedResources[name] = content
+    }
+
+    fun putStringPool(name: String, values: Iterable<String>) {
+        stringPools[name] = values
+            .asSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .toList()
+    }
+
+    fun getStringPool(name: String): List<String> {
+        return stringPools[name] ?: emptyList()
     }
 
     fun getInputResource(name: String): ResourceSet.ResourceEntry? {
@@ -93,6 +107,8 @@ class WorkResources private constructor(
     }
 
     companion object {
+        const val ANTI_LLM_STRING_POOL = "anti-llm"
+
         private val DUMMY_CLASSNODE = ClassNode()
 
         private fun toZipRootPath(zipPath: Path): Path {

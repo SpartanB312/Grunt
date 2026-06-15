@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 @HiddenTransformer
+@Transformer.Stability(StableLevel.Experimental)
 @Transformer.Description(
     "process.controlflow.controlflow_flattening.desc",
     "Flatten method control flow through Grunt SSA IR"

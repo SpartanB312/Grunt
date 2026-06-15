@@ -10,6 +10,7 @@ import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCallPool
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeGenerator
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkCodeOptions
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.junkcode.JunkStringProvider
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Opcodes
@@ -59,6 +60,7 @@ class FlowControlFlowFlattener(
     private val random: UniformRandomProvider = Xoshiro256PPRandom(DefaultSeed),
     private val hierarchy: ClassHierarchy? = null,
     private val junkCallPool: JunkCallPool? = null,
+    private val junkStringProvider: JunkStringProvider? = null,
     private val stateKeyProcessor: FlowStateKeyProcessor? = null,
     private val constructorInitOwners: Set<String> = emptySet()
 ) {
@@ -494,7 +496,8 @@ class FlowControlFlowFlattener(
                     callPool = requireNotNull(junkCallPool),
                     hierarchy = requireNotNull(hierarchy),
                     options = options.junkCodeOptions,
-                    random = random
+                    random = random,
+                    stringProvider = junkStringProvider
                 ).createTerminalBlock(ids.block(), method, frame)
             }
         }
@@ -550,7 +553,8 @@ class FlowControlFlowFlattener(
             callPool = junkCallPool,
             hierarchy = hierarchy,
             options = options.junkCodeOptions,
-            random = random
+            random = random,
+            stringProvider = junkStringProvider
         ).appendStackNeutralJunk(body, minimumCalls = 1)
     }
 

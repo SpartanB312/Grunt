@@ -111,7 +111,11 @@ val FlowFrameValue.categorySize: Int
     }
 
 object FlowFrames {
-    fun isCompatible(actual: FlowFrame, expected: FlowFrame): Boolean {
+    fun isCompatible(
+        actual: FlowFrame,
+        expected: FlowFrame,
+        isAssignable: (FlowFrameValue, FlowFrameValue) -> Boolean = FlowFrames::isAssignable
+    ): Boolean {
         if (actual.stack.size != expected.stack.size) return false
         if (!actual.stack.zip(expected.stack).all { (from, to) -> isAssignable(from, to) }) return false
 
@@ -119,7 +123,7 @@ object FlowFrames {
         return (0 until localCount).all { index ->
             val from = actual.locals.getOrElse(index) { FlowFrameValue.Unknown("absentLocal") }
             val to = expected.locals.getOrElse(index) { FlowFrameValue.Unknown("absentLocal") }
-            isLocalAssignable(from, to)
+            isLocalAssignable(from, to, isAssignable)
         }
     }
 
@@ -136,12 +140,20 @@ object FlowFrames {
         return false
     }
 
-    private fun isLocalAssignable(actual: FlowFrameValue, expected: FlowFrameValue): Boolean {
+    private fun isLocalAssignable(
+        actual: FlowFrameValue,
+        expected: FlowFrameValue,
+        isAssignable: (FlowFrameValue, FlowFrameValue) -> Boolean = FlowFrames::isAssignable
+    ): Boolean {
         if (expected == FlowFrameValue.Top) return true
         return isAssignable(actual, expected)
     }
 
-    fun hasStackSuffix(frame: FlowFrame, suffix: List<FlowFrameValue>): Boolean {
+    fun hasStackSuffix(
+        frame: FlowFrame,
+        suffix: List<FlowFrameValue>,
+        isAssignable: (FlowFrameValue, FlowFrameValue) -> Boolean = FlowFrames::isAssignable
+    ): Boolean {
         if (frame.stack.size < suffix.size) return false
         val actualSuffix = frame.stack.takeLast(suffix.size)
         return actualSuffix.zip(suffix).all { (actual, expected) -> isAssignable(actual, expected) }

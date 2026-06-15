@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.ButtonDefaults
-import net.spartanb312.grunteon.obfuscator.ObfConfig
-import net.spartanb312.grunteon.obfuscator.TransformerEntry
+import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import java.awt.Cursor
 import kotlin.reflect.*
 import kotlin.reflect.full.memberFunctions

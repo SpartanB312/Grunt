@@ -35,8 +35,8 @@ import io.github.composefluent.background.Layer
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.*
-import net.spartanb312.grunteon.obfuscator.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.Category
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import java.util.*
 
 private data class DragCardBounds(

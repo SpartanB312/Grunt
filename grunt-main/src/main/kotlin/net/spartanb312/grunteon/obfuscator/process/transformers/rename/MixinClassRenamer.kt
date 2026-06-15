@@ -13,6 +13,7 @@ import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
 import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
 import net.spartanb312.grunteon.obfuscator.process.SettingDesc
 import net.spartanb312.grunteon.obfuscator.process.SettingName
+import net.spartanb312.grunteon.obfuscator.process.StableLevel
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.resource.NameGenerator
@@ -29,6 +30,7 @@ import net.spartanb312.grunteon.obfuscator.util.splash
 import java.nio.charset.StandardCharsets
 
 @HiddenTransformer
+@Transformer.Stability(StableLevel.Developing)
 @Transformer.Description(
     "process.rename.mixin_class_renamer.desc",
     "Renaming mixin classes"
