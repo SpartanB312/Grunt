@@ -35,8 +35,6 @@ class ClassShrink : Transformer<ClassShrink.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Remove redundant inner classes")
         @SettingName("Inner classes")

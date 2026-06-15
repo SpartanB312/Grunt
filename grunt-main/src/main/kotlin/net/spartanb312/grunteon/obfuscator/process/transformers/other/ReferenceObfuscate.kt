@@ -15,12 +15,7 @@ import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
-import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
-import net.spartanb312.grunteon.obfuscator.util.extensions.findAnnotation
-import net.spartanb312.grunteon.obfuscator.util.extensions.hasAnnotation
-import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
-import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
-import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
+import net.spartanb312.grunteon.obfuscator.util.extensions.*
 import net.spartanb312.grunteon.obfuscator.util.filters.NamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicates
 import org.apache.commons.rng.UniformRandomProvider
@@ -64,13 +59,11 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("The chance that attempt to replace invokes")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Chance")
-        val chance: Double = 0.3,
+        val chance: Decimal = 0.3.toDecimal(),
         @SettingDesc("Specify encrypted data container")
         @SettingName("Metadata class")
         val metadataClass: String = "net/spartanb312/grunteon/internal/Metadata",
@@ -545,7 +538,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                     methodNode.instructions.filter {
                         it is MethodInsnNode && it.opcode != Opcodes.INVOKESPECIAL
                     }.forEach { insnNode ->
-                        if (insnNode is MethodInsnNode && randomGen.nextFloat() < config.chance) {
+                        if (insnNode is MethodInsnNode && randomGen.nextFloat() < config.chance.toFloat()) {
                             val metadata = metadataMap.entries.find { (clazz, _) -> clazz.name == insnNode.owner }
                             val metadataKey = insnNode.name + "<>" + insnNode.desc
                             val index = metadata?.value?.d2?.indexOf(metadataKey) ?: -1

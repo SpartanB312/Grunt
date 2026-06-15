@@ -4,7 +4,6 @@ import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 import kotlinx.serialization.serializer
 import net.spartanb312.grunteon.obfuscator.lang.I18NDescriptorPath
 import net.spartanb312.grunteon.obfuscator.util.filters.FilterStrategy
@@ -12,12 +11,16 @@ import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
 import kotlin.reflect.KClass
 
 @Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.PROPERTY)
+@Target(AnnotationTarget.PROPERTY, AnnotationTarget.CLASS)
+annotation class SettingSection(val enText: String)
+
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.PROPERTY, AnnotationTarget.CLASS)
 annotation class SettingDesc(val enText: String)
 
 // Optional, will fallback to property name if not present
 @Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.PROPERTY)
+@Target(AnnotationTarget.PROPERTY, AnnotationTarget.CLASS)
 annotation class SettingName(val enText: String)
 
 @Target(AnnotationTarget.PROPERTY)
@@ -28,12 +31,12 @@ annotation class IntRangeVal(val min: Int, val max: Int, val step: Int = 1)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class DecimalRangeVal(val min: Double, val max: Double, val step: Double)
 
+@Target(AnnotationTarget.PROPERTY)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class HiddenFromAutoParameter
+
 @Serializable
 abstract class TransformerConfig {
-    @SettingDesc("Enable this transformer config node")
-    @SettingName("Enabled")
-    var enabled: Boolean = true
-
     companion object {
         @OptIn(InternalSerializationApi::class)
         fun serializersModule(): SerializersModule {
@@ -54,6 +57,8 @@ abstract class TransformerConfig {
 
 @Serializable
 @I18NDescriptorPath("process.common")
+@SettingDesc("Specify class include/exclude rules")
+@SettingName("Class filter")
 data class ClassFilterConfig(
     @SettingDesc("Specify class exclusions")
     @SettingName("Exclude strategy")

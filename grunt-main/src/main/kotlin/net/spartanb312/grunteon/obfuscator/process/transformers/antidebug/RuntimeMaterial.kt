@@ -8,27 +8,8 @@ import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.after
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.DecimalRangeVal
-import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.StableLevel
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
-import net.spartanb312.grunteon.obfuscator.process.post
-import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL_FIELD
-import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL_GUARD
-import net.spartanb312.grunteon.obfuscator.util.GENERATED_CLASS
-import net.spartanb312.grunteon.obfuscator.util.GENERATED_FIELD
-import net.spartanb312.grunteon.obfuscator.util.GENERATED_METHOD
-import net.spartanb312.grunteon.obfuscator.util.Logger
-import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
+import net.spartanb312.grunteon.obfuscator.process.*
+import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
@@ -38,14 +19,7 @@ import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.AnnotationNode
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.FieldNode
-import org.objectweb.asm.tree.InsnList
-import org.objectweb.asm.tree.InsnNode
-import org.objectweb.asm.tree.LabelNode
-import org.objectweb.asm.tree.MethodInsnNode
-import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.*
 
 /*
  * Design notes
@@ -98,6 +72,63 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
     }
 
     @Serializable
+    @SettingDesc("Detect tokens settings")
+    @SettingName("Detection tokens")
+    data class DetectTokens(
+        @SettingDesc("Detect JDWP tokens")
+        @SettingName("jdwp")
+        val jdwp: Boolean = true,
+        @SettingDesc("Detect legacy -Xdebug tokens")
+        @SettingName("-Xdebug")
+        val xdebug: Boolean = true,
+        @SettingDesc("Detect legacy -Xrunjdwp tokens")
+        @SettingName("-Xrunjdwp")
+        val xrunjdwp: Boolean = true,
+        @SettingDesc("Detect dt_socket debug transport tokens")
+        @SettingName("dt_socket")
+        val dtSocket: Boolean = true,
+        @SettingDesc("Detect dt_shmem debug transport tokens")
+        @SettingName("dt_shmem")
+        val dtShmem: Boolean = true,
+        @SettingDesc("Detect generic -agentlib tokens. Disabled by default to avoid profiler/APM false positives")
+        @SettingName("-agentlib")
+        val genericAgentlib: Boolean = false,
+        @SettingDesc("Detect generic -agentpath tokens. Disabled by default to avoid profiler/APM false positives")
+        @SettingName("-agentpath")
+        val genericAgentpath: Boolean = false,
+        @SettingDesc("Detect generic -javaagent tokens. Disabled by default to avoid instrumentation false positives")
+        @SettingName("-javaagent")
+        val javaAgent: Boolean = false,
+        @SettingDesc("Detect JMX remote tokens. Disabled by default because it is not always debugger evidence")
+        @SettingName("jmxremote")
+        val jmxRemote: Boolean = false,
+        @SettingDesc("Additional lowercase tokens to detect in selected sources")
+        @SettingName("Extra detection tokens")
+        val extra: List<String> = emptyList(),
+    )
+
+    @Serializable
+    @SettingDesc("Detect sources settings")
+    @SettingName("Detect sources")
+    data class DetectSources(
+        @SettingDesc("Read JVM RuntimeMXBean input arguments as detection source")
+        @SettingName("JVM arguments")
+        val inputArguments: Boolean = true,
+        @SettingDesc("Read JAVA_TOOL_OPTIONS as detection source")
+        @SettingName("JAVA_TOOL_OPTIONS")
+        val javaToolOptionsEnv: Boolean = true,
+        @SettingDesc("Read JDK_JAVA_OPTIONS as detection source")
+        @SettingName("JDK_JAVA_OPTIONS")
+        val jdkJavaOptionsEnv: Boolean = true,
+        @SettingDesc("Read _JAVA_OPTIONS as detection source")
+        @SettingName("_JAVA_OPTIONS")
+        val javaOptionsEnv: Boolean = true,
+        @SettingDesc("Read com.sun.management.jmxremote property as detection source")
+        @SettingName("JMX property")
+        val jmxRemoteProperty: Boolean = false,
+    )
+
+    @Serializable
     data class Config(
         @SettingDesc("Specify class include/exclude rules")
         @SettingName("Class filter")
@@ -116,51 +147,8 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
         @IntRangeVal(min = 0, max = 64)
         @SettingName("Constructor limit")
         val constructorLimit: Int = 8,
-        @SettingDesc("Read JVM RuntimeMXBean input arguments as detection source")
-        @SettingName("Detect source: JVM arguments")
-        val detectInputArguments: Boolean = true,
-        @SettingDesc("Read JAVA_TOOL_OPTIONS as detection source")
-        @SettingName("Detect source: JAVA_TOOL_OPTIONS")
-        val detectJavaToolOptionsEnv: Boolean = true,
-        @SettingDesc("Read JDK_JAVA_OPTIONS as detection source")
-        @SettingName("Detect source: JDK_JAVA_OPTIONS")
-        val detectJdkJavaOptionsEnv: Boolean = true,
-        @SettingDesc("Read _JAVA_OPTIONS as detection source")
-        @SettingName("Detect source: _JAVA_OPTIONS")
-        val detectJavaOptionsEnv: Boolean = true,
-        @SettingDesc("Read com.sun.management.jmxremote property as detection source")
-        @SettingName("Detect source: JMX property")
-        val detectJmxRemoteProperty: Boolean = false,
-        @SettingDesc("Detect JDWP tokens")
-        @SettingName("Detect token: jdwp")
-        val detectJdwp: Boolean = true,
-        @SettingDesc("Detect legacy -Xdebug tokens")
-        @SettingName("Detect token: -Xdebug")
-        val detectXdebug: Boolean = true,
-        @SettingDesc("Detect legacy -Xrunjdwp tokens")
-        @SettingName("Detect token: -Xrunjdwp")
-        val detectXrunjdwp: Boolean = true,
-        @SettingDesc("Detect dt_socket debug transport tokens")
-        @SettingName("Detect token: dt_socket")
-        val detectDtSocket: Boolean = true,
-        @SettingDesc("Detect dt_shmem debug transport tokens")
-        @SettingName("Detect token: dt_shmem")
-        val detectDtShmem: Boolean = true,
-        @SettingDesc("Detect generic -agentlib tokens. Disabled by default to avoid profiler/APM false positives")
-        @SettingName("Detect token: -agentlib")
-        val detectGenericAgentlib: Boolean = false,
-        @SettingDesc("Detect generic -agentpath tokens. Disabled by default to avoid profiler/APM false positives")
-        @SettingName("Detect token: -agentpath")
-        val detectGenericAgentpath: Boolean = false,
-        @SettingDesc("Detect generic -javaagent tokens. Disabled by default to avoid instrumentation false positives")
-        @SettingName("Detect token: -javaagent")
-        val detectJavaAgent: Boolean = false,
-        @SettingDesc("Detect JMX remote tokens. Disabled by default because it is not always debugger evidence")
-        @SettingName("Detect token: jmxremote")
-        val detectJmxRemote: Boolean = false,
-        @SettingDesc("Additional lowercase tokens to detect in selected sources")
-        @SettingName("Extra detection tokens")
-        val extraDetectionTokens: List<String> = emptyList(),
+        val detectSources: DetectSources = DetectSources(),
+        val detectTokens: DetectTokens = DetectTokens(),
         @SettingDesc("Emit draft metadata for ReferenceObfuscate integration")
         @SettingName("Draft material metadata")
         val draftMaterialMetadata: Boolean = true
@@ -459,11 +447,11 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
                 INVOKESPECIAL("java/lang/StringBuilder", "<init>", "()V", false)
                 ASTORE(0)
 
-                if (config.detectInputArguments) +appendRuntimeInputArguments()
-                if (config.detectJavaToolOptionsEnv) +appendEnv("JAVA_TOOL_OPTIONS")
-                if (config.detectJdkJavaOptionsEnv) +appendEnv("JDK_JAVA_OPTIONS")
-                if (config.detectJavaOptionsEnv) +appendEnv("_JAVA_OPTIONS")
-                if (config.detectJmxRemoteProperty) +appendPropertyNameWhenSet("com.sun.management.jmxremote")
+                if (config.detectSources.inputArguments) +appendRuntimeInputArguments()
+                if (config.detectSources.javaToolOptionsEnv) +appendEnv("JAVA_TOOL_OPTIONS")
+                if (config.detectSources.jdkJavaOptionsEnv) +appendEnv("JDK_JAVA_OPTIONS")
+                if (config.detectSources.javaOptionsEnv) +appendEnv("_JAVA_OPTIONS")
+                if (config.detectSources.jmxRemoteProperty) +appendPropertyNameWhenSet("com.sun.management.jmxremote")
 
                 ALOAD(0)
                 INVOKEVIRTUAL("java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false)
@@ -537,16 +525,16 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
         fun add(enabled: Boolean, value: String, bit: Int) {
             if (enabled) tokens += DetectionToken(value, baseMask or bit)
         }
-        add(config.detectJdwp, "jdwp", 0x0001)
-        add(config.detectXdebug, "-xdebug", 0x0002)
-        add(config.detectXrunjdwp, "-xrunjdwp", 0x0004)
-        add(config.detectDtSocket, "transport=dt_socket", 0x0008)
-        add(config.detectDtShmem, "transport=dt_shmem", 0x0010)
-        add(config.detectGenericAgentlib, "-agentlib", 0x0020)
-        add(config.detectGenericAgentpath, "-agentpath", 0x0040)
-        add(config.detectJavaAgent, "-javaagent", 0x0080)
-        add(config.detectJmxRemote, "jmxremote", 0x0100)
-        config.extraDetectionTokens
+        add(config.detectTokens.jdwp, "jdwp", 0x0001)
+        add(config.detectTokens.xdebug, "-xdebug", 0x0002)
+        add(config.detectTokens.xrunjdwp, "-xrunjdwp", 0x0004)
+        add(config.detectTokens.dtSocket, "transport=dt_socket", 0x0008)
+        add(config.detectTokens.dtShmem, "transport=dt_shmem", 0x0010)
+        add(config.detectTokens.genericAgentlib, "-agentlib", 0x0020)
+        add(config.detectTokens.genericAgentpath, "-agentpath", 0x0040)
+        add(config.detectTokens.javaAgent, "-javaagent", 0x0080)
+        add(config.detectTokens.jmxRemote, "jmxremote", 0x0100)
+        config.detectTokens.extra
             .map { it.trim().lowercase() }
             .filter { it.isNotEmpty() }
             .distinct()

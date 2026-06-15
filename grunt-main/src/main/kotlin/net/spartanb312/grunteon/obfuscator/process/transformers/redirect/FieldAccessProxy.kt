@@ -31,13 +31,11 @@ class FieldAccessProxy : Transformer<FieldAccessProxy.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("The chance that attempt to replace put/set to getter/setter")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Chance")
-        val chance: Double = 1.0,
+        val chance: Decimal = 1.0.toDecimal(),
         @SettingDesc("Replace GETSTATIC to static getter")
         @SettingName("Get static")
         val getStatic: Boolean = true,
@@ -93,7 +91,7 @@ class FieldAccessProxy : Transformer<FieldAccessProxy.Config>(
                     val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, method.name, method.desc))
                     method.instructions.toList().forEach { instruction ->
                         if (instruction !is FieldInsnNode) return@forEach
-                        if (randomGen.nextFloat() > config.chance) return@forEach
+                        if (randomGen.nextFloat() > config.chance.toFloat()) return@forEach
                         val callingOwner = instance.workRes.getClassNode(instruction.owner) ?: return@forEach
                         if (callingOwner.isExcluded(IGNORE_FIELD_PROXY)) return@forEach
                         val callingField = callingOwner.fields?.toList()?.find {

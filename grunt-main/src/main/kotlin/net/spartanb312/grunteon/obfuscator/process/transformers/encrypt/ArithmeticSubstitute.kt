@@ -5,9 +5,7 @@ import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.*
-import net.spartanb312.grunteon.obfuscator.util.DISABLE_ARITHMETIC_SUBSTITUTE
-import net.spartanb312.grunteon.obfuscator.util.Logger
-import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
+import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
@@ -35,13 +33,11 @@ class ArithmeticSubstitute : Transformer<ArithmeticSubstitute.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc("Ops replace rate. Range: 0.0..1.0")
+        @SettingDesc("Ops replace rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Chance")
-        val chance: Double = 0.3,
+        val chance: Decimal = 0.3.toDecimal(),
         @SettingDesc("The upper limit of instruction count for a Method. Typically, each instruction occupies 2-3 bytes, and the upper limit for each Method is 65536 bytes")
         @SettingName("Max instructions")
         val maxInstructions: Int = 16384,
@@ -93,7 +89,7 @@ class ArithmeticSubstitute : Transformer<ArithmeticSubstitute.Config>(
                             }
                             // Avoid "method too large"
                             val currentSize = insnList.size() + method.instructions.size() - index
-                            if (currentSize >= config.maxInstructions || randomGen.nextFloat() >= chanceModifier * config.chance) {
+                            if (currentSize >= config.maxInstructions || randomGen.nextFloat() >= chanceModifier * config.chance.toFloat()) {
                                 +insn
                                 continue
                             }

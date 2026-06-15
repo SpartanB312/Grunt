@@ -61,13 +61,11 @@ class StringAttributeBasedEncrypt : Transformer<StringAttributeBasedEncrypt.Conf
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc("String encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("String encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Chance")
-        val chance: Double = 1.0,
+        val chance: Decimal = 1.0.toDecimal(),
         @SettingDesc("Minimum constants required before generating a CP-ABE pool")
         @SettingName("Min pool size")
         val minPoolSize: Int = 2,
@@ -177,7 +175,7 @@ class StringAttributeBasedEncrypt : Transformer<StringAttributeBasedEncrypt.Conf
 
                 method.instructions.toList().forEach { instruction ->
                     if (pool.size >= config.maxPoolSize) return@forEach
-                    if (randomGen.nextFloat() > config.chance) return@forEach
+                    if (randomGen.nextFloat() > config.chance.toFloat()) return@forEach
 
                     if (instruction is LdcInsnNode && instruction.cst is String) {
                         val value = instruction.cst as String

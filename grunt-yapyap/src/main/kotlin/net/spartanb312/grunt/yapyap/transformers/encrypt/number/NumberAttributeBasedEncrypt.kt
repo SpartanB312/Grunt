@@ -63,8 +63,6 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Encrypt integers")
         @SettingName("Integer")
@@ -78,10 +76,10 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         @SettingDesc("Encrypt doubles")
         @SettingName("Double")
         val double: Boolean = true,
-        @SettingDesc("Number encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Number encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Chance")
-        val chance: Double = 1.0,
+        val chance: Decimal = 1.0.toDecimal(),
         @SettingDesc("Minimum constants required before generating a CP-ABE pool")
         @SettingName("Min pool size")
         val minPoolSize: Int = 4,
@@ -191,7 +189,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
 
                 method.instructions.toList().forEach { instruction ->
                     if (pool.size >= config.maxPoolSize) return@forEach
-                    if (randomGen.nextFloat() > config.chance) return@forEach
+                    if (randomGen.nextFloat() > config.chance.toFloat()) return@forEach
                     if (config.integer) instruction.getIntValue()?.let {
                         pool.addInt(method, instruction, it)
                         return@forEach

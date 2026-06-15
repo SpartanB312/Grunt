@@ -39,8 +39,6 @@ class SourceDebugInfoHide : Transformer<SourceDebugInfoHide.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Remove or edit source file information")
         @SettingName("Source files")

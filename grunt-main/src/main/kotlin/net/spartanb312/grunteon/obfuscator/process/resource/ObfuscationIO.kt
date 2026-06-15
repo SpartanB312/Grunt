@@ -1,17 +1,9 @@
 package net.spartanb312.grunteon.obfuscator.process.resource
 
-import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.GlobalConfig
 import java.io.OutputStream
 import java.nio.file.Path
-import kotlin.io.path.Path
-import kotlin.io.path.absolutePathString
-import kotlin.io.path.createDirectories
-import kotlin.io.path.exists
-import kotlin.io.path.extension
-import kotlin.io.path.isDirectory
-import kotlin.io.path.name
-import kotlin.io.path.outputStream
-import kotlin.io.path.walk
+import kotlin.io.path.*
 
 interface ResourceInput {
     val description: String
@@ -52,13 +44,13 @@ data class ObfuscationIO(
     val mappingsOutput: ResourceOutput? = null,
 ) {
     companion object {
-        fun fromConfig(config: ObfConfig): ObfuscationIO {
+        fun fromConfig(globalConfig: GlobalConfig): ObfuscationIO {
             return ObfuscationIO(
-                input = PathResourceInput(Path(config.input)),
-                libraries = config.libs
+                input = PathResourceInput(Path(globalConfig.input)),
+                libraries = globalConfig.libs
                     .map { PathResourceInput(Path(it)) }
                     .flatMap { it.expandJarInputs() },
-                output = config.output?.let { PathResourceOutput(Path(it)) },
+                output = globalConfig.output?.let { PathResourceOutput(Path(it)) },
             )
         }
     }

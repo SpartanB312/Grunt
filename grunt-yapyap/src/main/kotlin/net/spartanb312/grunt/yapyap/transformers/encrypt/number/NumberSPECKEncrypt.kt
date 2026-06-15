@@ -37,8 +37,6 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Encrypt integers with SPECK32/64")
         @SettingName("Integer")
@@ -52,10 +50,10 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
         @SettingDesc("Encrypt doubles through SPECK64/128 bit encryption")
         @SettingName("Double")
         val double: Boolean = true,
-        @SettingDesc("Number encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Number encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Chance")
-        val chance: Double = 1.0,
+        val chance: Decimal = 1.0.toDecimal(),
         @SettingDesc("The upper limit of instruction count for a Method")
         @SettingName("Max instructions")
         val maxInstructions: Int = 16384,
@@ -125,7 +123,7 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
                     method.instructions.filterTo(shuffledList) { it.opcode != Opcodes.NEWARRAY }
                     shuffledList.shuffle(randomGen)
                     shuffledList.forEach { instruction ->
-                        if (randomGen.nextFloat() >= chanceModifier * config.chance) return@forEach
+                        if (randomGen.nextFloat() >= chanceModifier * config.chance.toFloat()) return@forEach
                         val generatedMethod = createDecryptMethod(config, randomGen, instruction) {
                             "m${generatedMethodId++}"
                         } ?: return@forEach

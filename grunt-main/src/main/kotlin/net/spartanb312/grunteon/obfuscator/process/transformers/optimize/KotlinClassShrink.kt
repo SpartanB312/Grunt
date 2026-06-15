@@ -40,8 +40,6 @@ class KotlinClassShrink : Transformer<KotlinClassShrink.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Remove kotlin metadata. Warning: It will render KReflect unusable")
         @SettingName("Metadata")

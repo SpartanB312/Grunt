@@ -30,13 +30,11 @@ class InvokeProxy : Transformer<InvokeProxy.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("The chance that attempt to replace put/set to getter/setter")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Chance")
-        val chance: Double = 0.3,
+        val chance: Decimal = 0.3.toDecimal(),
         @SettingDesc("Generate an outer class to store proxies")
         @SettingName("Outer")
         val outer: Boolean = true,
@@ -76,7 +74,7 @@ class InvokeProxy : Transformer<InvokeProxy.Config>(
                     val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, method.name, method.desc))
                     method.instructions.toList().forEach { instruction ->
                         if (instruction !is MethodInsnNode) return@forEach
-                        if (randomGen.nextFloat() > config.chance) return@forEach
+                        if (randomGen.nextFloat() > config.chance.toFloat()) return@forEach
                         val callingOwner = instance.workRes.getClassNode(instruction.owner) ?: return@forEach
                         if (callingOwner.isExcluded(IGNORE_INVOKE_PROXY)) return@forEach
                         val callingMethod = callingOwner.methods?.toList()?.find {

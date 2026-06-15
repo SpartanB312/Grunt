@@ -41,8 +41,6 @@ class DeadCodeRemove : Transformer<DeadCodeRemove.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Remove redundant load and pop")
         @SettingName("Pop")

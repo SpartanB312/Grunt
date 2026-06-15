@@ -36,8 +36,6 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
 ) {
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Using char array instead of string LDC")
         @SettingName("Char array")

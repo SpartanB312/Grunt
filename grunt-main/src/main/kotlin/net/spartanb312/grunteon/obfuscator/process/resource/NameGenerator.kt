@@ -100,14 +100,14 @@ class NameGenerator(private val dictionary: Dictionary) {
         context(instance: Grunteon)
         private fun customIncr() = Dictionary(
             "CustomIncrementable",
-            instance.obfConfig.customIncrementalDictionary
+            instance.globalConfig.customIncrementalDictionary
         )
 
         context(instance: Grunteon)
         private fun custom() = Dictionary(
             "Custom",
             run {
-                val file = File(instance.obfConfig.customDictionary)
+                val file = File(instance.globalConfig.customDictionary)
                 if (!file.exists()) {
                     // Dictionary file does not exist, use default dictionary
                     Logger.error("Could not find custom dictionary ${file.name}")

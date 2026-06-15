@@ -16,7 +16,8 @@ import org.objectweb.asm.Opcodes
 import java.nio.file.Path
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import kotlin.io.path.*
+import kotlin.io.path.extension
+import kotlin.io.path.name
 
 object JarDumper {
     private data class PendingZipEntry(
@@ -33,22 +34,22 @@ object JarDumper {
     @OptIn(ExperimentalCoroutinesApi::class)
     context(instance: Grunteon)
     fun dumpJar(output: ResourceOutput) {
-        val config = instance.obfConfig
+        val globalConfig = instance.globalConfig
 
         fun checkFileNameRemove(name: String): Boolean {
-            return config.fileRemovePrefix.any { name.startsWith(it) }
-                    || config.fileRemoveSuffix.any { name.endsWith(it) }
+            return globalConfig.fileRemovePrefix.any { name.startsWith(it) }
+                || globalConfig.fileRemoveSuffix.any { name.endsWith(it) }
         }
 
         Logger.info("Dumping jar to ${output.description}")
         if (output.exists()) Logger.warn("Existing output file will be overridden!")
         val directOut = output.openOutputStream().buffered(65536)
         // Corrupt header
-        if (config.corruptHeaders) {
+        if (globalConfig.corruptHeaders) {
             Logger.info("Corrupting jar header...")
             val random = Xoshiro256PPRandom(
                 getSeed(
-                    config.input,
+                    globalConfig.input,
                     output.fileName,
                     "corruptHeader",
                 )
@@ -65,7 +66,7 @@ object JarDumper {
                 val hierarchy =
                     ClassHierarchy.build(instance.workRes.allClassCollection, instance.workRes::getClassNode)
                 // Writing class
-                if (config.missingCheck) hierarchy.printMissing()
+                if (globalConfig.missingCheck) hierarchy.printMissing()
                 launch {
                     instance.workRes.inputResourceSet.files()
                         .filter { it.extension != "class" }
@@ -90,15 +91,16 @@ object JarDumper {
                     launch(Dispatchers.Default) {
                         // Dependency check
                         val missingRef = missingList.isNotEmpty()
-                        if (missingRef && config.missingCheck) {
+                        if (missingRef && globalConfig.missingCheck) {
                             Logger.error("Class ${classNode.name} missing reference:")
                             for (missing in missingList) {
                                 Logger.error(" - $missing")
                             }
                         }
-                        val missingAny = (hierarchy.missingDependencies[classInfo] || missingRef) && config.missingCheck
-                        val useComputeMax = config.forceComputeMax || missingAny || classNode.isExcluded
-                        val missing = missingAny && !config.forceComputeMax && !classNode.isExcluded
+                        val missingAny =
+                            (hierarchy.missingDependencies[classInfo] || missingRef) && globalConfig.missingCheck
+                        val useComputeMax = globalConfig.forceComputeMax || missingAny || classNode.isExcluded
+                        val missing = missingAny && !globalConfig.forceComputeMax && !classNode.isExcluded
                         // Write zip entry
                         val entryName = classNode.name + ".class"
                         val byteArray = try {
@@ -130,15 +132,15 @@ object JarDumper {
 
             withContext(Dispatchers.IO) {
                 ZipOutputStream(directOut).use { zipOut ->
-                    zipOut.setLevel(config.compressionLevel)
+                    zipOut.setLevel(globalConfig.compressionLevel)
                     // Archive comment
-                    if (config.archiveComment.isNotEmpty()) zipOut.setComment(config.archiveComment)
+                    if (globalConfig.archiveComment.isNotEmpty()) zipOut.setComment(globalConfig.archiveComment)
                     // Corrupt CRC32
-                    if (config.corruptCRC32) {
+                    if (globalConfig.corruptCRC32) {
                         Logger.info("Corrupting CRC32...")
                         val random = Xoshiro256PPRandom(
                             getSeed(
-                                config.input,
+                                globalConfig.input,
                                 output.fileName,
                                 "corruptCRC32",
                             )
@@ -149,7 +151,7 @@ object JarDumper {
                     instance.workRes.inputResourceSet.directories()
                         .forEach {
                             val zipEntry = ZipEntry(instance.workRes.inputResourceSet.entryName(it) + "/")
-                            if (config.removeTimeStamps) zipEntry.time = 0
+                            if (globalConfig.removeTimeStamps) zipEntry.time = 0
                             zipOut.putNextEntry(zipEntry)
                             zipOut.closeEntry()
                         }
@@ -157,7 +159,7 @@ object JarDumper {
                     Logger.info("Writing files...")
                     for ((entryName, content) in classes) {
                         val zipEntry = ZipEntry(entryName)
-                        if (config.removeTimeStamps) zipEntry.time = 0
+                        if (globalConfig.removeTimeStamps) zipEntry.time = 0
                         zipOut.putNextEntry(zipEntry)
                         zipOut.write(content)
                         zipOut.closeEntry()

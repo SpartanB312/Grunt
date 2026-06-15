@@ -1,11 +1,7 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.TransformerRegistry
-import net.spartanb312.grunteon.obfuscator.process.WorkerContext
+import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.JarDumper
 import net.spartanb312.grunteon.obfuscator.process.resource.ObfuscationIO
 import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
@@ -17,7 +13,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
 
 // Grunteon process instance
 class Grunteon(
-    val obfConfig: ObfConfig,
+    val globalConfig: GlobalConfig,
     val io: ObfuscationIO,
     val workRes: WorkResources,
     val transformers: List<Pair<Transformer<*>, TransformerConfig>>,
@@ -47,17 +43,17 @@ class Grunteon(
         if (output != null) {
             JarDumper.dumpJar(output)
         }
-        if (obfConfig.dumpMappings) {
+        if (globalConfig.dumpMappings) {
             io.mappingsOutput?.let { nameMapping.dump(it) }
         }
     }
 
-    val mixinExPredicate = buildClassNamePredicates(obfConfig.mixinExclusions)
-    val globalExPredicate = buildClassNamePredicates(obfConfig.exclusions)
+    val mixinExPredicate = buildClassNamePredicates(globalConfig.mixinExclusions)
+    val globalExPredicate = buildClassNamePredicates(globalConfig.exclusions)
 
     companion object {
         fun create(config: ObfConfig): Grunteon {
-            return create(config, ObfuscationIO.fromConfig(config))
+            return create(config, ObfuscationIO.fromConfig(config.globalConfig))
         }
 
         fun create(config: ObfConfig, io: ObfuscationIO): Grunteon {
@@ -65,9 +61,10 @@ class Grunteon(
 
             val workRes = WorkResources.read(io.input, io.libraries)
 
-            val transformerAndConfig = config.transformerConfigs
+            val transformerAndConfig = config.transformers
                 .asSequence()
                 .filter { it.enabled }
+                .map { it.config }
                 .mapTo(mutableListOf()) { transformerConfig ->
                     val entry = TransformerRegistry.find(transformerConfig)
                         ?: throw IllegalArgumentException("Unregistered transformer config: ${transformerConfig::class.qualifiedName}")
@@ -89,7 +86,7 @@ class Grunteon(
             }
 
             return Grunteon(
-                obfConfig = config,
+                globalConfig = config.globalConfig,
                 io = io,
                 workRes = workRes,
                 transformers = transformerAndConfig

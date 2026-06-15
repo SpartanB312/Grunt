@@ -1,13 +1,16 @@
 package net.spartanb312.grunteon.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.process.Category
 import net.spartanb312.grunteon.obfuscator.process.Transformer
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import java.nio.file.Path as NioPath
 import kotlin.reflect.KClass
+import java.nio.file.Path as NioPath
 
-data class TransformerDefinition(
+class TransformerDefinition(
     val label: String,
     val typeName: String,
     val category: Category,
@@ -22,13 +25,6 @@ data class TransformerDefinition(
         get() = owner != "grunteon"
 }
 
-data class PipelineNode(
-    val id: Long,
-    val config: TransformerConfig,
-    val collapsed: Boolean = false,
-    val revision: Long = 0,
-)
-
 data class ConfigLoadResult(
     val config: ObfConfig,
     val path: NioPath,
@@ -41,4 +37,10 @@ enum class AppPage {
     Editor,
     Obfuscation,
     Settings,
+}
+
+class UIState {
+    var globalStatus by mutableStateOf("Ready")
+    var pageStatus by mutableStateOf("")
+    var currentPage by mutableStateOf(AppPage.General)
 }

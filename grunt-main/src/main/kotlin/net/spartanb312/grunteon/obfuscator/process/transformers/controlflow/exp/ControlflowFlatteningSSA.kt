@@ -7,35 +7,12 @@ import net.spartanb312.grunt.ir.ssa.jvm.JvmSSAImporter
 import net.spartanb312.grunt.ir.ssa.transform.SSARegionControlFlowFlattenOptions
 import net.spartanb312.grunt.ir.ssa.transform.SSARegionControlFlowFlattener
 import net.spartanb312.grunteon.obfuscator.Grunteon
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.StableLevel
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
-import net.spartanb312.grunteon.obfuscator.process.post
-import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
-import net.spartanb312.grunteon.obfuscator.process.seq
+import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
-import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
-import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
-import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
-import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
-import net.spartanb312.grunteon.obfuscator.util.extensions.isSynthetic
-import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
+import net.spartanb312.grunteon.obfuscator.util.extensions.*
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.AbstractInsnNode
-import org.objectweb.asm.tree.JumpInsnNode
-import org.objectweb.asm.tree.LabelNode
-import org.objectweb.asm.tree.LookupSwitchInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
-import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.TableSwitchInsnNode
+import org.objectweb.asm.tree.*
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 import java.util.concurrent.ConcurrentHashMap
@@ -54,8 +31,6 @@ class ControlflowFlatteningSSA : Transformer<ControlflowFlatteningSSA.Config>(
 
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Verify each exported method with ASM BasicInterpreter")
         @SettingName("Verify exported method")

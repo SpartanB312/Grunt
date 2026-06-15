@@ -6,9 +6,7 @@ import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.instructions
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.*
-import net.spartanb312.grunteon.obfuscator.util.DISABLE_NUMBER_ENCRYPT
-import net.spartanb312.grunteon.obfuscator.util.Logger
-import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
+import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.collection.FastObjectArrayList
 import net.spartanb312.grunteon.obfuscator.util.collection.shuffle
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
@@ -45,37 +43,35 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
     // TODO: hide chances when disabled
     @Serializable
     data class Config(
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Encrypt integers")
         @SettingName("Integer")
         val integer: Boolean = true,
-        @SettingDesc("Integer encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Integer encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Integer chance")
-        val integerChance: Double = 1.0,
+        val integerChance: Decimal = 1.0.toDecimal(),
         @SettingDesc("Encrypt longs")
         @SettingName("Long")
         val long: Boolean = true,
-        @SettingDesc("Long encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Long encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Long chance")
-        val longChance: Double = 1.0,
+        val longChance: Decimal = 1.0.toDecimal(),
         @SettingDesc("Encrypt floats")
         @SettingName("Float")
         val float: Boolean = true,
-        @SettingDesc("Float encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Float encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Float chance")
-        val floatChance: Double = 1.0,
+        val floatChance: Decimal = 1.0.toDecimal(),
         @SettingDesc("Encrypt doubles")
         @SettingName("Double")
         val double: Boolean = true,
-        @SettingDesc("Double encrypt rate. Range: 0.0..1.0")
+        @SettingDesc("Double encrypt rate.")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Double chance")
-        val doubleChance: Double = 1.0,
+        val doubleChance: Decimal = 1.0.toDecimal(),
         @SettingDesc("The upper limit of instruction count for a Method. Typically, each instruction occupies 2-3 bytes, and the upper limit for each Method is 65536 bytes")
         @SettingName("Max instructions")
         val maxInstructions: Int = 16384,
@@ -124,7 +120,7 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
                     shuffledList.shuffle(randomGen)
                     shuffledList.forEach { instruction ->
                         // Encrypt integer
-                        if (config.integer && randomGen.nextFloat() < chanceModifier * config.integerChance) {
+                        if (config.integer && randomGen.nextFloat() < chanceModifier * config.integerChance.toFloat()) {
                             if (instruction.opcode in Opcodes.ICONST_M1..Opcodes.ICONST_5) {
                                 val value = instruction.opcode - Opcodes.ICONST_0
                                 method.instructions.insertBefore(instruction, randomGen.encrypt(value))
@@ -147,7 +143,7 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
                             }
                         }
                         // Encrypt long
-                        if (config.long && randomGen.nextFloat() < chanceModifier * config.longChance) {
+                        if (config.long && randomGen.nextFloat() < chanceModifier * config.longChance.toFloat()) {
                             if (instruction.opcode in Opcodes.LCONST_0..Opcodes.LCONST_1) {
                                 val value = (instruction.opcode - Opcodes.LCONST_0).toLong()
                                 method.instructions.insertBefore(instruction, randomGen.encrypt(value))
@@ -161,7 +157,7 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
                             }
                         }
                         // Encrypt float
-                        if (config.float && randomGen.nextFloat() < chanceModifier * config.floatChance) {
+                        if (config.float && randomGen.nextFloat() < chanceModifier * config.floatChance.toFloat()) {
                             fun encryptFloat(float: Float) {
                                 method.instructions.insertBefore(instruction, randomGen.encrypt(float))
                                 method.instructions.remove(instruction)
@@ -175,7 +171,7 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
                             }
                         }
                         // Encrypt double
-                        if (config.double && randomGen.nextFloat() < chanceModifier * config.doubleChance) {
+                        if (config.double && randomGen.nextFloat() < chanceModifier * config.doubleChance.toFloat()) {
                             fun encryptDouble(double: Double) {
                                 method.instructions.insertBefore(instruction, randomGen.encrypt(double))
                                 method.instructions.remove(instruction)
@@ -243,4 +239,3 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
     }
 
 }
-

@@ -1,27 +1,28 @@
 [versions]
-kotlin = "2.3.21"
+kotlin = "2.4.0"
 kotlinxSerialization = "1.11.0"
 kotlinDSL = "6.6.4"
-coroutine = "1.10.2"
+coroutine = "1.11.0"
 filekit = "0.14.1"
+flatlaf = "3.7.1"
 
-compose = "1.9.1"
+compose = "1.11.1"
 compose-fluent = "v0.1.0"
-compose-hot-reload = "1.0.0-beta03"
+compose-hot-reload = "1.2.0-alpha02"
 
-junit = "6.0.3"
-gson = "2.13.2"
-asm = "9.9.1"
+junit = "6.1.0"
+gson = "2.14.0"
+asm = "9.10.1"
 fastutil = "8.5.18"
 apache-math3 = "3.6.1"
 apache-lang3 = "3.20.0"
-apache-commons-rng-simple = "1.6"
+apache-commons-rng-simple = "1.7"
 jpbc = "2.0.0"
 
 [plugins]
 kotlinxSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }
-#compose-hotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }
+compose-hotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
 [libraries]
@@ -29,6 +30,7 @@ kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", ver
 kotlinDSLGradlePlugin = { module = "org.gradle.kotlin.kotlin-dsl:org.gradle.kotlin.kotlin-dsl.gradle.plugin", version.ref = "kotlinDSL" }
 kotlinReflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekit" }
+flatlaf = { module = "com.formdev:flatlaf", version.ref = "flatlaf" }
 
 junitAPI = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
 kotlinxSerializationCore = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -54,6 +56,10 @@ apache-rng-simple = { module = "org.apache.commons:commons-rng-simple", version.
 jpbc-api = { module = "com.github.emilianobonassi.jpbc:jpbc-api", version.ref = "jpbc" }
 jpbc-plaf = { module = "com.github.emilianobonassi.jpbc:jpbc-plaf", version.ref = "jpbc" }
 jpbc-pbc = { module = "com.github.emilianobonassi.jpbc:jpbc-pbc", version.ref = "jpbc" }
+
+# Compose
+compose-fluent = { module = "io.github.compose-fluent:fluent", version.ref = "compose-fluent" }
+compose-fluent-icons = { module = "io.github.compose-fluent:fluent-icons-extended", version.ref = "compose-fluent" }
 
 [bundles]
 asm = ["asm", "asm-tree", "asm-util", "asm-commons", "asm-analysis"]

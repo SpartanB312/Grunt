@@ -1,249 +1,287 @@
 package net.spartanb312.grunteon.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.onClick
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import net.spartanb312.grunteon.obfuscator.SUBTITLE
-import net.spartanb312.grunteon.obfuscator.VERSION
-import net.spartanb312.grunteon.obfuscator.plugin.LoadedPlugin
-import java.nio.file.Path as NioPath
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.*
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.*
+import kotlinx.coroutines.launch
+
+private val ToolbarTabWidth = 128.dp
 
 @Composable
 fun TopToolbar(
-    page: AppPage,
-    onPageChange: (AppPage) -> Unit,
-    fontScale: Float,
+    uiState: UIState,
+    onNewConfig: () -> Unit,
+    onOpenConfig: () -> Unit,
+    onSaveConfig: () -> Boolean,
+    onSaveConfigAs: () -> Unit,
+    isMaximized: Boolean,
+    showWindowControls: Boolean,
+    onMinimize: () -> Unit,
+    onToggleMaximize: () -> Unit,
+    onExit: () -> Unit,
 ) {
-    val palette = LocalUiPalette.current
-    PanelSurface(Modifier.fillMaxWidth()) {
+    Column {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier
+                .background(color = FluentTheme.colors.background.mica.base)
+                .fillMaxWidth()
+                .height(48.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text("Grunteon", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(8.dp))
-            ToolbarTab(
-                label = "General",
-                selected = page == AppPage.General,
-                onClick = { onPageChange(AppPage.General) }
-            )
-            ToolbarTab(
-                label = "Pipeline Editor",
-                selected = page == AppPage.Editor,
-                onClick = { onPageChange(AppPage.Editor) }
-            )
-            ToolbarTab(
-                label = "Obfuscation",
-                selected = page == AppPage.Obfuscation,
-                onClick = { onPageChange(AppPage.Obfuscation) }
-            )
-            ToolbarTab(
-                label = "Settings",
-                selected = page == AppPage.Settings,
-                onClick = { onPageChange(AppPage.Settings) }
-            )
-            Spacer(Modifier.weight(1f))
-            Text("$VERSION [${SUBTITLE}]", color = palette.muted)
+            GrunteonLogo(modifier = Modifier.fillMaxHeight().padding(start = 12.dp, top = 8.dp, bottom = 4.dp))
+            MenuBar(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 0.dp)
+            ) {
+                MenuBarItem(
+                    items = {
+                        MenuFlyoutButton(
+                            onClick = {
+                                onNewConfig()
+                                isFlyoutVisible = false
+                            },
+                            icon = Icons.Default.Document,
+                            text = "New Config",
+                            trailingText = "Ctrl+N",
+                        )
+                        MenuFlyoutButton(
+                            onClick = {
+                                onOpenConfig()
+                                isFlyoutVisible = false
+                            },
+                            icon = Icons.Default.FolderOpen,
+                            text = "Open Config",
+                            trailingText = "Ctrl+O",
+                        )
+                        MenuFlyoutSeparator()
+                        MenuFlyoutButton(
+                            onClick = {
+                                onSaveConfig()
+                                isFlyoutVisible = false
+                            },
+                            icon = Icons.Default.Save,
+                            text = "Save Config",
+                            trailingText = "Ctrl+S",
+                        )
+                        MenuFlyoutButton(
+                            onClick = {
+                                onSaveConfigAs()
+                                isFlyoutVisible = false
+                            },
+                            icon = Icons.Default.SaveEdit,
+                            text = "Save Config As",
+                            trailingText = "Ctrl+Shift+S",
+                        )
+                        MenuFlyoutSeparator()
+                        MenuFlyoutButton(
+                            onClick = {
+                                isFlyoutVisible = false
+                                onExit()
+                            },
+                            icon = Icons.Default.Dismiss,
+                            text = "Exit",
+                        )
+                    }
+                ) {
+                    Text("File")
+                }
+
+
+                MenuBarItem(
+                    items = {
+                        MenuFlyoutButton(
+                            onClick = {
+                                // TODO: Run obfuscation
+                            },
+                            icon = Icons.Default.Play,
+                            text = "Run Obfuscation",
+                        )
+                    }
+                ) {
+                    Text("Tool")
+                }
+                MenuBarItem(
+                    items = {
+                        MenuFlyoutButton(
+                            onClick = {
+                                // TODO: Open help page
+                            },
+                            icon = Icons.Default.BookQuestionMark,
+                            text = "Help",
+                        )
+                        MenuFlyoutSeparator()
+                        MenuFlyoutButton(
+                            onClick = {
+                                // TODO: Open GitHub issue page
+                            },
+                            icon = Icons.Default.Bug,
+                            text = "Submit a Bug Report",
+                        )
+                        MenuFlyoutButton(
+                            onClick = {
+                                // TODO: Open GitHub issue page
+                            },
+                            icon = Icons.Default.ChatHelp,
+                            text = "Submit Feature Request",
+                        )
+                        MenuFlyoutSeparator()
+                        MenuFlyoutButton(
+                            onClick = {
+                                isFlyoutVisible = false
+                                onExit()
+                            },
+                            icon = Icons.Default.Globe,
+                            text = "Check for Updates",
+                        )
+                        MenuFlyoutButton(
+                            onClick = {
+                                isFlyoutVisible = false
+                                onExit()
+                            },
+                            icon = Icons.Default.Info,
+                            text = "About",
+                        )
+                    }
+                ) {
+                    Text("Help")
+                }
+            }
+            Box(Modifier.weight(1f).fillMaxHeight())
+            Row(
+                modifier = Modifier.fillMaxHeight(),
+                verticalAlignment = Alignment.Top
+            ) {
+                if (showWindowControls) {
+                    WindowControlButton(
+                        icon = Icons.Default.Subtract,
+                        contentDescription = "Minimize",
+                        buttonColors = ButtonDefaults.subtleButtonColors(),
+                        onClick = onMinimize,
+                    )
+                    WindowControlButton(
+                        icon = if (isMaximized) Icons.Default.SquareMultiple else Icons.Default.Square,
+                        contentDescription = if (isMaximized) "Restore" else "Maximize",
+                        buttonColors = ButtonDefaults.subtleButtonColors(),
+                        onClick = onToggleMaximize,
+                    )
+                    val defaultSubtle = ButtonDefaults.subtleButtonColors()
+                    WindowControlButton(
+                        icon = Icons.Default.Dismiss,
+                        contentDescription = "Close",
+                        buttonColors = ButtonDefaults.subtleButtonColors(
+                            hovered = defaultSubtle.hovered.copy(fillColor = Color(0xFFC42B1C)),
+                            pressed = defaultSubtle.pressed.copy(fillColor = Color(0xFFB3271C))
+                        ),
+                        onClick = onExit,
+                    )
+                }
+            }
+        }
+        TabRow(
+            { uiState.currentPage.ordinal },
+            borderColor = Color.Transparent,
+        ) {
+            AppPage.entries.forEach { page ->
+                item {
+                    val selected = uiState.currentPage == page
+                    TabItem(
+                        selected = selected,
+                        onSelectedChanged = { if (it) uiState.currentPage = page },
+                        modifier = Modifier.height(64.dp)
+                    ) {
+                        Row(modifier = Modifier.height(100.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                page.name,
+                                modifier = Modifier
+                                    .width(ToolbarTabWidth)
+                                    .padding(4.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ToolbarTab(label: String, selected: Boolean, onClick: () -> Unit) {
-    if (selected) {
-        UiButton(onClick = onClick) { Text(label) }
-    } else {
-        UiOutlinedButton(onClick = onClick) { Text(label) }
-    }
+private fun GrunteonLogo(modifier: Modifier = Modifier) {
+    val scope = rememberCoroutineScope()
+    val rotation = remember { Animatable(0f) }
+    var targetRotation by remember { mutableFloatStateOf(0f) }
+
+    Image(
+        painter = painterResource("logo.svg"),
+        contentDescription = "Grunteon",
+        modifier = modifier
+            .graphicsLayer { rotationZ = rotation.value }
+            .onClick {
+                targetRotation += 360.0f * 2.0f
+                scope.launch {
+                    rotation.animateTo(
+                        targetRotation,
+                        initialVelocity = rotation.velocity * 4.0f,
+                        animationSpec = tween(durationMillis = 500, easing = LinearOutSlowInEasing)
+                    )
+                }
+            },
+    )
 }
 
 @Composable
-fun SettingsPage(
-    fontScale: Float,
-    onFontScaleChange: (Float) -> Unit,
-    themeMode: ThemeMode,
-    onThemeModeChange: (ThemeMode) -> Unit,
-    uiLogLevel: UiLogLevel,
-    onUiLogLevelChange: (UiLogLevel) -> Unit,
-    configPath: NioPath,
-    uiSettingsPath: NioPath,
-    status: String,
-    plugins: List<LoadedPlugin>,
-    modifier: Modifier = Modifier,
+private fun WindowControlButton(
+    icon: ImageVector,
+    contentDescription: String,
+    buttonColors: ButtonColorScheme,
+    onClick: () -> Unit,
 ) {
-    val palette = LocalUiPalette.current
-    val settingsScroll = rememberScrollState()
-    val pluginsScroll = rememberScrollState()
-    PanelSurface(modifier) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(18.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp)
-        ) {
-            Column(
-                modifier = Modifier.weight(1f).fillMaxHeight().verticalScroll(settingsScroll),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("Workspace preferences for the editor prototype.", color = palette.muted)
-                }
-                SettingsSection {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text("Font Size", fontWeight = FontWeight.SemiBold)
-                                Text("Scale all editor text without changing the pipeline data.", color = palette.muted)
-                            }
-                            Text("${"%.0f".format(fontScale * 100)}%", fontFamily = FontFamily.Monospace)
-                        }
-                        Slider(
-                            value = fontScale,
-                            onValueChange = { onFontScaleChange(it.coerceIn(MinFontScale, MaxFontScale)) },
-                            valueRange = MinFontScale..MaxFontScale,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            UiOutlinedButton(onClick = { onFontScaleChange(0.9f) }) { Text("Small") }
-                            UiOutlinedButton(onClick = { onFontScaleChange(DefaultFontScale) }) { Text("Default") }
-                            UiOutlinedButton(onClick = { onFontScaleChange(1.15f) }) { Text("Large") }
-                        }
-                    }
-                }
-                SettingsSection {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Obfuscation Log Level", fontWeight = FontWeight.SemiBold)
-                            Text("Minimum logger level shown in the Obfuscation console.", color = palette.muted)
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (uiLogLevel == UiLogLevel.Info) {
-                                UiButton(onClick = { onUiLogLevelChange(UiLogLevel.Info) }) { Text("INFO") }
-                            } else {
-                                UiOutlinedButton(onClick = { onUiLogLevelChange(UiLogLevel.Info) }) { Text("INFO") }
-                            }
-                            if (uiLogLevel == UiLogLevel.Debug) {
-                                UiButton(onClick = { onUiLogLevelChange(UiLogLevel.Debug) }) { Text("DEBUG") }
-                            } else {
-                                UiOutlinedButton(onClick = { onUiLogLevelChange(UiLogLevel.Debug) }) { Text("DEBUG") }
-                            }
-                        }
-                    }
-                }
-                SettingsSection {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Theme", fontWeight = FontWeight.SemiBold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (themeMode == ThemeMode.Dark) {
-                                UiButton(onClick = { onThemeModeChange(ThemeMode.Dark) }) { Text("Dark") }
-                            } else {
-                                UiOutlinedButton(onClick = { onThemeModeChange(ThemeMode.Dark) }) { Text("Dark") }
-                            }
-                            if (themeMode == ThemeMode.Light) {
-                                UiButton(onClick = { onThemeModeChange(ThemeMode.Light) }) { Text("Light") }
-                            } else {
-                                UiOutlinedButton(onClick = { onThemeModeChange(ThemeMode.Light) }) { Text("Light") }
-                            }
-                        }
-                    }
-                }
-                SettingsSection {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("UI Settings", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            uiSettingsPath.toAbsolutePath().normalize().toString(),
-                            fontFamily = FontFamily.Monospace,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text("Config", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            configPath.toAbsolutePath().normalize().toString(),
-                            fontFamily = FontFamily.Monospace,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(status, color = palette.muted)
-                    }
-                }
-            }
-            Column(
-                modifier = Modifier.weight(1f).fillMaxHeight().verticalScroll(pluginsScroll),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Plugins", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("${plugins.size} loaded plugin(s).", color = palette.muted)
-                }
-                if (plugins.isEmpty()) {
-                    SettingsSection {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("No plugins loaded", fontWeight = FontWeight.SemiBold)
-                            Text("Only built-in transformers are available.", color = palette.muted)
-                        }
-                    }
-                } else {
-                    plugins.forEach { plugin ->
-                        PluginSection(plugin)
-                    }
-                }
-            }
-        }
+    Button(
+        onClick = onClick,
+        iconOnly = true,
+        modifier = Modifier.height(40.dp).aspectRatio(1.33f).padding(bottom = 8.dp, top = 0.dp),
+        buttonColors = buttonColors,
+    ) {
+        Icon(imageVector = icon, contentDescription = contentDescription)
     }
 }
 
 @Composable
-private fun SettingsSection(content: @Composable () -> Unit) {
-    SectionSurface(Modifier.fillMaxWidth(), content = content)
-}
-
-@Composable
-private fun PluginSection(plugin: LoadedPlugin) {
-    val palette = LocalUiPalette.current
-    val metadata = plugin.metadata
-    SettingsSection {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(metadata.name, fontWeight = FontWeight.SemiBold)
-            Text(
-                "Plugin ID: ${metadata.id}",
-                color = palette.muted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                "Version: ${metadata.version} ",
-                color = palette.muted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                "Entry: ${metadata.entryClass}",
-                fontFamily = FontFamily.Monospace,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val file = metadata.file.toString()
-            if (file.isNotBlank()) {
-                Text(file, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun MenuFlyoutScope.MenuFlyoutButton(
+    onClick: () -> Unit,
+    icon: ImageVector? = null,
+    text: String,
+    trailingText: String? = null,
+    enabled: Boolean = true,
+) {
+    MenuFlyoutItem(
+        onClick = onClick,
+        icon = icon?.let { { Icon(imageVector = it, contentDescription = null) } },
+        text = { Text(text) },
+        trailing = trailingText?.let {
+            {
+                Spacer(Modifier.width(16.dp))
+                Text(it, style = FluentTheme.typography.caption)
             }
-        }
-    }
+        },
+        enabled = enabled,
+    )
 }

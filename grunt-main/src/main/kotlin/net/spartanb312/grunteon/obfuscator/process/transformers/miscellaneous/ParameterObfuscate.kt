@@ -29,8 +29,6 @@ class ParameterObfuscate : Transformer<ParameterObfuscate.Config>(
         @SettingDesc("Only obfuscate private methods")
         @SettingName("Only private method")
         val onlyPrivateMethod: Boolean = true, // Not stable for all methods
-        @SettingDesc("Specify class include/exclude rules")
-        @SettingName("Class filter")
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
         @SettingDesc("Specify method exclusions.")
         @SettingName("Exclusion")
