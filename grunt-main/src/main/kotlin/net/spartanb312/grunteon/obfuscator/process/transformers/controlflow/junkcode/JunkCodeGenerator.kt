@@ -492,10 +492,12 @@ class JunkCallPool private constructor(
         fun build(classNodes: Collection<ClassNode>): JunkCallPool {
             val calls = linkedSetOf<JunkCall>()
             classNodes.asSequence()
+                .sortedBy { it.name }
                 .filter { it.isPublic }
                 .filterNot { it.hasAnnotation(IGNORE_JUNK_CODE) }
                 .forEach { classNode ->
                     classNode.methods.asSequence()
+                        .sortedWith(compareBy<MethodNode> { it.name }.thenBy { it.desc })
                         .filter { it.isJunkCallCandidate() }
                         .forEach { methodNode ->
                             calls += JunkCall(
@@ -508,7 +510,14 @@ class JunkCallPool private constructor(
                             )
                         }
                 }
-            return JunkCallPool(calls.toList())
+            return JunkCallPool(
+                calls.sortedWith(
+                    compareBy<JunkCall> { it.owner }
+                        .thenBy { it.name }
+                        .thenBy { it.desc }
+                        .thenBy { if (it.ownerIsInterface) 1 else 0 }
+                )
+            )
         }
 
         private fun MethodNode.isJunkCallCandidate(): Boolean {

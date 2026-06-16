@@ -3,6 +3,8 @@ package net.spartanb312.grunteon.obfuscator.util
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 import kotlinx.coroutines.*
+import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
+import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ExecutionException
@@ -152,7 +154,7 @@ class LWWSP(val workerCount: Int, val threadConfigure: (Thread) -> Unit = {}) : 
     private class Worker(val pool: LWWSP, val id: Int) : Thread("LWWSP-$id") {
         val taskQueue = TaskQueue()
         private val drainTemp = ObjectArrayList<AbstractTask<*>>()
-        val random = Random()
+        val random = Xoshiro256PPRandom("LWWSP-$id".toByteArray())
 
         fun randomOtherWorkerID(): Int {
             if (pool.workerCountMinus1 <= 0) return -1

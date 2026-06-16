@@ -8,8 +8,8 @@ import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
-import net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge
 import net.spartanb312.grunteon.obfuscator.util.*
+import net.spartanb312.grunteon.obfuscator.util.collection.shuffled
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
@@ -104,7 +104,7 @@ class InvokeDispatcher : Transformer<InvokeDispatcher.Config>(
                 }
             // Group by return types
             val rawGroup = Object2ObjectOpenHashMap<String, MutableList<CallInstance>>()
-            invokeInstances.shuffled().forEach {
+            invokeInstances.shuffled(randomGen).forEach {
                 if (it.loadType.size > config.maxParams) return@forEach
                 if (it.hasPrimitive) return@forEach
                 val existedList = rawGroup.getOrPut(it.returnType) { mutableListOf() }

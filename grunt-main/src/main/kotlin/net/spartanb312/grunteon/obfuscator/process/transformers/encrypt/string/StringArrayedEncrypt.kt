@@ -10,6 +10,7 @@ import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
+import net.spartanb312.grunteon.obfuscator.util.collection.shuffled
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
@@ -75,14 +76,14 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
                 replaceInvokeDynamics(classNode)
             }
             // Then, go over all LDC instructions and collect them.
-            classNode.methods.shuffled().forEach { method ->
+            classNode.methods.shuffled(randomGen).forEach { method ->
                 if (method.isExcluded(DISABLE_STRING_ENCRYPT)) return@forEach
                 val excluded = methodExPredicate.matchedAnyBy(methodFullDesc(classNode, method))
                 if (excluded) return@forEach
                 val stringBlacklist = method.stringBlacklist()
                 method.instructions.asSequence()
                     .filter { it is LdcInsnNode && it.cst is String && (it.cst as String).isNotEmpty() }
-                    .shuffled()
+                    .shuffled(randomGen)
                     .forEach { instruction ->
                         val originalString = (instruction as LdcInsnNode).cst as String
                         if (stringBlacklist.contains(originalString)) return@forEach
@@ -152,7 +153,7 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
                     val stringBlacklist = methodNode.stringBlacklist()
                     methodNode.instructions.asSequence()
                         .filter { it is LdcInsnNode && it.cst is String && (it.cst as String).isNotEmpty() }
-                        .shuffled()
+                        .shuffled(randomGen)
                         .forEach { instruction ->
                             val originalString = (instruction as LdcInsnNode).cst as String
                             if (stringBlacklist.contains(originalString)) return@forEach
@@ -185,7 +186,7 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
         classNode.methods.forEach { methodNode ->
             methodNode.instructions.asSequence()
                 .filter { it is InvokeDynamicInsnNode && isStringConcatenation(it) }
-                .shuffled()
+                .shuffled(randomGen)
                 .forEach { instruction ->
                     val indy = instruction as InvokeDynamicInsnNode
                     invokeDynamicConcatMethods.add(
