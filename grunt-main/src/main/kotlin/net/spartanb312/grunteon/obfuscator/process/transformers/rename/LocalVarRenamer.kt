@@ -18,6 +18,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 /**
  * Last update on 2026/03/31 by FluixCarvin
  */
+@Transformer.CreditMultiplier(0.8)
 @Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.rename.local_var_renamer.desc",
@@ -92,6 +93,7 @@ class LocalVarRenamer : Transformer<LocalVarRenamer.Config>(
         }
         post {
             Logger.info(" - LocalVarRenamer:")
+            credit.add(counter.global.get() * 50L)
             Logger.info("    Transformed ${counter.global.get()} local variables")
         }
     }

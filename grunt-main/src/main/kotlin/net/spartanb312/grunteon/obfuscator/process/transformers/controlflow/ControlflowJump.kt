@@ -29,6 +29,7 @@ import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 
+@Transformer.CreditMultiplier(1.5)
 @Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.controlflow.controlflow_jump.desc",
@@ -85,7 +86,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @SettingDesc("Chance to reroute an eligible real Flow edge through a throw/catch bridge. Range: 0.0..1.0")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Exception bridge chance")
-        val exceptionBridgeChance: Double = 0.0,
+        val exceptionBridgeChance: Decimal = 0.0.toDecimal(),
         @SettingDesc("Maximum throw/catch bridges inserted into one method")
         @IntRangeVal(min = 0, max = 32)
         @SettingName("Max exception bridges")
@@ -316,6 +317,12 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 instance.workRes.addGeneratedClass(it)
             }
             Logger.info(" - ControlflowJump:")
+            credit.add(branchCounter.global.get() * 300L)
+            credit.add(mangledIfCounter.global.get() * 500L)
+            credit.add(dispatcherLandingJunkCounter.global.get() * 1000L)
+            credit.add(exceptionBridgeCounter.global.get() * 500L)
+            credit.add(predicateRegistry.actionCount * 300L)
+            credit.add(methodCounter.global.get() * 500L)
             Logger.info("    Inserted ${branchCounter.global.get()} junk branches")
             Logger.info("    Mangled ${mangledIfCounter.global.get()} conditional jumps")
             Logger.info("    Placed ${dispatcherLandingJunkCounter.global.get()} dispatcher landing junk blocks")
@@ -354,7 +361,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 dispatcherLandingJunkChance = config.dispatcherLandingJunkChance.toDouble().coerceIn(0.0, 1.0),
                 maxDispatcherLandingJunkBlocksPerMethod = config.maxDispatcherLandingJunkBlocksPerMethod.coerceAtLeast(0),
                 exceptionBridgeOptions = FlowExceptionBridgeOptions(
-                    chance = config.exceptionBridgeChance.coerceIn(0.0, 1.0),
+                    chance = config.exceptionBridgeChance.toDouble().coerceIn(0.0, 1.0),
                     maxBridgesPerMethod = config.maxExceptionBridgesPerMethod.coerceAtLeast(0)
                 ),
                 junkCodeOptions = JunkCodeOptions(

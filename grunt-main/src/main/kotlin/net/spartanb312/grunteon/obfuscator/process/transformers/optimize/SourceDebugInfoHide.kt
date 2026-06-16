@@ -16,6 +16,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import net.spartanb312.grunteon.obfuscator.util.interfaces.DisplayEnum
 import org.objectweb.asm.tree.LineNumberNode
 
+@Transformer.CreditMultiplier(0.8)
 @Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.optimize.source_debug_info_hide.desc",
@@ -89,6 +90,7 @@ class SourceDebugInfoHide : Transformer<SourceDebugInfoHide.Config>(
         }
         post {
             Logger.info(" - SourceDebugInfoHide:")
+            credit.add(counter.global.get() * 50L)
             Logger.info("    Removed/Edited ${counter.global.get()} debug information")
         }
     }

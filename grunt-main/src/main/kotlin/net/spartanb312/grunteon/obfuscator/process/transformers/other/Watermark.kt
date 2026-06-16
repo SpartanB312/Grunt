@@ -11,6 +11,7 @@ import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
 
+@Transformer.CreditMultiplier(0.5)
 @Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.other.watermark.desc",
@@ -135,6 +136,7 @@ class Watermark : Transformer<Watermark.Config>(
         }
         post {
             Logger.info(" - Watermark:")
+            credit.add(counter.global.get() * 50L)
             Logger.info("    Added ${counter.global.get()} watermarks")
         }
     }

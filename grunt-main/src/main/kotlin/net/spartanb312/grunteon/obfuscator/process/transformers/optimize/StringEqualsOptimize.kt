@@ -12,6 +12,7 @@ import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.match
 import org.objectweb.asm.tree.MethodInsnNode
 
+@Transformer.CreditMultiplier(0.8)
 @Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.optimize.string_equals_optimize.desc",
@@ -95,6 +96,7 @@ class StringEqualsOptimize : Transformer<StringEqualsOptimize.Config>(
         }
         post {
             Logger.info(" - StringEqualsOptimize:")
+            credit.add(counter.global.get() * 200L)
             Logger.info("    Redirected ${counter.global.get()} string equals calls")
         }
     }

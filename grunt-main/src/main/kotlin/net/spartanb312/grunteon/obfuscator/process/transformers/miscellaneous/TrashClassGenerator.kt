@@ -14,6 +14,7 @@ import net.spartanb312.grunteon.obfuscator.process.resource.NameGenerator
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.trashgen.DEFAULT_TRASH_CLASS_PROVIDER
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.trashgen.TrashClassProviderContext
 import net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.trashgen.TrashClassProviderRegistry
+import net.spartanb312.grunteon.obfuscator.util.Decimal
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_CLASS
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_FIELD
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_METHOD
@@ -21,12 +22,14 @@ import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
+import net.spartanb312.grunteon.obfuscator.util.toDecimal
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 import org.objectweb.asm.tree.MethodNode
 
+@Transformer.CreditMultiplier(0.0)
 @Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.other.trash_class_generator.desc",
@@ -106,7 +109,7 @@ class TrashClassGenerator : Transformer<TrashClassGenerator.Config>(
         @SettingDesc("Chance that a generated method returns a String instead of int/Object")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("String method chance")
-        val stringMethodChance: Double = 0.25,
+        val stringMethodChance: Decimal = 0.25.toDecimal(),
         @SettingDesc("Attach Grunteon generated annotations for PostProcess cleanup")
         @SettingName("Generated markers")
         val generatedMarkers: Boolean = true,
@@ -211,7 +214,7 @@ class TrashClassGenerator : Transformer<TrashClassGenerator.Config>(
                                 classIndex = index,
                                 methodIndex = methodIndex,
                                 steps = random.nextCount(stepRange),
-                                stringChance = config.stringMethodChance,
+                                stringChance = config.stringMethodChance.toDouble(),
                                 random = random
                             )
                         }

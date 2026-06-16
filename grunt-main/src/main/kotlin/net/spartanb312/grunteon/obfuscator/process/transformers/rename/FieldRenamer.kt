@@ -20,6 +20,7 @@ import net.spartanb312.grunteon.obfuscator.util.extensions.isStatic
  * Last update on 2026/03/31 by FluixCarvin
  * TODO: Reflection remap
  */
+@Transformer.CreditMultiplier(1.0)
 @Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.rename.field_renamer.desc",
@@ -190,6 +191,7 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
                         }
                     }
                 }
+                credit.add(counter * 300L)
                 Logger.info("    Generated mapping for $counter fields")
             }
         }

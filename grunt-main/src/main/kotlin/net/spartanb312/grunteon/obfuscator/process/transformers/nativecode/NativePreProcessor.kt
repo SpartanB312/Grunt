@@ -34,6 +34,7 @@ import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.VarInsnNode
 
+@Transformer.CreditMultiplier(1.2)
 @Transformer.Stability(StableLevel.Developing)
 @Transformer.Description(
     "process.native.native_pre_processor.desc",
@@ -84,6 +85,7 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
 
         post {
             Logger.info(" - NativePreProcessor:")
+            credit.add(indyCounter.global.get() * 100L)
             Logger.info("    Bridged ${indyCounter.global.get()} invokedynamic call sites")
             Logger.info("    Generated ${helperCounter.global.get()} same-class helper methods")
         }

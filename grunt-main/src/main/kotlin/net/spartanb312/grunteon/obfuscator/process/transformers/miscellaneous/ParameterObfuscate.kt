@@ -15,6 +15,7 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 import java.util.concurrent.ConcurrentHashMap
 
+@Transformer.CreditMultiplier(1.5)
 @Transformer.Stability(StableLevel.Unstable)
 @Transformer.Description(
     "process.miscellaneous.parameter_obfuscate.desc",
@@ -71,7 +72,7 @@ class ParameterObfuscate : Transformer<ParameterObfuscate.Config>(
                         if (callingMethod.isSynthetic || callingMethod.isBridge) return@forEach
                         val shadowNames = callingOwner.methods.filter {
                             it.name == callingMethod.name
-                                    && Type.getArgumentTypes(it.desc).size == Type.getArgumentTypes(callingMethod.desc).size
+                                && Type.getArgumentTypes(it.desc).size == Type.getArgumentTypes(callingMethod.desc).size
                         }
                         if (shadowNames.size > 1) return@forEach // avoid bridge method shadow
                         callInstances.getOrPut(CallTarget(callingOwner, callingMethod)) {
@@ -142,6 +143,7 @@ class ParameterObfuscate : Transformer<ParameterObfuscate.Config>(
         }
         post {
             Logger.info(" - ParameterObfuscate:")
+            credit.add(counter.global.get() * 500L)
             Logger.info("    Obfuscated ${counter.global.get()} parameters")
         }
     }

@@ -56,6 +56,7 @@ import org.objectweb.asm.tree.*
  *   and guard kind for future ReferenceObfuscate consumption. They are internal
  *   metadata only and are registered in INTERNAL so PostProcess removes them.
  */
+@Transformer.CreditMultiplier(1.5)
 @Transformer.Stability(StableLevel.Experimental)
 @Transformer.Description(
     "process.antidebug.runtime_material.desc",
@@ -136,7 +137,7 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
         @SettingDesc("Chance that an included class receives runtime material")
         @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
         @SettingName("Class chance")
-        val classChance: Double = 1.0,
+        val classChance: Decimal = 1.0.toDecimal(),
         @SettingDesc("Inject a class-level perturbation into <clinit>")
         @SettingName("Static initializer")
         val clinit: Boolean = true,
@@ -165,7 +166,7 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
             if (classNode.hasAnnotation(DRAFT_RUNTIME_MATERIAL)) return@parForEachClassesFiltered
 
             val random = Xoshiro256PPRandom(getSeed("RuntimeMaterial", classNode.name))
-            if (random.nextDouble() > config.classChance) return@parForEachClassesFiltered
+            if (random.nextDouble() > config.classChance.toDouble()) return@parForEachClassesFiltered
 
             // Per-class material is deliberately local to the owner class. The
             // later BSM integration should read these fields from the caller
@@ -202,6 +203,8 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
 
         post {
             Logger.info(" - RuntimeMaterial:")
+            credit.add(clinitCounter.global.get() * 500L)
+            credit.add(initCounter.global.get() * 500L)
             Logger.info("    Prepared ${classCounter.global.get()} classes")
             Logger.info("    Patched ${clinitCounter.global.get()} <clinit> blocks")
             Logger.info("    Patched ${initCounter.global.get()} constructors")

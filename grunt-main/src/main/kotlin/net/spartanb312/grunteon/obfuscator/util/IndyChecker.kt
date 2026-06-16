@@ -2,6 +2,7 @@ package net.spartanb312.grunteon.obfuscator.util
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap
 import net.spartanb312.grunteon.obfuscator.Grunteon
+import net.spartanb312.grunteon.obfuscator.pipeline.CreditCounter
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.MethodHierarchy
@@ -13,6 +14,7 @@ import org.objectweb.asm.tree.InvokeDynamicInsnNode
 object IndyChecker {
     context(_: PipelineBuilder)
     fun check(
+        creditCounter: CreditCounter,
         hierarchyInfo: ScopeValueKey.Global<MethodHierarchy>,
         infoMappings: ScopeValueKey.Global<out Int2ObjectMap<String>>
     ) {
@@ -33,6 +35,7 @@ object IndyChecker {
             }
         }
         post {
+            creditCounter.add(counter.global.get() * 1000L)
             Logger.info("    Generated indy mapping for ${counter.global.get()} methods")
         }
     }

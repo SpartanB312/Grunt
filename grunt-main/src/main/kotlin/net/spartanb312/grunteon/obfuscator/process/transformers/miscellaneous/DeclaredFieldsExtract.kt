@@ -22,6 +22,7 @@ import java.lang.reflect.Modifier
  * Last update on 2026/03/31 by FluixCarvin
  * @author jonesdevelopment
  */
+@Transformer.CreditMultiplier(1.0)
 @Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.miscellaneous.declared_fields_extract.desc",
@@ -78,6 +79,7 @@ class DeclaredFieldsExtract : Transformer<DeclaredFieldsExtract.Config>(
         }
         post {
             Logger.info(" - DeclaredFieldsExtract:")
+            credit.add(counter.global.get() * 150L)
             Logger.info("    Hid ${counter.global.get()} declared fields")
         }
     }

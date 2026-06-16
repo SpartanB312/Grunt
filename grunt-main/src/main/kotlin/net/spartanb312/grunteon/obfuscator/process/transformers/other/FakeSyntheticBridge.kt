@@ -17,6 +17,7 @@ import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
 import org.objectweb.asm.Opcodes
 
+@Transformer.CreditMultiplier(0.5)
 @Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.other.fake_synthetic_bridge.desc",
@@ -74,6 +75,7 @@ class FakeSyntheticBridge : Transformer<FakeSyntheticBridge.Config>(
         }
         post {
             Logger.info(" - FakeSyntheticBridge:")
+            credit.add(counter.global.get() * 25L)
             Logger.info("    Inserted ${counter.global.get()} flags")
         }
     }

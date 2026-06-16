@@ -19,6 +19,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
+@Transformer.CreditMultiplier(0.9)
 @Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.redirect.invoke_proxy.desc",
@@ -132,6 +133,7 @@ class InvokeProxy : Transformer<InvokeProxy.Config>(
         post {
             Logger.info(" - InvokeProxy:")
             if (config.outer) Logger.info("    Generated ${newClasses.global.size} outer classes")
+            credit.add(counter.global.get() * 150L)
             Logger.info("    Redirected ${counter.global.get()} method calls")
         }
     }

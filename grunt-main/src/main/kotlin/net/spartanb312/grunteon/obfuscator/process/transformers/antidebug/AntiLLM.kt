@@ -40,7 +40,8 @@ import org.objectweb.asm.tree.FieldNode
 import org.objectweb.asm.tree.MethodNode
 import java.nio.charset.StandardCharsets
 
-@Transformer.Stability(StableLevel.Moderate)
+@Transformer.CreditMultiplier(1.0)
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.antidebug.anti_llm.desc",
     "Defend against automated LLM decompilation workflows by triggering LLM cybersecurity guardrails"
@@ -175,16 +176,21 @@ class AntiLLM : Transformer<AntiLLM.Config>(
 
         post {
             Logger.info(" - AntiLLM:")
+            credit.add(payloadPoolKey.global.size * 500L)
             Logger.info("    Prepared ${payloadPoolKey.global.size} defensive payload strings")
             if (config.feedJunkCode) {
                 Logger.info("    Published AntiLLM string pool '${WorkResources.ANTI_LLM_STRING_POOL}'")
             }
             if (config.carrierClasses) {
+                credit.add(carrierNamesKey.global.size * 3000L)
                 Logger.info("    Generated ${carrierNamesKey.global.size} AntiLLM carrier classes")
             }
             if (config.fakeResources) {
+                credit.add(config.resourceCount.coerceAtLeast(0) * 2000L)
                 Logger.info("    Generated ${config.resourceCount.coerceAtLeast(0)} fake analysis resources")
             }
+            credit.add(annotatedClassCounter.global.get() * 150L)
+            credit.add(annotatedMemberCounter.global.get() * 50L)
             Logger.info("    Annotated ${annotatedClassCounter.global.get()} classes")
             Logger.info("    Annotated ${annotatedMemberCounter.global.get()} members")
         }

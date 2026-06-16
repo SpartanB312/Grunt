@@ -22,6 +22,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
+@Transformer.CreditMultiplier(1.2)
 @Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.redirect.invoke_dispatcher.desc",
@@ -196,6 +197,8 @@ class InvokeDispatcher : Transformer<InvokeDispatcher.Config>(
         }
         post {
             Logger.info(" - InvokeDispatcher:")
+            credit.add(counter.global.get() * 200L)
+            credit.add(counter2.global.get() * 300L)
             Logger.info("    Redirected ${counter.global.get()} method calls to ${counter2.global.get()} dispatchers")
         }
     }

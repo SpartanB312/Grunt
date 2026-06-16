@@ -17,9 +17,8 @@ import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 
 /**
  * Last update on 2026/03/31 by FluixCarvin
- * TODO: Reflection remap
- * TODO: Resource remap
  */
+@Transformer.CreditMultiplier(1.0)
 @Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.rename.class_renamer.desc",
@@ -100,7 +99,8 @@ class ClassRenamer : Transformer<ClassRenamer.Config>(
                     )
                 }
                 .count()
-            Logger.info("    Generated mapping for ${counter} classes")
+            credit.add(counter * 300L)
+            Logger.info("    Generated mapping for $counter classes")
         }
     }
 }

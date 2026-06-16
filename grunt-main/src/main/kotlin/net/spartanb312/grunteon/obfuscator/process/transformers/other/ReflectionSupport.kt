@@ -53,6 +53,7 @@ import java.util.IdentityHashMap
  * - MappingApplier calls [remapReflectionStrings] after normal ASM remapping,
  *   so preserved literals can be rewritten to renamed classes/members.
  */
+@Transformer.CreditMultiplier(1.2)
 @Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.other.reflection_support.desc",
@@ -116,6 +117,7 @@ class ReflectionSupport : Transformer<ReflectionSupport.Config>(
         }
         post {
             Logger.info(" - ReflectionSupport:")
+            credit.add(counter.global.get()* 10000L)
             Logger.info("    Preserved ${counter.global.get()} reflection strings")
         }
     }

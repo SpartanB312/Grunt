@@ -23,6 +23,7 @@ import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 
+@Transformer.CreditMultiplier(1.5)
 @Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.controlflow.controlflow_flattening.desc",
@@ -311,6 +312,12 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
 
         post {
             Logger.info(" - ControlflowFlattening:")
+            credit.add(methodCounter.global.get() * 500L)
+            credit.add(blockCounter.global.get() * 300L)
+            credit.add(dispatcherCounter.global.get() * 300L)
+            credit.add(bridgeCounter.global.get() * 100L)
+            credit.add(fakeCaseCounter.global.get() * 200L)
+            credit.add(trailingRealBlockCounter.global.get() * 1000L)
             Logger.info("    Flattened ${methodCounter.global.get()} methods through Flow IR")
             Logger.info("    Flattened ${regionCounter.global.get()} maximal Flow regions")
             Logger.info("    Flattened ${blockCounter.global.get()} Flow blocks")
@@ -320,6 +327,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             Logger.info("    Created ${fakeCaseCounter.global.get()} fake dispatcher cases")
             Logger.info("    Relocated ${trailingRealBlockCounter.global.get()} real blocks below dispatcher switches")
             keyProcessorRegistryKey.global?.let {
+                credit.add(it.actionCount * 300L)
                 Logger.info("    Generated ${it.classCount} key processor classes")
                 Logger.info("    Generated ${it.actionCount} key processor actions")
             }

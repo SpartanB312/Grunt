@@ -172,6 +172,7 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
         }
         post {
             Logger.info(" - StringBasicEncrypt:")
+            credit.add(counter.global.get() * 300L)
             Logger.info("    Encrypted ${counter.global.get()} strings")
         }
         barrier()

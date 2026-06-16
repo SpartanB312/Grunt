@@ -15,6 +15,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.MethodInsnNode
 
+@Transformer.CreditMultiplier(0.8)
 @Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.optimize.enum_optimize.desc",
@@ -72,6 +73,7 @@ class EnumOptimize : Transformer<EnumOptimize.Config>(
         }
         post {
             Logger.info(" - EnumOptimize:")
+            credit.add(counter.global.get() * 75L)
             Logger.info("    Optimized ${counter.global.get()} enums")
         }
     }

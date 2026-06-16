@@ -20,6 +20,7 @@ import org.objectweb.asm.tree.*
  * @author StaR4y
  * @since 2026/5/21
  */
+@Transformer.CreditMultiplier(1.1)
 @Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.optimize.method_inliner.desc",
@@ -117,6 +118,7 @@ class MethodInliner : Transformer<MethodInliner.Config>(
         }
         post {
             Logger.info(" - MethodInliner:")
+            credit.add(counter.global.get() * 300L)
             Logger.info("    Inlined ${counter.global.get()} method calls")
         }
     }

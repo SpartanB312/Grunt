@@ -9,6 +9,7 @@ import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.massiveBlankString
 import net.spartanb312.grunteon.obfuscator.util.massiveString
 
+@Transformer.CreditMultiplier(1.0)
 @Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.other.decompiler_crasher.desc",
@@ -53,6 +54,7 @@ class DecompilerCrasher : Transformer<DecompilerCrasher.Config>(
         }
         post {
             Logger.info(" - DecompilerCrasher:")
+            credit.add(counter.global.get() * 100L)
             Logger.info("    Added ${counter.global.get()} crashers")
         }
     }

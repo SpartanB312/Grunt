@@ -9,6 +9,8 @@ import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import org.objectweb.asm.commons.ClassRemapper
 import org.objectweb.asm.tree.ClassNode
 
+@Transformer.CreditMultiplier(1.0)
+@Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.rename.mapping_applier.desc",
     "Applying mappings"
@@ -42,7 +44,10 @@ class MappingApplier : Transformer<MappingApplier.Config>(
         }
         post {
             val count = reflectionCounter.global.get()
-            if (count > 0) Logger.info("    Remapped $count reflection strings")
+            if (count > 0) {
+                credit.add(count * 2000L)
+                Logger.info("    Remapped $count reflection strings")
+            }
         }
         seq {
             val instance = contextOf<Grunteon>()

@@ -17,6 +17,7 @@ import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.LdcInsnNode
 
+@Transformer.CreditMultiplier(0.8)
 @Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.optimize.kotlin_class_shrink.desc",
@@ -125,6 +126,8 @@ class KotlinClassShrink : Transformer<KotlinClassShrink.Config>(
         }
         post {
             Logger.info(" - KotlinClassShrink:")
+            credit.add(metadata.global.get() * 100L)
+            credit.add(intrinsics.local.get() * 100L)
             if (config.metaData) Logger.info("    Removed ${metadata.global.get()} kotlin metadata")
             if (config.intrinsics) Logger.info("    Removed ${intrinsics.global.get()} kotlin intrinsics")
         }

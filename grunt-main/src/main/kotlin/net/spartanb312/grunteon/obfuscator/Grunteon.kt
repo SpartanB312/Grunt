@@ -1,6 +1,8 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.pipeline.CreditsCalc
+import net.spartanb312.grunteon.obfuscator.pipeline.CreditsSummary
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.JarDumper
 import net.spartanb312.grunteon.obfuscator.process.resource.ObfuscationIO
@@ -10,6 +12,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.M
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.NameMapping
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
+import kotlin.math.roundToLong
 
 // Grunteon process instance
 class Grunteon(
@@ -22,6 +25,8 @@ class Grunteon(
      * Resources
      */
     val nameMapping = NameMapping()
+    var creditsSummary: CreditsSummary = CreditsSummary.EMPTY
+        private set
 
     fun init() {
     }
@@ -36,6 +41,16 @@ class Grunteon(
             }
             val workerContext = WorkerContext()
             workerContext.execute(this, pipelineBuilder)
+            creditsSummary = CreditsCalc.summarize(transformers.map { it.first })
+            val totalCredits = creditsSummary.totalCredits
+            Logger.info("Credits used: ${totalCredits.roundToLong()}")
+            creditsSummary.transformers.forEach {
+                val rate = it.credits / totalCredits * 100
+                Logger.info(
+                    "   ${it.name}[${String.format("%.2f", rate)}%]:" +
+                        " credits=${it.credits.roundToLong()}, raw=${it.raw}, multiplier=${it.baseMultiplier}"
+                )
+            }
         }
 
         // TODO: make this optional

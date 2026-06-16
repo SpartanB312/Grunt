@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator.process
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
+import net.spartanb312.grunteon.obfuscator.pipeline.CreditCounter
 import net.spartanb312.grunteon.obfuscator.pipeline.OrderRule
 
 abstract class Transformer<T : TransformerConfig>(
@@ -9,6 +10,12 @@ abstract class Transformer<T : TransformerConfig>(
 ) {
     val engName = name
     val orderRules = mutableListOf<Pair<OrderRule, String>>()
+    val credit = CreditCounter()
+    val baseMultiplier: Double = javaClass.getAnnotation(CreditMultiplier::class.java)?.value?.also {
+        require(it.isFinite() && it >= 0.0) {
+            "Credit multiplier for ${javaClass.name} must be finite and non-negative"
+        }
+    } ?: 1.0
 
     var index = -1; private set
 
@@ -34,6 +41,10 @@ abstract class Transformer<T : TransformerConfig>(
 
     annotation class Stability(
         val level: StableLevel
+    )
+
+    annotation class CreditMultiplier(
+        val value: Double
     )
 }
 

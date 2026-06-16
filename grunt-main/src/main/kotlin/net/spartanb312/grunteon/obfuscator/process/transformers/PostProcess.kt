@@ -13,6 +13,7 @@ import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.extensions.removeAnnotations
 import java.nio.charset.StandardCharsets
 
+@Transformer.CreditMultiplier(1.0)
 @Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.other.post_process.desc",
@@ -109,6 +110,7 @@ class PostProcess : Transformer<PostProcess.Config>(
                     val obfName = instance.nameMapping.getMapping(remaining)?.dot
                     if (obfName != null) {
                         final = "$prefix $obfName"
+                        credit.add(10000L)
                         Logger.info("    Replaced manifest $final")
                     }
                 }
@@ -144,6 +146,7 @@ class PostProcess : Transformer<PostProcess.Config>(
                 val obfName = instance.nameMapping.getMapping(remaining)?.dot
                 if (obfName != null) {
                     final = "main: $obfName"
+                    credit.add(10000L)
                     Logger.info("    Replaced $desc $obfName")
                 }
             }
@@ -173,6 +176,7 @@ class PostProcess : Transformer<PostProcess.Config>(
                                     val pre = entryPointElem["value"].asString
                                     val new = instance.nameMapping.getMapping(pre.splash)?.dot
                                     if (new != null) {
+                                        credit.add(10000L)
                                         Logger.info("    Replaced fabric entry point $pointName $new")
                                         val newElem = JsonObject()
                                         newElem.addProperty("adapter", entryPointElem["adapter"].asString)
@@ -183,6 +187,7 @@ class PostProcess : Transformer<PostProcess.Config>(
                                     val pre = it.asString
                                     val new = instance.nameMapping.getMapping(pre.splash)?.dot
                                     if (new != null) {
+                                        credit.add(10000L)
                                         Logger.info("    Replaced fabric entry point $pointName $new")
                                         classes.add(new)
                                     } else classes.add(pre)
@@ -212,6 +217,7 @@ class PostProcess : Transformer<PostProcess.Config>(
             asMap()?.forEach { (name, value) ->
                 val newValue = if (name == "main") {
                     val mapping = instance.nameMapping.getMapping(value.asString.splash)?.dot ?: return
+                    credit.add(10000L)
                     JsonPrimitive(mapping)
                 } else {
                     value

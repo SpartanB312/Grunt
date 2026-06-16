@@ -18,6 +18,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.JumpInsnNode
 
+@Transformer.CreditMultiplier(0.8)
 @Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.optimize.dead_code_remove.desc",
@@ -109,6 +110,7 @@ class DeadCodeRemove : Transformer<DeadCodeRemove.Config>(
         }
         post {
             Logger.info(" - DeadCodeRemove:")
+            credit.add(counter.global.get() * 250L)
             Logger.info("    Removed ${counter.global.get()} dead codes")
         }
     }

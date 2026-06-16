@@ -20,6 +20,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
+@Transformer.CreditMultiplier(0.9)
 @Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.redirect.field_access_proxy.desc",
@@ -188,6 +189,7 @@ class FieldAccessProxy : Transformer<FieldAccessProxy.Config>(
         post {
             Logger.info(" - FieldAccessProxy:")
             if (config.outer) Logger.info("    Generated ${outerClassCounter.global.get()} outer classes")
+            credit.add(counter.global.get() * 150L)
             Logger.info("    Redirected ${counter.global.get()} field calls")
         }
     }

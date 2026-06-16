@@ -12,6 +12,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
 
+@Transformer.CreditMultiplier(0.8)
 @Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.optimize.class_shrink.desc",
@@ -134,6 +135,10 @@ class ClassShrink : Transformer<ClassShrink.Config>(
         }
         post {
             Logger.info(" - ClassShrink:")
+            credit.add(innerClasses.global.get() * 50L)
+            credit.add(unusedLabels.global.get() * 80L)
+            credit.add(nops.global.get() * 25L)
+            credit.add(methodSignatures.global.get() * 50L)
             if (config.innerClasses) Logger.info("    Removed ${innerClasses.global.get()} inner classes")
             if (config.unusedLabels) Logger.info("    Removed ${unusedLabels.global.get()} unused labels")
             if (config.nopRemove) Logger.info("    Removed ${nops.global.get()} NOP instructions")

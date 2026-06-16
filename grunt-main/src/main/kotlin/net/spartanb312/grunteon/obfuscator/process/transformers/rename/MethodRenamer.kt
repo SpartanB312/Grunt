@@ -434,10 +434,11 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                         }
                     }
                 }
+                credit.add(methodMappingCount * 200L)
                 Logger.info("    Generated mapping for $methodMappingCount methods")
             }
         }
-        IndyChecker.check(methodHierarchy, sourceAndOverridesMapping)
+        IndyChecker.check(credit, methodHierarchy, sourceAndOverridesMapping)
     }
 
     companion object {

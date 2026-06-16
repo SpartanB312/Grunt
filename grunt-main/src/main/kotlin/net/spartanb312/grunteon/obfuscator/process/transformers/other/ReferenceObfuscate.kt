@@ -47,6 +47,7 @@ import java.lang.invoke.MethodType
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
+@Transformer.CreditMultiplier(1.5)
 @Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.other.reference_obfuscate.desc",
@@ -273,6 +274,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         // Reobf
         if (config.reobfBSM) seq {
             runBlocking {
+                credit.add(addedMethods.sumOf { it.second.size } * 750L)
                 addedMethods.forEach { (classNode, methods) ->
                     methods.forEach { method ->
                         launch(Dispatchers.Default) {
@@ -284,6 +286,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         }
         post {
             Logger.info(" - ReferenceObfuscate:")
+            credit.add(counter.global.get()* 200L)
             Logger.info("    Replaced ${counter.global.get()} invokes")
         }
     }

@@ -188,6 +188,7 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
         }
         post {
             Logger.info(" - NumberBasicEncrypt:")
+            credit.add(counter.global.get() * 100L)
             Logger.info("    Encrypted ${counter.global.get()} numbers")
         }
     }

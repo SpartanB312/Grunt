@@ -7,6 +7,7 @@ import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 
+@Transformer.CreditMultiplier(0.8)
 @Transformer.Stability(StableLevel.RockSolid)
 @Transformer.Description(
     "process.other.shuffle_members.desc",
@@ -75,6 +76,7 @@ class ShuffleMembers : Transformer<ShuffleMembers.Config>(
         }
         post {
             Logger.info(" - ShuffleMembers:")
+            credit.add(counter.global.get() * 10L)
             Logger.info("    Shuffled ${counter.global.get()} members")
         }
     }
