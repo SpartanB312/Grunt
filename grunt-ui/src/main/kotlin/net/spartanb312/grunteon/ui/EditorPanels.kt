@@ -171,15 +171,15 @@ fun TransformerLibrary(
                 modifier = Modifier
                     .fillMaxHeight()
                     .clip(FluentTheme.shapes.control)
-                    .padding(0.dp, 0.dp, 12.dp, 0.dp),
+                    .padding(0.dp, 0.dp, 12.dp, 0.dp)
             ) {
                 filtered.groupByTo(EnumMap(Category::class.java)) { it.category }
                     .forEach { (category, categoryDefinitions) ->
                         item {
-                            var visible by remember { mutableStateOf(false) }
+                            var expanded by remember { mutableStateOf(false) }
                             Expander(
-                                visible,
-                                { visible = it },
+                                expanded,
+                                { expanded = it },
                                 icon = {
                                     Icon(
                                         imageVector = categoryToIcon(category),
@@ -193,12 +193,15 @@ fun TransformerLibrary(
                                     )
                                 }
                             ) {
-                                Layer {
-                                    Column {
-                                        categoryDefinitions.forEach { definition ->
-                                            LibraryItem(state, definition)
+                                Column {
+                                    Layer {
+                                        Column {
+                                            categoryDefinitions.forEach { definition ->
+                                                LibraryItem(state, definition)
+                                            }
                                         }
                                     }
+                                    Spacer(Modifier.height(16.dp))
                                 }
                             }
                         }
