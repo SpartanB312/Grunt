@@ -44,12 +44,7 @@ fun main(args: Array<String>) {
     application {
         val windowState = rememberWindowState(width = 1600.dp, height = 900.dp)
         val coroutineScope = rememberCoroutineScope()
-        val appModel = remember {
-            AppModel(this, coroutineScope).apply {
-                loadAppConfig()
-                loadAppState()
-            }
-        }
+        val appModel = remember { AppModel(this, coroutineScope) }
         Window(
             onCloseRequest = appModel::onExit,
             title = "Grunteon",

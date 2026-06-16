@@ -3,13 +3,16 @@ package net.spartanb312.grunteon.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.window.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Decimal
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.Path
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
@@ -50,9 +53,23 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
     var appConfig by mutableStateOf(AppConfig())
     var obfConfig by mutableStateOf(ObfConfig())
 
+    private val lastSaved = AtomicInteger(Int.MIN_VALUE)
+    private val changeCounter = AtomicInteger(Int.MIN_VALUE)
+    val hasUnsavedChanges: Boolean
+        get() = lastSaved.get() != changeCounter.get()
+
+    class DiscardConfirmState(
+        val onSave: () -> Unit,
+        val onDiscard: () -> Unit,
+        val onCancel: () -> Unit
+    )
+
+    var discardConfirmState by mutableStateOf<DiscardConfirmState?>(null)
+
     init {
         loadAppConfig()
         loadAppState()
+        changeCounter.incrementAndGet()
         when (appConfig.startupAction) {
             StartupAction.LoadLastConfig -> {
                 appState.configPath?.let {
@@ -65,12 +82,33 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
                 newConfig()
             }
         }
+        var localChangeCounter = Int.MIN_VALUE
+        coroutineScope.launch {
+            snapshotFlow { obfConfig }
+                .collect {
+                    localChangeCounter = changeCounter.compareAndExchange(localChangeCounter, localChangeCounter + 1)
+                }
+        }
     }
 
     fun onExit() {
-        saveAppConfig()
-        saveAppState()
-        appScope.exitApplication()
+        checkUnsavedChanges {
+            saveAppConfig()
+            saveAppState()
+            appScope.exitApplication()
+        }
+    }
+
+    fun checkUnsavedChanges(proceed: () -> Unit) {
+        if (hasUnsavedChanges) {
+            discardConfirmState = DiscardConfirmState(
+                onSave = proceed,
+                onDiscard = proceed,
+                onCancel = {}
+            )
+        } else {
+            proceed()
+        }
     }
 
     fun loadAppConfig() {
@@ -112,21 +150,24 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
         }
     }
 
-    fun openConfig(path: NioPath) {
+    fun openConfig(path: NioPath): Boolean {
         val loaded = loadConfig(path)
         if (loaded.success) {
             obfConfig = loaded.config
             uiState.globalStatus = loaded.message
             appState = appState.copy(configPath = path)
+            resetCounter()
         } else {
             uiState.globalStatus = loaded.message
         }
+        return loaded.success
     }
 
     fun newConfig() {
         obfConfig = ObfConfig()
         uiState.globalStatus = "Created new empty config"
         appState = appState.copy(configPath = null)
+        resetCounter()
     }
 
     fun saveConfig(path: NioPath): Boolean {
@@ -136,9 +177,14 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
             appState = appState.copy(configPath = path)
             uiState.globalStatus =
                 "Saved ${obfConfig.transformers.size} transformer nodes to ${path.toAbsolutePath().normalize()}"
+            resetCounter()
         }.onFailure {
             uiState.globalStatus = "Failed to save ${path.toAbsolutePath().normalize()}: ${it.message}"
         }.isSuccess
+    }
+
+    private fun resetCounter() {
+        lastSaved.set(changeCounter.get())
     }
 }
 

@@ -22,6 +22,8 @@ import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.*
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.awt.Desktop
 import java.net.URI
@@ -41,6 +43,7 @@ private fun openExternalLink(url: String): Boolean {
     }.isSuccess
 }
 
+@Suppress("DeferredResultUnused")
 @Composable
 fun TopToolbar(
     appModel: AppModel,
@@ -49,22 +52,63 @@ fun TopToolbar(
     onMinimize: () -> Unit,
     onToggleMaximize: () -> Unit,
 ) {
+    fun requestNewConfig() {
+        appModel.checkUnsavedChanges {
+            appModel.newConfig()
+        }
+    }
+
     fun requestOpenConfig() {
-        appModel.coroutineScope.launch {
-            chooseConfigPath()?.let(appModel::openConfig)
+        return appModel.checkUnsavedChanges {
+            appModel.coroutineScope.launch {
+                chooseConfigPath()?.let(appModel::openConfig)
+            }
         }
     }
 
-    fun requestSaveConfig() {
-        appModel.coroutineScope.launch {
-            (appModel.appState.configPath ?: chooseSaveConfigPath())?.let(appModel::saveConfig)
+    fun requestSaveConfig(): Deferred<Boolean> {
+        return appModel.coroutineScope.async {
+            (appModel.appState.configPath ?: chooseSaveConfigPath())?.let(appModel::saveConfig) == true
         }
     }
 
-    fun requestSaveConfigAs() {
-        appModel.coroutineScope.launch {
-            chooseSaveConfigPath(appModel.appState.configPath)?.let(appModel::saveConfig)
+    fun requestSaveConfigAs(): Deferred<Boolean> {
+        return appModel.coroutineScope.async {
+            chooseSaveConfigPath(appModel.appState.configPath)?.let(appModel::saveConfig) == true
         }
+    }
+
+    appModel.discardConfirmState?.let { state ->
+        ContentDialog(
+            title = "Confirm Discard Changes",
+            visible = true,
+            primaryButtonText = "Save",
+            secondaryButtonText = "Discard",
+            closeButtonText = "Cancel",
+            onButtonClick = {
+                when (it) {
+                    ContentDialogButton.Primary -> {
+                        appModel.coroutineScope.launch {
+                            if (requestSaveConfig().await()) {
+                                state.onSave()
+                            } else {
+                                state.onCancel()
+                            }
+                        }
+                    }
+                    ContentDialogButton.Secondary -> {
+                        state.onDiscard()
+                    }
+                    ContentDialogButton.Close -> {
+                        state.onCancel()
+                    }
+                }
+                appModel.discardConfirmState = null
+            },
+            content = {
+                Text("You have unsaved changes. Do you want to save them before proceeding?")
+            }
+        )
     }
 
     Column(
@@ -73,7 +117,7 @@ fun TopToolbar(
                 if (it.type != KeyEventType.KeyDown || !it.isCtrlPressed) return@onPreviewKeyEvent false
                 when (it.key) {
                     Key.N -> {
-                        appModel.newConfig()
+                        requestNewConfig()
                         true
                     }
 
@@ -105,7 +149,7 @@ fun TopToolbar(
                     items = {
                         MenuFlyoutButton(
                             onClick = {
-                                appModel.newConfig()
+                                requestNewConfig()
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.Document,
