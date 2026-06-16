@@ -3,7 +3,6 @@ package net.spartanb312.grunteon.obfuscator.process
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import net.spartanb312.grunteon.obfuscator.process.*
 import java.nio.file.Path
 import java.util.zip.Deflater
 import kotlin.io.path.readText
@@ -23,6 +22,7 @@ data class ObfConfig(
             encodeDefaults = true
             prettyPrintIndent = "    "
             ignoreUnknownKeys = true
+            isLenient = true
         }
 
         fun read(path: Path): ObfConfig {

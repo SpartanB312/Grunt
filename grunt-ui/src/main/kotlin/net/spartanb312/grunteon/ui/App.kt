@@ -43,13 +43,21 @@ fun main(args: Array<String>) {
     }
     application {
         val windowState = rememberWindowState(width = 1600.dp, height = 900.dp)
+        val coroutineScope = rememberCoroutineScope()
+        val appModel = remember {
+            AppModel(this, coroutineScope).apply {
+                loadAppConfig()
+                loadAppState()
+            }
+        }
         Window(
-            onCloseRequest = ::exitApplication,
+            onCloseRequest = appModel::onExit,
             title = "Grunteon",
             state = windowState,
             icon = painterResource("logo.svg")
         ) {
             App(
+                appModel,
                 isMaximized = windowState.placement == WindowPlacement.Maximized,
                 onMinimize = { window.extendedState = window.extendedState or Frame.ICONIFIED },
                 onToggleMaximize = {
@@ -58,8 +66,7 @@ fun main(args: Array<String>) {
                     } else {
                         WindowPlacement.Maximized
                     }
-                },
-                onExit = ::exitApplication,
+                }
             )
         }
     }
@@ -75,22 +82,17 @@ private fun configureWindowDecorations() {
 
 @Composable
 fun FrameWindowScope.App(
+    appModel: AppModel,
     isMaximized: Boolean,
     onMinimize: () -> Unit,
-    onToggleMaximize: () -> Unit,
-    onExit: () -> Unit,
+    onToggleMaximize: () -> Unit
 ) {
     FullWindowContentEffect()
 
-    val coroutineScope = rememberCoroutineScope()
-    val appModel = remember { AppModel(coroutineScope) }
-
-    val appConfigState = remember { mutableStateOf(AppConfig()) }
-    var appConfig by appConfigState
 
     var obfuscationRunning by remember { mutableStateOf(false) }
 
-    val darkMode = when (appConfig.themeMode) {
+    val darkMode = when (appModel.appConfig.themeMode) {
         Auto -> isSystemInDarkTheme()
         Light -> false
         Dark -> true
@@ -113,7 +115,7 @@ fun FrameWindowScope.App(
         Thread(
             {
                 val previousLogger = Logger
-                Logger = UiLogger("Grunteon", appConfig.uiLogLevel, ::appendObfuscationLog)
+                Logger = UiLogger("Grunteon", appModel.appConfig.uiLogLevel, ::appendObfuscationLog)
                 try {
                     Logger.info("Starting obfuscation with ${runConfig.transformers.count { it.enabled }} enabled transformer nodes")
                     val instance = Grunteon.create(runConfig)
@@ -146,8 +148,8 @@ fun FrameWindowScope.App(
 
     CompositionLocalProvider(
         LocalDensity provides Density(
-            LocalDensity.current.density * appConfig.uiScale.toFloat(),
-            appConfig.fontScale.toFloat()
+            LocalDensity.current.density * appModel.appConfig.uiScale.toFloat(),
+            appModel.appConfig.fontScale.toFloat()
         ),
     ) {
         val fluentColors = if (darkMode) darkColors() else lightColors()
@@ -211,7 +213,6 @@ fun FrameWindowScope.App(
                             showWindowControls = true,
                             onMinimize = onMinimize,
                             onToggleMaximize = onToggleMaximize,
-                            onExit = onExit,
                         )
                     Column(
                         Modifier

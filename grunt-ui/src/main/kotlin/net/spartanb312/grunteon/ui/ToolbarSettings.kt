@@ -48,18 +48,10 @@ fun TopToolbar(
     showWindowControls: Boolean,
     onMinimize: () -> Unit,
     onToggleMaximize: () -> Unit,
-    onExit: () -> Unit,
 ) {
     fun requestOpenConfig() {
         appModel.coroutineScope.launch {
-            chooseConfigPath()?.let {
-                val loaded = loadConfig(it)
-                if (loaded.success) {
-                    appModel.openConfig(loaded.config, loaded.path, loaded.message)
-                } else {
-                    appModel.uiState.globalStatus = loaded.message
-                }
-            }
+            chooseConfigPath()?.let(appModel::openConfig)
         }
     }
 
@@ -152,7 +144,7 @@ fun TopToolbar(
                         MenuFlyoutButton(
                             onClick = {
                                 isFlyoutVisible = false
-                                onExit()
+                                appModel.onExit()
                             },
                             icon = Icons.Default.Dismiss,
                             text = "Exit",
@@ -252,7 +244,7 @@ fun TopToolbar(
                             hovered = defaultSubtle.hovered.copy(fillColor = Color(0xFFC42B1C)),
                             pressed = defaultSubtle.pressed.copy(fillColor = Color(0xFFB3271C))
                         ),
-                        onClick = onExit,
+                        onClick = appModel::onExit,
                     )
                 }
             }

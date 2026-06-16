@@ -3,10 +3,16 @@ package net.spartanb312.grunteon.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Decimal
+import java.nio.file.Path
+import kotlin.io.path.Path
+import kotlin.io.path.readText
+import kotlin.io.path.writeText
 import kotlin.reflect.KClass
 
 class TransformerDefinition(
@@ -38,16 +44,83 @@ enum class AppPage {
     Settings,
 }
 
-class AppModel(val coroutineScope: CoroutineScope) {
+class AppModel(private val appScope: ApplicationScope, val coroutineScope: CoroutineScope) {
     val uiState = AppUIState()
     var appState by mutableStateOf(AppState())
     var appConfig by mutableStateOf(AppConfig())
     var obfConfig by mutableStateOf(ObfConfig())
 
-    fun openConfig(config: ObfConfig, path: NioPath, message: String) {
-        obfConfig = config
-        uiState.globalStatus = message
-        appState = appState.copy(configPath = path)
+    init {
+        loadAppConfig()
+        loadAppState()
+        when (appConfig.startupAction) {
+            StartupAction.LoadLastConfig -> {
+                appState.configPath?.let {
+                    openConfig(it)
+                } ?: run {
+                    newConfig()
+                }
+            }
+            StartupAction.NewConfig -> {
+                newConfig()
+            }
+        }
+    }
+
+    fun onExit() {
+        saveAppConfig()
+        saveAppState()
+        appScope.exitApplication()
+    }
+
+    fun loadAppConfig() {
+        runCatching {
+            AppConfig.read(Path("app_config.json"))
+        }.onSuccess {
+            appConfig = it
+        }.onFailure {
+            uiState.globalStatus = "Failed to load app config: ${it.message}"
+            println("Failed to load app config: ${it.message}")
+        }
+    }
+
+    fun saveAppConfig() {
+        runCatching {
+            AppConfig.write(appConfig, Path("app_config.json"))
+        }.onFailure {
+            println("Failed to save app config: ${it.message}")
+        }
+    }
+
+    fun loadAppState() {
+        runCatching {
+            AppState.read(Path("app_state.json"))
+        }.onSuccess {
+            appState = it
+        }.onFailure {
+            uiState.globalStatus = "Failed to load app state: ${it.message}"
+            println("Failed to load app state: ${it.message}")
+        }
+    }
+
+    fun saveAppState() {
+        runCatching {
+            AppState.write(appState, Path("app_state.json"))
+        }.onFailure {
+            uiState.globalStatus = "Failed to save app state: ${it.message}"
+            println("Failed to save app state: ${it.message}")
+        }
+    }
+
+    fun openConfig(path: NioPath) {
+        val loaded = loadConfig(path)
+        if (loaded.success) {
+            obfConfig = loaded.config
+            uiState.globalStatus = loaded.message
+            appState = appState.copy(configPath = path)
+        } else {
+            uiState.globalStatus = loaded.message
+        }
     }
 
     fun newConfig() {
@@ -72,7 +145,26 @@ class AppModel(val coroutineScope: CoroutineScope) {
 @Serializable
 data class AppState(
     val configPath: NioPath? = null,
-)
+) {
+    companion object {
+        private fun json() = Json {
+            prettyPrint = true
+            encodeDefaults = true
+            prettyPrintIndent = "    "
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
+
+        fun read(path: Path): AppState {
+            return json().decodeFromString(path.readText())
+        }
+
+        fun write(state: AppState, path: Path) {
+            val jsonString = json().encodeToString(state)
+            path.writeText(jsonString)
+        }
+    }
+}
 
 class AppUIState {
     var globalStatus by mutableStateOf("Ready")
@@ -82,7 +174,7 @@ class AppUIState {
 
 @Serializable
 data class AppConfig(
-    val startupAction: StartupAction = StartupAction.Dialog,
+    val startupAction: StartupAction = StartupAction.LoadLastConfig,
 
     @SettingSection("UI")
     @DecimalRangeVal(min = 0.5, max = 4.0, step = 0.1)
@@ -92,10 +184,29 @@ data class AppConfig(
     val fontScale: Decimal = Decimal.ONE,
     val themeMode: ThemeMode = ThemeMode.Auto,
     val uiLogLevel: UiLogLevel = UiLogLevel.Info,
-)
+) {
+    companion object {
+        private fun json() = Json {
+            prettyPrint = true
+            encodeDefaults = true
+            prettyPrintIndent = "    "
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
+
+        fun read(path: Path): AppConfig {
+            return json().decodeFromString(path.readText())
+        }
+
+        fun write(config: AppConfig, path: Path) {
+            val jsonString = json().encodeToString(config)
+            path.writeText(jsonString)
+        }
+    }
+}
 
 enum class StartupAction {
-    Dialog,
+    // Dialog, TODO: need to do a homepage
     LoadLastConfig,
     NewConfig,
 }

@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose.hotReload)
+    alias(libs.plugins.kotlinxSerialization)
 }
 
 repositories {
@@ -19,9 +20,18 @@ dependencies {
     implementation(libs.filekit.dialogs)
     implementation(libs.flatlaf)
     implementation(libs.kotlinReflect)
+    implementation(libs.kotlinxSerializationJson)
     implementation(compose.desktop.currentOs)
     implementation(libs.compose.fluent)
     implementation(libs.compose.fluent.icons)
+}
+
+afterEvaluate {
+    val runDir = File(rootProject.rootDir, "run")
+    runDir.mkdir()
+    tasks.withType<JavaExec>().configureEach {
+        workingDir(runDir)
+    }
 }
 
 compose.desktop {
