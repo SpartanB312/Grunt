@@ -2,9 +2,6 @@ package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -13,13 +10,13 @@ import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.Text
 import net.spartanb312.grunteon.obfuscator.plugin.LoadedPlugin
+import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
 
 @Composable
 fun SettingsPage(
-    appConfigState: MutableState<AppConfig>,
-    plugins: List<LoadedPlugin>,
+    appModel: AppModel
 ) {
-    var appConfig by appConfigState
+    var appConfig by appModel::appConfig
     Row(
         modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -38,11 +35,11 @@ fun SettingsPage(
         }
         PanelSurface(
             title = "Plugins",
-            description = "Loaded ${plugins.size} plugin(s).",
+            description = "Loaded ${PluginManager.plugins.size} plugin(s).",
             modifier = Modifier.weight(0.5f)
         ) {
             ScrollPanel {
-                if (plugins.isEmpty()) {
+                if (PluginManager.plugins.isEmpty()) {
                     FramedSurface(
                         color = FluentTheme.colors.background.card.secondary,
                         modifier = Modifier.fillMaxWidth(),
@@ -59,7 +56,7 @@ fun SettingsPage(
                             }
                         })
                 } else {
-                    plugins.forEach { plugin ->
+                    PluginManager.plugins.forEach { plugin ->
                         PluginSection(plugin)
                     }
                 }

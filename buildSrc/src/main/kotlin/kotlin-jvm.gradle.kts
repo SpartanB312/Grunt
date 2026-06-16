@@ -20,6 +20,8 @@ kotlin {
             "-Xno-call-assertions",
             "-Xcontext-parameters",
             "-Xbackend-threads=0",
+            "-Xcontext-sensitive-resolution",
+            "-Xexplicit-backing-fields"
 //            "-Xcontext-parameters",
 //            "-Xassertions=jvm",
 //            "-Xno-call-assertions",
@@ -30,7 +32,6 @@ kotlin {
 //            "-Xcompile-java",
 //            "-Xjvm-default=all",
 //            "-Xnested-type-aliases",
-            "-Xcontext-sensitive-resolution"
         )
     }
 }

@@ -27,7 +27,7 @@ fun loadConfig(path: NioPath): ConfigLoadResult {
     }
 }
 
-fun defaultConfigPath(): NioPath {
+private fun defaultConfigPath(): NioPath {
     return locateProjectRoot().resolve("config.json")
 }
 
@@ -50,7 +50,8 @@ suspend fun chooseNewConfigPath(): NioPath? {
     )?.toNioPath()?.ensureExtension("json")
 }
 
-suspend fun chooseSaveConfigPath(currentPath: NioPath): NioPath? {
+suspend fun chooseSaveConfigPath(currentPath: NioPath? = null): NioPath? {
+    val currentPath = currentPath ?: defaultConfigPath()
     return FileKit.openFileSaver(
         suggestedName = currentPath.nameWithoutExtension,
         defaultExtension = "json",

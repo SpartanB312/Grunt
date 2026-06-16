@@ -2,15 +2,14 @@ package net.spartanb312.grunteon.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 
 @Composable
 fun GeneralPage(
-    obsConfigState: MutableState<ObfConfig>,
+    appModel: AppModel
 ) {
-    var globalConfig by DataClassUpdater(obsConfigState, ObfConfig::globalConfig)
+    var globalConfig by DataClassUpdater(appModel::obfConfig, ObfConfig::globalConfig)
     PanelSurface(
         title = "General Configuration",
         description = "Top-level obfuscation config options.",

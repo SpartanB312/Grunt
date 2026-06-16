@@ -86,6 +86,11 @@ class DataClassUpdater<S : Any, T : Any>(
             noinline stateGet: () -> S,
             property: KProperty1<S, T>
         ) = DataClassUpdater(S::class, stateGet, stateSet, property)
+
+        inline operator fun <reified S : Any, reified T : Any> invoke(
+            state: KMutableProperty0<S>,
+            property: KProperty1<S, T>
+        ) = DataClassUpdater(S::class, state::get, state::set, property)
     }
 }
 
@@ -232,8 +237,7 @@ class ListUpdater<E>(
 }
 
 class PipelineEditorState(
-    val uiState: UIState,
-    obfConfigState: MutableState<ObfConfig>
+    val appModel: AppModel,
 ) {
     val definitions = transformerDefinitions()
     var selectedIndexState by mutableStateOf(-1)
@@ -250,7 +254,7 @@ class PipelineEditorState(
             }
         }
 
-    val dataClassUpdater = DataClassUpdater(obfConfigState, ObfConfig::transformers)
+    val dataClassUpdater = DataClassUpdater(appModel::obfConfig, ObfConfig::transformers)
     var transformerProperty by dataClassUpdater
     val transformerList = ListUpdater(dataClassUpdater)
 
@@ -260,7 +264,7 @@ class PipelineEditorState(
         val insertIndex = if (index == -1) currTransformers.size else index
         transformerList.add(insertIndex, newEntry)
         selectedIndex = insertIndex
-        uiState.globalStatus = "Added ${newEntry.name}"
+        appModel.uiState.globalStatus = "Added ${newEntry.name}"
     }
 
     fun addTransformerEntryAfterSelection(newEntry: TransformerEntry) {

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,18 +28,61 @@ private val ToolbarTabWidth = 128.dp
 
 @Composable
 fun TopToolbar(
-    uiState: UIState,
-    onNewConfig: () -> Unit,
-    onOpenConfig: () -> Unit,
-    onSaveConfig: () -> Boolean,
-    onSaveConfigAs: () -> Unit,
+    appModel: AppModel,
     isMaximized: Boolean,
     showWindowControls: Boolean,
     onMinimize: () -> Unit,
     onToggleMaximize: () -> Unit,
     onExit: () -> Unit,
 ) {
-    Column {
+    fun requestOpenConfig() {
+        appModel.coroutineScope.launch {
+            chooseConfigPath()?.let {
+                val loaded = loadConfig(it)
+                if (loaded.success) {
+                    appModel.openConfig(loaded.config, loaded.path, loaded.message)
+                } else {
+                    appModel.uiState.globalStatus = loaded.message
+                }
+            }
+        }
+    }
+
+    fun requestSaveConfig() {
+        appModel.coroutineScope.launch {
+            (appModel.appState.configPath ?: chooseSaveConfigPath())?.let(appModel::saveConfig)
+        }
+    }
+
+    fun requestSaveConfigAs() {
+        appModel.coroutineScope.launch {
+            chooseSaveConfigPath(appModel.appState.configPath)?.let(appModel::saveConfig)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .onPreviewKeyEvent {
+                if (it.type != KeyEventType.KeyDown || !it.isCtrlPressed) return@onPreviewKeyEvent false
+                when (it.key) {
+                    Key.N -> {
+                        appModel.newConfig()
+                        true
+                    }
+
+                    Key.O -> {
+                        requestOpenConfig()
+                        true
+                    }
+
+                    Key.S -> {
+                        if (it.isShiftPressed) requestSaveConfigAs() else requestSaveConfig()
+                        true
+                    }
+                    else -> false
+                }
+            }
+    ) {
         Row(
             modifier = Modifier
                 .background(color = FluentTheme.colors.background.mica.base)
@@ -54,7 +98,7 @@ fun TopToolbar(
                     items = {
                         MenuFlyoutButton(
                             onClick = {
-                                onNewConfig()
+                                appModel.newConfig()
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.Document,
@@ -63,8 +107,8 @@ fun TopToolbar(
                         )
                         MenuFlyoutButton(
                             onClick = {
-                                onOpenConfig()
                                 isFlyoutVisible = false
+                                requestOpenConfig()
                             },
                             icon = Icons.Default.FolderOpen,
                             text = "Open Config",
@@ -73,8 +117,8 @@ fun TopToolbar(
                         MenuFlyoutSeparator()
                         MenuFlyoutButton(
                             onClick = {
-                                onSaveConfig()
                                 isFlyoutVisible = false
+                                requestSaveConfig()
                             },
                             icon = Icons.Default.Save,
                             text = "Save Config",
@@ -82,8 +126,8 @@ fun TopToolbar(
                         )
                         MenuFlyoutButton(
                             onClick = {
-                                onSaveConfigAs()
                                 isFlyoutVisible = false
+                                requestSaveConfigAs()
                             },
                             icon = Icons.Default.SaveEdit,
                             text = "Save Config As",
@@ -122,6 +166,7 @@ fun TopToolbar(
                         MenuFlyoutButton(
                             onClick = {
                                 // TODO: Open help page
+                                isFlyoutVisible = false
                             },
                             icon = Icons.Default.BookQuestionMark,
                             text = "Help",
@@ -130,6 +175,7 @@ fun TopToolbar(
                         MenuFlyoutButton(
                             onClick = {
                                 // TODO: Open GitHub issue page
+                                isFlyoutVisible = false
                             },
                             icon = Icons.Default.Bug,
                             text = "Submit a Bug Report",
@@ -137,6 +183,7 @@ fun TopToolbar(
                         MenuFlyoutButton(
                             onClick = {
                                 // TODO: Open GitHub issue page
+                                isFlyoutVisible = false
                             },
                             icon = Icons.Default.ChatHelp,
                             text = "Submit Feature Request",
@@ -145,7 +192,6 @@ fun TopToolbar(
                         MenuFlyoutButton(
                             onClick = {
                                 isFlyoutVisible = false
-                                onExit()
                             },
                             icon = Icons.Default.Globe,
                             text = "Check for Updates",
@@ -153,7 +199,6 @@ fun TopToolbar(
                         MenuFlyoutButton(
                             onClick = {
                                 isFlyoutVisible = false
-                                onExit()
                             },
                             icon = Icons.Default.Info,
                             text = "About",
@@ -195,15 +240,15 @@ fun TopToolbar(
             }
         }
         TabRow(
-            { uiState.currentPage.ordinal },
+            { appModel.uiState.currentPage.ordinal },
             borderColor = Color.Transparent,
         ) {
             AppPage.entries.forEach { page ->
                 item {
-                    val selected = uiState.currentPage == page
+                    val selected = appModel.uiState.currentPage == page
                     TabItem(
                         selected = selected,
-                        onSelectedChanged = { if (it) uiState.currentPage = page },
+                        onSelectedChanged = { if (it) appModel.uiState.currentPage = page },
                         modifier = Modifier.height(64.dp)
                     ) {
                         Row(modifier = Modifier.height(100.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -19,12 +18,10 @@ import io.github.composefluent.*
 import io.github.composefluent.component.Text
 import io.github.composefluent.surface.Card
 import io.github.vinceglb.filekit.FileKit
-import kotlinx.coroutines.launch
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.SUBTITLE
 import net.spartanb312.grunteon.obfuscator.VERSION
 import net.spartanb312.grunteon.obfuscator.plugin.PluginManager
-import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import java.awt.Frame
 import javax.swing.JDialog
@@ -85,11 +82,8 @@ fun FrameWindowScope.App(
 ) {
     FullWindowContentEffect()
 
-    val plugins = remember { PluginManager.plugins }
-    var editorReady by remember { mutableStateOf(true) }
-    var configPath by remember { mutableStateOf(defaultConfigPath()) }
-    var status by remember { mutableStateOf("Choose a config to begin") }
     val coroutineScope = rememberCoroutineScope()
+    val appModel = remember { AppModel(coroutineScope) }
 
     val appConfigState = remember { mutableStateOf(AppConfig()) }
     var appConfig by appConfigState
@@ -103,77 +97,7 @@ fun FrameWindowScope.App(
     }
 
     val obfuscationLogs = remember { mutableStateListOf<String>() }
-    val uiState = remember { UIState() }
 
-    val obfConfigState = remember { mutableStateOf(ObfConfig()) }
-    var obfConfig by obfConfigState
-
-    fun openWorkspace(config: ObfConfig, path: java.nio.file.Path, message: String) {
-        obfConfig = config
-        configPath = path
-        status = message
-        uiState.currentPage = AppPage.General
-        editorReady = true
-    }
-
-    fun newConfig(path: java.nio.file.Path) {
-        openWorkspace(
-            config = ObfConfig(),
-            path = path,
-            message = "New config. Save will write to ${path.toAbsolutePath().normalize()}"
-        )
-    }
-
-    fun reloadConfig() {
-        val loaded = loadConfig(configPath)
-        if (loaded.success) {
-            openWorkspace(loaded.config, loaded.path, loaded.message)
-        } else {
-            status = loaded.message
-        }
-    }
-
-    fun saveConfigTo(path: java.nio.file.Path): Boolean {
-        return runCatching {
-            ObfConfig.write(obfConfig, path)
-        }.onSuccess {
-            configPath = path
-            status = "Saved ${obfConfig.transformers.size} transformer nodes to ${path.toAbsolutePath().normalize()}"
-        }.onFailure {
-            status = "Failed to save ${path.toAbsolutePath().normalize()}: ${it.message}"
-        }.isSuccess
-    }
-
-    fun saveConfig(): Boolean {
-        return saveConfigTo(configPath)
-    }
-
-    fun openConfigFrom(path: java.nio.file.Path) {
-        val loaded = loadConfig(path)
-        if (loaded.success) {
-            openWorkspace(loaded.config, loaded.path, loaded.message)
-        } else {
-            status = loaded.message
-        }
-    }
-
-    fun requestNewConfig() {
-        coroutineScope.launch {
-            chooseNewConfigPath()?.let(::newConfig)
-        }
-    }
-
-    fun requestOpenConfig() {
-        coroutineScope.launch {
-            chooseConfigPath()?.let(::openConfigFrom)
-        }
-    }
-
-    fun requestSaveConfigAs() {
-        coroutineScope.launch {
-            chooseSaveConfigPath(configPath)?.let(::saveConfigTo)
-        }
-    }
     fun appendObfuscationLog(line: String) {
         SwingUtilities.invokeLater {
             obfuscationLogs.add(line)
@@ -182,10 +106,10 @@ fun FrameWindowScope.App(
 
     fun runObfuscation() {
         if (obfuscationRunning) return
-        val runConfig = obfConfig
+        val runConfig = appModel.obfConfig
         obfuscationLogs.clear()
         obfuscationRunning = true
-        status = "Obfuscation started"
+        appModel.uiState.globalStatus = "Obfuscation started"
         Thread(
             {
                 val previousLogger = Logger
@@ -196,13 +120,13 @@ fun FrameWindowScope.App(
                     instance.execute()
                     Logger.info("Obfuscation finished")
                     SwingUtilities.invokeLater {
-                        status = "Obfuscation finished"
+                        appModel.uiState.globalStatus = "Obfuscation finished"
                     }
                 } catch (t: Throwable) {
                     Logger.error("Obfuscation failed: ${t.message ?: t::class.qualifiedName}")
                     t.stackTraceToString().lines().forEach { Logger.error(it) }
                     SwingUtilities.invokeLater {
-                        status = "Obfuscation failed"
+                        appModel.uiState.globalStatus = "Obfuscation failed"
                     }
                 } finally {
                     Logger = previousLogger
@@ -218,7 +142,7 @@ fun FrameWindowScope.App(
         }
     }
 
-    val pipelineEditorState = remember { PipelineEditorState(uiState, obfConfigState) }
+    val pipelineEditorState = remember { PipelineEditorState(appModel) }
 
     CompositionLocalProvider(
         LocalDensity provides Density(
@@ -244,27 +168,6 @@ fun FrameWindowScope.App(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .onPreviewKeyEvent {
-                            if (it.type != KeyEventType.KeyDown || !it.isCtrlPressed) return@onPreviewKeyEvent false
-                            when (it.key) {
-                                Key.N -> {
-                                    requestNewConfig()
-                                    true
-                                }
-
-                                Key.O -> {
-                                    requestOpenConfig()
-                                    true
-                                }
-
-                                Key.S -> {
-                                    if (it.isShiftPressed) requestSaveConfigAs() else saveConfig()
-                                    true
-                                }
-
-                                else -> false
-                            }
-                        }
                         .background(FluentTheme.colors.background.mica.base)
                 ) {
                     Column(Modifier.fillMaxSize()) {
@@ -303,11 +206,7 @@ fun FrameWindowScope.App(
 //                        return@ProvideTextStyle
 //                    }
                         TopToolbar(
-                            uiState = uiState,
-                            onNewConfig = ::requestNewConfig,
-                            onOpenConfig = ::requestOpenConfig,
-                            onSaveConfig = ::saveConfig,
-                            onSaveConfigAs = ::requestSaveConfigAs,
+                            appModel = appModel,
                             isMaximized = isMaximized,
                             showWindowControls = true,
                             onMinimize = onMinimize,
@@ -323,8 +222,8 @@ fun FrameWindowScope.App(
                             Modifier.weight(1f)
                                 .padding(8.dp)
                         ) {
-                            when (uiState.currentPage) {
-                                AppPage.General -> GeneralPage(obfConfigState)
+                            when (appModel.uiState.currentPage) {
+                                AppPage.General -> GeneralPage(appModel)
                                 AppPage.Editor -> PipelineEditorPage(pipelineEditorState)
                                 AppPage.Obfuscation -> ObfuscationPage(
                                     logs = obfuscationLogs,
@@ -332,13 +231,10 @@ fun FrameWindowScope.App(
                                     onObfuscate = ::runObfuscation,
                                     modifier = Modifier.fillMaxSize()
                                 )
-                                AppPage.Settings -> SettingsPage(
-                                    appConfigState,
-                                    plugins
-                                )
+                                AppPage.Settings -> SettingsPage(appModel)
                             }
                         }
-                        BottomStatusBar(uiState)
+                        BottomStatusBar(appModel)
                     }
                     }
                 }
@@ -411,7 +307,7 @@ private fun FrameWindowScope.FullWindowContentEffect() {
 }
 
 @Composable
-private fun BottomStatusBar(uiState: UIState) {
+private fun BottomStatusBar(appModel: AppModel) {
     Card(Modifier.fillMaxWidth(), shape = FluentTheme.shapes.intersectionEdge) {
         Row(
             modifier = Modifier
@@ -419,11 +315,11 @@ private fun BottomStatusBar(uiState: UIState) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                uiState.globalStatus,
+                appModel.uiState.globalStatus,
                 modifier = Modifier.weight(1f),
             )
             Text(
-                uiState.pageStatus,
+                appModel.uiState.pageStatus,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
             )

@@ -6,14 +6,9 @@ import net.spartanb312.grunteon.obfuscator.process.TransformerRegistryEntry
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import java.lang.reflect.Modifier
 import java.nio.file.Path
-import java.util.PriorityQueue
+import java.util.*
 import java.util.jar.JarFile
-import kotlin.io.path.Path
-import kotlin.io.path.createDirectories
-import kotlin.io.path.exists
-import kotlin.io.path.extension
-import kotlin.io.path.isDirectory
-import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.*
 
 data class LoadedPlugin(
     val metadata: PluginMetadata,
@@ -37,7 +32,7 @@ object PluginManager {
     private var closed = false
 
     val plugins: List<LoadedPlugin>
-        get() = loadedPlugins.values.toList()
+        field = mutableListOf<LoadedPlugin>()
 
     fun loadPlugins(pluginDirectory: Path = Path("plugins")): List<LoadedPlugin> {
         ensureOpen()
@@ -62,6 +57,7 @@ object PluginManager {
         if (!closed) {
             TransformerRegistry.freeze()
             closed = true
+            plugins.addAll(loadedPlugins.values)
             Logger.info("Plugin registry frozen with ${loadedPlugins.size} loaded plugin(s)")
         }
     }
