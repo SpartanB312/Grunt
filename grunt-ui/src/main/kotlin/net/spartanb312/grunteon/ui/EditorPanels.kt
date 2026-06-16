@@ -260,9 +260,8 @@ private fun LibraryItem(state: PipelineEditorState, definition: TransformerDefin
             }
         }
     ) {
-        Button(
+        SubtleButton(
             onClick = { state.addTransformerAfterSelection(definition) },
-            modifier = Modifier
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
@@ -481,7 +480,17 @@ private fun TransformerCard(
                         Icon(imageVector = Icons.Default.CopyAdd, contentDescription = "Duplicate")
                     }
                     Button(
-                        onClick = { state.transformerList.removeAt(index) },
+                        onClick = {
+                            state.dialog = PipelineEditorState.Dialog(
+                                "Delete Transformer",
+                                "Are you sure you want to delete this transformer?",
+                                onConfirm = {
+                                    if (index in state.transformerList.indices) {
+                                        state.transformerList.removeAt(index)
+                                    }
+                                }
+                            )
+                        },
                         iconOnly = true
                     ) {
                         Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
@@ -524,7 +533,30 @@ fun Inspector(
     PanelSurface(
         if (transformerName == null) "Inspector" else "Inspector - $transformerName",
         transformerDesc ?: "Select a transformer node to edit its Config.",
-        modifier
+        modifier,
+        trailing = {
+            if (entry != null) {
+                Button(
+                    {
+                        state.dialog = PipelineEditorState.Dialog(
+                            "Reset Transformer Config",
+                            "Are you sure you want to reset the config of this transformer? This action cannot be undone.",
+                            onConfirm = {
+                                state.transformerList[selected] = state.transformerList[selected].copy(
+                                    config = definition?.configFactory() ?: entry.config
+                                )
+                            }
+                        )
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowReset,
+                        contentDescription = null
+                    )
+                    Text("Reset")
+                }
+            }
+        }
     ) {
         if (entry == null) return@PanelSurface
         val scrollState = rememberScrollState()

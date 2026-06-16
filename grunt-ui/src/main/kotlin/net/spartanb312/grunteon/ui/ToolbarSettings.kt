@@ -78,14 +78,15 @@ fun TopToolbar(
         }
     }
 
-    appModel.discardConfirmState?.let { state ->
-        ContentDialog(
-            title = "Confirm Discard Changes",
-            visible = true,
-            primaryButtonText = "Save",
-            secondaryButtonText = "Discard",
-            closeButtonText = "Cancel",
-            onButtonClick = {
+    val discardConfirmState = appModel.discardConfirmState
+    ContentDialog(
+        title = "Confirm Discard Changes",
+        visible = discardConfirmState != null,
+        primaryButtonText = "Save",
+        secondaryButtonText = "Discard",
+        closeButtonText = "Cancel",
+        onButtonClick = {
+            discardConfirmState?.let { state ->
                 when (it) {
                     ContentDialogButton.Primary -> {
                         appModel.coroutineScope.launch {
@@ -104,12 +105,12 @@ fun TopToolbar(
                     }
                 }
                 appModel.discardConfirmState = null
-            },
-            content = {
-                Text("You have unsaved changes. Do you want to save them before proceeding?")
             }
-        )
-    }
+        },
+        content = {
+            Text("You have unsaved changes. Do you want to save them before proceeding?")
+        }
+    )
 
     Column(
         modifier = Modifier

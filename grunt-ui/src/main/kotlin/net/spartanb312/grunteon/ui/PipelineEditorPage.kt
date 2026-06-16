@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.ButtonDefaults
+import io.github.composefluent.component.ContentDialog
+import io.github.composefluent.component.DialogSize
+import io.github.composefluent.component.Text
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import java.awt.Cursor
@@ -239,6 +242,15 @@ class ListUpdater<E>(
 class PipelineEditorState(
     val appModel: AppModel,
 ) {
+    @Immutable
+    data class Dialog(
+        val title: String,
+        val description: String,
+        val onConfirm: () -> Unit,
+    )
+
+    var dialog: Dialog? by mutableStateOf(null)
+
     val definitions = transformerDefinitions()
     var selectedIndexState by mutableStateOf(-1)
     var selectedIndex: Int
@@ -310,6 +322,21 @@ fun PipelineEditorPage(
     val handleWidth = 12.dp
     val minPanelWidth = 280.dp
     val density = LocalDensity.current
+
+    val dialogData = state.dialog
+    ContentDialog(
+        title = dialogData?.title ?: "",
+        visible = dialogData != null,
+        size = DialogSize.Standard,
+        primaryButtonText = "Confirm",
+        onButtonClick = {
+            dialogData?.onConfirm()
+        },
+        secondaryButtonText = "Cancel",
+        content = {
+            Text(dialogData?.description ?: "")
+        }
+    )
 
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()

@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -53,6 +54,7 @@ fun PanelSurface(
     title: String,
     description: String?,
     modifier: Modifier = Modifier,
+    trailing: @Composable (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Layer(
@@ -62,22 +64,30 @@ fun PanelSurface(
     ) {
         Column(
             Modifier
-                .fillMaxSize()
                 .padding(2.dp)
         ) {
-            Column(
-                Modifier
+            Row(
+                modifier = Modifier
                     .padding(10.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    title,
-                    style = FluentTheme.typography.subtitle,
-                )
-                if (description != null) {
+                Column {
                     Text(
-                        description,
-                        color = FluentTheme.colors.text.text.secondary
+                        title,
+                        style = FluentTheme.typography.subtitle,
                     )
+                    if (description != null) {
+                        Text(
+                            description,
+                            color = FluentTheme.colors.text.text.secondary
+                        )
+                    }
+                }
+                if (trailing != null) {
+                    Box(contentAlignment = Alignment.CenterEnd) {
+                        trailing()
+                    }
                 }
             }
             content()
