@@ -71,6 +71,9 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         @SettingDesc("Reobfuscate bootstrap method")
         @SettingName("Reobfuscate BSM")
         val reobfBSM: Boolean = true,
+        @SettingDesc("Mark generated bootstrap/decrypt helper methods as native codegen candidates")
+        @SettingName("Generated helper native candidate")
+        val generatedHelperNativeCandidate: Boolean = false,
         @SettingDesc("Specify method exclusions.")
         @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
@@ -248,6 +251,16 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                     val plainBsm = if (material != null && plainBsmName != null && plainDecryptName != null) {
                         createBootstrap(classNode.name, plainBsmName, plainDecryptName)
                     } else null
+                    val generatedHelpers = listOfNotNull(
+                        materialKey,
+                        plainDecrypt,
+                        plainBsm,
+                        decrypt,
+                        bsm,
+                        decrypt2,
+                        bsm2
+                    )
+                    generatedHelpers.forEach { it.markGeneratedReferenceHelper(config) }
                     if (config.reobfBSM) {
                         val methodsAdded = mutableListOf<MethodNode>()
                         materialKey?.let { methodsAdded.add(it) }
@@ -611,6 +624,12 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                 }
             }
         return shouldApply
+    }
+
+    private fun MethodNode.markGeneratedReferenceHelper(config: Config): MethodNode {
+        appendAnnotation(GENERATED_METHOD)
+        if (config.generatedHelperNativeCandidate) appendAnnotation(NATIVE_INCLUDED)
+        return this
     }
 
     private fun shouldProcessMethod(methodNode: MethodNode): Boolean {
@@ -1168,7 +1187,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             IRETURN
         }
         MAXS(6, 0)
-    }.appendAnnotation(GENERATED_METHOD)
+    }
 
     fun encrypt(string: String, xor: Int): String {
         val stringBuilder = StringBuilder()

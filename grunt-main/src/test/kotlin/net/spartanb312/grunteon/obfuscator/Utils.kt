@@ -8,6 +8,6 @@ import kotlin.io.path.toPath
 fun readTestClasses(klass: Class<*>, config: ObfConfig = ObfConfig()): Grunteon {
     val path = klass.protectionDomain.codeSource.location.toURI().toPath()
     check(path.extension == "jar")
-    val instance = Grunteon.create(config.copy(input = path.pathString))
+    val instance = Grunteon.create(config.copy(globalConfig = config.globalConfig.copy(input = path.pathString)))
     return instance
 }

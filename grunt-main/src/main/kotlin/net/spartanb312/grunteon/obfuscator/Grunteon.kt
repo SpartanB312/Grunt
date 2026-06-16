@@ -12,6 +12,8 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.M
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.NameMapping
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
+import net.spartanb312.grunteon.obfuscator.util.numerical.formatInteger
+import java.util.Locale
 import kotlin.math.roundToLong
 
 // Grunteon process instance
@@ -43,12 +45,13 @@ class Grunteon(
             workerContext.execute(this, pipelineBuilder)
             creditsSummary = CreditsCalc.summarize(transformers.map { it.first })
             val totalCredits = creditsSummary.totalCredits
-            Logger.info("Credits used: ${totalCredits.roundToLong()}")
+            Logger.info("Credits used: ${formatInteger(totalCredits.roundToLong())}")
             creditsSummary.transformers.forEach {
                 val rate = it.credits / totalCredits * 100
                 Logger.info(
-                    "   ${it.name}[${String.format("%.2f", rate)}%]:" +
-                        " credits=${it.credits.roundToLong()}, raw=${it.raw}, multiplier=${it.baseMultiplier}"
+                    "    ${it.name}[${String.format(Locale.US, "%.2f", rate)}%]:" +
+                        " credits=${formatInteger(it.credits.roundToLong())}, " +
+                        "raw=${formatInteger(it.raw)}, multiplier=${it.baseMultiplier}"
                 )
             }
         }

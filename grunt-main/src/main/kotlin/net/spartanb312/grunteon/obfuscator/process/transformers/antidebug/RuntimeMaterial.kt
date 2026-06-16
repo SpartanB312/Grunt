@@ -85,6 +85,9 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
         @SettingDesc("Detect legacy -Xrunjdwp tokens")
         @SettingName("-Xrunjdwp")
         val xrunjdwp: Boolean = true,
+        @SettingDesc("Detect -noverify and equivalent bytecode verification-disable tokens")
+        @SettingName("-noverify")
+        val noVerify: Boolean = true,
         @SettingDesc("Detect dt_socket debug transport tokens")
         @SettingName("dt_socket")
         val dtSocket: Boolean = true,
@@ -531,6 +534,10 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
         add(config.detectTokens.jdwp, "jdwp", 0x0001)
         add(config.detectTokens.xdebug, "-xdebug", 0x0002)
         add(config.detectTokens.xrunjdwp, "-xrunjdwp", 0x0004)
+        add(config.detectTokens.noVerify, "-noverify", 0x0200)
+        add(config.detectTokens.noVerify, "-xverify:none", 0x0200)
+        add(config.detectTokens.noVerify, "-xx:-bytecodeverificationlocal", 0x0200)
+        add(config.detectTokens.noVerify, "-xx:-bytecodeverificationremote", 0x0200)
         add(config.detectTokens.dtSocket, "transport=dt_socket", 0x0008)
         add(config.detectTokens.dtShmem, "transport=dt_shmem", 0x0010)
         add(config.detectTokens.genericAgentlib, "-agentlib", 0x0020)
@@ -542,7 +549,7 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
             .filter { it.isNotEmpty() }
             .distinct()
             .forEachIndexed { index, token ->
-                val bit = 0x0200 shl (index and 0x7)
+                val bit = 0x2000 shl (index and 0x7)
                 tokens += DetectionToken(token, baseMask or bit)
             }
         return tokens

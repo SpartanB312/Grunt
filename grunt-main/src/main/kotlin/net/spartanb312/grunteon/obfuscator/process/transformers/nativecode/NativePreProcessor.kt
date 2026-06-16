@@ -85,7 +85,7 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
 
         post {
             Logger.info(" - NativePreProcessor:")
-            credit.add(indyCounter.global.get() * 100L)
+            credit.add(indyCounter.global.get() * 50L)
             Logger.info("    Bridged ${indyCounter.global.get()} invokedynamic call sites")
             Logger.info("    Generated ${helperCounter.global.get()} same-class helper methods")
         }

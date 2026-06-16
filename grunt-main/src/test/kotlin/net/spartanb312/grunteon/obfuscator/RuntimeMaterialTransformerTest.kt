@@ -1,12 +1,15 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial
 import net.spartanb312.grunteon.obfuscator.util.ClearClassNode
 import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL
 import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL_FIELD
 import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL_GUARD
 import net.spartanb312.grunteon.obfuscator.util.extensions.findAnnotation
+import net.spartanb312.grunteon.obfuscator.util.toDecimal
 import net.spartanb312.grunteon.testcase.methodinline.Basic
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.ClassWriter.COMPUTE_FRAMES
@@ -31,14 +34,11 @@ class RuntimeMaterialTransformerTest {
     fun injectsMaterialAndProducesVerifiableClasses() {
         val instance = readTestClasses(
             Basic::class.java,
-            ObfConfig(
-                output = null,
-                transformerConfigs = listOf(
-                    RuntimeMaterial.Config(
-                        classChance = 1.0,
-                        clinit = true,
-                        constructors = true
-                    )
+            configOf(
+                RuntimeMaterial.Config(
+                    classChance = 1.0.toDecimal(),
+                    clinit = true,
+                    constructors = true
                 )
             )
         )
@@ -54,6 +54,9 @@ class RuntimeMaterialTransformerTest {
         assertTrue(classNode.methods.any { it.findAnnotation(DRAFT_RUNTIME_MATERIAL_GUARD) != null })
         assertTrue(classNode.methods.any { it.name == "<clinit>" })
         assertTrue(classNode.methods.first { it.name == "<init>" }.instructions.size() > 0)
+        val constants = guardConstants(classNode)
+        assertTrue("-noverify" in constants)
+        assertTrue("-xverify:none" in constants)
 
         val tempDir = Files.createTempDirectory("grunteon-runtime-material-test")
         writeClasses(instance.workRes.inputClassCollection, tempDir)
@@ -64,28 +67,30 @@ class RuntimeMaterialTransformerTest {
     fun respectsDisabledDetectionItems() {
         val instance = readTestClasses(
             Basic::class.java,
-            ObfConfig(
-                output = null,
-                transformerConfigs = listOf(
-                    RuntimeMaterial.Config(
-                        classChance = 1.0,
-                        clinit = true,
-                        constructors = false,
-                        detectInputArguments = false,
-                        detectJavaToolOptionsEnv = false,
-                        detectJdkJavaOptionsEnv = false,
-                        detectJavaOptionsEnv = false,
-                        detectJmxRemoteProperty = false,
-                        detectJdwp = false,
-                        detectXdebug = false,
-                        detectXrunjdwp = false,
-                        detectDtSocket = false,
-                        detectDtShmem = false,
-                        detectGenericAgentlib = false,
-                        detectGenericAgentpath = false,
-                        detectJavaAgent = false,
-                        detectJmxRemote = false,
-                        extraDetectionTokens = emptyList()
+            configOf(
+                RuntimeMaterial.Config(
+                    classChance = 1.0.toDecimal(),
+                    clinit = true,
+                    constructors = false,
+                    detectSources = RuntimeMaterial.DetectSources(
+                        inputArguments = false,
+                        javaToolOptionsEnv = false,
+                        jdkJavaOptionsEnv = false,
+                        javaOptionsEnv = false,
+                        jmxRemoteProperty = false
+                    ),
+                    detectTokens = RuntimeMaterial.DetectTokens(
+                        jdwp = false,
+                        xdebug = false,
+                        xrunjdwp = false,
+                        noVerify = false,
+                        dtSocket = false,
+                        dtShmem = false,
+                        genericAgentlib = false,
+                        genericAgentpath = false,
+                        javaAgent = false,
+                        jmxRemote = false,
+                        extra = emptyList()
                     )
                 )
             )
@@ -96,14 +101,12 @@ class RuntimeMaterialTransformerTest {
 
         val classNode = instance.workRes.inputClassMap[CLASS_NAME]
             ?: error("Missing test class $CLASS_NAME")
-        val guard = classNode.methods.first { it.findAnnotation(DRAFT_RUNTIME_MATERIAL_GUARD) != null }
-        val constants = guard.instructions.iterator().asSequence()
-            .filterIsInstance<LdcInsnNode>()
-            .map { it.cst }
-            .toSet()
+        val constants = guardConstants(classNode)
 
         assertFalse("JAVA_TOOL_OPTIONS" in constants)
         assertFalse("jdwp" in constants)
+        assertFalse("-noverify" in constants)
+        assertFalse("-xverify:none" in constants)
         assertFalse("-javaagent" in constants)
 
         val tempDir = Files.createTempDirectory("grunteon-runtime-material-no-detect-test")
@@ -118,6 +121,25 @@ class RuntimeMaterialTransformerTest {
     private fun MethodNode.findAnnotation(desc: String) =
         visibleAnnotations?.firstOrNull { it.desc == desc }
             ?: invisibleAnnotations?.firstOrNull { it.desc == desc }
+
+    private fun guardConstants(classNode: ClassNode): Set<Any?> {
+        val guard = classNode.methods.first { it.findAnnotation(DRAFT_RUNTIME_MATERIAL_GUARD) != null }
+        return guard.instructions.iterator().asSequence()
+            .filterIsInstance<LdcInsnNode>()
+            .map { it.cst }
+            .toSet()
+    }
+
+    private fun configOf(vararg configs: TransformerConfig): ObfConfig {
+        return ObfConfig(
+            transformers = configs.map { config ->
+                TransformerEntry(
+                    name = config::class.simpleName ?: "",
+                    config = config
+                )
+            }
+        )
+    }
 
     private fun writeClasses(classNodes: Collection<ClassNode>, outputDir: Path) {
         for (classNode in classNodes) {

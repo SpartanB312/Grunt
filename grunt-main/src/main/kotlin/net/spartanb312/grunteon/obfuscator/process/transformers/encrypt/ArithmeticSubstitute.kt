@@ -21,6 +21,7 @@ import net.spartanb312.grunteon.obfuscator.util.numerical.replaceIOR
 import net.spartanb312.grunteon.obfuscator.util.numerical.replaceIXOR
 import org.objectweb.asm.Opcodes
 
+@Deprecated("Easy to deobfuscate")
 @HiddenTransformer
 @Transformer.Stability(StableLevel.Unstable)
 @Transformer.Description(

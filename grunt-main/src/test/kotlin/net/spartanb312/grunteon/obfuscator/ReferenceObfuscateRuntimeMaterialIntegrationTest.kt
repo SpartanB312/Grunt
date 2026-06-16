@@ -3,6 +3,7 @@ package net.spartanb312.grunteon.obfuscator
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
@@ -10,6 +11,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReferenceO
 import net.spartanb312.grunteon.obfuscator.util.ClearClassNode
 import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL
 import net.spartanb312.grunteon.obfuscator.util.extensions.findAnnotation
+import net.spartanb312.grunteon.obfuscator.util.toDecimal
 import net.spartanb312.grunteon.testcase.methodinline.Basic
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.ClassWriter.COMPUTE_FRAMES
@@ -36,13 +38,13 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
         runMaterialReferenceTest(
             RuntimeMaterial.Config(
                 classFilter = basicOnlyFilter(),
-                classChance = 1.0,
+                classChance = 1.0.toDecimal(),
                 clinit = true,
                 constructors = true
             ),
             ReferenceObfuscate.Config(
                 classFilter = basicOnlyFilter(),
-                chance = 1.0
+                chance = 1.0.toDecimal()
             )
         )
     }
@@ -52,14 +54,14 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
         runMaterialReferenceTest(
             RuntimeMaterial.Config(
                 classFilter = basicOnlyFilter(),
-                classChance = 1.0,
+                classChance = 1.0.toDecimal(),
                 clinit = true,
                 constructors = true
             ),
             NumberBasicEncrypt.Config(
                 classFilter = basicOnlyFilter(),
-                integerChance = 1.0,
-                longChance = 1.0,
+                integerChance = 1.0.toDecimal(),
+                longChance = 1.0.toDecimal(),
                 float = false,
                 double = false,
                 dynamicStrength = false
@@ -71,7 +73,7 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
             ),
             ReferenceObfuscate.Config(
                 classFilter = basicOnlyFilter(),
-                chance = 1.0
+                chance = 1.0.toDecimal()
             )
         )
     }
@@ -101,10 +103,7 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
     private fun runMaterialReferenceTest(vararg configs: TransformerConfig) {
         val instance = readTestClasses(
             Basic::class.java,
-            ObfConfig(
-                output = null,
-                transformerConfigs = configs.toList()
-            )
+            configOf(*configs)
         )
         context(instance.workRes, instance) {
             instance.execute()
@@ -132,14 +131,11 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
     private fun runReferenceObfuscate(reobfBSM: Boolean): Grunteon {
         val instance = readTestClasses(
             Basic::class.java,
-            ObfConfig(
-                output = null,
-                transformerConfigs = listOf(
-                    ReferenceObfuscate.Config(
-                        classFilter = basicOnlyFilter(),
-                        chance = 1.0,
-                        reobfBSM = reobfBSM
-                    )
+            configOf(
+                ReferenceObfuscate.Config(
+                    classFilter = basicOnlyFilter(),
+                    chance = 1.0.toDecimal(),
+                    reobfBSM = reobfBSM
                 )
             )
         )
@@ -236,6 +232,17 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
             includeStrategy = listOf(CLASS_NAME)
         )
         return basicOnly
+    }
+
+    private fun configOf(vararg configs: TransformerConfig): ObfConfig {
+        return ObfConfig(
+            transformers = configs.map { config ->
+                TransformerEntry(
+                    name = config::class.simpleName ?: "",
+                    config = config
+                )
+            }
+        )
     }
 
     private fun writeClasses(classNodes: Collection<ClassNode>, outputDir: Path) {
