@@ -23,8 +23,23 @@ import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.*
 import kotlinx.coroutines.launch
+import java.awt.Desktop
+import java.net.URI
 
 private val ToolbarTabWidth = 128.dp
+
+private fun openExternalLink(url: String): Boolean {
+    return runCatching {
+        check(Desktop.isDesktopSupported()) {
+            "Desktop browsing is not supported"
+        }
+        val desktop = Desktop.getDesktop()
+        check(desktop.isSupported(Desktop.Action.BROWSE)) {
+            "Desktop browsing is not supported"
+        }
+        desktop.browse(URI(url))
+    }.isSuccess
+}
 
 @Composable
 fun TopToolbar(
@@ -165,7 +180,7 @@ fun TopToolbar(
                     items = {
                         MenuFlyoutButton(
                             onClick = {
-                                // TODO: Open help page
+                                openExternalLink("https://github.com/SpartanB312/Grunt/wiki")
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.BookQuestionMark,
@@ -174,7 +189,7 @@ fun TopToolbar(
                         MenuFlyoutSeparator()
                         MenuFlyoutButton(
                             onClick = {
-                                // TODO: Open GitHub issue page
+                                openExternalLink("https://github.com/SpartanB312/Grunt/issues")
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.Bug,
@@ -182,7 +197,7 @@ fun TopToolbar(
                         )
                         MenuFlyoutButton(
                             onClick = {
-                                // TODO: Open GitHub issue page
+                                openExternalLink("https://github.com/SpartanB312/Grunt/issues")
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.ChatHelp,
@@ -191,6 +206,7 @@ fun TopToolbar(
                         MenuFlyoutSeparator()
                         MenuFlyoutButton(
                             onClick = {
+                                openExternalLink("https://github.com/SpartanB312/Grunt/releases")
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.Globe,
@@ -198,6 +214,8 @@ fun TopToolbar(
                         )
                         MenuFlyoutButton(
                             onClick = {
+                                // TODO: built-in about me page
+                                openExternalLink("https://github.com/SpartanB312/Grunt")
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.Info,

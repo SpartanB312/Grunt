@@ -31,7 +31,7 @@ import javax.swing.Timer
 
 private val TitleBarCaptionHeight = 48.dp
 private val TitleBarCaptionStartInset = 228.dp
-private val TitleBarCaptionEndInset = 132.dp
+private val TitleBarCaptionEndInset = 180.dp
 
 fun main(args: Array<String>) {
     configureWindowDecorations()
