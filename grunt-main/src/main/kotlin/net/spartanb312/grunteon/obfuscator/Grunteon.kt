@@ -4,6 +4,8 @@ import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.pipeline.CreditsCalc
 import net.spartanb312.grunteon.obfuscator.pipeline.CreditsSummary
 import net.spartanb312.grunteon.obfuscator.process.*
+import net.spartanb312.grunteon.obfuscator.process.nativecode.NativePipelineConfig
+import net.spartanb312.grunteon.obfuscator.process.nativecode.NativePipelineRunner
 import net.spartanb312.grunteon.obfuscator.process.resource.JarDumper
 import net.spartanb312.grunteon.obfuscator.process.resource.ObfuscationIO
 import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
@@ -22,6 +24,7 @@ class Grunteon(
     val io: ObfuscationIO,
     val workRes: WorkResources,
     val transformers: List<Pair<Transformer<*>, TransformerConfig>>,
+    val nativePipelineConfig: NativePipelineConfig = NativePipelineConfig(),
 ) {
     /**
      * Resources
@@ -54,6 +57,11 @@ class Grunteon(
                         "raw=${formatInteger(it.raw)}, multiplier=${it.baseMultiplier}"
                 )
             }
+        }
+
+        val nativeConfig = nativePipelineConfig
+        context(this) {
+            NativePipelineRunner.run(nativeConfig)
         }
 
         // TODO: make this optional
@@ -107,7 +115,8 @@ class Grunteon(
                 globalConfig = config.globalConfig,
                 io = io,
                 workRes = workRes,
-                transformers = transformerAndConfig
+                transformers = transformerAndConfig,
+                nativePipelineConfig = config.nativePipeline
             )
         }
     }

@@ -3,6 +3,7 @@ package net.spartanb312.grunteon.obfuscator.process
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import net.spartanb312.grunteon.obfuscator.process.nativecode.NativePipelineConfig
 import java.nio.file.Path
 import java.util.zip.Deflater
 import kotlin.io.path.readText
@@ -12,7 +13,8 @@ import kotlin.random.Random
 @Serializable
 data class ObfConfig(
     val globalConfig: GlobalConfig = GlobalConfig(),
-    val transformers: List<TransformerEntry> = listOf()
+    val transformers: List<TransformerEntry> = listOf(),
+    val nativePipeline: NativePipelineConfig = NativePipelineConfig()
 ) {
     companion object {
         @OptIn(ExperimentalSerializationApi::class)

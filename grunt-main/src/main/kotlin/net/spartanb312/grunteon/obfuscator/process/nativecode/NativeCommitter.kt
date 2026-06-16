@@ -1,0 +1,233 @@
+package net.spartanb312.grunteon.obfuscator.process.nativecode
+
+import net.spartanb312.grunteon.obfuscator.Grunteon
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.Type
+import org.objectweb.asm.tree.AnnotationNode
+import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.InsnList
+import org.objectweb.asm.tree.InsnNode
+import org.objectweb.asm.tree.LdcInsnNode
+import org.objectweb.asm.tree.MethodInsnNode
+import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.VarInsnNode
+
+internal object NativeCommitter {
+
+    context(instance: Grunteon)
+    fun commit(bundle: NativeSourceBundle, config: NativePipelineConfig) {
+        val plan = bundle.plan
+        val loaderProxyMethods = plan.classes
+            .flatMap { it.methods }
+            .filter { it.commitKind.isLoaderProxy }
+            .map { it.registeredName to it.registeredDesc }
+        instance.workRes.addGeneratedClass(
+            NativeLoaderClassFactory.create(
+                loaderInternalName = plan.loaderInternalName,
+                resourcePath = "/${plan.resourceName}",
+                librarySuffix = plan.platform.librarySuffix,
+                proxyMethods = loaderProxyMethods
+            )
+        )
+
+        plan.classes.forEach { classPlan ->
+            val directClinitProxy = classPlan.methods.firstOrNull {
+                it.commitKind == NativeMethodCommitKind.ClassInitializerProxy
+            }
+            val loaderClinitProxy = classPlan.methods.firstOrNull {
+                it.commitKind == NativeMethodCommitKind.InterfaceClassInitializerProxy
+            }
+            if (directClinitProxy != null) {
+                createClinitProxyMethod(classPlan.classNode, directClinitProxy)
+                rewriteClassInitializer(classPlan, plan.loaderInternalName, directClinitProxy)
+            } else if (loaderClinitProxy != null) {
+                rewriteInterfaceClassInitializer(classPlan.classNode, plan.loaderInternalName, loaderClinitProxy)
+            } else if (classPlan.methods.any { !it.commitKind.isLoaderProxy }) {
+                injectRegistration(classPlan, plan.loaderInternalName)
+            }
+            classPlan.methods.forEach { binding ->
+                when (binding.commitKind) {
+                    NativeMethodCommitKind.Direct -> binding.method.methodNode.makeNative()
+                    NativeMethodCommitKind.ClassInitializerProxy -> Unit
+                    NativeMethodCommitKind.InterfaceClassInitializerProxy -> Unit
+                    NativeMethodCommitKind.InterfaceProxy -> rewriteInterfaceMethod(
+                        classPlan.classNode,
+                        plan.loaderInternalName,
+                        binding
+                    )
+                }
+            }
+        }
+
+        if (config.cleanNativeAnnotations) {
+            cleanNativeAnnotations()
+        }
+    }
+
+    context(instance: Grunteon)
+    fun cleanNativeAnnotations() {
+        instance.workRes.inputClassCollection.forEach(NativeAnnotationCleaner::clean)
+    }
+
+    private fun MethodNode.makeNative() {
+        access = access or Opcodes.ACC_NATIVE
+        instructions.clear()
+        tryCatchBlocks?.clear()
+        localVariables?.clear()
+        maxStack = 0
+        maxLocals = 0
+    }
+
+    private fun createClinitProxyMethod(classNode: ClassNode, binding: NativeMethodBinding) {
+        val proxy = MethodNode(
+            Opcodes.ASM9,
+            Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC or Opcodes.ACC_NATIVE or Opcodes.ACC_SYNTHETIC,
+            binding.registeredName,
+            binding.registeredDesc,
+            null,
+            null
+        ).apply {
+            visibleAnnotations = mutableListOf(
+                AnnotationNode("Ljava/lang/invoke/LambdaForm\$Hidden;"),
+                AnnotationNode("Ljdk/internal/vm/annotation/Hidden;")
+            )
+            maxStack = 0
+            maxLocals = 0
+        }
+        classNode.methods.add(proxy)
+    }
+
+    private fun rewriteInterfaceClassInitializer(
+        classNode: ClassNode,
+        loaderInternalName: String,
+        binding: NativeMethodBinding
+    ) {
+        val clinit = binding.method.methodNode
+        clinit.access = Opcodes.ACC_STATIC
+        clinit.instructions.clear()
+        clinit.tryCatchBlocks?.clear()
+        clinit.localVariables?.clear()
+        clinit.instructions.add(MethodInsnNode(Opcodes.INVOKESTATIC, loaderInternalName, "load", "()V", false))
+        clinit.instructions.add(LdcInsnNode(Type.getObjectType(classNode.name)))
+        clinit.instructions.add(MethodInsnNode(
+            Opcodes.INVOKESTATIC,
+            loaderInternalName,
+            binding.registeredName,
+            binding.registeredDesc,
+            false
+        ))
+        clinit.instructions.add(InsnNode(Opcodes.RETURN))
+        clinit.maxStack = 1
+        clinit.maxLocals = 0
+    }
+
+    private fun rewriteInterfaceMethod(
+        classNode: ClassNode,
+        loaderInternalName: String,
+        binding: NativeMethodBinding
+    ) {
+        val method = binding.method.methodNode
+        val argumentTypes = Type.getArgumentTypes(method.desc)
+        val returnType = Type.getReturnType(method.desc)
+        val isStatic = method.access and Opcodes.ACC_STATIC != 0
+
+        method.access = method.access and Opcodes.ACC_NATIVE.inv() and Opcodes.ACC_ABSTRACT.inv()
+        method.instructions.clear()
+        method.tryCatchBlocks?.clear()
+        method.localVariables?.clear()
+
+        method.instructions.apply {
+            add(MethodInsnNode(Opcodes.INVOKESTATIC, loaderInternalName, "load", "()V", false))
+            if (isStatic) {
+                add(LdcInsnNode(Type.getObjectType(classNode.name)))
+            } else {
+                add(VarInsnNode(Opcodes.ALOAD, 0))
+            }
+
+            var localIndex = if (isStatic) 0 else 1
+            argumentTypes.forEach { argument ->
+                add(VarInsnNode(argument.getOpcode(Opcodes.ILOAD), localIndex))
+                localIndex += argument.size
+            }
+
+            add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                loaderInternalName,
+                binding.registeredName,
+                binding.registeredDesc,
+                false
+            ))
+            add(InsnNode(returnType.getOpcode(Opcodes.IRETURN)))
+        }
+
+        val argumentSlots = argumentTypes.sumOf { it.size }
+        method.maxStack = maxOf(1 + argumentSlots, returnType.size)
+        method.maxLocals = argumentSlots + if (isStatic) 0 else 1
+    }
+
+    private fun rewriteClassInitializer(
+        classPlan: NativeClassPlan,
+        loaderInternalName: String,
+        binding: NativeMethodBinding
+    ) {
+        val classNode = classPlan.classNode
+        val clinit = binding.method.methodNode
+        clinit.access = Opcodes.ACC_STATIC
+        clinit.instructions.clear()
+        clinit.tryCatchBlocks?.clear()
+        clinit.localVariables?.clear()
+        clinit.instructions.add(registrationInstructions(classPlan, loaderInternalName))
+        clinit.instructions.add(MethodInsnNode(
+            Opcodes.INVOKESTATIC,
+            classNode.name,
+            binding.registeredName,
+            binding.registeredDesc,
+            false
+        ))
+        clinit.instructions.add(InsnNode(Opcodes.RETURN))
+        clinit.maxStack = 2
+        clinit.maxLocals = 0
+    }
+
+    private fun injectRegistration(classPlan: NativeClassPlan, loaderInternalName: String) {
+        val classNode = classPlan.classNode
+        val clinit = classNode.methods.firstOrNull { it.name == "<clinit>" && it.desc == "()V" }
+            ?: MethodNode(
+                Opcodes.ASM9,
+                Opcodes.ACC_STATIC,
+                "<clinit>",
+                "()V",
+                null,
+                null
+            ).also {
+                it.instructions.add(InsnNode(Opcodes.RETURN))
+                it.maxStack = 0
+                it.maxLocals = 0
+                classNode.methods.add(it)
+            }
+
+        val prefix = registrationInstructions(classPlan, loaderInternalName)
+        clinit.instructions.insert(prefix)
+        clinit.maxStack = maxOf(clinit.maxStack, 2)
+    }
+
+    private fun registrationInstructions(classPlan: NativeClassPlan, loaderInternalName: String): InsnList {
+        val classNode = classPlan.classNode
+        return InsnList().apply {
+            add(MethodInsnNode(Opcodes.INVOKESTATIC, loaderInternalName, "load", "()V", false))
+            add(LdcInsnNode(classPlan.classId))
+            add(LdcInsnNode(Type.getObjectType(classNode.name)))
+            add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                loaderInternalName,
+                "registerNativesForClass",
+                "(ILjava/lang/Class;)V",
+                false
+            ))
+        }
+    }
+
+    private val NativeMethodCommitKind.isLoaderProxy: Boolean
+        get() = this == NativeMethodCommitKind.InterfaceProxy ||
+            this == NativeMethodCommitKind.InterfaceClassInitializerProxy
+}
