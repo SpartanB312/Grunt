@@ -449,7 +449,7 @@ internal object NativeJvmCppMethodTranslator {
                 is Float -> pushFloat(cst)
                 is Double -> pushDouble(cst)
                 is String -> {
-                    append("    cstack[sp++].l = env->NewStringUTF(\"")
+                    append("    cstack[sp++].l = grt_ldc_string(env, \"")
                         .append(cppString(cst))
                         .appendLine("\");")
                 }
@@ -1860,7 +1860,7 @@ internal object NativeJvmCppMethodTranslator {
     private fun unsupportedDescriptor(descriptor: String): Nothing {
         throw UnsupportedNativeInstruction(
             NativeSkipReason.UnsupportedDescriptor,
-            "initial full JVM C++ lowering supports static methods with int/long/object arguments and void/int/long/object return; descriptor=$descriptor"
+            "full JVM C++ lowering supports JVM primitive, object, and array descriptors; descriptor=$descriptor"
         )
     }
 

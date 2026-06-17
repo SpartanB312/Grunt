@@ -110,6 +110,64 @@ class NativePreProcessorTest {
         assertFalse(NativeJvmFeature.ConstantDynamic in accepted.single().fullJvmSupport.features)
     }
 
+    @Test
+    fun bridgesMethodHandleInvokeThroughExcludedSameClassHelper() {
+        val method = methodHandleInvokeMethod()
+        val clazz = ClassNode().apply {
+            version = Opcodes.V11
+            access = Opcodes.ACC_PUBLIC or Opcodes.ACC_SUPER
+            name = "test/MethodHandleOwner"
+            superName = "java/lang/Object"
+            methods.add(method)
+        }
+
+        val result = NativePreProcessor().bridgeInvokeDynamics(clazz, NativePreProcessor.Config())
+
+        assertEquals(0, result.indyCount)
+        assertEquals(0, result.constantDynamicCount)
+        assertEquals(1, result.methodHandleInvokeCount)
+        assertEquals(1, result.helperCount)
+
+        val call = method.instructions.toArray().filterIsInstance<MethodInsnNode>().single()
+        assertEquals(Opcodes.INVOKESTATIC, call.opcode)
+        assertEquals("test/MethodHandleOwner", call.owner)
+        assertEquals("(Ljava/lang/invoke/MethodHandle;I)Ljava/lang/String;", call.desc)
+        assertFalse(call.itf)
+
+        val helper = clazz.methods.single { it.name == call.name }
+        assertTrue(helper.hasAnnotation(NATIVE_EXCLUDED))
+        assertTrue(helper.hasAnnotation(NATIVE_JVM_BRIDGE))
+
+        val helperInvoke = helper.instructions.toArray().filterIsInstance<MethodInsnNode>().single()
+        assertEquals(Opcodes.INVOKEVIRTUAL, helperInvoke.opcode)
+        assertEquals("java/lang/invoke/MethodHandle", helperInvoke.owner)
+        assertEquals("invokeExact", helperInvoke.name)
+        assertEquals("(I)Ljava/lang/String;", helperInvoke.desc)
+    }
+
+    @Test
+    fun validatorAcceptsCandidateAfterMethodHandleInvokeBridge() {
+        val method = methodHandleInvokeMethod()
+        val clazz = ClassNode().apply {
+            version = Opcodes.V11
+            access = Opcodes.ACC_PUBLIC or Opcodes.ACC_SUPER
+            name = "test/MethodHandleCandidate"
+            superName = "java/lang/Object"
+            methods.add(method)
+        }
+
+        NativePreProcessor().bridgeInvokeDynamics(clazz, NativePreProcessor.Config())
+
+        val (accepted, skipped) = NativeValidator.validate(
+            listOf(NativeCandidate(clazz, method, NativeCandidateSource.MethodAnnotation)),
+            NativeBackend.Cpp
+        )
+
+        assertTrue(skipped.isEmpty())
+        assertEquals(1, accepted.size)
+        assertEquals(NativeLoweringKind.FullJvm, accepted.single().lowering)
+    }
+
     private fun indyMethod(): MethodNode {
         return MethodNode(
             Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
@@ -165,6 +223,31 @@ class NativePreProcessorTest {
             instructions.add(InsnNode(Opcodes.IRETURN))
             maxStack = 1
             maxLocals = 0
+        }
+    }
+
+    private fun methodHandleInvokeMethod(): MethodNode {
+        return MethodNode(
+            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            "invokeHandle",
+            "(Ljava/lang/invoke/MethodHandle;I)Ljava/lang/String;",
+            null,
+            null
+        ).apply {
+            instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(
+                MethodInsnNode(
+                    Opcodes.INVOKEVIRTUAL,
+                    "java/lang/invoke/MethodHandle",
+                    "invokeExact",
+                    "(I)Ljava/lang/String;",
+                    false
+                )
+            )
+            instructions.add(InsnNode(Opcodes.ARETURN))
+            maxStack = 2
+            maxLocals = 2
         }
     }
 

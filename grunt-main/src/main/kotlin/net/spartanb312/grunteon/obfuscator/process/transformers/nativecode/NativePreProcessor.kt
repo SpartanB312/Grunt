@@ -32,6 +32,12 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
         @SettingDesc("Prefix for generated constant dynamic bridge helper methods")
         @SettingName("Condy helper prefix")
         val constantDynamicHelperPrefix: String = "__grt\$condy\$",
+        @SettingDesc("Prefix for generated MethodHandle.invoke bridge helper methods")
+        @SettingName("MethodHandle helper prefix")
+        val methodHandleHelperPrefix: String = "__grt\$mh\$",
+        @SettingDesc("Bridge MethodHandle.invoke/invokeExact calls through excluded same-class helper methods")
+        @SettingName("Bridge MethodHandle invokes")
+        val bridgeMethodHandleInvokes: Boolean = true,
         @SettingDesc("Bridge generated Grunteon helper methods too")
         @SettingName("Process generated methods")
         val processGeneratedMethods: Boolean = true
@@ -55,6 +61,7 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
     override fun buildStageImpl(config: Config) {
         val indyCounter = reducibleScopeValue { MergeableCounter() }
         val condyCounter = reducibleScopeValue { MergeableCounter() }
+        val methodHandleCounter = reducibleScopeValue { MergeableCounter() }
         val helperCounter = reducibleScopeValue { MergeableCounter() }
 
         parForEachClassesFiltered(
@@ -63,18 +70,20 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
                 .and(config.classFilter.toClassPredicate())
         ) { classNode ->
             val result = bridgeInvokeDynamics(classNode, config)
-            if (result.indyCount != 0 || result.constantDynamicCount != 0) {
+            if (result.indyCount != 0 || result.constantDynamicCount != 0 || result.methodHandleInvokeCount != 0) {
                 indyCounter.local.add(result.indyCount)
                 condyCounter.local.add(result.constantDynamicCount)
+                methodHandleCounter.local.add(result.methodHandleInvokeCount)
                 helperCounter.local.add(result.helperCount)
             }
         }
 
         post {
             Logger.info(" - NativePreProcessor:")
-            credit.add((indyCounter.global.get() + condyCounter.global.get()) * 50L)
+            credit.add((indyCounter.global.get() + condyCounter.global.get() + methodHandleCounter.global.get()) * 50L)
             Logger.info("    Bridged ${indyCounter.global.get()} invokedynamic call sites")
             Logger.info("    Bridged ${condyCounter.global.get()} constant dynamic values")
+            Logger.info("    Bridged ${methodHandleCounter.global.get()} MethodHandle.invoke call sites")
             Logger.info("    Generated ${helperCounter.global.get()} same-class helper methods")
         }
     }
@@ -85,13 +94,16 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
         val helpers = mutableListOf<MethodNode>()
         var indyCount = 0
         var constantDynamicCount = 0
+        var methodHandleInvokeCount = 0
 
         for (method in originalMethods) {
             if (!method.shouldProcess(config)) continue
 
             val instructions = method.instructions ?: continue
             val dynamicNodes = instructions.toArray().filter {
-                it is InvokeDynamicInsnNode || it.constantDynamicOrNull() != null
+                it is InvokeDynamicInsnNode ||
+                    it.constantDynamicOrNull() != null ||
+                    (config.bridgeMethodHandleInvokes && it.isMethodHandleInvoke())
             }
             if (dynamicNodes.isEmpty()) continue
 
@@ -143,6 +155,31 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
                             constantDynamicCount++
                         }
                     }
+                    is MethodInsnNode -> {
+                        if (dynamicNode.isMethodHandleInvoke()) {
+                            val helperName = nextHelperName(
+                                config.methodHandleHelperPrefix,
+                                method.name,
+                                methodHandleInvokeCount,
+                                existingNames
+                            )
+                            val helper = createMethodHandleInvokeHelper(classNode, helperName, dynamicNode)
+                            helpers += helper
+
+                            instructions.insertBefore(
+                                dynamicNode,
+                                MethodInsnNode(
+                                    Opcodes.INVOKESTATIC,
+                                    classNode.name,
+                                    helper.name,
+                                    helper.desc,
+                                    classNode.isInterface
+                                )
+                            )
+                            instructions.remove(dynamicNode)
+                            methodHandleInvokeCount++
+                        }
+                    }
                     else -> Unit
                 }
             }
@@ -151,11 +188,18 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
         if (helpers.isNotEmpty()) {
             classNode.methods.addAll(helpers)
         }
-        return BridgeResult(indyCount, constantDynamicCount, helpers.size)
+        return BridgeResult(indyCount, constantDynamicCount, methodHandleInvokeCount, helpers.size)
     }
 
     private fun AbstractInsnNode.constantDynamicOrNull(): ConstantDynamic? {
         return (this as? LdcInsnNode)?.cst as? ConstantDynamic
+    }
+
+    private fun AbstractInsnNode.isMethodHandleInvoke(): Boolean {
+        val method = this as? MethodInsnNode ?: return false
+        return method.opcode == Opcodes.INVOKEVIRTUAL &&
+            method.owner == "java/lang/invoke/MethodHandle" &&
+            (method.name == "invoke" || method.name == "invokeExact")
     }
 
     private fun MethodNode.shouldProcess(config: Config): Boolean {
@@ -192,6 +236,49 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
         helper.instructions.add(InsnNode(returnType.getOpcode(Opcodes.IRETURN)))
         helper.maxLocals = local
         helper.maxStack = maxOf(argTypes.sumOf { it.size }, returnType.size)
+        helper.appendNativeBridgeAnnotations()
+        return helper
+    }
+
+    private fun createMethodHandleInvokeHelper(
+        classNode: ClassNode,
+        helperName: String,
+        invoke: MethodInsnNode
+    ): MethodNode {
+        val argTypes = Type.getArgumentTypes(invoke.desc)
+        val returnType = Type.getReturnType(invoke.desc)
+        val helperDesc = Type.getMethodDescriptor(
+            returnType,
+            Type.getObjectType("java/lang/invoke/MethodHandle"),
+            *argTypes
+        )
+        val helper = MethodNode(
+            Opcodes.ASM9,
+            helperAccess(classNode),
+            helperName,
+            helperDesc,
+            null,
+            null
+        )
+
+        helper.instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
+        var local = 1
+        for (argType in argTypes) {
+            helper.instructions.add(VarInsnNode(argType.getOpcode(Opcodes.ILOAD), local))
+            local += argType.size
+        }
+        helper.instructions.add(
+            MethodInsnNode(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/invoke/MethodHandle",
+                invoke.name,
+                invoke.desc,
+                false
+            )
+        )
+        helper.instructions.add(InsnNode(returnType.getOpcode(Opcodes.IRETURN)))
+        helper.maxLocals = local
+        helper.maxStack = maxOf(1 + argTypes.sumOf { it.size }, returnType.size)
         helper.appendNativeBridgeAnnotations()
         return helper
     }
@@ -299,6 +386,7 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
     internal data class BridgeResult(
         val indyCount: Int,
         val constantDynamicCount: Int,
+        val methodHandleInvokeCount: Int,
         val helperCount: Int
     )
 }

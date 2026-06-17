@@ -46,6 +46,8 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(source, "static inline jint grt_ishr32(jint value, jint distance)")
         assertContains(source, "static inline uint64_t grt_lshr64_bits(uint64_t bits, uint32_t distance)")
         assertContains(source, "static inline jlong grt_lshr64(jlong value, jint distance)")
+        assertContains(source, "grt_string_intern_method = env->GetMethodID(grt_string_class, \"intern\", \"()Ljava/lang/String;\");")
+        assertContains(source, "static inline jstring grt_ldc_string(JNIEnv* env, const char* value)")
     }
 
     @Test
@@ -387,6 +389,14 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(methodHandle, "env->GetMethodID(grt_methodhandles_lookup_class, \"findStatic\", \"(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;\")")
         assertContains(methodHandle, "methodTypeArgs_handle_0_type[0].l = descriptor_handle_0_type;")
         assertContains(methodHandle, "methodHandle_0 = env->CallObjectMethodA(lookup, findMethod_handle_0, findArgs_handle_0);")
+    }
+
+    @Test
+    fun emitsInternedStringLdcConstants() {
+        val stringLiteral = translate(stringLiteralMethod())
+
+        assertContains(stringLiteral, "cstack[sp++].l = grt_ldc_string(env, \"same\");")
+        assertFalse(stringLiteral.contains("cstack[sp++].l = env->NewStringUTF(\"same\");"))
     }
 
     @Test
@@ -1115,6 +1125,15 @@ class NativeJvmCppMethodTranslatorTest {
             instructions.add(LdcInsnNode(Type.getMethodType("(I)Ljava/lang/String;")))
             instructions.add(InsnNode(Opcodes.POP))
             instructions.add(InsnNode(Opcodes.RETURN))
+            maxStack = 1
+            maxLocals = 0
+        }
+    }
+
+    private fun stringLiteralMethod(): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "stringLiteral", "()Ljava/lang/String;", null, null).apply {
+            instructions.add(LdcInsnNode("same"))
+            instructions.add(InsnNode(Opcodes.ARETURN))
             maxStack = 1
             maxLocals = 0
         }

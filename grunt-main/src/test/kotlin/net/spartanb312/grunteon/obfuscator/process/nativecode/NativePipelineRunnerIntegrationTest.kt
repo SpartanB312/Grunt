@@ -3,6 +3,7 @@ package net.spartanb312.grunteon.obfuscator.process.nativecode
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.GlobalConfig
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.transformers.nativecode.NativePreProcessor
 import net.spartanb312.grunteon.obfuscator.util.NATIVE_INCLUDED
 import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
 import org.objectweb.asm.ClassWriter
@@ -493,7 +494,8 @@ class NativePipelineRunnerIntegrationTest {
             "primitiveArrayPipeline",
             "referenceArrayPipeline",
             "multiArrayPipeline",
-            "constantPipeline"
+            "constantPipeline",
+            "stringLiteralIdentity"
         ).forEach { methodName ->
             assertTrue(
                 transformed.methods.single { it.name == methodName }.access and Opcodes.ACC_NATIVE != 0,
@@ -518,6 +520,72 @@ class NativePipelineRunnerIntegrationTest {
         val exitCode = process.waitFor()
         assertEquals(0, exitCode, "Dumped object/array/constant native jar failed with exit code $exitCode:\n$output")
         assertTrue("OBJECT_ARRAY_CONST_OK" in output)
+    }
+
+    @Test
+    fun executeDumpsRunnableJarWithMethodHandleInvokeBridgeWhenToolchainExists() {
+        val compiler = findHostCompiler()
+        if (compiler == null) {
+            println("Skipping MethodHandle bridge native jar E2E: no C++ compiler found on PATH")
+            return
+        }
+        val includeRoot = resolveJniIncludeRoot(Path.of(System.getProperty("java.home")))
+        val includeOs = includeRoot.resolve(NativePlatform.current().jniIncludeOs)
+        if (!includeRoot.resolve("jni.h").exists() || !includeOs.exists()) {
+            println("Skipping MethodHandle bridge native jar E2E: JNI headers not found under $includeRoot and $includeOs")
+            return
+        }
+
+        val inputDir = createTempDirectory("grunteon-native-mh-input")
+        val outputJar = createTempFile("grunteon-native-mh-output", ".jar")
+        val bridgeClass = methodHandleBridgeClass()
+        val bridgeResult = NativePreProcessor().bridgeInvokeDynamics(bridgeClass, NativePreProcessor.Config())
+        assertEquals(1, bridgeResult.methodHandleInvokeCount)
+        writeClass(inputDir, bridgeClass)
+
+        val instance = Grunteon.create(
+            ObfConfig(
+                globalConfig = GlobalConfig(
+                    input = inputDir.pathString,
+                    output = outputJar.pathString,
+                    dumpMappings = false,
+                    exclusions = emptyList(),
+                    mixinExclusions = emptyList(),
+                    missingCheck = false
+                ),
+                nativePipeline = NativePipelineConfig(
+                    enabled = true,
+                    workDir = createTempDirectory("grunteon-native-mh-work").pathString,
+                    compilerExecutable = compiler.absolutePath,
+                    failOnCompileError = true,
+                    failOnValidationError = true,
+                    cleanNativeAnnotations = true
+                )
+            )
+        )
+        instance.execute()
+
+        val transformed = instance.workRes.inputClassMap.getValue("test/NativePipelineMethodHandleBridge")
+        assertTrue(transformed.methods.single { it.name == "invokeHandle" }.access and Opcodes.ACC_NATIVE != 0)
+        assertTrue(transformed.methods.any { it.name.startsWith("__grt\$mh\$") })
+
+        val javaHome = Path.of(System.getProperty("java.home"))
+        val javaExe = javaHome.resolve("bin").resolve(if (File.separatorChar == '\\') "java.exe" else "java")
+        val process = ProcessBuilder(
+            javaExe.absolutePathString(),
+            "-cp",
+            outputJar.absolutePathString(),
+            "test.NativePipelineMethodHandleBridge"
+        ).redirectErrorStream(true)
+            .apply {
+                val oldPath = environment()["PATH"].orEmpty()
+                environment()["PATH"] = compiler.parentFile.absolutePath + File.pathSeparator + oldPath
+            }
+            .start()
+        val output = process.inputStream.bufferedReader().readText()
+        val exitCode = process.waitFor()
+        assertEquals(0, exitCode, "Dumped MethodHandle bridge native jar failed with exit code $exitCode:\n$output")
+        assertTrue("MH_OK" in output)
     }
 
     private fun fakeCompiler(root: Path, succeeds: Boolean): Path {
@@ -687,7 +755,17 @@ class NativePipelineRunnerIntegrationTest {
             primitiveArrayPipelineMethod().appendAnnotation(NATIVE_INCLUDED),
             referenceArrayPipelineMethod().appendAnnotation(NATIVE_INCLUDED),
             multiArrayPipelineMethod().appendAnnotation(NATIVE_INCLUDED),
-            constantPipelineMethod().appendAnnotation(NATIVE_INCLUDED)
+            constantPipelineMethod().appendAnnotation(NATIVE_INCLUDED),
+            stringLiteralIdentityMethod().appendAnnotation(NATIVE_INCLUDED)
+        )
+    }
+
+    private fun methodHandleBridgeClass(): ClassNode {
+        return classNode(
+            "test/NativePipelineMethodHandleBridge",
+            methodHandleBridgeMainMethod(),
+            methodHandleTargetMethod(),
+            methodHandleInvokeCandidateMethod().appendAnnotation(NATIVE_INCLUDED)
         )
     }
 
@@ -728,6 +806,116 @@ class NativePipelineRunnerIntegrationTest {
             instructions.add(InsnNode(Opcodes.RETURN))
             maxStack = 3
             maxLocals = 1
+        }
+    }
+
+    private fun methodHandleBridgeMainMethod(): MethodNode {
+        val success = LabelNode()
+        return MethodNode(
+            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            "main",
+            "([Ljava/lang/String;)V",
+            null,
+            null
+        ).apply {
+            instructions.add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                "java/lang/invoke/MethodHandles",
+                "lookup",
+                "()Ljava/lang/invoke/MethodHandles\$Lookup;",
+                false
+            ))
+            instructions.add(LdcInsnNode(Type.getObjectType("test/NativePipelineMethodHandleBridge")))
+            instructions.add(LdcInsnNode("target"))
+            instructions.add(LdcInsnNode(Type.getMethodType("(I)Ljava/lang/String;")))
+            instructions.add(MethodInsnNode(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/invoke/MethodHandles\$Lookup",
+                "findStatic",
+                "(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;",
+                false
+            ))
+            instructions.add(VarInsnNode(Opcodes.ASTORE, 1))
+            instructions.add(VarInsnNode(Opcodes.ALOAD, 1))
+            instructions.add(LdcInsnNode(7))
+            instructions.add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                "test/NativePipelineMethodHandleBridge",
+                "invokeHandle",
+                "(Ljava/lang/invoke/MethodHandle;I)Ljava/lang/String;",
+                false
+            ))
+            instructions.add(LdcInsnNode("7"))
+            instructions.add(MethodInsnNode(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/String",
+                "equals",
+                "(Ljava/lang/Object;)Z",
+                false
+            ))
+            instructions.add(JumpInsnNode(Opcodes.IFNE, success))
+            instructions.add(TypeInsnNode(Opcodes.NEW, "java/lang/AssertionError"))
+            instructions.add(InsnNode(Opcodes.DUP))
+            instructions.add(MethodInsnNode(Opcodes.INVOKESPECIAL, "java/lang/AssertionError", "<init>", "()V", false))
+            instructions.add(InsnNode(Opcodes.ATHROW))
+            instructions.add(success)
+            instructions.add(FieldInsnNode(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;"))
+            instructions.add(LdcInsnNode("MH_OK"))
+            instructions.add(MethodInsnNode(
+                Opcodes.INVOKEVIRTUAL,
+                "java/io/PrintStream",
+                "print",
+                "(Ljava/lang/String;)V",
+                false
+            ))
+            instructions.add(InsnNode(Opcodes.RETURN))
+            maxStack = 4
+            maxLocals = 2
+        }
+    }
+
+    private fun methodHandleTargetMethod(): MethodNode {
+        return MethodNode(
+            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            "target",
+            "(I)Ljava/lang/String;",
+            null,
+            null
+        ).apply {
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 0))
+            instructions.add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                "java/lang/Integer",
+                "toString",
+                "(I)Ljava/lang/String;",
+                false
+            ))
+            instructions.add(InsnNode(Opcodes.ARETURN))
+            maxStack = 1
+            maxLocals = 1
+        }
+    }
+
+    private fun methodHandleInvokeCandidateMethod(): MethodNode {
+        return MethodNode(
+            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            "invokeHandle",
+            "(Ljava/lang/invoke/MethodHandle;I)Ljava/lang/String;",
+            null,
+            null
+        ).apply {
+            instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(MethodInsnNode(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/invoke/MethodHandle",
+                "invokeExact",
+                "(I)Ljava/lang/String;",
+                false
+            ))
+            instructions.add(InsnNode(Opcodes.ARETURN))
+            maxStack = 2
+            maxLocals = 2
         }
     }
 
@@ -833,6 +1021,15 @@ class NativePipelineRunnerIntegrationTest {
             ))
             instructions.add(LdcInsnNode(7))
             instructions.add(JumpInsnNode(Opcodes.IF_ICMPNE, failure))
+
+            instructions.add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                "test/NativePipelineObjects",
+                "stringLiteralIdentity",
+                "()Z",
+                false
+            ))
+            instructions.add(JumpInsnNode(Opcodes.IFEQ, failure))
 
             instructions.add(FieldInsnNode(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;"))
             instructions.add(LdcInsnNode("OBJECT_ARRAY_CONST_OK"))
@@ -1036,6 +1233,28 @@ class NativePipelineRunnerIntegrationTest {
             instructions.add(LdcInsnNode(7))
             instructions.add(InsnNode(Opcodes.IRETURN))
             maxStack = 1
+            maxLocals = 0
+        }
+    }
+
+    private fun stringLiteralIdentityMethod(): MethodNode {
+        val success = LabelNode()
+        return MethodNode(
+            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            "stringLiteralIdentity",
+            "()Z",
+            null,
+            null
+        ).apply {
+            instructions.add(LdcInsnNode("same"))
+            instructions.add(LdcInsnNode("same"))
+            instructions.add(JumpInsnNode(Opcodes.IF_ACMPEQ, success))
+            instructions.add(InsnNode(Opcodes.ICONST_0))
+            instructions.add(InsnNode(Opcodes.IRETURN))
+            instructions.add(success)
+            instructions.add(InsnNode(Opcodes.ICONST_1))
+            instructions.add(InsnNode(Opcodes.IRETURN))
+            maxStack = 2
             maxLocals = 0
         }
     }
