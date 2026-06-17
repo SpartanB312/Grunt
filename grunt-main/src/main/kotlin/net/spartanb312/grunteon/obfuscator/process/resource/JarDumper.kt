@@ -109,10 +109,17 @@ object JarDumper {
                         }
                         val missingAny =
                             (hierarchy.missingDependencies[classInfo] || missingRef) && globalConfig.missingCheck
-                        val useComputeMax =
-                            globalConfig.forceComputeMax || missingAny || instance.globalExclusion.test(classNode)
-                        val missing =
-                            missingAny && !globalConfig.forceComputeMax && !instance.globalExclusion.test(classNode)
+                        val processableByGlobalExclusion = instance.globalExclusion.test(classNode)
+                        val useComputeMax = shouldUseComputeMax(
+                            forceComputeMax = globalConfig.forceComputeMax,
+                            missingAny = missingAny,
+                            processableByGlobalExclusion = processableByGlobalExclusion
+                        )
+                        val missing = shouldWarnComputeMaxDueToMissing(
+                            forceComputeMax = globalConfig.forceComputeMax,
+                            missingAny = missingAny,
+                            processableByGlobalExclusion = processableByGlobalExclusion
+                        )
                         // Write zip entry
                         val entryName = classNode.name + ".class"
                         val byteArray = try {
@@ -191,5 +198,23 @@ object JarDumper {
         Class.forName("java.util.zip.ZipOutputStream\$XEntry"),
         MethodType.methodType(Void.TYPE, ZipEntry::class.java, Long::class.java)
     )
+
+    internal fun shouldUseComputeMax(
+        forceComputeMax: Boolean,
+        missingAny: Boolean,
+        processableByGlobalExclusion: Boolean
+    ): Boolean {
+        val globallyExcluded = !processableByGlobalExclusion
+        return forceComputeMax || missingAny || globallyExcluded
+    }
+
+    internal fun shouldWarnComputeMaxDueToMissing(
+        forceComputeMax: Boolean,
+        missingAny: Boolean,
+        processableByGlobalExclusion: Boolean
+    ): Boolean {
+        val globallyExcluded = !processableByGlobalExclusion
+        return missingAny && !forceComputeMax && !globallyExcluded
+    }
 
 }
