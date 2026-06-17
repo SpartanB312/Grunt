@@ -1,7 +1,9 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
+import net.spartanb312.grunteon.obfuscator.process.GlobalConfig
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roundtrip.FlowIRRoundTrip
 import net.spartanb312.grunteon.testcase.Asserts
 import org.objectweb.asm.ClassReader
@@ -20,13 +22,17 @@ class FlowIRRoundTripTransformerTest {
             val instance = readTestClasses(
                 Asserts::class.java,
                 ObfConfig(
-                    output = output.pathString,
-                    dumpMappings = false,
-                    transformerConfigs = listOf(
-                        FlowIRRoundTrip.Config(
-                            classFilter = ClassFilterConfig(
-                                includeStrategy = listOf("net/spartanb312/grunteon/testcase/Asserts"),
-                                excludeStrategy = emptyList()
+                    globalConfig = GlobalConfig(
+                        output = output.pathString,
+                        dumpMappings = false
+                    ),
+                    transformers = listOf(
+                        TransformerEntry(
+                            config = FlowIRRoundTrip.Config(
+                                classFilter = ClassFilterConfig(
+                                    includeStrategy = listOf("net/spartanb312/grunteon/testcase/Asserts"),
+                                    excludeStrategy = emptyList()
+                                )
                             )
                         )
                     )

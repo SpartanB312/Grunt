@@ -1,22 +1,17 @@
 package net.spartanb312.grunteon.obfuscator
 
+import net.spartanb312.grunteon.obfuscator.process.GlobalConfig
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
-import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
+import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
+import net.spartanb312.grunteon.obfuscator.util.toDecimal
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.AbstractInsnNode
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.JumpInsnNode
-import org.objectweb.asm.tree.LabelNode
-import org.objectweb.asm.tree.LookupSwitchInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
-import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.TableSwitchInsnNode
-import org.objectweb.asm.tree.TypeInsnNode
+import org.objectweb.asm.tree.*
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipFile
@@ -33,8 +28,8 @@ class ControlflowJumpTransformerTest {
     fun generatesProcessorBackedOpaquePredicates() {
         val classes = runControlflowJumpClasses(
             ControlflowJump.Config(
-                chance = 1.0,
-                mangledIfChance = 0.0,
+                chance = 1.0.toDecimal(),
+                mangledIfChance = 0.0.toDecimal(),
                 maxBranchesPerMethod = 1,
                 verifyBytecode = true
             )
@@ -56,10 +51,10 @@ class ControlflowJumpTransformerTest {
     fun generatesRandomBoundOpaquePredicates() {
         val classes = runControlflowJumpClasses(
             ControlflowJump.Config(
-                chance = 1.0,
-                mangledIfChance = 0.0,
+                chance = 1.0.toDecimal(),
+                mangledIfChance = 0.0.toDecimal(),
                 maxBranchesPerMethod = 1,
-                predicateRandomBoundChance = 1.0,
+                predicateRandomBoundChance = 1.0.toDecimal(),
                 verifyBytecode = true
             )
         )
@@ -90,10 +85,10 @@ class ControlflowJumpTransformerTest {
     fun manglesIfJumpWithFakeLoopAndNaturalCallPop() {
         val classNode = runControlflowJump(
             ControlflowJump.Config(
-                chance = 0.0,
-                mangledIfChance = 1.0,
+                chance = 0.0.toDecimal(),
+                mangledIfChance = 1.0.toDecimal(),
                 maxMangledIfsPerMethod = 1,
-                mangledFakeLoopChance = 1.0,
+                mangledFakeLoopChance = 1.0.toDecimal(),
                 maxPreludeCalls = 1,
                 verifyBytecode = true
             )
@@ -109,12 +104,12 @@ class ControlflowJumpTransformerTest {
     fun manglesIfJumpWithTerminalJunkReturns() {
         val classNode = runControlflowJump(
             ControlflowJump.Config(
-                chance = 0.0,
-                mangledIfChance = 1.0,
+                chance = 0.0.toDecimal(),
+                mangledIfChance = 1.0.toDecimal(),
                 maxMangledIfsPerMethod = 1,
-                mangledFakeLoopChance = 0.0,
-                sharedJunkExitChance = 0.0,
-                junkTerminalThrowChance = 0.0,
+                mangledFakeLoopChance = 0.0.toDecimal(),
+                sharedJunkExitChance = 0.0.toDecimal(),
+                junkTerminalThrowChance = 0.0.toDecimal(),
                 maxPreludeCalls = 0,
                 verifyBytecode = true
             )
@@ -129,12 +124,12 @@ class ControlflowJumpTransformerTest {
     fun mangledIfCanShareTerminalJunkExit() {
         val classNode = runControlflowJump(
             ControlflowJump.Config(
-                chance = 0.0,
-                mangledIfChance = 1.0,
+                chance = 0.0.toDecimal(),
+                mangledIfChance = 1.0.toDecimal(),
                 maxMangledIfsPerMethod = 1,
-                mangledFakeLoopChance = 0.0,
-                sharedJunkExitChance = 1.0,
-                junkTerminalThrowChance = 0.0,
+                mangledFakeLoopChance = 0.0.toDecimal(),
+                sharedJunkExitChance = 1.0.toDecimal(),
+                junkTerminalThrowChance = 0.0.toDecimal(),
                 maxPreludeCalls = 0,
                 verifyBytecode = true
             )
@@ -149,12 +144,12 @@ class ControlflowJumpTransformerTest {
     fun terminalJunkExitCanThrow() {
         val classNode = runControlflowJump(
             ControlflowJump.Config(
-                chance = 0.0,
-                mangledIfChance = 1.0,
+                chance = 0.0.toDecimal(),
+                mangledIfChance = 1.0.toDecimal(),
                 maxMangledIfsPerMethod = 1,
-                mangledFakeLoopChance = 0.0,
-                sharedJunkExitChance = 0.0,
-                junkTerminalThrowChance = 1.0,
+                mangledFakeLoopChance = 0.0.toDecimal(),
+                sharedJunkExitChance = 0.0.toDecimal(),
+                junkTerminalThrowChance = 1.0.toDecimal(),
                 maxPreludeCalls = 0,
                 verifyBytecode = true
             )
@@ -168,10 +163,10 @@ class ControlflowJumpTransformerTest {
     fun routesEligibleEdgeThroughExceptionBridge() {
         val classNode = runControlflowJump(
             ControlflowJump.Config(
-                chance = 0.0,
-                mangledIfChance = 0.0,
-                dispatcherLandingJunkChance = 0.0,
-                exceptionBridgeChance = 1.0,
+                chance = 0.0.toDecimal(),
+                mangledIfChance = 0.0.toDecimal(),
+                dispatcherLandingJunkChance = 0.0.toDecimal(),
+                exceptionBridgeChance = 1.0.toDecimal(),
                 maxExceptionBridgesPerMethod = 1,
                 verifyBytecode = true
             )
@@ -202,10 +197,10 @@ class ControlflowJumpTransformerTest {
                     verifyBytecode = true
                 ),
                 ControlflowJump.Config(
-                    chance = 0.0,
-                    mangledIfChance = 0.0,
+                    chance = 0.0.toDecimal(),
+                    mangledIfChance = 0.0.toDecimal(),
                     maxBranchesPerMethod = 1,
-                    dispatcherLandingJunkChance = 1.0,
+                    dispatcherLandingJunkChance = 1.0.toDecimal(),
                     maxDispatcherLandingJunkBlocksPerMethod = 1,
                     maxPreludeCalls = 0,
                     verifyBytecode = true
@@ -243,10 +238,14 @@ class ControlflowJumpTransformerTest {
 
             val instance = Grunteon.create(
                 ObfConfig(
-                    input = input.pathString,
-                    output = output.pathString,
-                    dumpMappings = false,
-                    transformerConfigs = transformerConfigs
+                    globalConfig = GlobalConfig(
+                        input = input.pathString,
+                        output = output.pathString,
+                        dumpMappings = false
+                    ),
+                    transformers = transformerConfigs.map { config ->
+                        TransformerEntry(config = config)
+                    }
                 )
             )
 

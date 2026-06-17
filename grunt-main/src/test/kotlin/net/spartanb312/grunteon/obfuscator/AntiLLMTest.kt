@@ -1,6 +1,8 @@
 package net.spartanb312.grunteon.obfuscator
 
+import net.spartanb312.grunteon.obfuscator.process.GlobalConfig
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
 import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiLLM
 import net.spartanb312.grunteon.obfuscator.util.ANTI_LLM_JUNK_CALL
@@ -19,13 +21,17 @@ class AntiLLMTest {
         val instance = readTestClasses(
             ParameterMarkerDummy::class.java,
             ObfConfig(
-                output = null,
-                transformerConfigs = listOf(
-                    AntiLLM.Config(
-                        poolSize = 8,
-                        resourceCount = 1,
-                        carrierClassCount = 1,
-                        maxAnnotatedMembersPerClass = 2
+                globalConfig = GlobalConfig(
+                    output = null
+                ),
+                transformers = listOf(
+                    TransformerEntry(
+                        config = AntiLLM.Config(
+                            poolSize = 8,
+                            resourceCount = 1,
+                            carrierClassCount = 1,
+                            maxAnnotatedMembersPerClass = 2
+                        )
                     )
                 )
             )

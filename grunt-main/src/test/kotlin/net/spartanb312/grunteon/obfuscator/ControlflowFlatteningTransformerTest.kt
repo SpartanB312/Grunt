@@ -1,6 +1,8 @@
 package net.spartanb312.grunteon.obfuscator
 
+import net.spartanb312.grunteon.obfuscator.process.GlobalConfig
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.FlowStateKeyMode
 import org.objectweb.asm.ClassReader
@@ -33,14 +35,18 @@ class ControlflowFlatteningTransformerTest {
 
             val instance = Grunteon.create(
                 ObfConfig(
-                    input = input.pathString,
-                    output = output.pathString,
-                    dumpMappings = false,
-                    transformerConfigs = listOf(
-                        ControlflowFlattening.Config(
-                            verifyBytecode = true,
-                            stateKeyMode = FlowStateKeyMode.Processor,
-                            logSkips = false
+                    globalConfig = GlobalConfig(
+                        input = input.pathString,
+                        output = output.pathString,
+                        dumpMappings = false
+                    ),
+                    transformers = listOf(
+                        TransformerEntry(
+                            config = ControlflowFlattening.Config(
+                                verifyBytecode = true,
+                                stateKeyMode = FlowStateKeyMode.Processor,
+                                logSkips = false
+                            )
                         )
                     )
                 )

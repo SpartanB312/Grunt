@@ -16,12 +16,7 @@ import net.spartanb312.grunteon.testcase.methodinline.Basic
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.ClassWriter.COMPUTE_FRAMES
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.AbstractInsnNode
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.InvokeDynamicInsnNode
-import org.objectweb.asm.tree.IntInsnNode
-import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.*
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.absolutePathString
@@ -238,7 +233,6 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
         return ObfConfig(
             transformers = configs.map { config ->
                 TransformerEntry(
-                    name = config::class.simpleName ?: "",
                     config = config
                 )
             }

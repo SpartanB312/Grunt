@@ -1,6 +1,8 @@
 package net.spartanb312.grunteon.obfuscator
 
+import net.spartanb312.grunteon.obfuscator.process.GlobalConfig
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.transformers.optimize.MethodInliner
 import net.spartanb312.grunteon.obfuscator.util.ClearClassNode
 import net.spartanb312.grunteon.testcase.methodinline.Basic
@@ -25,8 +27,14 @@ class MethodInlinerTest {
         val instance = readTestClasses(
             Basic::class.java,
             ObfConfig(
-                output = null,
-                transformerConfigs = listOf(MethodInliner.Config(maxInstructions = 8))
+                globalConfig = GlobalConfig(
+                    output = null
+                ),
+                transformers = listOf(
+                    TransformerEntry(
+                        config = MethodInliner.Config(maxInstructions = 8)
+                    )
+                )
             )
         )
         context(instance.workRes, instance) {

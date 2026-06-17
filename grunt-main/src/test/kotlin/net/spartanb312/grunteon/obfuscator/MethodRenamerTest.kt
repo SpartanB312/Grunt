@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MethodRenamer
 import net.spartanb312.grunteon.obfuscator.util.ClearClassNode
 import net.spartanb312.grunteon.obfuscator.util.Logger
@@ -31,7 +32,11 @@ class MethodRenamerTest {
         val instance = readTestClasses(
             Asserts::class.java,
             ObfConfig(
-                transformerConfigs = listOf(MethodRenamer.Config())
+                transformers = listOf(
+                    TransformerEntry(
+                        config = MethodRenamer.Config()
+                    )
+                )
             )
         )
         context(instance.workRes, instance) {

@@ -1,7 +1,9 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
+import net.spartanb312.grunteon.obfuscator.process.GlobalConfig
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
 import net.spartanb312.grunteon.obfuscator.process.resource.ClassDumper
 import net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess
@@ -40,23 +42,29 @@ class ReflectionSupportTest {
         val instance = readTestClasses(
             Asserts::class.java,
             ObfConfig(
-                output = null,
-                dumpMappings = false,
-                transformerConfigs = listOf(
-                    ReflectionSupport.Config(classFilter = reflectionFilter),
-                    StringArrayedEncrypt.Config(
-                        classFilter = reflectionFilter,
-                        carray = false,
-                        invokeDynamics = true,
-                        exclusion = emptyList()
+                globalConfig = GlobalConfig(
+                    output = null,
+                    dumpMappings = false
+                ),
+                transformers = listOf(
+                    TransformerEntry(config = ReflectionSupport.Config(classFilter = reflectionFilter)),
+                    TransformerEntry(
+                        config = StringArrayedEncrypt.Config(
+                            classFilter = reflectionFilter,
+                            carray = false,
+                            invokeDynamics = true,
+                            exclusion = emptyList()
+                        )
                     ),
-                    ClassRenamer.Config(
-                        classFilter = reflectionFilter,
-                        parent = "net/spartanb312/obf/reflection/"
+                    TransformerEntry(
+                        config = ClassRenamer.Config(
+                            classFilter = reflectionFilter,
+                            parent = "net/spartanb312/obf/reflection/"
+                        )
                     ),
-                    FieldRenamer.Config(classFilter = reflectionFilter),
-                    MethodRenamer.Config(classFilter = reflectionFilter),
-                    PostProcess.Config()
+                    TransformerEntry(config = FieldRenamer.Config(classFilter = reflectionFilter)),
+                    TransformerEntry(config = MethodRenamer.Config(classFilter = reflectionFilter)),
+                    TransformerEntry(config = PostProcess.Config())
                 )
             )
         )

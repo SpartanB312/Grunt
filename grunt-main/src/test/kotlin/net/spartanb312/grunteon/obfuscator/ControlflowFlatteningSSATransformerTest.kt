@@ -1,7 +1,9 @@
 package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
+import net.spartanb312.grunteon.obfuscator.process.GlobalConfig
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
+import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.exp.ControlflowFlatteningSSA
 import net.spartanb312.grunteon.testcase.Asserts
 import org.objectweb.asm.ClassReader
@@ -28,13 +30,17 @@ class ControlflowFlatteningSSATransformerTest {
             val instance = readTestClasses(
                 Asserts::class.java,
                 ObfConfig(
-                    output = output.pathString,
-                    dumpMappings = false,
-                    transformerConfigs = listOf(
-                        ControlflowFlatteningSSA.Config(
-                            classFilter = ClassFilterConfig(
-                                includeStrategy = listOf("net/spartanb312/grunteon/testcase/Asserts"),
-                                excludeStrategy = emptyList()
+                    globalConfig = GlobalConfig(
+                        output = output.pathString,
+                        dumpMappings = false
+                    ),
+                    transformers = listOf(
+                        TransformerEntry(
+                            config = ControlflowFlatteningSSA.Config(
+                                classFilter = ClassFilterConfig(
+                                    includeStrategy = listOf("net/spartanb312/grunteon/testcase/Asserts"),
+                                    excludeStrategy = emptyList()
+                                )
                             )
                         )
                     )
@@ -63,13 +69,17 @@ class ControlflowFlatteningSSATransformerTest {
             val instance = readTestClasses(
                 Asserts::class.java,
                 ObfConfig(
-                    output = output.pathString,
-                    dumpMappings = false,
-                    transformerConfigs = listOf(
-                        ControlflowFlatteningSSA.Config(
-                            classFilter = ClassFilterConfig(
-                                includeStrategy = listOf("net/spartanb312/grunteon/testcase/Asserts"),
-                                excludeStrategy = emptyList()
+                    globalConfig = GlobalConfig(
+                        output = output.pathString,
+                        dumpMappings = false
+                    ),
+                    transformers = listOf(
+                        TransformerEntry(
+                            config = ControlflowFlatteningSSA.Config(
+                                classFilter = ClassFilterConfig(
+                                    includeStrategy = listOf("net/spartanb312/grunteon/testcase/Asserts"),
+                                    excludeStrategy = emptyList()
+                                )
                             )
                         )
                     )
@@ -111,10 +121,14 @@ class ControlflowFlatteningSSATransformerTest {
 
             val instance = Grunteon.create(
                 ObfConfig(
-                    input = input.pathString,
-                    output = output.pathString,
-                    dumpMappings = false,
-                    transformerConfigs = listOf(ControlflowFlatteningSSA.Config())
+                    globalConfig = GlobalConfig(
+                        input = input.pathString,
+                        output = output.pathString,
+                        dumpMappings = false
+                    ),
+                    transformers = listOf(
+                        TransformerEntry(config = ControlflowFlatteningSSA.Config())
+                    )
                 )
             )
 
@@ -154,10 +168,14 @@ class ControlflowFlatteningSSATransformerTest {
 
             val instance = Grunteon.create(
                 ObfConfig(
-                    input = input.pathString,
-                    output = output.pathString,
-                    dumpMappings = false,
-                    transformerConfigs = listOf(ControlflowFlatteningSSA.Config())
+                    globalConfig = GlobalConfig(
+                        input = input.pathString,
+                        output = output.pathString,
+                        dumpMappings = false
+                    ),
+                    transformers = listOf(
+                        TransformerEntry(config = ControlflowFlatteningSSA.Config())
+                    )
                 )
             )
 
@@ -197,10 +215,14 @@ class ControlflowFlatteningSSATransformerTest {
 
             val instance = Grunteon.create(
                 ObfConfig(
-                    input = input.pathString,
-                    output = output.pathString,
-                    dumpMappings = false,
-                    transformerConfigs = listOf(ControlflowFlatteningSSA.Config())
+                    globalConfig = GlobalConfig(
+                        input = input.pathString,
+                        output = output.pathString,
+                        dumpMappings = false
+                    ),
+                    transformers = listOf(
+                        TransformerEntry(config = ControlflowFlatteningSSA.Config())
+                    )
                 )
             )
 
@@ -240,16 +262,20 @@ class ControlflowFlatteningSSATransformerTest {
 
             val instance = Grunteon.create(
                 ObfConfig(
-                    input = input.pathString,
-                    output = output.pathString,
-                    dumpMappings = false,
-                    transformerConfigs = listOf(
-                        ControlflowFlatteningSSA.Config(
-                            maxInstructions = 5,
-                            maxBasicBlocks = 0,
-                            maxLocals = 0,
-                            maxEstimatedDispatcherArgs = 0,
-                            logBudgetSkips = false
+                    globalConfig = GlobalConfig(
+                        input = input.pathString,
+                        output = output.pathString,
+                        dumpMappings = false
+                    ),
+                    transformers = listOf(
+                        TransformerEntry(
+                            config = ControlflowFlatteningSSA.Config(
+                                maxInstructions = 5,
+                                maxBasicBlocks = 0,
+                                maxLocals = 0,
+                                maxEstimatedDispatcherArgs = 0,
+                                logBudgetSkips = false
+                            )
                         )
                     )
                 )
