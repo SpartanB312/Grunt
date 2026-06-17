@@ -6,31 +6,24 @@ import kotlinx.coroutines.channels.produce
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.hierarchy.ClassHierarchy
 import net.spartanb312.grunteon.obfuscator.util.ClearClassNode
+import net.spartanb312.grunteon.obfuscator.util.ImplLookupGetter
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
+import net.spartanb312.grunteon.obfuscator.util.file.SingleEntryZipOutputStream
 import net.spartanb312.grunteon.obfuscator.util.file.corruptCRC32
 import net.spartanb312.grunteon.obfuscator.util.file.corruptJarHeader
 import net.spartanb312.grunteon.obfuscator.util.filters.test
 import org.objectweb.asm.Opcodes
-import java.nio.file.Path
+import java.io.ByteArrayOutputStream
+import java.lang.invoke.MethodType
+import java.util.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.io.path.extension
 import kotlin.io.path.name
 
 object JarDumper {
-    private data class PendingZipEntry(
-        val entryName: String,
-        val content: ByteArray
-    )
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    context(instance: Grunteon)
-    fun dumpJar(outputFile: Path) {
-        dumpJar(PathResourceOutput(outputFile))
-    }
-
     @OptIn(ExperimentalCoroutinesApi::class)
     context(instance: Grunteon)
     fun dumpJar(output: ResourceOutput) {
@@ -57,6 +50,23 @@ object JarDumper {
             corruptJarHeader(random, directOut)
         }
         runBlocking {
+            fun processZipEntry(
+                entryName: String,
+                byteArray: ByteArray?
+            ): Pair<ZipEntry, ByteArray> {
+                val out = ByteArrayOutputStream()
+                val zipEntry = ZipEntry(entryName)
+                if (globalConfig.removeTimeStamps) zipEntry.time = 0
+                SingleEntryZipOutputStream(out).use { zip ->
+                    // Compression level
+                    zip.setLevel(globalConfig.compressionLevel)
+                    zip.putNextEntry(zipEntry)
+                    zip.write(byteArray)
+                    zip.closeEntry()
+                }
+                return zipEntry to out.toByteArray()
+            }
+
             val classes = produce(
                 Dispatchers.Default,
                 capacity = Channel.BUFFERED
@@ -74,7 +84,7 @@ object JarDumper {
                         .forEach {
                             launch {
                                 send(
-                                    PendingZipEntry(
+                                    processZipEntry(
                                         instance.workRes.inputResourceSet.entryName(it),
                                         instance.workRes.inputResourceSet.readFile(it)
                                     )
@@ -124,17 +134,16 @@ object JarDumper {
                             }
                         }
 
-                        send(PendingZipEntry(entryName, byteArray))
+                        send(processZipEntry(entryName, byteArray))
                     }
                 }
                 instance.workRes.generatedResources.forEach { (name, content) ->
-                    if (!checkFileNameRemove(name)) send(PendingZipEntry(name, content))
+                    if (!checkFileNameRemove(name)) send(processZipEntry(name, content))
                 }
             }
 
             withContext(Dispatchers.IO) {
                 ZipOutputStream(directOut).use { zipOut ->
-                    zipOut.setLevel(globalConfig.compressionLevel)
                     // Archive comment
                     if (globalConfig.archiveComment.isNotEmpty()) zipOut.setComment(globalConfig.archiveComment)
                     // Corrupt CRC32
@@ -159,16 +168,28 @@ object JarDumper {
                         }
 
                     Logger.info("Writing files...")
-                    for ((entryName, content) in classes) {
-                        val zipEntry = ZipEntry(entryName)
+                    @Suppress("UNCHECKED_CAST")
+                    val xEntries = varEntries.get(zipOut) as Vector<Any>
+                    var offset = 0L
+                    for ((zipEntry, bytes) in classes) {
                         if (globalConfig.removeTimeStamps) zipEntry.time = 0
-                        zipOut.putNextEntry(zipEntry)
-                        zipOut.write(content)
-                        zipOut.closeEntry()
+                        xEntries.add(xEntryConstructor.invoke(zipEntry, offset))
+                        directOut.write(bytes)
+                        offset += bytes.size.toLong()
                     }
+                    varWritten.set(zipOut, offset)
                     // TODO: dump mappings
                 }
             }
         }
     }
+
+    private val lookup = ImplLookupGetter.getLookup()
+    private val varEntries = lookup.findVarHandle(ZipOutputStream::class.java, "xentries", Vector::class.java)
+    private val varWritten = lookup.findVarHandle(ZipOutputStream::class.java, "written", Long::class.java)
+    private val xEntryConstructor = lookup.findConstructor(
+        Class.forName("java.util.zip.ZipOutputStream\$XEntry"),
+        MethodType.methodType(Void.TYPE, ZipEntry::class.java, Long::class.java)
+    )
+
 }
