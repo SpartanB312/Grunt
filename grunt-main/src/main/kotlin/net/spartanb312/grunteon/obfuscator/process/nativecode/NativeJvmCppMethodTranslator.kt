@@ -64,9 +64,6 @@ internal object NativeJvmCppMethodTranslator {
         val returnType = Type.getReturnType(methodNode.desc)
         validateDescriptor(arguments, returnType, methodNode.desc)
 
-        val argumentLocalSlots = arguments.sumOf { it.size } + if (ir.isStatic) 0 else 1
-        val maxLocals = maxOf(ir.maxLocals, argumentLocalSlots, 1)
-        val maxStack = maxOf(ir.maxStack, 1)
         val dispatchPlan = NativeJvmExceptionDispatchPlanner.plan(ir)
         val catchClassBindings = dispatchPlan.catchClassBindings()
         val needsMethodHandleLookup = ir.instructions.any {
@@ -74,6 +71,9 @@ internal object NativeJvmCppMethodTranslator {
         }
         val labels = LabelTargetResolver(methodNode)
         val stackShape = StackShapeAnalyzer(ir.ownerInternalName, methodNode)
+        val argumentLocalSlots = arguments.sumOf { it.size } + if (ir.isStatic) 0 else 1
+        val maxLocals = maxOf(ir.maxLocals, stackShape.maxLocals, argumentLocalSlots, 1)
+        val maxStack = maxOf(ir.maxStack, stackShape.maxStack, 1)
         val refCleanupEntries = referenceCleanupEntryIndices(methodNode, ir)
         val isLoaderProxy =
             commitKind == NativeMethodCommitKind.InterfaceProxy ||
@@ -2069,17 +2069,35 @@ internal object NativeJvmCppMethodTranslator {
         private val instructions = methodNode.instructions?.toArray()?.toList().orEmpty()
         private val frames: Array<Frame<BasicValue>?>?
         private val failure: Throwable?
+        val maxStack: Int
+        val maxLocals: Int
 
         init {
             var analyzedFrames: Array<Frame<BasicValue>?>? = null
             var analyzedFailure: Throwable? = null
+            val originalMaxStack = methodNode.maxStack
+            val originalMaxLocals = methodNode.maxLocals
+            val conservativeStack = conservativeStackCapacity(methodNode, instructions)
+            val conservativeLocals = conservativeLocalCapacity(methodNode)
             try {
+                methodNode.maxStack = maxOf(originalMaxStack, conservativeStack)
+                methodNode.maxLocals = maxOf(originalMaxLocals, conservativeLocals)
                 analyzedFrames = Analyzer(BasicInterpreter()).analyze(ownerInternalName, methodNode)
             } catch (throwable: Throwable) {
                 analyzedFailure = throwable
+            } finally {
+                methodNode.maxStack = originalMaxStack
+                methodNode.maxLocals = originalMaxLocals
             }
             frames = analyzedFrames
             failure = analyzedFailure
+            maxStack = maxOf(
+                originalMaxStack,
+                frames?.filterNotNull()?.maxOfOrNull { it.stackSize } ?: 0,
+                conservativeStack.takeIf { frames == null } ?: 0,
+                1
+            )
+            maxLocals = maxOf(originalMaxLocals, conservativeLocals, 1)
         }
 
         fun stackValueSize(instruction: NativeJvmInstruction, depthFromTop: Int): Int {
@@ -2127,6 +2145,33 @@ internal object NativeJvmCppMethodTranslator {
 
         @Suppress("unused")
         fun instructionAt(index: Int) = instructions.getOrNull(index)
+
+        private fun conservativeStackCapacity(methodNode: MethodNode, instructions: List<AbstractInsnNode>): Int {
+            val executableCount = instructions.count { it.opcode >= 0 }
+            val argumentSlots = Type.getArgumentTypes(methodNode.desc).sumOf { it.size } +
+                if (methodNode.access and Opcodes.ACC_STATIC != 0) 0 else 1
+            return maxOf(methodNode.maxStack, executableCount + argumentSlots + 8, 1)
+        }
+
+        private fun conservativeLocalCapacity(methodNode: MethodNode): Int {
+            val argumentSlots = Type.getArgumentTypes(methodNode.desc).sumOf { it.size } +
+                if (methodNode.access and Opcodes.ACC_STATIC != 0) 0 else 1
+            var maxSlot = argumentSlots
+            methodNode.instructions?.toArray()?.forEach { instruction ->
+                when (instruction) {
+                    is VarInsnNode -> {
+                        val size = when (instruction.opcode) {
+                            Opcodes.LLOAD, Opcodes.LSTORE,
+                            Opcodes.DLOAD, Opcodes.DSTORE -> 2
+                            else -> 1
+                        }
+                        maxSlot = maxOf(maxSlot, instruction.`var` + size)
+                    }
+                    is IincInsnNode -> maxSlot = maxOf(maxSlot, instruction.`var` + 1)
+                }
+            }
+            return maxOf(methodNode.maxLocals, maxSlot, 1)
+        }
     }
 
     private class LabelTargetResolver(methodNode: MethodNode) {

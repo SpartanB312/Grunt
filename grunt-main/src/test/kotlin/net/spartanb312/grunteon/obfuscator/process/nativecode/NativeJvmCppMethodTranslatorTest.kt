@@ -453,6 +453,15 @@ class NativeJvmCppMethodTranslatorTest {
     }
 
     @Test
+    fun derivesNativeStackCapacityWhenMethodMaxStackIsStale() {
+        val translated = translate(staleMaxStackCharArrayInitMethod())
+
+        assertFalse(translated.contains("jvalue cstack[1]"))
+        assertContains(translated, "env->NewCharArray(count);")
+        assertContains(translated, "env->SetCharArrayRegion((jcharArray) array, index, 1, &value);")
+    }
+
+    @Test
     fun backendRegistersClassInitializerProxyMethod() {
         val source = NativeCppBackend.generate(
             methods = listOf(validated(classInitializerMethod())),
@@ -1215,6 +1224,21 @@ class NativeJvmCppMethodTranslatorTest {
                     )
                 )
             )
+            instructions.add(InsnNode(Opcodes.POP))
+            instructions.add(InsnNode(Opcodes.RETURN))
+            maxStack = 1
+            maxLocals = 0
+        }
+    }
+
+    private fun staleMaxStackCharArrayInitMethod(): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "staleMaxStackCharArrayInit", "()V", null, null).apply {
+            instructions.add(IntInsnNode(Opcodes.BIPUSH, 2))
+            instructions.add(IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_CHAR))
+            instructions.add(InsnNode(Opcodes.DUP))
+            instructions.add(InsnNode(Opcodes.ICONST_0))
+            instructions.add(IntInsnNode(Opcodes.SIPUSH, 1234))
+            instructions.add(InsnNode(Opcodes.CASTORE))
             instructions.add(InsnNode(Opcodes.POP))
             instructions.add(InsnNode(Opcodes.RETURN))
             maxStack = 1
