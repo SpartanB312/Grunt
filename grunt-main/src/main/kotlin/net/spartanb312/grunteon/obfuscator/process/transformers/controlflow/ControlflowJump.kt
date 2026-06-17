@@ -16,13 +16,9 @@ import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
-import net.spartanb312.grunteon.obfuscator.util.extensions.isMixinClass
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
 import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
-import net.spartanb312.grunteon.obfuscator.util.filters.NamePredicates
-import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicates
-import net.spartanb312.grunteon.obfuscator.util.filters.isExcluded
-import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
+import net.spartanb312.grunteon.obfuscator.util.filters.*
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
@@ -197,7 +193,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                 instance.workRes.allClassCollection
             } else {
                 instance.workRes.inputClassCollection
-            }.filterNot { it.isMixinClass }
+            }.filter(instance.mixinExclusion)
             JunkCallPool.build(classes)
         }
         val junkStringProviderKey = globalScopeValue {
@@ -237,7 +233,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         val failureCounter = reducibleScopeValue { MergeableCounter() }
 
         parForEachClassesFiltered(
-            config.classFilter.buildFilterStrategy(),
+            config.classFilter.toClassPredicate(),
             config.workerBatchSize.coerceAtLeast(1)
         ) { classNode ->
             if (classNode.isExcluded(DISABLE_CONTROL_FLOW) || classNode.isExcluded(IGNORE_JUNK_CODE)) {

@@ -44,7 +44,11 @@ class DeclaredFieldsExtract : Transformer<DeclaredFieldsExtract.Config>(
             //Logger.info(" > DeclaredFieldsExtract: Transforming local variables...")
         }
         val counter = reducibleScopeValue { MergeableCounter() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             if (classNode.isAnnotation) return@parForEachClassesFiltered
             if (classNode.isInterface) return@parForEachClassesFiltered // compile-time constant won't invoke <clinit>
             val counter = counter.local

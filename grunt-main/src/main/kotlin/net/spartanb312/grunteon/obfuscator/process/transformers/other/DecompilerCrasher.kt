@@ -39,7 +39,11 @@ class DecompilerCrasher : Transformer<DecompilerCrasher.Config>(
             //Logger.info(" > DecompilerCrasher: Insert crashers to classes...")
         }
         val counter = reducibleScopeValue { MergeableCounter() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             context(config) {
                 val counter = counter.local
                 classNode.methods.forEach { methodNode ->

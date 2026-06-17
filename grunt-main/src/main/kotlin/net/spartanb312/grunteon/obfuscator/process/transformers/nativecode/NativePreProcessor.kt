@@ -4,35 +4,12 @@ import kotlinx.serialization.Serializable
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.pipeline.before
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.StableLevel
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
-import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
-import net.spartanb312.grunteon.obfuscator.process.post
-import net.spartanb312.grunteon.obfuscator.util.GENERATED_METHOD
-import net.spartanb312.grunteon.obfuscator.util.Logger
-import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
-import net.spartanb312.grunteon.obfuscator.util.NATIVE_EXCLUDED
-import net.spartanb312.grunteon.obfuscator.util.NATIVE_JVM_BRIDGE
-import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
-import net.spartanb312.grunteon.obfuscator.util.extensions.hasAnnotation
-import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
-import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
-import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
+import net.spartanb312.grunteon.obfuscator.process.*
+import net.spartanb312.grunteon.obfuscator.util.*
+import net.spartanb312.grunteon.obfuscator.util.extensions.*
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.InsnNode
-import org.objectweb.asm.tree.InvokeDynamicInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
-import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.VarInsnNode
+import org.objectweb.asm.tree.*
 
 @Transformer.CreditMultiplier(1.2)
 @Transformer.Stability(StableLevel.Developing)
@@ -75,7 +52,11 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
         val indyCounter = reducibleScopeValue { MergeableCounter() }
         val helperCounter = reducibleScopeValue { MergeableCounter() }
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val result = classNode.bridgeInvokeDynamics(config)
             if (result.indyCount != 0) {
                 indyCounter.local.add(result.indyCount)

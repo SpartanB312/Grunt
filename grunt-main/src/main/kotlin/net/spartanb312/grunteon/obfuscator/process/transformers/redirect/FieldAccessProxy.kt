@@ -79,7 +79,11 @@ class FieldAccessProxy : Transformer<FieldAccessProxy.Config>(
             MergeableObjectList<ProxyMethod>(FastObjectArrayList())
         }
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val counter = counter.local
             val genMethods = genMethods.local
             if (classNode.isExcluded(DISABLE_FIELD_PROXY)) return@parForEachClassesFiltered

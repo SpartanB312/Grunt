@@ -1,6 +1,5 @@
 package net.spartanb312.grunteon.obfuscator
 
-import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.pipeline.CreditsCalc
 import net.spartanb312.grunteon.obfuscator.pipeline.CreditsSummary
 import net.spartanb312.grunteon.obfuscator.process.*
@@ -13,9 +12,10 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.M
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.MappingSource
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.NameMapping
 import net.spartanb312.grunteon.obfuscator.util.Logger
+import net.spartanb312.grunteon.obfuscator.util.filters.ClassPredicate
 import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
 import net.spartanb312.grunteon.obfuscator.util.numerical.formatInteger
-import java.util.Locale
+import java.util.*
 import kotlin.math.roundToLong
 
 // Grunteon process instance
@@ -74,8 +74,15 @@ class Grunteon(
         }
     }
 
-    val mixinExPredicate = buildClassNamePredicates(globalConfig.mixinExclusions)
-    val globalExPredicate = buildClassNamePredicates(globalConfig.exclusions)
+    val mixinInclusion = ClassPredicate.IncludeExclude(
+        includeStrategy = buildClassNamePredicates(globalConfig.mixinExclusions)
+    )
+    val mixinExclusion = ClassPredicate.IncludeExclude(
+        excludeStrategy = buildClassNamePredicates(globalConfig.mixinExclusions)
+    )
+    val globalExclusion = ClassPredicate.IncludeExclude(
+        excludeStrategy = buildClassNamePredicates(globalConfig.exclusions)
+    )
 
     companion object {
         fun create(config: ObfConfig): Grunteon {

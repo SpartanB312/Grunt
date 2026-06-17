@@ -8,27 +8,9 @@ import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.pipeline.before
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.StableLevel
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.globalScopeValue
-import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
-import net.spartanb312.grunteon.obfuscator.process.post
-import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
+import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
-import net.spartanb312.grunteon.obfuscator.process.seq
-import net.spartanb312.grunteon.obfuscator.util.ANTI_LLM
-import net.spartanb312.grunteon.obfuscator.util.ANTI_LLM_JUNK_CALL
-import net.spartanb312.grunteon.obfuscator.util.GENERATED_CLASS
-import net.spartanb312.grunteon.obfuscator.util.GENERATED_METHOD
-import net.spartanb312.grunteon.obfuscator.util.Logger
-import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
+import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
@@ -147,7 +129,11 @@ class AntiLLM : Transformer<AntiLLM.Config>(
             }
         }
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val payloads = payloadPoolKey.global
             if (payloads.isEmpty()) return@parForEachClassesFiltered
             val random = Xoshiro256PPRandom(getSeed(transformerSeed, "class", classNode.name))

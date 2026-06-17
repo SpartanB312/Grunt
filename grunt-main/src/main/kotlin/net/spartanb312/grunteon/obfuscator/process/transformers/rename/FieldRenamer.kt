@@ -15,6 +15,7 @@ import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.extensions.isPrivate
 import net.spartanb312.grunteon.obfuscator.util.extensions.isProtected
 import net.spartanb312.grunteon.obfuscator.util.extensions.isStatic
+import net.spartanb312.grunteon.obfuscator.util.filters.filter
 
 /**
  * Last update on 2026/03/31 by FluixCarvin
@@ -90,11 +91,12 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
         seq {
             val fieldHierarchy = fieldHierarchy.global
             val classHierarchy = fieldHierarchy.classHierarchy
-            val strategy = config.classFilter.buildFilterStrategy()
+            val strategy = instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+
             val nonExcluded = instance.workRes.inputClassCollection
-                .filter {
-                    strategy.testClass(it)
-                }
+                .filter(strategy)
                 .sortedBy { it.name }
                 .toList()
 

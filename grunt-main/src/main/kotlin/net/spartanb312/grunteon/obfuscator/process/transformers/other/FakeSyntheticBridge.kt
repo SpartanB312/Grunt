@@ -1,7 +1,6 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.other
 
 import kotlinx.serialization.Serializable
-
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.after
@@ -10,11 +9,7 @@ import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.MethodRenamer
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
-import net.spartanb312.grunteon.obfuscator.util.extensions.hasAnnotations
-import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
-import net.spartanb312.grunteon.obfuscator.util.extensions.isAnnotation
-import net.spartanb312.grunteon.obfuscator.util.extensions.isBridge
-import net.spartanb312.grunteon.obfuscator.util.extensions.isInitializer
+import net.spartanb312.grunteon.obfuscator.util.extensions.*
 import org.objectweb.asm.Opcodes
 
 @Transformer.CreditMultiplier(0.5)
@@ -44,7 +39,11 @@ class FakeSyntheticBridge : Transformer<FakeSyntheticBridge.Config>(
             //Logger.info(" > FakeSyntheticBridge:Inserting fake synthetic bridge flags")
         }
         val counter = reducibleScopeValue { MergeableCounter() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             if (classNode.isAnnotation) return@parForEachClassesFiltered
             val counter = counter.local
             // Synthetic

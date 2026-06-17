@@ -84,7 +84,11 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
         }
         val shuffledListCache = localScopeValue { FastObjectArrayList<AbstractInsnNode>() }
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val counter = counter.local
             if (classNode.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@parForEachClassesFiltered
             if (classNode.version < Opcodes.V1_5) return@parForEachClassesFiltered

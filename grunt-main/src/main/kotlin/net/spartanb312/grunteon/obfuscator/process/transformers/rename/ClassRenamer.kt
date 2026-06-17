@@ -13,6 +13,7 @@ import net.spartanb312.grunteon.obfuscator.util.collection.shuffled
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
+import net.spartanb312.grunteon.obfuscator.util.filters.filter
 import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 
 /**
@@ -83,12 +84,15 @@ class ClassRenamer : Transformer<ClassRenamer.Config>(
         seq {
             val instance = contextOf<Grunteon>()
             Logger.info(" > ClassRenamer: Generating class mappings...")
-            val strategy = config.classFilter.buildFilterStrategy()
+            val strategy = instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+
             val dictionary = NameGenerator.getDictionary(config.dictionary)
             val nameGenerator = NameGenerator(dictionary)
             val randomGen = Xoshiro256PPRandom(getSeed("Global"))
             val counter = instance.workRes.inputClassCollection.asSequence()
-                .filter { strategy.testClass(it) }
+                .filter(strategy)
                 .run {
                     if (config.shuffled) this.shuffled(randomGen) else this
                 }

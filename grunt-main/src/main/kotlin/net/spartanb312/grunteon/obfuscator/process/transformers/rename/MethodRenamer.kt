@@ -22,6 +22,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.M
 import net.spartanb312.grunteon.obfuscator.util.IndyChecker
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
+import net.spartanb312.grunteon.obfuscator.util.filters.test
 import org.objectweb.asm.Type
 
 /**
@@ -100,7 +101,10 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
         seq {
             val methodHierarchy = methodHierarchy.global
             val classHierarchy = methodHierarchy.classHierarchy
-            val strategy = config.classFilter.buildFilterStrategy()
+            val strategy = instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+
             // ClassHierarchy.build() sorts inputClassNodes by name and places them at
             // classNodes[0..inputClassCount) before appending any looked-up library ancestors.
             // Iterating that slice directly gives a deterministic name-sorted order with no
@@ -112,7 +116,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
             val nonExcludedFlags = BooleanArray(classHierarchy.classCount)
             for (i in 0 until inputClassCount) {
                 val cn = classHierarchy.classNodes[i]
-                if (strategy.testClass(cn) && !cn.isAnnotation
+                if (strategy.test(cn) && !cn.isAnnotation
                     && (config.enums || !cn.isEnum)
                     && (config.interfaces || !cn.isInterface)
                 ) {

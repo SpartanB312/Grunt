@@ -49,7 +49,11 @@ class EnumOptimize : Transformer<EnumOptimize.Config>(
             //Logger.info(" > EnumOptimize: Optimizing enums...")
         }
         val counter = reducibleScopeValue { MergeableCounter() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             if (classNode.isExcluded(DISABLE_OPTIMIZER)) return@parForEachClassesFiltered
             if (!classNode.isEnum) return@parForEachClassesFiltered
             val counter = counter.local

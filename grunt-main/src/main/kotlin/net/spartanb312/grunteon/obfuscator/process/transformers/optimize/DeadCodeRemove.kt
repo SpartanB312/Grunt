@@ -61,7 +61,11 @@ class DeadCodeRemove : Transformer<DeadCodeRemove.Config>(
         }
         val counter = reducibleScopeValue { MergeableCounter() }
         val instListCache = localScopeValue { FastObjectArrayList<AbstractInsnNode>() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             if (classNode.isExcluded(DISABLE_OPTIMIZER)) return@parForEachClassesFiltered
             val instListCache = instListCache.local
             classNode.methods.asSequence()

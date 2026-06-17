@@ -11,6 +11,7 @@ import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.ResourceSet
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.extensions.removeAnnotations
+import net.spartanb312.grunteon.obfuscator.util.filters.test
 import java.nio.charset.StandardCharsets
 
 @Transformer.CreditMultiplier(1.0)
@@ -75,9 +76,12 @@ class PostProcess : Transformer<PostProcess.Config>(
         }
         // Clean up
         val annotationList = DISABLER + IGNORE + INTERNAL
-        val filter = config.classFilter.buildFilterStrategy()
+        val filter = instance.globalExclusion
+            .and(instance.mixinExclusion)
+            .and(config.classFilter.toClassPredicate())
+
         parForEachClasses { classNode ->
-            val include = filter.testClass(classNode)
+            val include = filter.test(classNode)
             // annotations
             if (include) {
                 classNode.removeAnnotations(annotationList)

@@ -69,7 +69,11 @@ class InvokeDispatcher : Transformer<InvokeDispatcher.Config>(
         }
         val counter = reducibleScopeValue { MergeableCounter() }
         val counter2 = reducibleScopeValue { MergeableCounter() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val counter = counter.local
             val counter2 = counter2.local
             if (classNode.isExcluded(DISABLE_INVOKE_DISPATCHER)) return@parForEachClassesFiltered

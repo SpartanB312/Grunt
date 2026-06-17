@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator.process.nativecode
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
+import net.spartanb312.grunteon.obfuscator.util.filters.filter
 
 internal object NativeCandidateScanner {
 
@@ -10,13 +11,14 @@ internal object NativeCandidateScanner {
         val excludedAnnotations = normalizedAnnotationSet(config.excludedAnnotationList)
         if (includedAnnotations.isEmpty()) return emptyList()
 
-        val filter = config.classFilter.buildFilterStrategy()
+        val filter = instance.globalExclusion
+            .and(instance.mixinExclusion)
+            .and(config.classFilter.toClassPredicate())
         val candidates = mutableListOf<NativeCandidate>()
         instance.workRes.inputClassCollection
             .sortedBy { it.name }
+            .filter(filter)
             .forEach { classNode ->
-                if (!filter.testClass(classNode)) return@forEach
-
                 val classAnnotations = classNode.annotationDescs()
                 val classExcluded = classAnnotations.any { it in excludedAnnotations }
                 if (classExcluded) return@forEach

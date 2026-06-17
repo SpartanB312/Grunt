@@ -64,7 +64,11 @@ class SourceDebugInfoHide : Transformer<SourceDebugInfoHide.Config>(
             //Logger.info(" > SourceDebugInfoHide: Removing/Editing debug information...")
         }
         val counter = reducibleScopeValue { MergeableCounter() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             if (classNode.isExcluded(DISABLE_OPTIMIZER)) return@parForEachClassesFiltered
             val counter = counter.local
             val randomGen = Xoshiro256PPRandom(getSeed(classNode.name))

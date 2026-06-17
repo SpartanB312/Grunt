@@ -6,7 +6,7 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.serializer
 import net.spartanb312.grunteon.obfuscator.lang.I18NDescriptorPath
-import net.spartanb312.grunteon.obfuscator.util.filters.FilterStrategy
+import net.spartanb312.grunteon.obfuscator.util.filters.ClassPredicate
 import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
 import kotlin.reflect.KClass
 
@@ -73,8 +73,8 @@ data class ClassFilterConfig(
         "**" // Include all
     )
 ) {
-    fun buildFilterStrategy(): FilterStrategy {
-        return FilterStrategy(
+    fun toClassPredicate(): ClassPredicate {
+        return ClassPredicate.IncludeExclude(
             buildClassNamePredicates(includeStrategy),
             buildClassNamePredicates(excludeStrategy)
         )

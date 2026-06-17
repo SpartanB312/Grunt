@@ -60,7 +60,11 @@ class InvokeProxy : Transformer<InvokeProxy.Config>(
         }
         val counter = reducibleScopeValue { MergeableCounter() }
         val newClasses = globalScopeValue { mutableMapOf<ClassNode, ClassNode>() }// Owner Companion
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val counter = counter.local
             if (classNode.isExcluded(DISABLE_INVOKE_PROXY)) return@parForEachClassesFiltered
             classNode.methods.toList().asSequence()

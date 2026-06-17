@@ -110,7 +110,9 @@ class ControlflowFlatteningSSA : Transformer<ControlflowFlatteningSSA.Config>(
             start()
         }*/
         parForEachClassesFiltered(
-            config.classFilter.buildFilterStrategy(),
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate()),
             config.parallelBatchSize.coerceAtLeast(1)
         ) { classNode ->
             val transformedMethods = classNode.methods.map { methodNode ->

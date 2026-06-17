@@ -18,25 +18,12 @@ import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
 import net.spartanb312.grunteon.obfuscator.util.filters.NamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicates
+import net.spartanb312.grunteon.obfuscator.util.filters.withMapping
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
-import org.objectweb.asm.tree.AbstractInsnNode
-import org.objectweb.asm.tree.AnnotationNode
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.FieldNode
-import org.objectweb.asm.tree.InsnList
-import org.objectweb.asm.tree.InsnNode
-import org.objectweb.asm.tree.InvokeDynamicInsnNode
-import org.objectweb.asm.tree.IntInsnNode
-import org.objectweb.asm.tree.JumpInsnNode
-import org.objectweb.asm.tree.LabelNode
-import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
-import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.TryCatchBlockNode
-import org.objectweb.asm.tree.TypeInsnNode
+import org.objectweb.asm.tree.*
 import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 import org.objectweb.asm.tree.analysis.BasicValue
@@ -85,9 +72,6 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
     ) : TransformerConfig()
 
     private lateinit var methodExPredicate: NamePredicates
-
-    context(instance: Grunteon)
-    val renameMapping get() = instance.nameMapping.revMappings
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
@@ -148,11 +132,13 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
 
         val metadata = ConcurrentHashMap<ClassNode, MetaData>()
         // Generate metadata for all included classes
-        parForEachRenamedClassesFiltered(
-            config.classFilter.buildFilterStrategy(),
-            renameMapping
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+                .withMapping(instance.nameMapping.revMappings)
         ) { classNode ->
-            if (classNode.hasAnnotation(IGNORE_METADATA_TARGET)) return@parForEachRenamedClassesFiltered
+            if (classNode.hasAnnotation(IGNORE_METADATA_TARGET)) return@parForEachClassesFiltered
             val allMethods = mutableSetOf<MethodNode>()
 
             // DFS search methods, TODO: Optimize this via Method hierarchy
@@ -213,13 +199,15 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         val counter = reducibleScopeValue { MergeableCounter() }
         val addedMethods = ConcurrentLinkedQueue<Pair<ClassNode, List<MethodNode>>>()
         // Replace to invoke dynamics
-        parForEachRenamedClassesFiltered(
-            config.classFilter.buildFilterStrategy(),
-            renameMapping
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+                .withMapping(instance.nameMapping.revMappings)
         ) { classNode ->
-            if (classNode.isInterface) return@parForEachRenamedClassesFiltered
-            if (classNode.version < Opcodes.V1_7) return@parForEachRenamedClassesFiltered
-            if (classNode.hasAnnotation(DISABLE_REFERENCE_OBF)) return@parForEachRenamedClassesFiltered
+            if (classNode.isInterface) return@parForEachClassesFiltered
+            if (classNode.version < Opcodes.V1_7) return@parForEachClassesFiltered
+            if (classNode.hasAnnotation(DISABLE_REFERENCE_OBF)) return@parForEachClassesFiltered
 
             val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, "apply"))
             val counter = counter.local

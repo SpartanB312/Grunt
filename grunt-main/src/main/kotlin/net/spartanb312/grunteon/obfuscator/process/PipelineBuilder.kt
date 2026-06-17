@@ -8,7 +8,7 @@ import kotlinx.coroutines.runBlocking
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.util.LWWSP
 import net.spartanb312.grunteon.obfuscator.util.Logger
-import net.spartanb312.grunteon.obfuscator.util.filters.FilterStrategy
+import net.spartanb312.grunteon.obfuscator.util.filters.ClassPredicate
 import org.objectweb.asm.tree.ClassNode
 
 class ScopeValueAccess(
@@ -179,24 +179,12 @@ fun parForEachClasses(
 
 context(_: PipelineBuilder)
 fun parForEachClassesFiltered(
-    strategy: FilterStrategy,
+    predicate: ClassPredicate,
     batchSize: Int = 32,
     action: context(Grunteon, ScopeValueAccess) (ClassNode) -> Unit
 ) {
     parForEachClasses(batchSize) {
-        if (strategy.testClass(it)) action(it)
-    }
-}
-
-context(_: PipelineBuilder)
-fun parForEachRenamedClassesFiltered(
-    strategy: FilterStrategy,
-    mapping: Map<String, String>, // obfName -> prevName
-    action: context(Grunteon, ScopeValueAccess) (ClassNode) -> Unit
-) {
-    parForEachClasses {
-        val prevName = mapping.getOrDefault(it.name, it.name)
-        if (strategy.testClass(it, prevName)) action(it)
+        if (predicate.testImpl(it, it.name)) action(it)
     }
 }
 

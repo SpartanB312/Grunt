@@ -7,17 +7,8 @@ import com.google.gson.JsonObject
 import kotlinx.serialization.Serializable
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.after
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.HiddenTransformer
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.StableLevel
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
+import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.resource.NameGenerator
-import net.spartanb312.grunteon.obfuscator.process.seq
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.MappingSource
 import net.spartanb312.grunteon.obfuscator.util.Logger
@@ -25,7 +16,7 @@ import net.spartanb312.grunteon.obfuscator.util.collection.shuffled
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.dot
-import net.spartanb312.grunteon.obfuscator.util.extensions.isMixinClass
+import net.spartanb312.grunteon.obfuscator.util.filters.filter
 import net.spartanb312.grunteon.obfuscator.util.splash
 import java.nio.charset.StandardCharsets
 
@@ -85,15 +76,16 @@ class MixinClassRenamer : Transformer<MixinClassRenamer.Config>(
     override fun buildStageImpl(config: Config) {
         seq {
             Logger.info(" > MixinClassRenamer: Generating mixin class mappings...")
-            val strategy = config.classFilter.buildFilterStrategy()
+            val strategy = instance.globalExclusion
+                .and(instance.mixinInclusion)
+                .and(config.classFilter.toClassPredicate())
             val dictionary = NameGenerator.getDictionary(config.dictionary)
             val nameGenerator = NameGenerator(dictionary)
             val targetPackage = config.normalizedTargetPackage()
             val randomGen = Xoshiro256PPRandom(getSeed("MixinClassRenamer"))
             val mappings = linkedMapOf<String, String>()
             val classes = instance.workRes.inputClassCollection.asSequence()
-                .filter { it.isMixinClass }
-                .filter { strategy.testClass(it, excludeMixins = false) }
+                .filter(strategy)
                 .sortedBy { it.name }
                 .run {
                     if (config.shuffled) shuffled(randomGen) else this

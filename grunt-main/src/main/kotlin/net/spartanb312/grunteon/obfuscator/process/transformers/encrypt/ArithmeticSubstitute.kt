@@ -64,7 +64,11 @@ class ArithmeticSubstitute : Transformer<ArithmeticSubstitute.Config>(
             methodExPredicate = buildMethodNamePredicates(config.exclusion)
         }
         val counter = reducibleScopeValue { MergeableCounter() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val counter = counter.local
             if (classNode.isExcluded(DISABLE_ARITHMETIC_SUBSTITUTE)) return@parForEachClassesFiltered
             classNode.methods.asSequence()

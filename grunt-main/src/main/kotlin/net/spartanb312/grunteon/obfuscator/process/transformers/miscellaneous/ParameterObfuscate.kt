@@ -52,7 +52,11 @@ class ParameterObfuscate : Transformer<ParameterObfuscate.Config>(
         val counter = reducibleScopeValue { MergeableCounter() }
         val remapJobs = globalScopeValue { ConcurrentHashMap<String, String>() }
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val remapJobs = remapJobs.global
             val counter = counter.local
             val callInstances = Object2ObjectOpenHashMap<CallTarget, MutableSet<MethodInsnNode>>()

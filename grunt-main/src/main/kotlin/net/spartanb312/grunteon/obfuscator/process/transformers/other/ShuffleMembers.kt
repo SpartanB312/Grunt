@@ -41,7 +41,11 @@ class ShuffleMembers : Transformer<ShuffleMembers.Config>(
             //Logger.info(" > ShuffleMembers: Shuffling members...")
         }
         val counter = reducibleScopeValue { MergeableCounter() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val counter = counter.local
             val randomGen = Xoshiro256PPRandom(getSeed(classNode.name))
             if (config.methods) classNode.methods?.let {

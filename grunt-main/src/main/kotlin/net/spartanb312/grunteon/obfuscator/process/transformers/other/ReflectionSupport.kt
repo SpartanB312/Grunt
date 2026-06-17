@@ -5,41 +5,15 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet
 import kotlinx.serialization.Serializable
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.before
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.StableLevel
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.globalScopeValue
-import net.spartanb312.grunteon.obfuscator.process.parForEachClassesFiltered
-import net.spartanb312.grunteon.obfuscator.process.post
-import net.spartanb312.grunteon.obfuscator.process.pre
-import net.spartanb312.grunteon.obfuscator.process.reducibleScopeValue
+import net.spartanb312.grunteon.obfuscator.process.*
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReflectionSupport.Companion.remapReflectionStrings
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.NameMapping
-import net.spartanb312.grunteon.obfuscator.util.Logger
-import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
-import net.spartanb312.grunteon.obfuscator.util.ReflectionMetadataEntry
-import net.spartanb312.grunteon.obfuscator.util.ReflectionMetadataKind
-import net.spartanb312.grunteon.obfuscator.util.appendReflectionMetadata
-import net.spartanb312.grunteon.obfuscator.util.appendStringBlacklist
-import net.spartanb312.grunteon.obfuscator.util.reflectionMetadata
-import net.spartanb312.grunteon.obfuscator.util.stringBlacklist
+import net.spartanb312.grunteon.obfuscator.util.*
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
-import org.objectweb.asm.tree.AbstractInsnNode
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
-import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.analysis.Analyzer
-import org.objectweb.asm.tree.analysis.AnalyzerException
-import org.objectweb.asm.tree.analysis.Frame
-import org.objectweb.asm.tree.analysis.SourceInterpreter
-import org.objectweb.asm.tree.analysis.SourceValue
-import java.util.IdentityHashMap
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.tree.analysis.*
+import java.util.*
 
 /**
  * Marks reflection-related string literals before encryption, then remaps them
@@ -103,7 +77,11 @@ class ReflectionSupport : Transformer<ReflectionSupport.Config>(
         pre {
             Logger.info(" > ReflectionSupport: Scanning reflection strings...")
         }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val index = reflectionIndex.global
             val counter = counter.local
             classNode.methods.forEach { methodNode ->

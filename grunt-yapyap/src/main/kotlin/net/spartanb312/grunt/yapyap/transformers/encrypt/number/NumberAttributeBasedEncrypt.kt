@@ -136,7 +136,12 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         // Each parallel task still creates its own Pairing instance (JPBC is not thread-safe).
         val sharedParams = NumberAbeRuntime.buildParams(config.rBits, config.qBits)
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), 1) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate()),
+            1
+        ) { classNode ->
             if (classNode.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@parForEachClassesFiltered
             if (classNode.isExcluded(DISABLE_NUMBER_ABE)) return@parForEachClassesFiltered
             if (classNode.version < Opcodes.V1_5) return@parForEachClassesFiltered

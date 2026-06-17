@@ -49,7 +49,11 @@ class Watermark : Transformer<Watermark.Config>(
             //Logger.info(" > Watermark: Adding watermarks...")
         }
         val counter = reducibleScopeValue { MergeableCounter() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             if (classNode.isInterface) return@parForEachClassesFiltered
             val counter = counter.local
             if (config.fieldMark) {

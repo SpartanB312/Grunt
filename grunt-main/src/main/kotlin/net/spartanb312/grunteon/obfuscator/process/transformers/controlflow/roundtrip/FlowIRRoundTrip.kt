@@ -53,7 +53,11 @@ class FlowIRRoundTrip : Transformer<FlowIRRoundTrip.Config>(
             }
         }
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val flowTypeHierarchy = hierarchyKey.global?.let(::ClassHierarchyFlowTypeHierarchy) ?: JvmFlowTypeHierarchy.Empty
             val transformedMethods = classNode.methods.map { methodNode ->
                 if (methodNode.isAbstract || methodNode.isNative) {

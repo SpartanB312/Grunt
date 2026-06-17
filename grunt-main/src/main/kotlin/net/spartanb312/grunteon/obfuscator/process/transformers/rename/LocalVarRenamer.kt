@@ -11,7 +11,6 @@ import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
 import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
-import net.spartanb312.grunteon.obfuscator.util.filters.NamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 
@@ -68,7 +67,11 @@ class LocalVarRenamer : Transformer<LocalVarRenamer.Config>(
         val counter = reducibleScopeValue { MergeableCounter() }
         val methodExPredicate = globalScopeValue { buildMethodNamePredicates(config.exclusion) }
         val dictionary = globalScopeValue { NameGenerator.getDictionary(config.dictionary) }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val counter = counter.local
             val dictionary = dictionary.global
             val methodExPredicate = methodExPredicate.global

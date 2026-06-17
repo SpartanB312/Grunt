@@ -64,7 +64,11 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
         }
         val counter = reducibleScopeValue { MergeableCounter() }
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             if (classNode.version < Opcodes.V1_5) return@parForEachClassesFiltered
             if (classNode.isExcluded(DISABLE_STRING_ENCRYPT)) return@parForEachClassesFiltered
             val counter = counter.local

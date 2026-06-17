@@ -98,7 +98,11 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
         }
         val counter = reducibleScopeValue { MergeableCounter() }
         val shuffledListCache = localScopeValue { FastObjectArrayList<AbstractInsnNode>() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val counter = counter.local
             if (classNode.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@parForEachClassesFiltered
             classNode.methods.asSequence()

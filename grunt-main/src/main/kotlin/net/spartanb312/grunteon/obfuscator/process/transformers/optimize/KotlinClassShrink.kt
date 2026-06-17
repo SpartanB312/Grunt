@@ -71,7 +71,11 @@ class KotlinClassShrink : Transformer<KotlinClassShrink.Config>(
         val intrinsics = reducibleScopeValue { MergeableCounter() }
         val metadata = reducibleScopeValue { MergeableCounter() }
         val pendingReplaceCache = localScopeValue { FastObjectArrayList<AbstractInsnNode>() }
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             if (classNode.isExcluded(DISABLE_OPTIMIZER)) return@parForEachClassesFiltered
             if (config.intrinsics) {
                 val intrinsics = intrinsics.local

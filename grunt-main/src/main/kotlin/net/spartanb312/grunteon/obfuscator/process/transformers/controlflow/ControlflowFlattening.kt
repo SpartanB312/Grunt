@@ -18,6 +18,7 @@ import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
+import net.spartanb312.grunteon.obfuscator.util.filters.filter
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.analysis.Analyzer
@@ -197,7 +198,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                     instance.workRes.allClassCollection
                 } else {
                     instance.workRes.inputClassCollection
-                }.filterNot { it.isMixinClass }
+                }.filter(instance.mixinExclusion)
                 JunkCallPool.build(classes)
             } else {
                 null
@@ -231,7 +232,12 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
             }
         }
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy(), config.workerBatchSize.coerceAtLeast(1)) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate()),
+            config.workerBatchSize.coerceAtLeast(1)
+        ) { classNode ->
             val hierarchy = hierarchyKey.global
             val flowTypeHierarchy = hierarchy?.let(::ClassHierarchyFlowTypeHierarchy) ?: JvmFlowTypeHierarchy.Empty
             val transformedMethods = classNode.methods.map { methodNode ->

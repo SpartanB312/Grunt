@@ -40,7 +40,11 @@ class SSARoundTrip : Transformer<SSARoundTrip.Config>(
         val methodCounter = reducibleScopeValue { MergeableCounter() }
         val failureCounter = reducibleScopeValue { MergeableCounter() }
 
-        parForEachClassesFiltered(config.classFilter.buildFilterStrategy()) { classNode ->
+        parForEachClassesFiltered(
+            instance.globalExclusion
+                .and(instance.mixinExclusion)
+                .and(config.classFilter.toClassPredicate())
+        ) { classNode ->
             val transformedMethods = classNode.methods.map { methodNode ->
                 if (methodNode.isAbstract || methodNode.isNative) {
                     methodNode

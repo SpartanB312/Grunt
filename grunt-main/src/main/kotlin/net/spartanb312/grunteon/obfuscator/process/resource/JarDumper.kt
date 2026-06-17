@@ -9,9 +9,9 @@ import net.spartanb312.grunteon.obfuscator.util.ClearClassNode
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
-import net.spartanb312.grunteon.obfuscator.util.extensions.isExcluded
 import net.spartanb312.grunteon.obfuscator.util.file.corruptCRC32
 import net.spartanb312.grunteon.obfuscator.util.file.corruptJarHeader
+import net.spartanb312.grunteon.obfuscator.util.filters.test
 import org.objectweb.asm.Opcodes
 import java.nio.file.Path
 import java.util.zip.ZipEntry
@@ -99,8 +99,10 @@ object JarDumper {
                         }
                         val missingAny =
                             (hierarchy.missingDependencies[classInfo] || missingRef) && globalConfig.missingCheck
-                        val useComputeMax = globalConfig.forceComputeMax || missingAny || classNode.isExcluded
-                        val missing = missingAny && !globalConfig.forceComputeMax && !classNode.isExcluded
+                        val useComputeMax =
+                            globalConfig.forceComputeMax || missingAny || instance.globalExclusion.test(classNode)
+                        val missing =
+                            missingAny && !globalConfig.forceComputeMax && !instance.globalExclusion.test(classNode)
                         // Write zip entry
                         val entryName = classNode.name + ".class"
                         val byteArray = try {
