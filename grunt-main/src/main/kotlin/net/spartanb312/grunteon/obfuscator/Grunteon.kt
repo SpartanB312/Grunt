@@ -107,12 +107,15 @@ class Grunteon(
             val transformerList = transformerAndConfig.map { it.first }
 
             var lastRenamerIndex = -1
+            val errors = mutableListOf<String>()
             transformerAndConfig.forEachIndexed { index, (transformer, _) ->
                 if (transformer is MappingSource) lastRenamerIndex = index
                 transformer.orderRules.forEach {
-                    val valid = it.first.invoke(transformerList, index)
-                    if (!valid) throw Exception("${transformer.engName} has a wrong order! Reason: ${it.second}")
+                    if (!it.first.invoke(transformerList, index)) errors.add("${transformer.engName}: ${it.second}")
                 }
+            }
+            check(errors.isEmpty()) {
+                "Transformer order rules violated:\n" + errors.joinToString("\n")
             }
             if (lastRenamerIndex != -1) {
                 transformerAndConfig.add(lastRenamerIndex + 1, MappingApplier() to MappingApplier.Config())
