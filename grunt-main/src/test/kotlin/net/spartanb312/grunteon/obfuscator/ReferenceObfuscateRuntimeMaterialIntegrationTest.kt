@@ -113,6 +113,16 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
     }
 
     @Test
+    fun disablesBootstrapReobfuscationWhenNativePipelineIsEnabled() {
+        val withNative = runReferenceObfuscate(reobfBSM = true, nativePipelineEnabled = true)
+        val helpers = withNative.referenceClass().referenceHelpers()
+
+        assertTrue(helpers.isNotEmpty())
+        assertTrue(helpers.sumOf { it.stringLdcCount() } > 0)
+        assertEquals(0, helpers.sumOf { it.exceptionBridgeCount() })
+    }
+
+    @Test
     fun generatedHelperNativeCandidateRatioControlsAnnotations() {
         val none = runReferenceObfuscate(
             reobfBSM = false,

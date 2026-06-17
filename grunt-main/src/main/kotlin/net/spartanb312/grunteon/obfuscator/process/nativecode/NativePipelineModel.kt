@@ -121,7 +121,13 @@ internal data class NativeSourceBundle(
     val plan: NativeBuildPlan,
     val sourceText: String,
     val sourcePath: Path,
-    val libraryPath: Path
+    val libraryPath: Path,
+    val sourceFiles: List<NativeSourceFile> = listOf(NativeSourceFile(sourcePath, sourceText))
+)
+
+internal data class NativeSourceFile(
+    val path: Path,
+    val text: String
 )
 
 internal data class NativeCompileResult(

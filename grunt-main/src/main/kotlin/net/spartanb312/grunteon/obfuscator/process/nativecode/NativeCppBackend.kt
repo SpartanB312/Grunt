@@ -64,11 +64,13 @@ internal object NativeCppBackend {
             platform = platform,
             classes = classPlans
         )
+        val singleSource = emitSource(plan)
         return NativeSourceBundle(
             plan = plan,
-            sourceText = emitSource(plan),
+            sourceText = singleSource,
             sourcePath = sourcePath,
-            libraryPath = libraryPath
+            libraryPath = libraryPath,
+            sourceFiles = emitSourceFiles(plan, sourcePath, singleSource, config)
         )
     }
 
@@ -87,6 +89,163 @@ internal object NativeCppBackend {
         return raw
             .map { if (it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9') it else '_' }
             .joinToString("")
+    }
+
+    private fun emitSourceFiles(
+        plan: NativeBuildPlan,
+        sourcePath: Path,
+        singleSource: String,
+        config: NativePipelineConfig
+    ): List<NativeSourceFile> {
+        val methodCount = plan.classes.sumOf { it.methods.size }
+        if (!config.splitSourceFiles || methodCount <= config.maxMethodsPerSourceFile) {
+            return listOf(NativeSourceFile(sourcePath, singleSource))
+        }
+
+        val sourceRoot = sourcePath.parent
+        val commonPrefix = commonSourcePrefix(plan, singleSource)
+        val chunks = splitClassPlans(plan.classes, config.maxMethodsPerSourceFile)
+        return buildList {
+            add(
+                NativeSourceFile(
+                    sourceRoot.resolve("grunteon_native_register.cpp"),
+                    emitSplitRegisterSource(plan, chunks.indices.toList(), commonPrefix)
+                )
+            )
+            chunks.forEachIndexed { index, classPlans ->
+                add(
+                    NativeSourceFile(
+                        sourceRoot.resolve("grunteon_native_chunk_${index.toString().padStart(4, '0')}.cpp"),
+                        emitSplitChunkSource(index, classPlans, commonPrefix)
+                    )
+                )
+            }
+        }
+    }
+
+    private fun commonSourcePrefix(plan: NativeBuildPlan, singleSource: String): String {
+        val firstMethod = plan.classes.firstOrNull()?.methods?.firstOrNull() ?: return singleSource
+        val marker = "// ${firstMethod.method.displayName}"
+        return singleSource.substringBefore(marker)
+    }
+
+    private fun splitClassPlans(
+        classes: List<NativeClassPlan>,
+        maxMethodsPerSourceFile: Int
+    ): List<List<NativeClassPlan>> {
+        val chunks = mutableListOf<List<NativeClassPlan>>()
+        var current = mutableListOf<NativeClassPlan>()
+        var currentMethodCount = 0
+        val maxMethods = maxOf(1, maxMethodsPerSourceFile)
+        classes.forEach { classPlan ->
+            val classMethodCount = maxOf(1, classPlan.methods.size)
+            if (current.isNotEmpty() && currentMethodCount + classMethodCount > maxMethods) {
+                chunks += current
+                current = mutableListOf()
+                currentMethodCount = 0
+            }
+            current += classPlan
+            currentMethodCount += classMethodCount
+        }
+        if (current.isNotEmpty()) chunks += current
+        return chunks
+    }
+
+    private fun emitSplitChunkSource(
+        chunkIndex: Int,
+        classPlans: List<NativeClassPlan>,
+        commonPrefix: String
+    ): String {
+        return buildString {
+            append(commonPrefix)
+            classPlans.forEach { classPlan ->
+                classPlan.methods.forEach { binding ->
+                    appendLine("// ${binding.method.displayName}")
+                    appendLine(emitNativeMethod(binding))
+                }
+            }
+            classPlans.forEach { classPlan ->
+                appendClassRegistrar(classPlan, externalLinkage = true, initializeRuntime = true)
+            }
+            val loaderProxyMethods = classPlans
+                .flatMap { it.methods }
+                .filter {
+                    it.commitKind == NativeMethodCommitKind.InterfaceProxy ||
+                        it.commitKind == NativeMethodCommitKind.InterfaceClassInitializerProxy
+                }
+            appendLine("void grt_register_loader_proxies_chunk_$chunkIndex(JNIEnv* env, jclass loader) {")
+            if (loaderProxyMethods.isEmpty()) {
+                appendLine("    (void) env;")
+                appendLine("    (void) loader;")
+            } else {
+                appendLine("    if (!grt_init_runtime(env)) return;")
+                appendLine("    JNINativeMethod loaderMethods[] = {")
+                loaderProxyMethods.forEach { binding ->
+                    append("        { const_cast<char*>(\"")
+                        .append(cppString(binding.registeredName))
+                        .append("\"), const_cast<char*>(\"")
+                        .append(cppString(binding.registeredDesc))
+                        .append("\"), reinterpret_cast<void*>(")
+                        .append(binding.functionName)
+                        .append(") },")
+                        .appendLine()
+                }
+                appendLine("    };")
+                appendLine("    env->RegisterNatives(loader, loaderMethods, static_cast<jint>(sizeof(loaderMethods) / sizeof(loaderMethods[0])));")
+            }
+            appendLine("}")
+            appendLine()
+        }
+    }
+
+    private fun emitSplitRegisterSource(
+        plan: NativeBuildPlan,
+        chunkIndices: List<Int>,
+        commonPrefix: String
+    ): String {
+        return buildString {
+            append(commonPrefix)
+            plan.classes.forEach { classPlan ->
+                appendLine("extern void grt_register_class_${classPlan.classId}(JNIEnv* env, jclass clazz);")
+            }
+            chunkIndices.forEach { chunkIndex ->
+                appendLine("extern void grt_register_loader_proxies_chunk_$chunkIndex(JNIEnv* env, jclass loader);")
+            }
+            appendLine()
+            appendLine("using GrtRegistrar = void (*)(JNIEnv*, jclass);")
+            appendLine("static GrtRegistrar grt_registrars[] = {")
+            plan.classes.forEach { classPlan ->
+                appendLine("    grt_register_class_${classPlan.classId},")
+            }
+            appendLine("};")
+            appendLine()
+            appendLine("static void JNICALL grt_register_natives_for_class(JNIEnv* env, jclass, jint classId, jclass clazz) {")
+            appendLine("    if (classId < 0) return;")
+            appendLine("    const jint count = static_cast<jint>(sizeof(grt_registrars) / sizeof(grt_registrars[0]));")
+            appendLine("    if (classId >= count) return;")
+            appendLine("    grt_registrars[classId](env, clazz);")
+            appendLine("}")
+            appendLine()
+            appendLine("extern \"C\" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {")
+            appendLine("    JNIEnv* env = nullptr;")
+            appendLine("    if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_8) != JNI_OK) return JNI_ERR;")
+            append("    jclass loader = env->FindClass(\"")
+                .append(cppString(plan.loaderInternalName))
+                .appendLine("\");")
+            appendLine("    if (loader == nullptr) return JNI_ERR;")
+            appendLine("    if (!grt_init_runtime(env)) return JNI_ERR;")
+            appendLine("    JNINativeMethod loaderMethods[] = {")
+            appendLine("        { const_cast<char*>(\"registerNativesForClass\"), const_cast<char*>(\"(ILjava/lang/Class;)V\"), reinterpret_cast<void*>(grt_register_natives_for_class) },")
+            appendLine("    };")
+            appendLine("    env->RegisterNatives(loader, loaderMethods, static_cast<jint>(sizeof(loaderMethods) / sizeof(loaderMethods[0])));")
+            appendLine("    if (env->ExceptionCheck()) return JNI_ERR;")
+            chunkIndices.forEach { chunkIndex ->
+                appendLine("    grt_register_loader_proxies_chunk_$chunkIndex(env, loader);")
+                appendLine("    if (env->ExceptionCheck()) return JNI_ERR;")
+            }
+            appendLine("    return JNI_VERSION_1_8;")
+            appendLine("}")
+        }
     }
 
     private fun emitSource(plan: NativeBuildPlan): String {
@@ -297,53 +456,12 @@ internal object NativeCppBackend {
             plan.classes.forEach { classPlan ->
                 classPlan.methods.forEach { binding ->
                     appendLine("// ${binding.method.displayName}")
-                    appendLine(
-                        when (binding.method.lowering) {
-                            NativeLoweringKind.SsaPrimitive,
-                            NativeLoweringKind.SsaPrimitiveInt -> NativeSsaIntMethodTranslator.translate(
-                                binding.method,
-                                binding.functionName
-                            )
-                            NativeLoweringKind.PrimitiveInt -> NativeIntMethodTranslator.translate(
-                                binding.method.methodNode,
-                                binding.functionName
-                            )
-                            NativeLoweringKind.FullJvm -> NativeJvmCppMethodTranslator.translate(
-                                binding.method,
-                                binding.functionName,
-                                binding.commitKind
-                            )
-                        }
-                    )
+                    appendLine(emitNativeMethod(binding))
                 }
             }
 
             plan.classes.forEach { classPlan ->
-                val registeredMethods = classPlan.methods.filter {
-                    it.commitKind != NativeMethodCommitKind.InterfaceProxy &&
-                        it.commitKind != NativeMethodCommitKind.InterfaceClassInitializerProxy
-                }
-                appendLine("static void grt_register_class_${classPlan.classId}(JNIEnv* env, jclass clazz) {")
-                if (registeredMethods.isEmpty()) {
-                    appendLine("    (void) env;")
-                    appendLine("    (void) clazz;")
-                } else {
-                    appendLine("    JNINativeMethod methods[] = {")
-                    registeredMethods.forEach { binding ->
-                        append("        { const_cast<char*>(\"")
-                            .append(cppString(binding.registeredName))
-                            .append("\"), const_cast<char*>(\"")
-                            .append(cppString(binding.registeredDesc))
-                            .append("\"), reinterpret_cast<void*>(")
-                            .append(binding.functionName)
-                            .append(") },")
-                            .appendLine()
-                    }
-                    appendLine("    };")
-                    appendLine("    env->RegisterNatives(clazz, methods, static_cast<jint>(sizeof(methods) / sizeof(methods[0])));")
-                }
-                appendLine("}")
-                appendLine()
+                appendClassRegistrar(classPlan, externalLinkage = false, initializeRuntime = false)
             }
 
             appendLine("using GrtRegistrar = void (*)(JNIEnv*, jclass);")
@@ -391,6 +509,63 @@ internal object NativeCppBackend {
             appendLine("    if (env->ExceptionCheck()) return JNI_ERR;")
             appendLine("    return JNI_VERSION_1_8;")
             appendLine("}")
+        }
+    }
+
+    private fun StringBuilder.appendClassRegistrar(
+        classPlan: NativeClassPlan,
+        externalLinkage: Boolean,
+        initializeRuntime: Boolean
+    ) {
+        val registeredMethods = classPlan.methods.filter {
+            it.commitKind != NativeMethodCommitKind.InterfaceProxy &&
+                it.commitKind != NativeMethodCommitKind.InterfaceClassInitializerProxy
+        }
+        append(if (externalLinkage) "void " else "static void ")
+            .append("grt_register_class_")
+            .append(classPlan.classId)
+            .appendLine("(JNIEnv* env, jclass clazz) {")
+        if (registeredMethods.isEmpty()) {
+            appendLine("    (void) env;")
+            appendLine("    (void) clazz;")
+        } else {
+            if (initializeRuntime) appendLine("    if (!grt_init_runtime(env)) return;")
+            appendLine("    JNINativeMethod methods[] = {")
+            registeredMethods.forEach { binding ->
+                append("        { const_cast<char*>(\"")
+                    .append(cppString(binding.registeredName))
+                    .append("\"), const_cast<char*>(\"")
+                    .append(cppString(binding.registeredDesc))
+                    .append("\"), reinterpret_cast<void*>(")
+                    .append(binding.functionName)
+                    .append(") },")
+                    .appendLine()
+            }
+            appendLine("    };")
+            appendLine("    env->RegisterNatives(clazz, methods, static_cast<jint>(sizeof(methods) / sizeof(methods[0])));")
+        }
+        appendLine("}")
+        appendLine()
+    }
+
+    private fun emitNativeMethod(binding: NativeMethodBinding): String {
+        return when (binding.method.lowering) {
+            NativeLoweringKind.SsaPrimitive,
+            NativeLoweringKind.SsaPrimitiveInt -> NativeSsaIntMethodTranslator.translate(
+                binding.method,
+                binding.functionName
+            )
+
+            NativeLoweringKind.PrimitiveInt -> NativeIntMethodTranslator.translate(
+                binding.method.methodNode,
+                binding.functionName
+            )
+
+            NativeLoweringKind.FullJvm -> NativeJvmCppMethodTranslator.translate(
+                binding.method,
+                binding.functionName,
+                binding.commitKind
+            )
         }
     }
 

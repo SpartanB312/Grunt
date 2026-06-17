@@ -51,7 +51,7 @@ object NativePipelineRunner {
 
         Logger.info(" - NativePipeline:")
         Logger.info("    Nativeized ${accepted.size} methods in ${sourceBundle.plan.classes.size} classes")
-        Logger.info("    Wrote native source to ${sourceBundle.sourcePath}")
+        Logger.info("    Wrote ${sourceBundle.sourceFiles.size} native source file(s) under ${sourceBundle.sourcePath.parent}")
         Logger.info("    Injected native library resource ${sourceBundle.plan.resourceName}")
     }
 

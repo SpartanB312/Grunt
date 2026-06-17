@@ -4,9 +4,12 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
+import kotlin.io.path.name
 import kotlin.io.path.writeText
 
 internal object NativeCompiler {
@@ -15,9 +18,8 @@ internal object NativeCompiler {
         bundle: NativeSourceBundle,
         config: NativePipelineConfig = NativePipelineConfig()
     ): NativeCompileResult {
-        bundle.sourcePath.parent.createDirectories()
         bundle.libraryPath.parent.createDirectories()
-        bundle.sourcePath.writeText(bundle.sourceText)
+        writeSourceFiles(bundle)
 
         val compiler = findCompiler(config) ?: return NativeCompileResult(
             success = false,
@@ -37,25 +39,18 @@ internal object NativeCompiler {
             )
         }
 
-        val command = buildCompileCommand(bundle, compiler, includeRoot, includeOs, config)
-
-        val process = try {
-            ProcessBuilder(command)
-                .directory(bundle.sourcePath.parent.toFile())
-                .redirectErrorStream(true)
-                .start()
-        } catch (exception: IOException) {
-            return NativeCompileResult(
-                success = false,
-                output = "Failed to start native compiler ${compiler.command}: ${exception.message}"
+        val result = if (compiler.kind == NativeCompilerKind.GnuLike && bundle.compilableSourcePaths().size > 1) {
+            compileGnuLikeSplit(bundle, compiler.command, includeRoot, includeOs, config)
+        } else {
+            runCommand(
+                buildCompileCommand(bundle, compiler, includeRoot, includeOs, config),
+                bundle.sourcePath.parent
             )
         }
-        val output = process.inputStream.bufferedReader().use { it.readText() }
-        val exitCode = process.waitFor()
-        return if (exitCode == 0 && Files.exists(bundle.libraryPath)) {
-            NativeCompileResult(true, bundle.libraryPath, output)
+        return if (result.exitCode == 0 && Files.exists(bundle.libraryPath)) {
+            NativeCompileResult(true, bundle.libraryPath, result.output)
         } else {
-            NativeCompileResult(false, null, "Native compiler exited with code $exitCode\n$output")
+            NativeCompileResult(false, null, "Native compiler exited with code ${result.exitCode}\n${result.output}")
         }
     }
 
@@ -83,7 +78,7 @@ internal object NativeCompiler {
         return buildList {
             add(compiler)
             add("-std=c++17")
-            add("-O2")
+            add(gnuOptimizationFlag(config))
             add("-fPIC")
             add(sharedFlag)
             addAll(defaultGnuLikeCompilerArgs(bundle.plan.platform))
@@ -94,7 +89,50 @@ internal object NativeCompiler {
             add(includeOs.absolutePathString())
             add("-o")
             add(bundle.libraryPath.absolutePathString())
-            add(bundle.sourcePath.absolutePathString())
+            addAll(bundle.compilableSourcePaths().map { it.absolutePathString() })
+        }
+    }
+
+    internal fun buildGnuLikeObjectCommand(
+        sourcePath: Path,
+        objectPath: Path,
+        compiler: String,
+        includeRoot: Path,
+        includeOs: Path,
+        config: NativePipelineConfig
+    ): List<String> {
+        return buildList {
+            add(compiler)
+            add("-std=c++17")
+            add(gnuOptimizationFlag(config))
+            add("-fPIC")
+            addAll(config.compilerArgs)
+            add("-I")
+            add(includeRoot.absolutePathString())
+            add("-I")
+            add(includeOs.absolutePathString())
+            add("-c")
+            add(sourcePath.absolutePathString())
+            add("-o")
+            add(objectPath.absolutePathString())
+        }
+    }
+
+    internal fun buildGnuLikeLinkCommand(
+        bundle: NativeSourceBundle,
+        compiler: String,
+        objectPaths: List<Path>,
+        config: NativePipelineConfig
+    ): List<String> {
+        val sharedFlag = if (bundle.plan.platform.os == "macos") "-dynamiclib" else "-shared"
+        return buildList {
+            add(compiler)
+            add(sharedFlag)
+            addAll(defaultGnuLikeCompilerArgs(bundle.plan.platform))
+            addAll(config.compilerArgs)
+            add("-o")
+            add(bundle.libraryPath.absolutePathString())
+            addAll(objectPaths.map { it.absolutePathString() })
         }
     }
 
@@ -118,13 +156,123 @@ internal object NativeCompiler {
             add("/nologo")
             add("/std:c++17")
             add("/EHsc")
-            add("/O2")
+            add(msvcOptimizationFlag(config))
             add("/LD")
             add("/I${includeRoot.absolutePathString()}")
             add("/I${includeOs.absolutePathString()}")
             addAll(config.compilerArgs)
             add("/Fe:${bundle.libraryPath.absolutePathString()}")
-            add(bundle.sourcePath.absolutePathString())
+            addAll(bundle.compilableSourcePaths().map { it.absolutePathString() })
+        }
+    }
+
+    private fun compileGnuLikeSplit(
+        bundle: NativeSourceBundle,
+        compiler: String,
+        includeRoot: Path,
+        includeOs: Path,
+        config: NativePipelineConfig
+    ): CommandResult {
+        val sourcePaths = bundle.compilableSourcePaths()
+        val objectDir = bundle.sourcePath.parent.resolve("obj")
+        objectDir.createDirectories()
+        val objectPaths = sourcePaths.mapIndexed { index, source ->
+            objectDir.resolve("${source.name.substringBeforeLast('.')}_${index.toString().padStart(4, '0')}.o")
+        }
+        val jobs = effectiveParallelCompileJobs(config, sourcePaths.size)
+        val executor = Executors.newFixedThreadPool(jobs)
+        val output = StringBuilder()
+        try {
+            val tasks = sourcePaths.zip(objectPaths).map { (source, objectPath) ->
+                Callable {
+                    val command = buildGnuLikeObjectCommand(source, objectPath, compiler, includeRoot, includeOs, config)
+                    runCommand(command, bundle.sourcePath.parent)
+                }
+            }
+            val results = executor.invokeAll(tasks).map { it.get() }
+            results.forEach { result ->
+                if (result.output.isNotBlank()) output.append(result.output).appendLine()
+                if (result.exitCode != 0) {
+                    output.append("Failed command: ")
+                        .append(result.command.joinToString(" "))
+                        .appendLine()
+                    return CommandResult(result.exitCode, output.toString(), result.command)
+                }
+            }
+        } finally {
+            executor.shutdown()
+        }
+
+        val linkCommand = buildGnuLikeLinkCommand(bundle, compiler, objectPaths, config)
+        val linkResult = runCommand(linkCommand, bundle.sourcePath.parent)
+        if (linkResult.output.isNotBlank()) output.append(linkResult.output)
+        return CommandResult(linkResult.exitCode, output.toString(), linkCommand)
+    }
+
+    private fun writeSourceFiles(bundle: NativeSourceBundle) {
+        val sourceRoot = bundle.sourcePath.parent
+        val expectedSources = bundle.sourceFiles.map { it.path.toAbsolutePath().normalize() }.toSet()
+        if (sourceRoot.exists()) {
+            Files.newDirectoryStream(sourceRoot, "grunteon_native*.cpp").use { entries ->
+                entries.forEach { existing ->
+                    if (existing.toAbsolutePath().normalize() !in expectedSources) {
+                        Files.deleteIfExists(existing)
+                    }
+                }
+            }
+        }
+        bundle.sourceFiles.forEach { source ->
+            source.path.parent.createDirectories()
+            source.path.writeText(source.text)
+        }
+    }
+
+    private fun NativeSourceBundle.compilableSourcePaths(): List<Path> {
+        return sourceFiles.map { it.path }.filter { it.isCppSource() }
+    }
+
+    private fun Path.isCppSource(): Boolean {
+        val fileName = name.lowercase()
+        return fileName.endsWith(".cpp") || fileName.endsWith(".cc") || fileName.endsWith(".cxx")
+    }
+
+    private fun runCommand(command: List<String>, directory: Path): CommandResult {
+        val process = try {
+            ProcessBuilder(command)
+                .directory(directory.toFile())
+                .redirectErrorStream(true)
+                .start()
+        } catch (exception: IOException) {
+            return CommandResult(
+                exitCode = -1,
+                output = "Failed to start native compiler ${command.firstOrNull().orEmpty()}: ${exception.message}",
+                command = command
+            )
+        }
+        val output = process.inputStream.bufferedReader().use { it.readText() }
+        val exitCode = process.waitFor()
+        return CommandResult(exitCode, output, command)
+    }
+
+    private fun effectiveParallelCompileJobs(config: NativePipelineConfig, sourceCount: Int): Int {
+        val configured = config.parallelCompileJobs
+        val available = Runtime.getRuntime().availableProcessors()
+        val jobs = if (configured > 0) configured else maxOf(1, available - 1)
+        return jobs.coerceIn(1, sourceCount)
+    }
+
+    private fun gnuOptimizationFlag(config: NativePipelineConfig): String {
+        return "-${config.optimizationLevel.name}"
+    }
+
+    private fun msvcOptimizationFlag(config: NativePipelineConfig): String {
+        return when (config.optimizationLevel) {
+            NativeOptimizationLevel.O0 -> "/Od"
+            NativeOptimizationLevel.O1,
+            NativeOptimizationLevel.Os,
+            NativeOptimizationLevel.Oz -> "/O1"
+            NativeOptimizationLevel.O2,
+            NativeOptimizationLevel.O3 -> "/O2"
         }
     }
 
@@ -198,4 +346,10 @@ internal object NativeCompiler {
         GnuLike,
         Msvc
     }
+
+    internal data class CommandResult(
+        val exitCode: Int,
+        val output: String,
+        val command: List<String>
+    )
 }

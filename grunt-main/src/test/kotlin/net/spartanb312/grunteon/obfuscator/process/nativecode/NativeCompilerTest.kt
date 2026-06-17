@@ -24,6 +24,7 @@ class NativeCompilerTest {
 
         assertEquals("/usr/bin/clang++", command.first())
         assertTrue("-std=c++17" in command)
+        assertTrue("-O1" in command)
         assertTrue("-shared" in command)
         assertTrue("-fPIC" in command)
         assertTrue("-DGRUNTEON_TEST=1" in command)
@@ -65,6 +66,43 @@ class NativeCompilerTest {
         assertTrue("-static" in command)
         assertTrue("-static-libgcc" in command)
         assertTrue("-static-libstdc++" in command)
+    }
+
+    @Test
+    fun buildsGnuLikeObjectAndLinkCommandsForSplitSources() {
+        val bundle = sourceBundle(NativePlatform("windows", "x86_64", "", ".dll", "win32"))
+        val includeRoot = Path.of("build/test-jdk/include")
+        val includeOs = includeRoot.resolve("win32")
+        val source = bundle.sourcePath.parent.resolve("grunteon_native_chunk_0000.cpp")
+        val objectPath = bundle.sourcePath.parent.resolve("obj").resolve("grunteon_native_chunk_0000.o")
+        val config = NativePipelineConfig(
+            compilerArgs = listOf("-DGRUNTEON_TEST=1"),
+            optimizationLevel = NativeOptimizationLevel.O0
+        )
+
+        val objectCommand = NativeCompiler.buildGnuLikeObjectCommand(
+            sourcePath = source,
+            objectPath = objectPath,
+            compiler = "g++.exe",
+            includeRoot = includeRoot,
+            includeOs = includeOs,
+            config = config
+        )
+        val linkCommand = NativeCompiler.buildGnuLikeLinkCommand(
+            bundle = bundle,
+            compiler = "g++.exe",
+            objectPaths = listOf(objectPath),
+            config = config
+        )
+
+        assertTrue("-c" in objectCommand)
+        assertTrue("-O0" in objectCommand)
+        assertTrue("-DGRUNTEON_TEST=1" in objectCommand)
+        assertTrue(objectPath.toAbsolutePath().toString() in objectCommand)
+        assertTrue("-shared" in linkCommand)
+        assertTrue("-static" in linkCommand)
+        assertTrue(bundle.libraryPath.toAbsolutePath().toString() in linkCommand)
+        assertEquals(objectPath.toAbsolutePath().toString(), linkCommand.last())
     }
 
     @Test

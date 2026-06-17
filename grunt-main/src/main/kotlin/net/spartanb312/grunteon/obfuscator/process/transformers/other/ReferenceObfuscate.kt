@@ -55,7 +55,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         @SettingDesc("Specify encrypted data container")
         @SettingName("Metadata class")
         val metadataClass: String = "net/spartanb312/grunteon/internal/Metadata",
-        @SettingDesc("Reobfuscate bootstrap method")
+        @SettingDesc("Reobfuscate bootstrap method. Automatically disabled while NativePipeline is enabled to avoid oversized native BSM output")
         @SettingName("Reobfuscate BSM")
         val reobfBSM: Boolean = true,
         @SettingDesc("Use a massive generated helper method name. Automatically disabled while NativePipeline is enabled to keep native source and C++ symbols compilable")
@@ -205,6 +205,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
 
         val counter = reducibleScopeValue { MergeableCounter() }
         val addedMethods = ConcurrentLinkedQueue<Pair<ClassNode, List<MethodNode>>>()
+        val reobfuscateBootstrap = shouldReobfuscateBootstrap(config)
         // Replace to invoke dynamics
         parForEachClassesFiltered(
             instance.globalExclusion
@@ -250,7 +251,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                         .forEach { it.markGeneratedReferenceBootstrap(config) }
                     listOfNotNull(materialKey, plainDecrypt, decrypt, decrypt2)
                         .forEach { it.markGeneratedReferenceHelper(config, randomGen) }
-                    if (config.reobfBSM) {
+                    if (reobfuscateBootstrap) {
                         val methodsAdded = mutableListOf<MethodNode>()
                         materialKey?.let { methodsAdded.add(it) }
                         plainDecrypt?.let { methodsAdded.add(it) }
@@ -274,7 +275,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         // Force sync
         barrier()
         // Reobf
-        if (config.reobfBSM) seq {
+        if (reobfuscateBootstrap) seq {
             runBlocking {
                 credit.add(addedMethods.sumOf { it.second.size } * 750L)
                 addedMethods.forEach { (classNode, methods) ->
@@ -291,6 +292,11 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             credit.add(counter.global.get()* 200L)
             Logger.info("    Replaced ${counter.global.get()} invokes")
         }
+    }
+
+    context(instance: Grunteon)
+    private fun shouldReobfuscateBootstrap(config: Config): Boolean {
+        return config.reobfBSM && !instance.nativePipelineConfig.enabled
     }
 
     context(instance: Grunteon)

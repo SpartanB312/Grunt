@@ -23,6 +23,7 @@ import org.objectweb.asm.tree.VarInsnNode
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class NativeJvmCppMethodTranslatorTest {
 
@@ -431,6 +432,35 @@ class NativeJvmCppMethodTranslatorTest {
         assertFalse(source.contains("env->RegisterNatives(clazz, methods"))
     }
 
+    @Test
+    fun backendSplitsLargeNativeSourcesIntoRegisterAndChunkFiles() {
+        val bundle = NativeCppBackend.generate(
+            methods = listOf(
+                validated(constantIntMethod("a"), className = "test/A"),
+                validated(constantIntMethod("b"), className = "test/B"),
+                validated(constantIntMethod("c"), className = "test/C")
+            ),
+            config = NativePipelineConfig(
+                enabled = true,
+                splitSourceFiles = true,
+                maxMethodsPerSourceFile = 1
+            ),
+            classExists = { false }
+        )
+
+        val names = bundle.sourceFiles.map { it.path.fileName.toString() }
+        assertTrue("grunteon_native_register.cpp" in names)
+        assertTrue(names.count { it.startsWith("grunteon_native_chunk_") } >= 3)
+
+        val registerSource = bundle.sourceFiles.single { it.path.fileName.toString() == "grunteon_native_register.cpp" }.text
+        val chunkSource = bundle.sourceFiles.first { it.path.fileName.toString().startsWith("grunteon_native_chunk_") }.text
+
+        assertContains(registerSource, "extern void grt_register_class_0(JNIEnv* env, jclass clazz);")
+        assertContains(registerSource, "grt_register_loader_proxies_chunk_0(env, loader);")
+        assertContains(chunkSource, "void grt_register_class_")
+        assertContains(chunkSource, "if (!grt_init_runtime(env)) return;")
+    }
+
     private fun translate(method: MethodNode): String {
         return NativeJvmCppMethodTranslator.translate(validated(method), "grt_test")
     }
@@ -807,6 +837,15 @@ class NativeJvmCppMethodTranslatorTest {
             instructions.add(InsnNode(Opcodes.IRETURN))
             maxStack = 1
             maxLocals = 1
+        }
+    }
+
+    private fun constantIntMethod(name: String): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, name, "()I", null, null).apply {
+            instructions.add(InsnNode(Opcodes.ICONST_1))
+            instructions.add(InsnNode(Opcodes.IRETURN))
+            maxStack = 1
+            maxLocals = 0
         }
     }
 
