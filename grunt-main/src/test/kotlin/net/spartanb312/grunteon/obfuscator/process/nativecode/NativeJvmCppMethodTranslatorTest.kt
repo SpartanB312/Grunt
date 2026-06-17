@@ -36,6 +36,18 @@ class NativeJvmCppMethodTranslatorTest {
         ).sourceText
 
         assertContains(source, "static jclass grt_find_class(JNIEnv* env, jobject classloader, const char* internalName)")
+        assertContains(source, "struct GrtClassCacheEntry { jweak loader; jweak clazz; };")
+        assertContains(source, "static std::unordered_map<std::string, std::vector<GrtClassCacheEntry>> grt_class_cache;")
+        assertContains(source, "jobject strongClass = env->NewLocalRef(entry.clazz);")
+        assertContains(source, "if (strongClass == nullptr) continue;")
+        assertContains(source, "return (jclass) strongClass;")
+        assertContains(source, "jweak classRef = env->NewWeakGlobalRef(localClass);")
+        assertContains(source, "entries.push_back({ loaderRef, classRef });")
+        assertContains(source, "return localClass;")
+        assertContains(source, "struct GrtMethodCacheEntry { jweak clazz; jmethodID id; };")
+        assertContains(source, "struct GrtFieldCacheEntry { jweak clazz; jfieldID id; };")
+        assertContains(source, "static jmethodID grt_get_method_id(JNIEnv* env, jclass clazz, const char* name, const char* desc, bool isStatic)")
+        assertContains(source, "static jfieldID grt_get_field_id(JNIEnv* env, jclass clazz, const char* name, const char* desc, bool isStatic)")
         assertContains(source, "grt_load_class_method = env->GetMethodID(grt_classloader_class, \"loadClass\", \"(Ljava/lang/String;)Ljava/lang/Class;\");")
         assertContains(source, "if (!grt_init_runtime(env)) return JNI_ERR;")
         assertContains(source, "static inline jint grt_i32(uint32_t value)")
@@ -46,8 +58,28 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(source, "static inline jint grt_ishr32(jint value, jint distance)")
         assertContains(source, "static inline uint64_t grt_lshr64_bits(uint64_t bits, uint32_t distance)")
         assertContains(source, "static inline jlong grt_lshr64(jlong value, jint distance)")
+        assertContains(source, "env->ThrowNew(clazz, message);")
+        assertContains(source, "env->DeleteLocalRef(clazz);")
         assertContains(source, "grt_string_intern_method = env->GetMethodID(grt_string_class, \"intern\", \"()Ljava/lang/String;\");")
         assertContains(source, "static inline jstring grt_ldc_string(JNIEnv* env, const char* value)")
+        assertContains(source, "static std::unordered_map<std::string, jstring> grt_string_cache;")
+        assertContains(source, "auto cached = grt_string_cache.find(value);")
+        assertContains(source, "static jclass grt_boolean_array_class = nullptr;")
+        assertContains(source, "jclass localBooleanArray = env->FindClass(\"[Z\");")
+        assertContains(source, "grt_boolean_array_class = (jclass) env->NewGlobalRef(localBooleanArray);")
+        assertContains(source, "env->DeleteLocalRef(localBooleanArray);")
+        assertContains(source, "env->IsInstanceOf(array, grt_boolean_array_class)")
+    }
+
+    @Test
+    fun backendEmitsModifiedUtf8RegisterNativesNames() {
+        val source = NativeCppBackend.generate(
+            methods = listOf(validated(constantIntMethod("n\u0000\u00e9"))),
+            config = NativePipelineConfig(enabled = true),
+            classExists = { false }
+        ).sourceText
+
+        assertContains(source, "const_cast<char*>(\"n\\300\\200\\303\\251\")")
     }
 
     @Test
@@ -76,26 +108,30 @@ class NativeJvmCppMethodTranslatorTest {
     fun emitsStaticMethodCallsWithIntAndObjectReturns() {
         val intCall = translate(invokeStaticIntMethod())
         assertContains(intCall, "jobject classloader = grt_get_classloader(env, clazz);")
+        assertContains(intCall, "std::unordered_set<jobject> ownedRefs;")
+        assertContains(intCall, "grt_track_ref(env, ownedRefs, classloader);")
         assertContains(intCall, "grt_find_class(env, classloader, \"java/lang/Integer\")")
-        assertContains(intCall, "env->GetStaticMethodID(ownerClass_1, \"bitCount\", \"(I)I\")")
+        assertContains(intCall, "grt_track_ref(env, refs, ownerClass_1);")
+        assertContains(intCall, "grt_get_method_id(env, ownerClass_1, \"bitCount\", \"(I)I\", true)")
         assertContains(intCall, "cstack[sp++].i = static_cast<jint>(env->CallStaticIntMethodA(ownerClass_1, methodId_1, args_1));")
 
         val objectCall = translate(invokeStaticObjectMethod())
         assertContains(objectCall, "grt_find_class(env, classloader, \"java/lang/String\")")
-        assertContains(objectCall, "env->GetStaticMethodID(ownerClass_1, \"valueOf\", \"(I)Ljava/lang/String;\")")
+        assertContains(objectCall, "grt_get_method_id(env, ownerClass_1, \"valueOf\", \"(I)Ljava/lang/String;\", true)")
         assertContains(objectCall, "cstack[sp++].l = env->CallStaticObjectMethodA(ownerClass_1, methodId_1, args_1);")
-        assertContains(objectCall, "return cstack[--sp].l;")
+        assertContains(objectCall, "jobject result = cstack[--sp].l; refs.erase(result); grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result;")
     }
 
     @Test
     fun emitsFieldAccesses() {
         val getStatic = translate(getStaticFieldMethod())
-        assertContains(getStatic, "env->GetStaticFieldID(fieldOwner_0, \"VALUE\", \"I\")")
+        assertContains(getStatic, "grt_track_ref(env, refs, fieldOwner_0);")
+        assertContains(getStatic, "grt_get_field_id(env, fieldOwner_0, \"VALUE\", \"I\", true)")
         assertContains(getStatic, "cstack[sp++].i = static_cast<jint>(env->GetStaticIntField(fieldOwner_0, fieldId_0));")
 
         val putField = translate(putFieldMethod())
         assertContains(putField, "jint fieldValue_2 = static_cast<jint>(cstack[--sp].i);")
-        assertContains(putField, "env->GetFieldID(fieldOwner_2, \"value\", \"I\")")
+        assertContains(putField, "grt_get_field_id(env, fieldOwner_2, \"value\", \"I\", false)")
         assertContains(putField, "env->SetIntField(receiver, fieldId_2, fieldValue_2);")
     }
 
@@ -103,6 +139,7 @@ class NativeJvmCppMethodTranslatorTest {
     fun emitsTypeAndArrayOperations() {
         val newObject = translate(newObjectMethod())
         assertContains(newObject, "grt_find_class(env, classloader, \"java/lang/StringBuilder\")")
+        assertContains(newObject, "grt_track_ref(env, refs, typeClass);")
         assertContains(newObject, "cstack[sp++].l = env->AllocObject(typeClass);")
         assertContains(newObject, "cstack[sp] = cstack[sp - 1]; ++sp;")
 
@@ -123,11 +160,13 @@ class NativeJvmCppMethodTranslatorTest {
 
         val objectClassLiteral = translate(objectClassLiteralMethod())
         assertContains(objectClassLiteral, "grt_find_class(env, classloader, \"java/lang/String\")")
+        assertContains(objectClassLiteral, "grt_track_ref(env, refs, classLookup_0);")
         assertContains(objectClassLiteral, "cstack[sp++].l = classObject_0;")
 
         val primitiveClassLiteral = translate(primitiveClassLiteralMethod())
         assertContains(primitiveClassLiteral, "grt_find_class(env, classloader, \"java/lang/Integer\")")
-        assertContains(primitiveClassLiteral, "env->GetStaticFieldID(wrapperClass_0, \"TYPE\", \"Ljava/lang/Class;\")")
+        assertContains(primitiveClassLiteral, "grt_track_ref(env, refs, wrapperClass_0);")
+        assertContains(primitiveClassLiteral, "grt_get_field_id(env, wrapperClass_0, \"TYPE\", \"Ljava/lang/Class;\", true)")
         assertContains(primitiveClassLiteral, "env->GetStaticObjectField(wrapperClass_0, typeField_0)")
     }
 
@@ -216,7 +255,7 @@ class NativeJvmCppMethodTranslatorTest {
         val longCall = translate(invokeStaticLongMethod())
         assertContains(longCall, "args_2[0].j = cstack[--sp].j;")
         assertContains(longCall, "env->CallStaticLongMethodA(ownerClass_2, methodId_2, args_2)")
-        assertContains(longCall, "return cstack[--sp].j;")
+        assertContains(longCall, "jlong result = cstack[--sp].j; grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result;")
 
         val array = translate(longArrayStoreLoadMethod())
         assertContains(array, "jlong value = cstack[--sp].j;")
@@ -232,6 +271,7 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(instanceMethod, "static jint JNICALL grt_test(JNIEnv* env, jobject self, jint arg0)")
         assertContains(instanceMethod, "jclass clazz = env->GetObjectClass(self);")
         assertContains(instanceMethod, "jobject classloader = grt_get_classloader(env, clazz);")
+        assertContains(instanceMethod, "grt_track_ref(env, ownedRefs, classloader);")
         assertContains(instanceMethod, "clocal[0].l = self;")
         assertContains(instanceMethod, "clocal[1].i = static_cast<jint>(arg0);")
         assertContains(instanceMethod, "jobject receiver = cstack[--sp].l;")
@@ -268,6 +308,7 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(clinit, "static void JNICALL grt_iface_clinit(JNIEnv* env, jclass loaderClazz, jobject proxyContext)")
         assertContains(clinit, "jclass clazz = (jclass) proxyContext;")
         assertContains(clinit, "jobject classloader = grt_get_classloader(env, clazz);")
+        assertContains(clinit, "grt_track_ref(env, ownedRefs, classloader);")
     }
 
     @Test
@@ -277,6 +318,7 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(throwCatch, "grt_throw(env, \"java/lang/NullPointerException\", \"ATHROW npe\");")
         assertContains(throwCatch, "env->Throw((jthrowable) exception);")
         assertContains(throwCatch, "jclass catchClass_0 = grt_find_class(env, classloader, \"java/lang/Throwable\");")
+        assertContains(throwCatch, "grt_track_ref(env, ownedRefs, catchClass_0);")
         assertContains(throwCatch, "if (env->IsInstanceOf(cstack[0].l, catchClass_0)) { goto L_BC_5; }")
         assertContains(throwCatch, "goto L_CATCH_0;")
         assertContains(throwCatch, "goto L_BC_5;")
@@ -291,6 +333,7 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(divCatch, "env->ExceptionClear();")
         assertContains(divCatch, "goto L_CATCH_0;")
         assertContains(divCatch, "jclass catchClass_0 = grt_find_class(env, classloader, \"java/lang/ArithmeticException\");")
+        assertContains(divCatch, "grt_track_ref(env, ownedRefs, catchClass_0);")
         assertContains(divCatch, "if (env->IsInstanceOf(cstack[0].l, catchClass_0)) { goto L_BC_7; }")
     }
 
@@ -338,7 +381,7 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(floatArithmetic, "clocal[0].f = arg0;")
         assertContains(floatArithmetic, "std::fmod(lhs, rhs)")
         assertContains(floatArithmetic, "cstack[sp++].f = static_cast<jfloat>(0x1.4p1f);")
-        assertContains(floatArithmetic, "return cstack[--sp].f;")
+        assertContains(floatArithmetic, "jfloat result = cstack[--sp].f; grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result;")
 
         val doubleCompare = translate(doubleCompareMethod())
         assertContains(doubleCompare, "std::isnan(lhs) || std::isnan(rhs) ? 1")
@@ -349,7 +392,7 @@ class NativeJvmCppMethodTranslatorTest {
         val doubleCall = translate(invokeStaticDoubleMethod())
         assertContains(doubleCall, "args_1[0].d = cstack[--sp].d;")
         assertContains(doubleCall, "env->CallStaticDoubleMethodA(ownerClass_1, methodId_1, args_1)")
-        assertContains(doubleCall, "return cstack[--sp].d;")
+        assertContains(doubleCall, "jdouble result = cstack[--sp].d; grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result;")
 
         val doubleArray = translate(doubleArrayStoreLoadMethod())
         assertContains(doubleArray, "jdouble value = cstack[--sp].d;")
@@ -367,7 +410,8 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(multiIntArray, "dimensions_2[1] = cstack[--sp].i;")
         assertContains(multiIntArray, "grt_find_class(env, classloader, \"java/lang/Integer\")")
         assertContains(multiIntArray, "grt_find_class(env, classloader, \"java/lang/reflect/Array\")")
-        assertContains(multiIntArray, "env->GetStaticMethodID(reflectArrayClass_2, \"newInstance\", \"(Ljava/lang/Class;[I)Ljava/lang/Object;\")")
+        assertContains(multiIntArray, "grt_track_ref(env, refs, reflectArrayClass_2);")
+        assertContains(multiIntArray, "grt_get_method_id(env, reflectArrayClass_2, \"newInstance\", \"(Ljava/lang/Class;[I)Ljava/lang/Object;\", true)")
         assertContains(multiIntArray, "cstack[sp++].l = env->CallStaticObjectMethodA(reflectArrayClass_2, newInstance_2, args_2);")
 
         val partialObjectArray = translate(partialMultiObjectArrayMethod())
@@ -378,15 +422,17 @@ class NativeJvmCppMethodTranslatorTest {
     fun emitsMethodTypeAndMethodHandleLdcConstants() {
         val methodType = translate(methodTypeLdcMethod())
         assertContains(methodType, "grt_find_class(env, classloader, \"java/lang/invoke/MethodType\")")
-        assertContains(methodType, "env->GetStaticMethodID(methodTypeClass_constant_0, \"fromMethodDescriptorString\", \"(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;\")")
+        assertContains(methodType, "grt_track_ref(env, refs, methodTypeClass_constant_0);")
+        assertContains(methodType, "grt_get_method_id(env, methodTypeClass_constant_0, \"fromMethodDescriptorString\", \"(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;\", true)")
         assertContains(methodType, "descriptor_constant_0 = env->NewStringUTF(\"(I)Ljava/lang/String;\");")
 
         val methodHandle = translate(methodHandleLdcMethod())
         assertContains(methodHandle, "jclass currentClass = clazz;")
         assertContains(methodHandle, "jobject lookup = nullptr;")
-        assertContains(methodHandle, "if (lookup == nullptr) { lookup = grt_get_lookup(env, currentClass); }")
+        assertContains(methodHandle, "if (lookup == nullptr) { lookup = grt_get_lookup(env, currentClass); grt_track_ref(env, ownedRefs, lookup); }")
         assertContains(methodHandle, "ownerClass_handle_0 = grt_find_class(env, classloader, \"java/lang/Integer\");")
-        assertContains(methodHandle, "env->GetMethodID(grt_methodhandles_lookup_class, \"findStatic\", \"(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;\")")
+        assertContains(methodHandle, "grt_track_ref(env, refs, ownerClass_handle_0);")
+        assertContains(methodHandle, "grt_get_method_id(env, grt_methodhandles_lookup_class, \"findStatic\", \"(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;\", false)")
         assertContains(methodHandle, "methodTypeArgs_handle_0_type[0].l = descriptor_handle_0_type;")
         assertContains(methodHandle, "methodHandle_0 = env->CallObjectMethodA(lookup, findMethod_handle_0, findArgs_handle_0);")
     }
@@ -397,6 +443,13 @@ class NativeJvmCppMethodTranslatorTest {
 
         assertContains(stringLiteral, "cstack[sp++].l = grt_ldc_string(env, \"same\");")
         assertFalse(stringLiteral.contains("cstack[sp++].l = env->NewStringUTF(\"same\");"))
+    }
+
+    @Test
+    fun emitsModifiedUtf8StringLdcConstants() {
+        val stringLiteral = translate(modifiedUtf8StringLiteralMethod())
+
+        assertContains(stringLiteral, "cstack[sp++].l = grt_ldc_string(env, \"\\300\\200A\\303\\251\");")
     }
 
     @Test
@@ -1134,6 +1187,16 @@ class NativeJvmCppMethodTranslatorTest {
         return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "stringLiteral", "()Ljava/lang/String;", null, null).apply {
             instructions.add(LdcInsnNode("same"))
             instructions.add(InsnNode(Opcodes.ARETURN))
+            maxStack = 1
+            maxLocals = 0
+        }
+    }
+
+    private fun modifiedUtf8StringLiteralMethod(): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "modifiedUtf8StringLiteral", "()V", null, null).apply {
+            instructions.add(LdcInsnNode("\u0000A\u00e9"))
+            instructions.add(InsnNode(Opcodes.POP))
+            instructions.add(InsnNode(Opcodes.RETURN))
             maxStack = 1
             maxLocals = 0
         }

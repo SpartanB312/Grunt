@@ -63,7 +63,7 @@ data class NativePipelineConfig(
     @IntRangeVal(min = 1, max = 4096)
     @SettingName("Max methods per source file")
     val maxMethodsPerSourceFile: Int = 64,
-    @SettingDesc("Maximum parallel C++ compile jobs for split native sources. 0 uses an automatic CPU-based value.")
+    @SettingDesc("Maximum parallel C++ compile jobs for split native sources. 0 uses a conservative memory-aware automatic value.")
     @IntRangeVal(min = 0, max = 128)
     @SettingName("Parallel compile jobs")
     val parallelCompileJobs: Int = 0,

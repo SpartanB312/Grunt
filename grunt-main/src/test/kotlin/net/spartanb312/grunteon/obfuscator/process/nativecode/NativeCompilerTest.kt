@@ -106,6 +106,42 @@ class NativeCompilerTest {
     }
 
     @Test
+    fun choosesConservativeAutomaticParallelCompileJobs() {
+        val jobs = NativeCompiler.effectiveParallelCompileJobs(
+            config = NativePipelineConfig(parallelCompileJobs = 0),
+            sourceCount = 20,
+            availableProcessors = 16,
+            freePhysicalMemoryBytes = 64L * 1024L * 1024L * 1024L
+        )
+
+        assertEquals(2, jobs)
+    }
+
+    @Test
+    fun automaticParallelCompileJobsRespectMemoryPressure() {
+        val jobs = NativeCompiler.effectiveParallelCompileJobs(
+            config = NativePipelineConfig(parallelCompileJobs = 0),
+            sourceCount = 20,
+            availableProcessors = 16,
+            freePhysicalMemoryBytes = 1024L * 1024L * 1024L
+        )
+
+        assertEquals(1, jobs)
+    }
+
+    @Test
+    fun explicitParallelCompileJobsOverrideAutomaticCap() {
+        val jobs = NativeCompiler.effectiveParallelCompileJobs(
+            config = NativePipelineConfig(parallelCompileJobs = 8),
+            sourceCount = 3,
+            availableProcessors = 16,
+            freePhysicalMemoryBytes = 1024L * 1024L * 1024L
+        )
+
+        assertEquals(3, jobs)
+    }
+
+    @Test
     fun buildsMsvcDllCommand() {
         val bundle = sourceBundle(NativePlatform("windows", "x86_64", "", ".dll", "win32"))
         val includeRoot = Path.of("build/test-jdk/include")

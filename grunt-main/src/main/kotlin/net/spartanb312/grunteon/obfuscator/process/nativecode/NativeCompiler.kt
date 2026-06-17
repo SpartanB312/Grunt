@@ -2,6 +2,7 @@ package net.spartanb312.grunteon.obfuscator.process.nativecode
 
 import java.io.File
 import java.io.IOException
+import java.lang.management.ManagementFactory
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.Callable
@@ -13,6 +14,8 @@ import kotlin.io.path.name
 import kotlin.io.path.writeText
 
 internal object NativeCompiler {
+    private const val AutoCompileJobCap = 2
+    private const val EstimatedBytesPerCompileJob = 1536L * 1024L * 1024L
 
     fun compile(
         bundle: NativeSourceBundle,
@@ -254,11 +257,45 @@ internal object NativeCompiler {
         return CommandResult(exitCode, output, command)
     }
 
-    private fun effectiveParallelCompileJobs(config: NativePipelineConfig, sourceCount: Int): Int {
+    internal fun effectiveParallelCompileJobs(config: NativePipelineConfig, sourceCount: Int): Int {
+        return effectiveParallelCompileJobs(
+            config = config,
+            sourceCount = sourceCount,
+            availableProcessors = Runtime.getRuntime().availableProcessors(),
+            freePhysicalMemoryBytes = freePhysicalMemoryBytes()
+        )
+    }
+
+    internal fun effectiveParallelCompileJobs(
+        config: NativePipelineConfig,
+        sourceCount: Int,
+        availableProcessors: Int,
+        freePhysicalMemoryBytes: Long
+    ): Int {
+        if (sourceCount <= 0) return 1
         val configured = config.parallelCompileJobs
-        val available = Runtime.getRuntime().availableProcessors()
-        val jobs = if (configured > 0) configured else maxOf(1, available - 1)
+        val jobs = if (configured > 0) {
+            configured
+        } else {
+            val cpuBound = maxOf(1, availableProcessors - 1)
+            val memoryBound = if (freePhysicalMemoryBytes > 0L) {
+                maxOf(1, (freePhysicalMemoryBytes / EstimatedBytesPerCompileJob).toInt())
+            } else {
+                AutoCompileJobCap
+            }
+            minOf(cpuBound, memoryBound, AutoCompileJobCap)
+        }
         return jobs.coerceIn(1, sourceCount)
+    }
+
+    private fun freePhysicalMemoryBytes(): Long {
+        val bean = ManagementFactory.getOperatingSystemMXBean()
+        val method = bean.javaClass.methods.firstOrNull {
+            it.name == "getFreeMemorySize" || it.name == "getFreePhysicalMemorySize"
+        } ?: return -1L
+        return runCatching {
+            (method.invoke(bean) as? Number)?.toLong() ?: -1L
+        }.getOrDefault(-1L)
     }
 
     private fun gnuOptimizationFlag(config: NativePipelineConfig): String {

@@ -13,6 +13,7 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldInsnNode
 import org.objectweb.asm.tree.FieldNode
+import org.objectweb.asm.tree.IincInsnNode
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.IntInsnNode
 import org.objectweb.asm.tree.JumpInsnNode
@@ -495,7 +496,9 @@ class NativePipelineRunnerIntegrationTest {
             "referenceArrayPipeline",
             "multiArrayPipeline",
             "constantPipeline",
-            "stringLiteralIdentity"
+            "stringLiteralIdentity",
+            "modifiedUtf8StringLiteral",
+            "localRefPressure"
         ).forEach { methodName ->
             assertTrue(
                 transformed.methods.single { it.name == methodName }.access and Opcodes.ACC_NATIVE != 0,
@@ -756,7 +759,9 @@ class NativePipelineRunnerIntegrationTest {
             referenceArrayPipelineMethod().appendAnnotation(NATIVE_INCLUDED),
             multiArrayPipelineMethod().appendAnnotation(NATIVE_INCLUDED),
             constantPipelineMethod().appendAnnotation(NATIVE_INCLUDED),
-            stringLiteralIdentityMethod().appendAnnotation(NATIVE_INCLUDED)
+            stringLiteralIdentityMethod().appendAnnotation(NATIVE_INCLUDED),
+            modifiedUtf8StringLiteralMethod().appendAnnotation(NATIVE_INCLUDED),
+            localRefPressureMethod().appendAnnotation(NATIVE_INCLUDED)
         )
     }
 
@@ -1031,6 +1036,26 @@ class NativePipelineRunnerIntegrationTest {
             ))
             instructions.add(JumpInsnNode(Opcodes.IFEQ, failure))
 
+            instructions.add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                "test/NativePipelineObjects",
+                "modifiedUtf8StringLiteral",
+                "()Z",
+                false
+            ))
+            instructions.add(JumpInsnNode(Opcodes.IFEQ, failure))
+
+            instructions.add(LdcInsnNode(70_000))
+            instructions.add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                "test/NativePipelineObjects",
+                "localRefPressure",
+                "(I)I",
+                false
+            ))
+            instructions.add(LdcInsnNode(70_000))
+            instructions.add(JumpInsnNode(Opcodes.IF_ICMPNE, failure))
+
             instructions.add(FieldInsnNode(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;"))
             instructions.add(LdcInsnNode("OBJECT_ARRAY_CONST_OK"))
             instructions.add(MethodInsnNode(
@@ -1256,6 +1281,81 @@ class NativePipelineRunnerIntegrationTest {
             instructions.add(InsnNode(Opcodes.IRETURN))
             maxStack = 2
             maxLocals = 0
+        }
+    }
+
+    private fun localRefPressureMethod(): MethodNode {
+        val loop = LabelNode()
+        val done = LabelNode()
+        return MethodNode(
+            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            "localRefPressure",
+            "(I)I",
+            null,
+            null
+        ).apply {
+            instructions.add(InsnNode(Opcodes.ICONST_0))
+            instructions.add(VarInsnNode(Opcodes.ISTORE, 1))
+            instructions.add(loop)
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 0))
+            instructions.add(JumpInsnNode(Opcodes.IF_ICMPGE, done))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                "java/lang/String",
+                "valueOf",
+                "(I)Ljava/lang/String;",
+                false
+            ))
+            instructions.add(InsnNode(Opcodes.POP))
+            instructions.add(IincInsnNode(1, 1))
+            instructions.add(JumpInsnNode(Opcodes.GOTO, loop))
+            instructions.add(done)
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(InsnNode(Opcodes.IRETURN))
+            maxStack = 2
+            maxLocals = 2
+        }
+    }
+
+    private fun modifiedUtf8StringLiteralMethod(): MethodNode {
+        val failure = LabelNode()
+        val success = LabelNode()
+        return MethodNode(
+            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
+            "modifiedUtf8StringLiteral",
+            "()Z",
+            null,
+            null
+        ).apply {
+            instructions.add(LdcInsnNode("\u0000A\u00e9"))
+            instructions.add(VarInsnNode(Opcodes.ASTORE, 0))
+
+            instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
+            instructions.add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "length", "()I", false))
+            instructions.add(InsnNode(Opcodes.ICONST_3))
+            instructions.add(JumpInsnNode(Opcodes.IF_ICMPNE, failure))
+
+            instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
+            instructions.add(InsnNode(Opcodes.ICONST_0))
+            instructions.add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "charAt", "(I)C", false))
+            instructions.add(JumpInsnNode(Opcodes.IFNE, failure))
+
+            instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
+            instructions.add(InsnNode(Opcodes.ICONST_2))
+            instructions.add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "charAt", "(I)C", false))
+            instructions.add(IntInsnNode(Opcodes.SIPUSH, 0x00e9))
+            instructions.add(JumpInsnNode(Opcodes.IF_ICMPNE, failure))
+
+            instructions.add(success)
+            instructions.add(InsnNode(Opcodes.ICONST_1))
+            instructions.add(InsnNode(Opcodes.IRETURN))
+            instructions.add(failure)
+            instructions.add(InsnNode(Opcodes.ICONST_0))
+            instructions.add(InsnNode(Opcodes.IRETURN))
+            maxStack = 2
+            maxLocals = 1
         }
     }
 

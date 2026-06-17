@@ -17,9 +17,18 @@ the near future
 
 * [X] Parallel pipeline
 * [X] Filter system
-* [X] Compose based UI
+* [X] Compose fluent UI
 * [X] SSA-IR / Flow-IR
-* [ ] Native cpp codegen
+* [X] Native obfuscation
+
+### Native obfuscation
+
+* [X] SSA-IR direct to cpp
+* [X] JVM bytecode to cpp
+* [X] Native method validator
+* [X] Native runtime bridges
+* [X] Native cache optimization
+* [X] Integrated workflow
 
 ### Controlflow flattening
 
@@ -94,7 +103,7 @@ the near future
 * [X] Field renamer
 * [X] Method renamer
 * [X] LocalVar renamer
-* [ ] Mixin renamer
+* [X] Mixin renamer
 
 
 ## License

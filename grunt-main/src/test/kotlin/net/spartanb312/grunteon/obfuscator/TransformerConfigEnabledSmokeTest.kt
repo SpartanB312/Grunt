@@ -10,6 +10,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.exp.
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roundtrip.FlowIRRoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roundtrip.SSARoundTrip
+import net.spartanb312.grunteon.obfuscator.process.transformers.nativecode.NativeCandidate
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReferenceObfuscate
 import java.nio.file.Path
 import kotlin.io.path.createTempFile
@@ -191,6 +192,38 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"generatedHelperNativeCandidate\": false")
             assertContains(text, "\"generatedHelperNativeCandidateRatio\": \"0.1\"")
             assertIs<ReferenceObfuscate.Config>(readSingleConfig(path))
+        } finally {
+            path.deleteIfExists()
+        }
+    }
+
+    @Test
+    fun roundTripsNativeCandidateConfig() {
+        val path = createTempFile("grunteon-native-candidate-config", ".json")
+        try {
+            ObfConfig.write(
+                configOf(
+                    NativeCandidate.Config(
+                        rules = listOf(
+                            NativeCandidate.Rule(
+                                name = "helpers",
+                                methodInclude = listOf("helper/**"),
+                                descriptorInclude = listOf("(I)*"),
+                                requiredAnnotationList = listOf("user.Native")
+                            )
+                        )
+                    )
+                ),
+                path
+            )
+            val text = path.readText()
+            assertContains(text, "NativeCandidate.Config")
+            assertContains(text, "\"rules\"")
+            assertContains(text, "\"helpers\"")
+            assertContains(text, "\"methodInclude\"")
+            assertContains(text, "\"descriptorInclude\"")
+            assertContains(text, "\"requiredAnnotationList\"")
+            assertIs<NativeCandidate.Config>(readSingleConfig(path))
         } finally {
             path.deleteIfExists()
         }
