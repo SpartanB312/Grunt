@@ -12,6 +12,7 @@ import org.objectweb.asm.tree.LabelNode
 import org.objectweb.asm.tree.LdcInsnNode
 import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.TryCatchBlockNode
 import org.objectweb.asm.tree.TypeInsnNode
 import org.objectweb.asm.tree.VarInsnNode
 
@@ -24,7 +25,7 @@ internal object NativeLoaderClassFactory {
         proxyMethods: List<Pair<String, String>> = emptyList()
     ): ClassNode {
         return ClassNode(Opcodes.ASM9).apply {
-            version = Opcodes.V1_8
+            version = Opcodes.V1_6
             access = Opcodes.ACC_PUBLIC or Opcodes.ACC_FINAL or Opcodes.ACC_SUPER
             name = loaderInternalName
             superName = "java/lang/Object"
@@ -105,6 +106,10 @@ internal object NativeLoaderClassFactory {
         )
         val alreadyLoading = LabelNode()
         val hasStream = LabelNode()
+        val copyStart = LabelNode()
+        val copyEnd = LabelNode()
+        val closeFailure = LabelNode()
+        val rethrow = LabelNode()
 
         method.instructions.apply {
             add(FieldInsnNode(Opcodes.GETSTATIC, loaderInternalName, "loaded", "Z"))
@@ -149,6 +154,7 @@ internal object NativeLoaderClassFactory {
             add(InsnNode(Opcodes.ATHROW))
 
             add(hasStream)
+            add(copyStart)
             add(LdcInsnNode("grunteon-native-"))
             add(LdcInsnNode(librarySuffix))
             add(InsnNode(Opcodes.ICONST_0))
@@ -189,6 +195,7 @@ internal object NativeLoaderClassFactory {
                 false
             ))
             add(InsnNode(Opcodes.POP2))
+            add(copyEnd)
 
             add(VarInsnNode(Opcodes.ALOAD, 1))
             add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/io/InputStream", "close", "()V", false))
@@ -198,9 +205,20 @@ internal object NativeLoaderClassFactory {
             add(InsnNode(Opcodes.ICONST_1))
             add(FieldInsnNode(Opcodes.PUTSTATIC, loaderInternalName, "loaded", "Z"))
             add(InsnNode(Opcodes.RETURN))
+
+            add(closeFailure)
+            add(VarInsnNode(Opcodes.ASTORE, 4))
+            add(VarInsnNode(Opcodes.ALOAD, 1))
+            add(JumpInsnNode(Opcodes.IFNULL, rethrow))
+            add(VarInsnNode(Opcodes.ALOAD, 1))
+            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/io/InputStream", "close", "()V", false))
+            add(rethrow)
+            add(VarInsnNode(Opcodes.ALOAD, 4))
+            add(InsnNode(Opcodes.ATHROW))
         }
+        method.tryCatchBlocks.add(TryCatchBlockNode(copyStart, copyEnd, closeFailure, "java/lang/Throwable"))
         method.maxStack = 6
-        method.maxLocals = 4
+        method.maxLocals = 5
         return method
     }
 }

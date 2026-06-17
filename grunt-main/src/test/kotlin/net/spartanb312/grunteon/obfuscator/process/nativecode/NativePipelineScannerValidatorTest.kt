@@ -102,6 +102,7 @@ class NativePipelineScannerValidatorTest {
 
         assertEquals(1, accepted.size)
         assertEquals(0, skipped.size)
+        assertEquals(NativeLoweringKind.SsaPrimitive, accepted.single().lowering)
     }
 
     @Test
@@ -140,9 +141,9 @@ class NativePipelineScannerValidatorTest {
 
     @Test
     fun validatorAcceptsInitialFullJvmBranchAndSwitchMethods() {
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = branchHelper()).lowering)
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = tableSwitchHelper()).lowering)
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = lookupSwitchHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = branchHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = tableSwitchHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = lookupSwitchHelper()).lowering)
     }
 
     @Test
@@ -215,16 +216,16 @@ class NativePipelineScannerValidatorTest {
     @Test
     fun validatorAcceptsInitialFullJvmThrowAndTypedStackMethods() {
         assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = throwCatchHelper()).lowering)
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = dupX2LongHelper()).lowering)
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = dup2X1LongHelper()).lowering)
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = dup2X2LongHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = dupX2LongHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = dup2X1LongHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = dup2X2LongHelper()).lowering)
     }
 
     @Test
     fun validatorAcceptsInitialFullJvmFloatAndDoubleMethods() {
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = floatArithmeticHelper()).lowering)
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = doubleCompareHelper()).lowering)
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = doubleToIntHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = floatArithmeticHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = doubleCompareHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = doubleToIntHelper()).lowering)
         assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = invokeStaticDoubleHelper()).lowering)
         assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = doubleArrayStoreLoadHelper()).lowering)
         assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = newFloatArrayHelper()).lowering)

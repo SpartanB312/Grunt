@@ -146,6 +146,10 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         @SettingDesc("Mark generated state key processor methods as native codegen candidates")
         @SettingName("Key processor native candidate")
         val keyProcessorNativeCandidate: Boolean = false,
+        @SettingDesc("Ratio of generated state key processor methods marked as native candidates when key processor native candidate is enabled")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Key processor native candidate ratio")
+        val keyProcessorNativeCandidateRatio: Decimal = 0.1.toDecimal(),
         @SettingDesc("Shuffle physical layout order of Flow blocks selected into the flattened region")
         @SettingName("Shuffle region blocks")
         val shuffleRegionBlocks: Boolean = false,
@@ -226,7 +230,8 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
                         maxExtraSteps = config.keyProcessorMaxExtraSteps,
                         minChainSteps = config.keyProcessorMinChainSteps,
                         maxChainSteps = config.keyProcessorMaxChainSteps,
-                        nativeCandidate = config.keyProcessorNativeCandidate
+                        nativeCandidate = config.keyProcessorNativeCandidate,
+                        nativeCandidateRatio = config.keyProcessorNativeCandidateRatio.toDouble()
                     )
                 )
             }

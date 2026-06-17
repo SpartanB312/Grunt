@@ -4,13 +4,16 @@ import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
+import net.spartanb312.grunteon.obfuscator.process.nativecode.NativePipelineConfig
 import net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt
 import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReferenceObfuscate
 import net.spartanb312.grunteon.obfuscator.util.ClearClassNode
 import net.spartanb312.grunteon.obfuscator.util.DRAFT_RUNTIME_MATERIAL
+import net.spartanb312.grunteon.obfuscator.util.NATIVE_INCLUDED
 import net.spartanb312.grunteon.obfuscator.util.extensions.findAnnotation
+import net.spartanb312.grunteon.obfuscator.util.extensions.hasAnnotation
 import net.spartanb312.grunteon.obfuscator.util.toDecimal
 import net.spartanb312.grunteon.testcase.methodinline.Basic
 import org.objectweb.asm.ClassWriter
@@ -95,6 +98,51 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
         runTestClass(tempDir)
     }
 
+    @Test
+    fun disablesMassiveHelperNamesWhenNativePipelineIsEnabled() {
+        val withoutNative = runReferenceObfuscate(reobfBSM = false, nativePipelineEnabled = false)
+        val withNative = runReferenceObfuscate(reobfBSM = false, nativePipelineEnabled = true)
+
+        val massiveHelpers = withoutNative.referenceClass().referenceHelpers()
+        val nativeFriendlyHelpers = withNative.referenceClass().referenceHelpers()
+
+        assertTrue(massiveHelpers.isNotEmpty())
+        assertTrue(nativeFriendlyHelpers.isNotEmpty())
+        assertTrue(massiveHelpers.any { it.name.length > 1_000 })
+        assertTrue(nativeFriendlyHelpers.all { it.name.length <= 16 })
+    }
+
+    @Test
+    fun generatedHelperNativeCandidateRatioControlsAnnotations() {
+        val none = runReferenceObfuscate(
+            reobfBSM = false,
+            config = ReferenceObfuscate.Config(
+                classFilter = basicOnlyFilter(),
+                chance = 1.0.toDecimal(),
+                reobfBSM = false,
+                generatedHelperNativeCandidate = true,
+                generatedHelperNativeCandidateRatio = 0.0.toDecimal()
+            )
+        ).referenceClass().referenceHelpers()
+        val all = runReferenceObfuscate(
+            reobfBSM = false,
+            config = ReferenceObfuscate.Config(
+                classFilter = basicOnlyFilter(),
+                chance = 1.0.toDecimal(),
+                reobfBSM = false,
+                generatedHelperNativeCandidate = true,
+                generatedHelperNativeCandidateRatio = 1.0.toDecimal()
+            )
+        ).referenceClass().referenceHelpers()
+
+        assertTrue(none.isNotEmpty())
+        assertTrue(all.isNotEmpty())
+        assertTrue(none.any { it.isReferenceBootstrapHelper() })
+        assertTrue(none.filter { it.isReferenceBootstrapHelper() }.all { it.hasAnnotation(NATIVE_INCLUDED) })
+        assertTrue(none.filterNot { it.isReferenceBootstrapHelper() }.none { it.hasAnnotation(NATIVE_INCLUDED) })
+        assertTrue(all.all { it.hasAnnotation(NATIVE_INCLUDED) })
+    }
+
     private fun runMaterialReferenceTest(vararg configs: TransformerConfig) {
         val instance = readTestClasses(
             Basic::class.java,
@@ -123,15 +171,20 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
         runTestClass(tempDir)
     }
 
-    private fun runReferenceObfuscate(reobfBSM: Boolean): Grunteon {
+    private fun runReferenceObfuscate(
+        reobfBSM: Boolean,
+        nativePipelineEnabled: Boolean = false,
+        config: ReferenceObfuscate.Config = ReferenceObfuscate.Config(
+            classFilter = basicOnlyFilter(),
+            chance = 1.0.toDecimal(),
+            reobfBSM = reobfBSM
+        )
+    ): Grunteon {
         val instance = readTestClasses(
             Basic::class.java,
             configOf(
-                ReferenceObfuscate.Config(
-                    classFilter = basicOnlyFilter(),
-                    chance = 1.0.toDecimal(),
-                    reobfBSM = reobfBSM
-                )
+                config,
+                nativePipelineEnabled = nativePipelineEnabled
             )
         )
         context(instance.workRes, instance) {
@@ -149,6 +202,12 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
             method.access and Opcodes.ACC_SYNTHETIC != 0 &&
                 method.access and Opcodes.ACC_BRIDGE != 0
         }
+    }
+
+    private fun MethodNode.isReferenceBootstrapHelper(): Boolean {
+        return desc.startsWith(
+            "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;"
+        ) && desc.endsWith(")Ljava/lang/invoke/CallSite;")
     }
 
     private fun MethodNode.stringLdcCount(): Int {
@@ -229,8 +288,12 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
         return basicOnly
     }
 
-    private fun configOf(vararg configs: TransformerConfig): ObfConfig {
+    private fun configOf(
+        vararg configs: TransformerConfig,
+        nativePipelineEnabled: Boolean = false
+    ): ObfConfig {
         return ObfConfig(
+            nativePipeline = NativePipelineConfig(enabled = nativePipelineEnabled),
             transformers = configs.map { config ->
                 TransformerEntry(
                     config = config

@@ -54,7 +54,8 @@ data class CffKeyProcessorOptions(
     val maxExtraSteps: Int = 1,
     val minChainSteps: Int = 0,
     val maxChainSteps: Int = 0,
-    val nativeCandidate: Boolean = false
+    val nativeCandidate: Boolean = false,
+    val nativeCandidateRatio: Double = 0.1
 ) {
     val mainStepRange: IntRange
         get() = normalizedIntRange(minMainSteps, maxMainSteps, minimum = 1)
@@ -70,6 +71,15 @@ data class CffKeyProcessorOptions(
 
     val encodeArguments: Boolean
         get() = complexity != CffKeyProcessorComplexity.Light
+
+    fun shouldMarkNativeCandidate(random: UniformRandomProvider): Boolean {
+        if (!nativeCandidate) return false
+        return when {
+            nativeCandidateRatio <= 0.0 -> false
+            nativeCandidateRatio >= 1.0 -> true
+            else -> random.nextDouble() < nativeCandidateRatio
+        }
+    }
 }
 
 class CffKeyProcessorRegistry(
@@ -104,8 +114,7 @@ class CffKeyProcessorRegistry(
         return classes.computeIfAbsent(owner) {
             ProcessorClassPlan(
                 name = processorClassName(owner),
-                version = ownerVersion.takeIf { it > 0 } ?: Opcodes.V1_8,
-                nativeCandidate = options.nativeCandidate
+                version = ownerVersion.takeIf { it > 0 } ?: Opcodes.V1_8
             )
         }
     }
@@ -139,6 +148,7 @@ class CffKeyProcessorRegistry(
                 inputKey = inputKey,
                 targetKey = targetKey,
                 salt = salt,
+                nativeCandidate = options.shouldMarkNativeCandidate(random),
                 options = options,
                 random = random
             )
@@ -148,8 +158,7 @@ class CffKeyProcessorRegistry(
 
     private class ProcessorClassPlan(
         val name: String,
-        private val version: Int,
-        private val nativeCandidate: Boolean
+        private val version: Int
     ) {
         private val actions = ConcurrentHashMap<String, ProcessorActionPlan>()
 
@@ -185,7 +194,7 @@ class CffKeyProcessorRegistry(
             ) {
                 actions.values
                     .sortedBy { it.name }
-                    .forEach { +it.toMethodNode(nativeCandidate) }
+                    .forEach { +it.toMethodNode() }
             }.appendAnnotation(GENERATED_CLASS)
         }
     }
@@ -195,12 +204,13 @@ class CffKeyProcessorRegistry(
         val inputKey: Int,
         val targetKey: Int,
         val salt: Int,
+        val nativeCandidate: Boolean,
         val keyDecoder: IntConstChain?,
         val saltDecoder: IntConstChain?,
         val steps: List<ActionStep>,
         val correction: FinalCorrection
     ) {
-        fun toMethodNode(nativeCandidate: Boolean): MethodNode {
+        fun toMethodNode(): MethodNode {
             val node = method(
                 PUBLIC + STATIC,
                 name,
@@ -236,6 +246,7 @@ class CffKeyProcessorRegistry(
                 inputKey: Int,
                 targetKey: Int,
                 salt: Int,
+                nativeCandidate: Boolean,
                 options: CffKeyProcessorOptions,
                 random: UniformRandomProvider
             ): ProcessorActionPlan {
@@ -255,6 +266,7 @@ class CffKeyProcessorRegistry(
                     inputKey = encodedInputKey,
                     targetKey = targetKey,
                     salt = encodedSalt,
+                    nativeCandidate = nativeCandidate,
                     keyDecoder = keyDecoder,
                     saltDecoder = saltDecoder,
                     steps = steps,

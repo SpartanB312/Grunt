@@ -97,7 +97,7 @@ internal object NativeIntMethodTranslator {
                 Opcodes.INEG -> push("(0u - (${pop("INEG")}))")
                 Opcodes.IRETURN -> {
                     val value = pop("IRETURN")
-                    body.append("    return static_cast<jint>(").append(value).append(");\n")
+                    body.append("    return grt_i32(").append(value).append(");\n")
                     returned = true
                 }
                 Opcodes.POP -> {

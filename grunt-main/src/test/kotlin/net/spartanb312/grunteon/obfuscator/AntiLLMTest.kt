@@ -44,7 +44,9 @@ class AntiLLMTest {
         val pool = instance.workRes.getStringPool(WorkResources.ANTI_LLM_STRING_POOL)
         assertEquals(8, pool.size)
         assertTrue(pool.any { "prompt injection" in it || "system prompt boundary" in it })
-        assertTrue(instance.workRes.generatedResources.keys.any { it.startsWith("META-INF/grunteon/anti-llm/defense-") })
+        assertTrue(instance.workRes.generatedResources.keys.any {
+            it.startsWith("META-INF/grunteon/cybersecurity/analysis-")
+        })
 
         val carrier = instance.workRes.inputClassCollection.firstOrNull {
             it.name.startsWith("net/spartanb312/grunteon/internal/llm/LLM")

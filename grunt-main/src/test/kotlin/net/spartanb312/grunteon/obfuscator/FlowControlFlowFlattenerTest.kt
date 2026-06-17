@@ -19,6 +19,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.proc
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorOptions
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.OpaquePredicateProcessorRegistry
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.process.RandomBoundOpaquePredicateProcessorCall
+import net.spartanb312.grunteon.obfuscator.util.NATIVE_INCLUDED
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
@@ -372,6 +373,16 @@ class FlowControlFlowFlattenerTest {
     }
 
     @Test
+    fun keyProcessorNativeCandidateRatioControlsMethodAnnotations() {
+        val none = keyProcessorNativeCandidateCount(nativeCandidateRatio = 0.0)
+        val all = keyProcessorNativeCandidateCount(nativeCandidateRatio = 1.0)
+
+        assertEquals(0, none.first)
+        assertEquals(all.second, all.first)
+        assertTrue(all.second > 0)
+    }
+
+    @Test
     fun opaquePredicateProcessorActionsAreExecutable() {
         val registry = OpaquePredicateProcessorRegistry("OpaqueExec", classExists = { false })
         val processor = registry.methodProcessor(Owner, Opcodes.V17, "MethodSalt")
@@ -542,6 +553,31 @@ class FlowControlFlowFlattenerTest {
 
     private fun AbstractInsnNode.isSaltLoad(): Boolean {
         return this is VarInsnNode && opcode == Opcodes.ILOAD && `var` == 1
+    }
+
+    private fun keyProcessorNativeCandidateCount(nativeCandidateRatio: Double): Pair<Int, Int> {
+        val registry = CffKeyProcessorRegistry(
+            classMarker = "NativeRatio",
+            classExists = { false },
+            options = CffKeyProcessorOptions(
+                nativeCandidate = true,
+                nativeCandidateRatio = nativeCandidateRatio
+            )
+        )
+        val processor = registry.methodProcessor(Owner, Opcodes.V17, "MethodSalt")
+        repeat(16) { index ->
+            processor.reserve(
+                siteId = index,
+                inputKey = index + 1,
+                targetKey = index + 100,
+                random = testRandom("native-ratio-$nativeCandidateRatio-$index")
+            )
+        }
+        val methods = registry.materialize().single().methods
+        return methods.count { method ->
+            method.visibleAnnotations.orEmpty().any { it.desc == NATIVE_INCLUDED } ||
+                method.invisibleAnnotations.orEmpty().any { it.desc == NATIVE_INCLUDED }
+        } to methods.size
     }
 
     private fun compareOpcode(opcode: Int, left: Int, right: Int): Boolean {

@@ -38,6 +38,8 @@ internal data class NativeValidatedMethod(
 }
 
 internal enum class NativeLoweringKind {
+    SsaPrimitive,
+    SsaPrimitiveInt,
     PrimitiveInt,
     FullJvm
 }

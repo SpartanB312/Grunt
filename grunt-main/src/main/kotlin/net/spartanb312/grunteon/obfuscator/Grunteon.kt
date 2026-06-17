@@ -78,9 +78,11 @@ class Grunteon(
         includeStrategy = buildClassNamePredicates(globalConfig.mixinExclusions)
     )
     val mixinExclusion = ClassPredicate.IncludeExclude(
+        includeStrategy = buildClassNamePredicates(listOf("**")),
         excludeStrategy = buildClassNamePredicates(globalConfig.mixinExclusions)
     )
     val globalExclusion = ClassPredicate.IncludeExclude(
+        includeStrategy = buildClassNamePredicates(listOf("**")),
         excludeStrategy = buildClassNamePredicates(globalConfig.exclusions)
     )
 

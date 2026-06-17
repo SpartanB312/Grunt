@@ -44,5 +44,11 @@ data class NativePipelineConfig(
     val backend: NativeBackend = NativeBackend.Cpp,
     @SettingDesc("Working directory for generated native sources and compiled libraries")
     @SettingName("Work directory")
-    val workDir: String = "build/grunteon/native"
+    val workDir: String = "build/grunteon/native",
+    @SettingDesc("Optional C++ compiler executable path or command name. Empty uses auto-detection.")
+    @SettingName("Compiler executable")
+    val compilerExecutable: String? = null,
+    @SettingDesc("Additional arguments passed to the native C++ compiler")
+    @SettingName("Compiler args")
+    val compilerArgs: List<String> = emptyList()
 )

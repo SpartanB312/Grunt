@@ -7,6 +7,7 @@ import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
+import org.objectweb.asm.ConstantDynamic
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
@@ -15,7 +16,7 @@ import org.objectweb.asm.tree.*
 @Transformer.Stability(StableLevel.Developing)
 @Transformer.Description(
     "process.native.native_pre_processor.desc",
-    "Bridge invokedynamic call sites through same-class helper methods before native codegen"
+    "Bridge JVM dynamic constants and invokedynamic call sites through same-class helper methods before native codegen"
 )
 class NativePreProcessor : Transformer<NativePreProcessor.Config>(
     "NativePreProcessor",
@@ -28,6 +29,9 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
         @SettingDesc("Prefix for generated invokedynamic bridge helper methods")
         @SettingName("Helper prefix")
         val helperPrefix: String = "__grt\$indy\$",
+        @SettingDesc("Prefix for generated constant dynamic bridge helper methods")
+        @SettingName("Condy helper prefix")
+        val constantDynamicHelperPrefix: String = "__grt\$condy\$",
         @SettingDesc("Bridge generated Grunteon helper methods too")
         @SettingName("Process generated methods")
         val processGeneratedMethods: Boolean = true
@@ -50,6 +54,7 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
         val indyCounter = reducibleScopeValue { MergeableCounter() }
+        val condyCounter = reducibleScopeValue { MergeableCounter() }
         val helperCounter = reducibleScopeValue { MergeableCounter() }
 
         parForEachClassesFiltered(
@@ -57,59 +62,100 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
                 .and(instance.mixinExclusion)
                 .and(config.classFilter.toClassPredicate())
         ) { classNode ->
-            val result = classNode.bridgeInvokeDynamics(config)
-            if (result.indyCount != 0) {
+            val result = bridgeInvokeDynamics(classNode, config)
+            if (result.indyCount != 0 || result.constantDynamicCount != 0) {
                 indyCounter.local.add(result.indyCount)
+                condyCounter.local.add(result.constantDynamicCount)
                 helperCounter.local.add(result.helperCount)
             }
         }
 
         post {
             Logger.info(" - NativePreProcessor:")
-            credit.add(indyCounter.global.get() * 50L)
+            credit.add((indyCounter.global.get() + condyCounter.global.get()) * 50L)
             Logger.info("    Bridged ${indyCounter.global.get()} invokedynamic call sites")
+            Logger.info("    Bridged ${condyCounter.global.get()} constant dynamic values")
             Logger.info("    Generated ${helperCounter.global.get()} same-class helper methods")
         }
     }
 
-    private fun ClassNode.bridgeInvokeDynamics(config: Config): BridgeResult {
-        val originalMethods = methods.toList()
-        val existingNames = methods.mapTo(mutableSetOf()) { it.name }
+    internal fun bridgeInvokeDynamics(classNode: ClassNode, config: Config): BridgeResult {
+        val originalMethods = classNode.methods.toList()
+        val existingNames = classNode.methods.mapTo(mutableSetOf()) { it.name }
         val helpers = mutableListOf<MethodNode>()
         var indyCount = 0
+        var constantDynamicCount = 0
 
         for (method in originalMethods) {
             if (!method.shouldProcess(config)) continue
 
             val instructions = method.instructions ?: continue
-            val indyNodes = instructions.toArray().filterIsInstance<InvokeDynamicInsnNode>()
-            if (indyNodes.isEmpty()) continue
+            val dynamicNodes = instructions.toArray().filter {
+                it is InvokeDynamicInsnNode || it.constantDynamicOrNull() != null
+            }
+            if (dynamicNodes.isEmpty()) continue
 
             var methodIndyIndex = 0
-            for (indy in indyNodes) {
-                val helperName = nextHelperName(config.helperPrefix, method.name, methodIndyIndex++, existingNames)
-                val helper = createIndyHelper(this, helperName, indy)
-                helpers += helper
+            var methodConstantDynamicIndex = 0
+            for (dynamicNode in dynamicNodes) {
+                when (dynamicNode) {
+                    is InvokeDynamicInsnNode -> {
+                        val helperName = nextHelperName(config.helperPrefix, method.name, methodIndyIndex++, existingNames)
+                        val helper = createIndyHelper(classNode, helperName, dynamicNode)
+                        helpers += helper
 
-                instructions.insertBefore(
-                    indy,
-                    MethodInsnNode(
-                        Opcodes.INVOKESTATIC,
-                        name,
-                        helper.name,
-                        helper.desc,
-                        isInterface
-                    )
-                )
-                instructions.remove(indy)
-                indyCount++
+                        instructions.insertBefore(
+                            dynamicNode,
+                            MethodInsnNode(
+                                Opcodes.INVOKESTATIC,
+                                classNode.name,
+                                helper.name,
+                                helper.desc,
+                                classNode.isInterface
+                            )
+                        )
+                        instructions.remove(dynamicNode)
+                        indyCount++
+                    }
+                    is LdcInsnNode -> {
+                        val constantDynamic = dynamicNode.constantDynamicOrNull()
+                        if (constantDynamic != null) {
+                            val helperName = nextHelperName(
+                                config.constantDynamicHelperPrefix,
+                                method.name,
+                                methodConstantDynamicIndex++,
+                                existingNames
+                            )
+                            val helper = createConstantDynamicHelper(classNode, helperName, constantDynamic)
+                            helpers += helper
+
+                            instructions.insertBefore(
+                                dynamicNode,
+                                MethodInsnNode(
+                                    Opcodes.INVOKESTATIC,
+                                    classNode.name,
+                                    helper.name,
+                                    helper.desc,
+                                    classNode.isInterface
+                                )
+                            )
+                            instructions.remove(dynamicNode)
+                            constantDynamicCount++
+                        }
+                    }
+                    else -> Unit
+                }
             }
         }
 
         if (helpers.isNotEmpty()) {
-            methods.addAll(helpers)
+            classNode.methods.addAll(helpers)
         }
-        return BridgeResult(indyCount, helpers.size)
+        return BridgeResult(indyCount, constantDynamicCount, helpers.size)
+    }
+
+    private fun AbstractInsnNode.constantDynamicOrNull(): ConstantDynamic? {
+        return (this as? LdcInsnNode)?.cst as? ConstantDynamic
     }
 
     private fun MethodNode.shouldProcess(config: Config): Boolean {
@@ -146,10 +192,50 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
         helper.instructions.add(InsnNode(returnType.getOpcode(Opcodes.IRETURN)))
         helper.maxLocals = local
         helper.maxStack = maxOf(argTypes.sumOf { it.size }, returnType.size)
-        helper.appendAnnotation(GENERATED_METHOD)
-        helper.appendAnnotation(NATIVE_JVM_BRIDGE)
-        helper.appendAnnotation(NATIVE_EXCLUDED)
+        helper.appendNativeBridgeAnnotations()
         return helper
+    }
+
+    private fun createConstantDynamicHelper(
+        classNode: ClassNode,
+        helperName: String,
+        constantDynamic: ConstantDynamic
+    ): MethodNode {
+        val returnType = Type.getType(constantDynamic.descriptor)
+        val helper = MethodNode(
+            Opcodes.ASM9,
+            helperAccess(classNode),
+            helperName,
+            Type.getMethodDescriptor(returnType),
+            null,
+            null
+        )
+
+        helper.instructions.add(
+            LdcInsnNode(
+                ConstantDynamic(
+                    constantDynamic.name,
+                    constantDynamic.descriptor,
+                    constantDynamic.bootstrapMethod,
+                    *copyBootstrapArgs(
+                        Array(constantDynamic.bootstrapMethodArgumentCount) {
+                            constantDynamic.getBootstrapMethodArgument(it)
+                        }
+                    )
+                )
+            )
+        )
+        helper.instructions.add(InsnNode(returnType.getOpcode(Opcodes.IRETURN)))
+        helper.maxLocals = 0
+        helper.maxStack = returnType.size
+        helper.appendNativeBridgeAnnotations()
+        return helper
+    }
+
+    private fun MethodNode.appendNativeBridgeAnnotations() {
+        appendAnnotation(GENERATED_METHOD)
+        appendAnnotation(NATIVE_JVM_BRIDGE)
+        appendAnnotation(NATIVE_EXCLUDED)
     }
 
     private fun helperAccess(classNode: ClassNode): Int {
@@ -210,8 +296,9 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
         }
     }
 
-    private data class BridgeResult(
+    internal data class BridgeResult(
         val indyCount: Int,
+        val constantDynamicCount: Int,
         val helperCount: Int
     )
 }

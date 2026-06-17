@@ -6,6 +6,7 @@ import org.objectweb.asm.Handle
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.FieldInsnNode
+import org.objectweb.asm.tree.IincInsnNode
 import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.IntInsnNode
 import org.objectweb.asm.tree.JumpInsnNode
@@ -36,6 +37,14 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(source, "static jclass grt_find_class(JNIEnv* env, jobject classloader, const char* internalName)")
         assertContains(source, "grt_load_class_method = env->GetMethodID(grt_classloader_class, \"loadClass\", \"(Ljava/lang/String;)Ljava/lang/Class;\");")
         assertContains(source, "if (!grt_init_runtime(env)) return JNI_ERR;")
+        assertContains(source, "static inline jint grt_i32(uint32_t value)")
+        assertContains(source, "static inline jbyte grt_i8(uint32_t value)")
+        assertContains(source, "static inline jshort grt_i16(uint32_t value)")
+        assertContains(source, "static inline jlong grt_i64(uint64_t value)")
+        assertContains(source, "static inline uint32_t grt_ishr32_bits(uint32_t bits, uint32_t distance)")
+        assertContains(source, "static inline jint grt_ishr32(jint value, jint distance)")
+        assertContains(source, "static inline uint64_t grt_lshr64_bits(uint64_t bits, uint32_t distance)")
+        assertContains(source, "static inline jlong grt_lshr64(jlong value, jint distance)")
     }
 
     @Test
@@ -111,7 +120,7 @@ class NativeJvmCppMethodTranslatorTest {
 
         val objectClassLiteral = translate(objectClassLiteralMethod())
         assertContains(objectClassLiteral, "grt_find_class(env, classloader, \"java/lang/String\")")
-        assertContains(objectClassLiteral, "cstack[sp++].l = classConstant_0;")
+        assertContains(objectClassLiteral, "cstack[sp++].l = classObject_0;")
 
         val primitiveClassLiteral = translate(primitiveClassLiteralMethod())
         assertContains(primitiveClassLiteral, "grt_find_class(env, classloader, \"java/lang/Integer\")")
@@ -127,9 +136,16 @@ class NativeJvmCppMethodTranslatorTest {
         val byteLoad = translate(byteArrayLoadMethod())
         assertContains(byteLoad, "cstack[sp++].i = grt_baload(env, (jarray) array, index);")
 
+        val byteStore = translate(byteArrayStoreMethod())
+        assertContains(byteStore, "grt_bastore(env, (jarray) array, index, value);")
+
         val charStore = translate(charArrayStoreMethod())
-        assertContains(charStore, "jchar value = static_cast<jchar>(cstack[--sp].i);")
+        assertContains(charStore, "jchar value = static_cast<jchar>(static_cast<uint32_t>(cstack[--sp].i) & 0xffffu);")
         assertContains(charStore, "env->SetCharArrayRegion((jcharArray) array, index, 1, &value);")
+
+        val shortStore = translate(shortArrayStoreMethod())
+        assertContains(shortStore, "jshort value = grt_i16(static_cast<uint32_t>(cstack[--sp].i));")
+        assertContains(shortStore, "env->SetShortArrayRegion((jshortArray) array, index, 1, &value);")
 
         val objectStore = translate(objectArrayStoreMethod())
         assertContains(objectStore, "jobject value = cstack[--sp].l;")
@@ -142,8 +158,8 @@ class NativeJvmCppMethodTranslatorTest {
 
         assertContains(materialKey, "env->GetStaticLongField(fieldOwner_0, fieldId_0)")
         assertContains(materialKey, "{ cstack[sp] = cstack[sp - 1]; ++sp; }")
-        assertContains(materialKey, "static_cast<uint64_t>(lhs) >> rhs")
-        assertContains(materialKey, "cstack[sp++].i = static_cast<jint>(value);")
+        assertContains(materialKey, "grt_i64(static_cast<uint64_t>(lhs) >> rhs)")
+        assertContains(materialKey, "cstack[sp++].i = grt_i32(static_cast<uint32_t>(value));")
     }
 
     @Test
@@ -151,11 +167,45 @@ class NativeJvmCppMethodTranslatorTest {
         val shifts = translate(intShiftMethod())
 
         assertContains(shifts, "// ISHL")
-        assertContains(shifts, "static_cast<uint32_t>(lhs) << rhs")
+        assertContains(shifts, "grt_i32(static_cast<uint32_t>(lhs) << rhs)")
         assertContains(shifts, "// ISHR")
-        assertContains(shifts, "cstack[sp++].i = static_cast<jint>(lhs >> rhs);")
+        assertContains(shifts, "cstack[sp++].i = grt_ishr32(lhs, rhs);")
         assertContains(shifts, "// IUSHR")
-        assertContains(shifts, "static_cast<uint32_t>(lhs) >> rhs")
+        assertContains(shifts, "grt_i32(static_cast<uint32_t>(lhs) >> rhs)")
+    }
+
+    @Test
+    fun emitsLongSignedShiftThroughPortableHelper() {
+        val shifts = translate(longShiftMethod())
+
+        assertContains(shifts, "// LSHL")
+        assertContains(shifts, "grt_i64(static_cast<uint64_t>(lhs) << rhs)")
+        assertContains(shifts, "// LSHR")
+        assertContains(shifts, "cstack[sp++].j = grt_lshr64(lhs, rhs);")
+        assertContains(shifts, "// LUSHR")
+        assertContains(shifts, "grt_i64(static_cast<uint64_t>(lhs) >> rhs)")
+    }
+
+    @Test
+    fun emitsJavaIntWraparoundArithmeticWithoutSignedOverflow() {
+        val arithmetic = translate(intWraparoundMethod())
+
+        assertContains(arithmetic, "// IADD")
+        assertContains(arithmetic, "grt_i32(static_cast<uint32_t>(lhs) + static_cast<uint32_t>(rhs))")
+        assertContains(arithmetic, "// IMUL")
+        assertContains(arithmetic, "grt_i32(static_cast<uint32_t>(lhs) * static_cast<uint32_t>(rhs))")
+        assertContains(arithmetic, "// INEG")
+        assertContains(arithmetic, "grt_i32(0u - static_cast<uint32_t>(value))")
+        assertContains(arithmetic, "// IREM")
+        assertContains(arithmetic, "else if (lhs == ((jint) 0x80000000) && rhs == -1) { cstack[sp++].i = 0; }")
+    }
+
+    @Test
+    fun emitsIincLocalIncrement() {
+        val iinc = translate(iincMethod())
+
+        assertContains(iinc, "// IINC")
+        assertContains(iinc, "clocal[0].i = grt_i32(static_cast<uint32_t>(clocal[0].i) + static_cast<uint32_t>(-3));")
     }
 
     @Test
@@ -166,7 +216,7 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(longCall, "return cstack[--sp].j;")
 
         val array = translate(longArrayStoreLoadMethod())
-        assertContains(array, "jlong value = static_cast<jlong>(cstack[--sp].j);")
+        assertContains(array, "jlong value = cstack[--sp].j;")
         assertContains(array, "env->SetLongArrayRegion((jlongArray) array, index, 1, &value);")
         assertContains(array, "env->GetLongArrayRegion((jlongArray) array, index, 1, &value);")
         assertContains(array, "cstack[sp++].j = static_cast<jlong>(value);")
@@ -224,9 +274,43 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(throwCatch, "grt_throw(env, \"java/lang/NullPointerException\", \"ATHROW npe\");")
         assertContains(throwCatch, "env->Throw((jthrowable) exception);")
         assertContains(throwCatch, "jclass catchClass_0 = grt_find_class(env, classloader, \"java/lang/Throwable\");")
-        assertContains(throwCatch, "if (env->IsInstanceOf(cstack[0].l, catchClass_0)) { goto L_BC_4; }")
+        assertContains(throwCatch, "if (env->IsInstanceOf(cstack[0].l, catchClass_0)) { goto L_BC_5; }")
         assertContains(throwCatch, "goto L_CATCH_0;")
-        assertContains(throwCatch, "goto L_BC_4;")
+        assertContains(throwCatch, "goto L_BC_5;")
+    }
+
+    @Test
+    fun emitsArithmeticExceptionDispatchForProtectedTryCatchRegion() {
+        val divCatch = translate(divisionCatchMethod())
+
+        assertContains(divCatch, "grt_throw(env, \"java/lang/ArithmeticException\", \"/ by zero\");")
+        assertContains(divCatch, "jthrowable exception = env->ExceptionOccurred();")
+        assertContains(divCatch, "env->ExceptionClear();")
+        assertContains(divCatch, "goto L_CATCH_0;")
+        assertContains(divCatch, "jclass catchClass_0 = grt_find_class(env, classloader, \"java/lang/ArithmeticException\");")
+        assertContains(divCatch, "if (env->IsInstanceOf(cstack[0].l, catchClass_0)) { goto L_BC_7; }")
+    }
+
+    @Test
+    fun emitsCatchAllAsDirectExceptionDispatchTarget() {
+        val catchAll = translate(catchAllDivisionMethod())
+
+        assertContains(catchAll, "goto L_CATCH_0;")
+        assertContains(catchAll, "L_CATCH_0:")
+        assertContains(catchAll, "goto L_BC_7;")
+        assertFalse(catchAll.contains("catchClass_0"))
+    }
+
+    @Test
+    fun emitsMonitorEnterExitThroughJniMonitorCalls() {
+        val monitor = translate(monitorMethod())
+
+        assertContains(monitor, "// MONITORENTER")
+        assertContains(monitor, "grt_throw(env, \"java/lang/NullPointerException\", \"MONITORENTER npe\");")
+        assertContains(monitor, "env->MonitorEnter(lock);")
+        assertContains(monitor, "// MONITOREXIT")
+        assertContains(monitor, "grt_throw(env, \"java/lang/NullPointerException\", \"MONITOREXIT npe\");")
+        assertContains(monitor, "env->MonitorExit(lock);")
     }
 
     @Test
@@ -265,7 +349,7 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(doubleCall, "return cstack[--sp].d;")
 
         val doubleArray = translate(doubleArrayStoreLoadMethod())
-        assertContains(doubleArray, "jdouble value = static_cast<jdouble>(cstack[--sp].d);")
+        assertContains(doubleArray, "jdouble value = cstack[--sp].d;")
         assertContains(doubleArray, "env->SetDoubleArrayRegion((jdoubleArray) array, index, 1, &value);")
         assertContains(doubleArray, "env->GetDoubleArrayRegion((jdoubleArray) array, index, 1, &value);")
 
@@ -606,6 +690,30 @@ class NativeJvmCppMethodTranslatorTest {
         }
     }
 
+    private fun byteArrayStoreMethod(): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "byteArrayStore", "([BII)V", null, null).apply {
+            instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 2))
+            instructions.add(InsnNode(Opcodes.BASTORE))
+            instructions.add(InsnNode(Opcodes.RETURN))
+            maxStack = 3
+            maxLocals = 3
+        }
+    }
+
+    private fun shortArrayStoreMethod(): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "shortArrayStore", "([SII)V", null, null).apply {
+            instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 2))
+            instructions.add(InsnNode(Opcodes.SASTORE))
+            instructions.add(InsnNode(Opcodes.RETURN))
+            maxStack = 3
+            maxLocals = 3
+        }
+    }
+
     private fun objectArrayStoreMethod(): MethodNode {
         return MethodNode(
             Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
@@ -654,6 +762,51 @@ class NativeJvmCppMethodTranslatorTest {
             instructions.add(InsnNode(Opcodes.IRETURN))
             maxStack = 4
             maxLocals = 2
+        }
+    }
+
+    private fun longShiftMethod(): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "longShift", "(JI)J", null, null).apply {
+            instructions.add(VarInsnNode(Opcodes.LLOAD, 0))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 2))
+            instructions.add(InsnNode(Opcodes.LSHL))
+            instructions.add(VarInsnNode(Opcodes.LLOAD, 0))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 2))
+            instructions.add(InsnNode(Opcodes.LSHR))
+            instructions.add(InsnNode(Opcodes.LADD))
+            instructions.add(VarInsnNode(Opcodes.LLOAD, 0))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 2))
+            instructions.add(InsnNode(Opcodes.LUSHR))
+            instructions.add(InsnNode(Opcodes.LADD))
+            instructions.add(InsnNode(Opcodes.LRETURN))
+            maxStack = 8
+            maxLocals = 3
+        }
+    }
+
+    private fun intWraparoundMethod(): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "intWraparound", "(II)I", null, null).apply {
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 0))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(InsnNode(Opcodes.IADD))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(InsnNode(Opcodes.IMUL))
+            instructions.add(InsnNode(Opcodes.INEG))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(InsnNode(Opcodes.IREM))
+            instructions.add(InsnNode(Opcodes.IRETURN))
+            maxStack = 2
+            maxLocals = 2
+        }
+    }
+
+    private fun iincMethod(): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "iinc", "(I)I", null, null).apply {
+            instructions.add(IincInsnNode(0, -3))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 0))
+            instructions.add(InsnNode(Opcodes.IRETURN))
+            maxStack = 1
+            maxLocals = 1
         }
     }
 
@@ -731,6 +884,47 @@ class NativeJvmCppMethodTranslatorTest {
             instructions.add(InsnNode(Opcodes.ICONST_1))
             instructions.add(InsnNode(Opcodes.IRETURN))
             tryCatchBlocks.add(TryCatchBlockNode(start, end, handler, "java/lang/Throwable"))
+            maxStack = 1
+            maxLocals = 1
+        }
+    }
+
+    private fun divisionCatchMethod(): MethodNode {
+        return divisionCatchMethod("divisionCatch", "java/lang/ArithmeticException")
+    }
+
+    private fun catchAllDivisionMethod(): MethodNode {
+        return divisionCatchMethod("catchAllDivision", null)
+    }
+
+    private fun divisionCatchMethod(name: String, caughtType: String?): MethodNode {
+        val start = LabelNode()
+        val end = LabelNode()
+        val handler = LabelNode()
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, name, "(II)I", null, null).apply {
+            instructions.add(start)
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 0))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(InsnNode(Opcodes.IDIV))
+            instructions.add(InsnNode(Opcodes.IRETURN))
+            instructions.add(end)
+            instructions.add(handler)
+            instructions.add(InsnNode(Opcodes.POP))
+            instructions.add(InsnNode(Opcodes.ICONST_M1))
+            instructions.add(InsnNode(Opcodes.IRETURN))
+            tryCatchBlocks.add(TryCatchBlockNode(start, end, handler, caughtType))
+            maxStack = 2
+            maxLocals = 2
+        }
+    }
+
+    private fun monitorMethod(): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "monitor", "(Ljava/lang/Object;)V", null, null).apply {
+            instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
+            instructions.add(InsnNode(Opcodes.MONITORENTER))
+            instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
+            instructions.add(InsnNode(Opcodes.MONITOREXIT))
+            instructions.add(InsnNode(Opcodes.RETURN))
             maxStack = 1
             maxLocals = 1
         }

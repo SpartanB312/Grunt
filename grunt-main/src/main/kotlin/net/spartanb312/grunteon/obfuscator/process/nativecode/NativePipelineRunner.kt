@@ -14,7 +14,6 @@ object NativePipelineRunner {
         val candidates = NativeCandidateScanner.scan(config)
         if (candidates.isEmpty()) {
             Logger.info(" - NativePipeline: no annotation-marked candidates")
-            if (config.cleanNativeAnnotations) NativeCommitter.cleanNativeAnnotations()
             return
         }
 
@@ -25,7 +24,6 @@ object NativePipelineRunner {
         }
         if (accepted.isEmpty()) {
             Logger.warn(" - NativePipeline: all candidates were skipped")
-            if (config.cleanNativeAnnotations) NativeCommitter.cleanNativeAnnotations()
             return
         }
 
@@ -37,12 +35,11 @@ object NativePipelineRunner {
                     instance.workRes.libraryClassMap.containsKey(it)
             }
         )
-        val compileResult = NativeCompiler.compile(sourceBundle)
+        val compileResult = NativeCompiler.compile(sourceBundle, config)
         if (!compileResult.success) {
             val message = "Native compilation failed; Java bytecode was left unchanged.\n${compileResult.output}"
             if (config.failOnCompileError) throw NativeCompileException(message)
             Logger.warn(message)
-            if (config.cleanNativeAnnotations) NativeCommitter.cleanNativeAnnotations()
             return
         }
 

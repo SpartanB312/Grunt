@@ -114,14 +114,19 @@ internal object NativeValidator {
         }
 
         return try {
-            NativeIntMethodTranslator.validate(methodNode)
-            accepted(NativeLoweringKind.PrimitiveInt)
-        } catch (exception: UnsupportedNativeInstruction) {
+            NativeSsaIntMethodTranslator.validate(methodNode, jvmIr)
+            accepted(NativeLoweringKind.SsaPrimitive)
+        } catch (_: UnsupportedNativeInstruction) {
             try {
-                NativeJvmCppMethodTranslator.validate(methodNode, jvmIr, fullJvmSupport)
-                accepted(NativeLoweringKind.FullJvm)
-            } catch (_: UnsupportedNativeInstruction) {
-                skipped(exception.reason, withFullJvmSummary(exception.message, fullJvmSupport))
+                NativeIntMethodTranslator.validate(methodNode)
+                accepted(NativeLoweringKind.PrimitiveInt)
+            } catch (exception: UnsupportedNativeInstruction) {
+                try {
+                    NativeJvmCppMethodTranslator.validate(methodNode, jvmIr, fullJvmSupport)
+                    accepted(NativeLoweringKind.FullJvm)
+                } catch (_: UnsupportedNativeInstruction) {
+                    skipped(exception.reason, withFullJvmSummary(exception.message, fullJvmSupport))
+                }
             }
         }
     }

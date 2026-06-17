@@ -10,6 +10,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.exp.
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roundtrip.FlowIRRoundTrip
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.roundtrip.SSARoundTrip
+import net.spartanb312.grunteon.obfuscator.process.transformers.other.ReferenceObfuscate
 import java.nio.file.Path
 import kotlin.io.path.createTempFile
 import kotlin.io.path.deleteIfExists
@@ -79,11 +80,11 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"includeExceptionBlocks\": true")
             assertContains(text, "\"maxDispatcherIslands\": 0")
             assertContains(text, "\"fakeCasesPerDispatcher\": 1")
-            assertContains(text, "\"sharedFakeCaseTerminatorChance\": 0.65")
+            assertContains(text, "\"sharedFakeCaseTerminatorChance\": \"0.65\"")
             assertContains(text, "\"minStateOpsPerCase\": 2")
             assertContains(text, "\"maxStateOpsPerCase\": 5")
             assertContains(text, "\"stateKeyMode\": \"Mixed\"")
-            assertContains(text, "\"stateKeyProcessorChance\": 0.5")
+            assertContains(text, "\"stateKeyProcessorChance\": \"0.5\"")
             assertContains(text, "\"keyProcessorComplexity\": \"Light\"")
             assertContains(text, "\"keyProcessorMinMainSteps\": 1")
             assertContains(text, "\"keyProcessorMaxMainSteps\": 3")
@@ -91,9 +92,11 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"keyProcessorMaxExtraSteps\": 1")
             assertContains(text, "\"keyProcessorMinChainSteps\": 0")
             assertContains(text, "\"keyProcessorMaxChainSteps\": 0")
+            assertContains(text, "\"keyProcessorNativeCandidate\": false")
+            assertContains(text, "\"keyProcessorNativeCandidateRatio\": \"0.1\"")
             assertContains(text, "\"shuffleRegionBlocks\": false")
             assertContains(text, "\"dispatcherTrailingRealBlock\": false")
-            assertContains(text, "\"dispatcherTrailingRealBlockChance\": 1.0")
+            assertContains(text, "\"dispatcherTrailingRealBlockChance\": \"1.0\"")
             assertIs<ControlflowFlattening.Config>(readSingleConfig(path))
         } finally {
             path.deleteIfExists()
@@ -126,20 +129,20 @@ class TransformerConfigEnabledSmokeTest {
             )
             val text = path.readText()
             assertContains(text, "ControlflowJump.Config")
-            assertContains(text, "\"mangledIfChance\": 0.25")
+            assertContains(text, "\"mangledIfChance\": \"0.25\"")
             assertContains(text, "\"maxMangledIfsPerMethod\": 4")
-            assertContains(text, "\"mangledFakeLoopChance\": 0.35")
-            assertContains(text, "\"sharedJunkExitChance\": 0.65")
-            assertContains(text, "\"junkTerminalThrowChance\": 0.2")
-            assertContains(text, "\"dispatcherLandingJunkChance\": 0.0")
+            assertContains(text, "\"mangledFakeLoopChance\": \"0.35\"")
+            assertContains(text, "\"sharedJunkExitChance\": \"0.65\"")
+            assertContains(text, "\"junkTerminalThrowChance\": \"0.2\"")
+            assertContains(text, "\"dispatcherLandingJunkChance\": \"0.0\"")
             assertContains(text, "\"maxDispatcherLandingJunkBlocksPerMethod\": 4")
-            assertContains(text, "\"exceptionBridgeChance\": 0.0")
+            assertContains(text, "\"exceptionBridgeChance\": \"0.0\"")
             assertContains(text, "\"maxExceptionBridgesPerMethod\": 4")
             assertContains(text, "\"predicateProcessorMinMainSteps\": 1")
             assertContains(text, "\"predicateProcessorMaxMainSteps\": 2")
             assertContains(text, "\"predicateProcessorMinExtraSteps\": 0")
             assertContains(text, "\"predicateProcessorMaxExtraSteps\": 1")
-            assertContains(text, "\"predicateRandomBoundChance\": 0.15")
+            assertContains(text, "\"predicateRandomBoundChance\": \"0.15\"")
             assertContains(text, "\"randomBoundPredicateMinMainSteps\": 1")
             assertContains(text, "\"randomBoundPredicateMaxMainSteps\": 1")
             assertContains(text, "\"randomBoundPredicateMinExtraSteps\": 0")
@@ -169,6 +172,25 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"javaAgent\": false")
             assertContains(text, "\"jmxRemote\": false")
             assertIs<RuntimeMaterial.Config>(readSingleConfig(path))
+        } finally {
+            path.deleteIfExists()
+        }
+    }
+
+    @Test
+    fun roundTripsReferenceObfuscateNativeHelperConfig() {
+        val path = createTempFile("grunteon-reference-obfuscate-config", ".json")
+        try {
+            ObfConfig.write(
+                configOf(ReferenceObfuscate.Config()),
+                path
+            )
+            val text = path.readText()
+            assertContains(text, "ReferenceObfuscate.Config")
+            assertContains(text, "\"massiveString\": true")
+            assertContains(text, "\"generatedHelperNativeCandidate\": false")
+            assertContains(text, "\"generatedHelperNativeCandidateRatio\": \"0.1\"")
+            assertIs<ReferenceObfuscate.Config>(readSingleConfig(path))
         } finally {
             path.deleteIfExists()
         }

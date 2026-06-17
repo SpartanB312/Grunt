@@ -58,9 +58,16 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         @SettingDesc("Reobfuscate bootstrap method")
         @SettingName("Reobfuscate BSM")
         val reobfBSM: Boolean = true,
-        @SettingDesc("Mark generated bootstrap/decrypt helper methods as native codegen candidates")
+        @SettingDesc("Use a massive generated helper method name. Automatically disabled while NativePipeline is enabled to keep native source and C++ symbols compilable")
+        @SettingName("Massive string")
+        val massiveString: Boolean = true,
+        @SettingDesc("Mark generated bootstrap/decrypt helper methods as native codegen candidates. Bootstrap methods are always marked when enabled; auxiliary helpers use the ratio below.")
         @SettingName("Generated helper native candidate")
         val generatedHelperNativeCandidate: Boolean = false,
+        @SettingDesc("Ratio of generated auxiliary decrypt/helper methods marked as native candidates when generated helper native candidate is enabled")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Generated helper native candidate ratio")
+        val generatedHelperNativeCandidateRatio: Decimal = 0.1.toDecimal(),
         @SettingDesc("Specify method exclusions.")
         @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
@@ -211,7 +218,7 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
 
             val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, "apply"))
             val counter = counter.local
-            val bsmName1 = massiveString
+            val bsmName1 = referenceHelperNameBase(classNode, config)
             val bsmName2 = bsmName1.substring(1, bsmName1.length - 1)
             val decryptName = bsmName1.substring(2, bsmName1.length - 1)
             val material = findRuntimeMaterial(classNode)
@@ -239,16 +246,10 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
                     val plainBsm = if (material != null && plainBsmName != null && plainDecryptName != null) {
                         createBootstrap(classNode.name, plainBsmName, plainDecryptName)
                     } else null
-                    val generatedHelpers = listOfNotNull(
-                        materialKey,
-                        plainDecrypt,
-                        plainBsm,
-                        decrypt,
-                        bsm,
-                        decrypt2,
-                        bsm2
-                    )
-                    generatedHelpers.forEach { it.markGeneratedReferenceHelper(config) }
+                    listOfNotNull(plainBsm, bsm, bsm2)
+                        .forEach { it.markGeneratedReferenceBootstrap(config) }
+                    listOfNotNull(materialKey, plainDecrypt, decrypt, decrypt2)
+                        .forEach { it.markGeneratedReferenceHelper(config, randomGen) }
                     if (config.reobfBSM) {
                         val methodsAdded = mutableListOf<MethodNode>()
                         materialKey?.let { methodsAdded.add(it) }
@@ -614,10 +615,46 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         return shouldApply
     }
 
-    private fun MethodNode.markGeneratedReferenceHelper(config: Config): MethodNode {
+    private fun MethodNode.markGeneratedReferenceHelper(config: Config, random: UniformRandomProvider): MethodNode {
+        appendAnnotation(GENERATED_METHOD)
+        if (shouldMarkGeneratedHelperNativeCandidate(config, random)) appendAnnotation(NATIVE_INCLUDED)
+        return this
+    }
+
+    private fun MethodNode.markGeneratedReferenceBootstrap(config: Config): MethodNode {
         appendAnnotation(GENERATED_METHOD)
         if (config.generatedHelperNativeCandidate) appendAnnotation(NATIVE_INCLUDED)
         return this
+    }
+
+    private fun shouldMarkGeneratedHelperNativeCandidate(config: Config, random: UniformRandomProvider): Boolean {
+        if (!config.generatedHelperNativeCandidate) return false
+        val ratio = config.generatedHelperNativeCandidateRatio.toDouble()
+        return when {
+            ratio <= 0.0 -> false
+            ratio >= 1.0 -> true
+            else -> random.nextDouble() < ratio
+        }
+    }
+
+    context(instance: Grunteon)
+    private fun referenceHelperNameBase(classNode: ClassNode, config: Config): String {
+        if (config.massiveString && !instance.nativePipelineConfig.enabled) return massiveString
+
+        val random = Xoshiro256PPRandom(getSeed(classNode.name, "ReferenceObfuscate", "helperNames"))
+        val existingNames = classNode.methods.mapTo(mutableSetOf()) { it.name }
+        while (true) {
+            val candidate = random.getRandomString(16)
+            if (candidate.length < 4) continue
+            val helperNames = listOf(
+                candidate,
+                candidate.substring(1, candidate.length - 1),
+                candidate.substring(2, candidate.length - 1),
+                candidate.substring(1, candidate.length - 2),
+                candidate.substring(1, candidate.length - 3)
+            )
+            if (helperNames.none { it in existingNames }) return candidate
+        }
     }
 
     private fun shouldProcessMethod(methodNode: MethodNode): Boolean {

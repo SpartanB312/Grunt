@@ -9,6 +9,7 @@ import org.objectweb.asm.Handle
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.FieldInsnNode
+import org.objectweb.asm.tree.IincInsnNode
 import org.objectweb.asm.tree.IntInsnNode
 import org.objectweb.asm.tree.JumpInsnNode
 import org.objectweb.asm.tree.LabelNode
@@ -234,13 +235,16 @@ internal object NativeJvmCppMethodTranslator {
             Opcodes.FCONST_2 -> pushFloat(2.0f)
             Opcodes.DCONST_0 -> pushDouble(0.0)
             Opcodes.DCONST_1 -> pushDouble(1.0)
-            Opcodes.IADD -> binaryInt("+")
-            Opcodes.ISUB -> binaryInt("-")
-            Opcodes.IMUL -> binaryInt("*")
-            Opcodes.IAND -> binaryInt("&")
-            Opcodes.IOR -> binaryInt("|")
-            Opcodes.IXOR -> binaryInt("^")
-            Opcodes.INEG -> appendLine("    { jint value = cstack[--sp].i; cstack[sp++].i = static_cast<jint>(-value); }")
+            Opcodes.IADD -> binaryIntWrapped("+")
+            Opcodes.ISUB -> binaryIntWrapped("-")
+            Opcodes.IMUL -> binaryIntWrapped("*")
+            Opcodes.IAND -> binaryIntBitwise("&")
+            Opcodes.IOR -> binaryIntBitwise("|")
+            Opcodes.IXOR -> binaryIntBitwise("^")
+            Opcodes.INEG -> appendLine(
+                "    { jint value = cstack[--sp].i; " +
+                    "cstack[sp++].i = grt_i32(0u - static_cast<uint32_t>(value)); }"
+            )
             Opcodes.IDIV -> appendLine(
                 "    { jint rhs = cstack[--sp].i; jint lhs = cstack[--sp].i; " +
                     "if (rhs == 0) { grt_throw(env, \"java/lang/ArithmeticException\", \"/ by zero\"); } " +
@@ -250,19 +254,20 @@ internal object NativeJvmCppMethodTranslator {
             Opcodes.IREM -> appendLine(
                 "    { jint rhs = cstack[--sp].i; jint lhs = cstack[--sp].i; " +
                     "if (rhs == 0) { grt_throw(env, \"java/lang/ArithmeticException\", \"/ by zero\"); } " +
+                    "else if (lhs == ((jint) 0x80000000) && rhs == -1) { cstack[sp++].i = 0; } " +
                     "else { cstack[sp++].i = static_cast<jint>(lhs % rhs); } }"
             )
             Opcodes.ISHL -> appendLine(
                 "    { jint rhs = cstack[--sp].i & 31; jint lhs = cstack[--sp].i; " +
-                    "cstack[sp++].i = static_cast<jint>(static_cast<uint32_t>(lhs) << rhs); }"
+                    "cstack[sp++].i = grt_i32(static_cast<uint32_t>(lhs) << rhs); }"
             )
             Opcodes.ISHR -> appendLine(
                 "    { jint rhs = cstack[--sp].i & 31; jint lhs = cstack[--sp].i; " +
-                    "cstack[sp++].i = static_cast<jint>(lhs >> rhs); }"
+                    "cstack[sp++].i = grt_ishr32(lhs, rhs); }"
             )
             Opcodes.IUSHR -> appendLine(
                 "    { jint rhs = cstack[--sp].i & 31; jint lhs = cstack[--sp].i; " +
-                    "cstack[sp++].i = static_cast<jint>(static_cast<uint32_t>(lhs) >> rhs); }"
+                    "cstack[sp++].i = grt_i32(static_cast<uint32_t>(lhs) >> rhs); }"
             )
             Opcodes.LADD -> binaryLongWrapped("+")
             Opcodes.LSUB -> binaryLongWrapped("-")
@@ -288,22 +293,22 @@ internal object NativeJvmCppMethodTranslator {
             )
             Opcodes.LSHL -> appendLine(
                 "    { jint rhs = cstack[--sp].i & 63; jlong lhs = cstack[--sp].j; " +
-                    "cstack[sp++].j = static_cast<jlong>(static_cast<uint64_t>(lhs) << rhs); }"
+                    "cstack[sp++].j = grt_i64(static_cast<uint64_t>(lhs) << rhs); }"
             )
             Opcodes.LSHR -> appendLine(
                 "    { jint rhs = cstack[--sp].i & 63; jlong lhs = cstack[--sp].j; " +
-                    "cstack[sp++].j = static_cast<jlong>(lhs >> rhs); }"
+                    "cstack[sp++].j = grt_lshr64(lhs, rhs); }"
             )
             Opcodes.LUSHR -> appendLine(
                 "    { jint rhs = cstack[--sp].i & 63; jlong lhs = cstack[--sp].j; " +
-                    "cstack[sp++].j = static_cast<jlong>(static_cast<uint64_t>(lhs) >> rhs); }"
+                    "cstack[sp++].j = grt_i64(static_cast<uint64_t>(lhs) >> rhs); }"
             )
             Opcodes.LCMP -> appendLine(
                 "    { jlong rhs = cstack[--sp].j; jlong lhs = cstack[--sp].j; " +
                     "cstack[sp++].i = lhs == rhs ? 0 : (lhs < rhs ? -1 : 1); }"
             )
             Opcodes.I2L -> appendLine("    { jint value = cstack[--sp].i; cstack[sp++].j = static_cast<jlong>(value); }")
-            Opcodes.L2I -> appendLine("    { jlong value = cstack[--sp].j; cstack[sp++].i = static_cast<jint>(value); }")
+            Opcodes.L2I -> appendLine("    { jlong value = cstack[--sp].j; cstack[sp++].i = grt_i32(static_cast<uint32_t>(value)); }")
             Opcodes.I2F -> appendLine("    { jint value = cstack[--sp].i; cstack[sp++].f = static_cast<jfloat>(value); }")
             Opcodes.I2D -> appendLine("    { jint value = cstack[--sp].i; cstack[sp++].d = static_cast<jdouble>(value); }")
             Opcodes.L2F -> appendLine("    { jlong value = cstack[--sp].j; cstack[sp++].f = static_cast<jfloat>(value); }")
@@ -314,9 +319,9 @@ internal object NativeJvmCppMethodTranslator {
             Opcodes.D2I -> appendLine("    { jdouble value = cstack[--sp].d; cstack[sp++].i = grt_d2i(value); }")
             Opcodes.D2L -> appendLine("    { jdouble value = cstack[--sp].d; cstack[sp++].j = grt_d2l(value); }")
             Opcodes.D2F -> appendLine("    { jdouble value = cstack[--sp].d; cstack[sp++].f = static_cast<jfloat>(value); }")
-            Opcodes.I2B -> appendLine("    { jint value = cstack[--sp].i; cstack[sp++].i = static_cast<jint>(static_cast<jbyte>(value)); }")
-            Opcodes.I2C -> appendLine("    { jint value = cstack[--sp].i; cstack[sp++].i = static_cast<jint>(static_cast<jchar>(value)); }")
-            Opcodes.I2S -> appendLine("    { jint value = cstack[--sp].i; cstack[sp++].i = static_cast<jint>(static_cast<jshort>(value)); }")
+            Opcodes.I2B -> appendLine("    { uint32_t bits = static_cast<uint32_t>(cstack[--sp].i) & 0xffu; cstack[sp++].i = grt_i32((bits ^ 0x80u) - 0x80u); }")
+            Opcodes.I2C -> appendLine("    { uint32_t bits = static_cast<uint32_t>(cstack[--sp].i) & 0xffffu; cstack[sp++].i = grt_i32(bits); }")
+            Opcodes.I2S -> appendLine("    { uint32_t bits = static_cast<uint32_t>(cstack[--sp].i) & 0xffffu; cstack[sp++].i = grt_i32((bits ^ 0x8000u) - 0x8000u); }")
             Opcodes.FADD -> binaryFloat("+")
             Opcodes.FSUB -> binaryFloat("-")
             Opcodes.FMUL -> binaryFloat("*")
@@ -418,6 +423,7 @@ internal object NativeJvmCppMethodTranslator {
             is FieldInsnNode -> emitFieldInstruction(instruction, node)
             is TypeInsnNode -> emitTypeInstruction(instruction, node)
             is MultiANewArrayInsnNode -> emitMultiANewArrayInstruction(instruction, node)
+            is IincInsnNode -> emitIincInstruction(node)
             is VarInsnNode -> when (node.opcode) {
                 Opcodes.ILOAD -> appendLine("    cstack[sp++].i = clocal[${node.`var`}].i;")
                 Opcodes.ISTORE -> appendLine("    clocal[${node.`var`}].i = cstack[--sp].i;")
@@ -462,6 +468,16 @@ internal object NativeJvmCppMethodTranslator {
             }
             else -> unsupportedInstruction(instruction)
         }
+    }
+
+    private fun StringBuilder.emitIincInstruction(node: IincInsnNode) {
+        append("    clocal[")
+            .append(node.`var`)
+            .append("].i = grt_i32(static_cast<uint32_t>(clocal[")
+            .append(node.`var`)
+            .append("].i) + static_cast<uint32_t>(")
+            .append(node.incr)
+            .appendLine("));")
     }
 
     private fun StringBuilder.emitFieldInstruction(
@@ -1099,8 +1115,18 @@ internal object NativeJvmCppMethodTranslator {
             .appendLine(");")
     }
 
-    private fun StringBuilder.binaryInt(operator: String) {
-        appendLine("    { jint rhs = cstack[--sp].i; jint lhs = cstack[--sp].i; cstack[sp++].i = static_cast<jint>(lhs $operator rhs); }")
+    private fun StringBuilder.binaryIntWrapped(operator: String) {
+        appendLine(
+            "    { jint rhs = cstack[--sp].i; jint lhs = cstack[--sp].i; " +
+                "cstack[sp++].i = grt_i32(static_cast<uint32_t>(lhs) $operator static_cast<uint32_t>(rhs)); }"
+        )
+    }
+
+    private fun StringBuilder.binaryIntBitwise(operator: String) {
+        appendLine(
+            "    { jint rhs = cstack[--sp].i; jint lhs = cstack[--sp].i; " +
+                "cstack[sp++].i = grt_i32(static_cast<uint32_t>(lhs) $operator static_cast<uint32_t>(rhs)); }"
+        )
     }
 
     private fun StringBuilder.binaryLong(operator: String) {
@@ -1110,7 +1136,7 @@ internal object NativeJvmCppMethodTranslator {
     private fun StringBuilder.binaryLongWrapped(operator: String) {
         appendLine(
             "    { jlong rhs = cstack[--sp].j; jlong lhs = cstack[--sp].j; " +
-                "cstack[sp++].j = static_cast<jlong>(static_cast<uint64_t>(lhs) $operator static_cast<uint64_t>(rhs)); }"
+                "cstack[sp++].j = grt_i64(static_cast<uint64_t>(lhs) $operator static_cast<uint64_t>(rhs)); }"
         )
     }
 
@@ -1354,8 +1380,17 @@ internal object NativeJvmCppMethodTranslator {
         setter: String,
         stackField: String = "i"
     ) {
+        val valueLine = when (elementType) {
+            "jchar" -> "jchar value = static_cast<jchar>(static_cast<uint32_t>(cstack[--sp].i) & 0xffffu);"
+            "jshort" -> "jshort value = grt_i16(static_cast<uint32_t>(cstack[--sp].i));"
+            "jint" -> "jint value = cstack[--sp].i;"
+            "jlong" -> "jlong value = cstack[--sp].j;"
+            "jfloat" -> "jfloat value = cstack[--sp].f;"
+            "jdouble" -> "jdouble value = cstack[--sp].d;"
+            else -> "$elementType value = static_cast<$elementType>(cstack[--sp].$stackField);"
+        }
         appendLine("    {")
-        appendLine("        $elementType value = static_cast<$elementType>(cstack[--sp].$stackField);")
+        appendLine("        $valueLine")
         appendLine("        jint index = cstack[--sp].i;")
         appendLine("        jobject array = cstack[--sp].l;")
         appendLine("        if (array == nullptr) {")
@@ -1737,6 +1772,7 @@ internal object NativeJvmCppMethodTranslator {
             Opcodes.IF_ACMPNE -> "IF_ACMPNE"
             Opcodes.IFNULL -> "IFNULL"
             Opcodes.IFNONNULL -> "IFNONNULL"
+            Opcodes.IINC -> "IINC"
             Opcodes.TABLESWITCH -> "TABLESWITCH"
             Opcodes.LOOKUPSWITCH -> "LOOKUPSWITCH"
             Opcodes.INVOKESTATIC -> "INVOKESTATIC"
