@@ -70,9 +70,9 @@ fun PanelSurface(
                 modifier = Modifier
                     .padding(10.dp)
                     .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         title,
                         style = FluentTheme.typography.subtitle,
