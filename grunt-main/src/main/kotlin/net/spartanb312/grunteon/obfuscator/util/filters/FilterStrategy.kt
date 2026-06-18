@@ -3,11 +3,13 @@ package net.spartanb312.grunteon.obfuscator.util.filters
 import org.objectweb.asm.tree.ClassNode
 
 fun interface ClassPredicate {
-    fun testImpl(classNode: ClassNode, name: String): Boolean
+    fun testImpl(classNode: ClassNode): Boolean = testImpl(classNode.name)
+
+    fun testImpl(name: String): Boolean
 
     fun and(next: ClassPredicate): ClassPredicate {
-        return { classNode, name ->
-            this.testImpl(classNode, name) && next.testImpl(classNode, name)
+        return { name ->
+            this.testImpl(name) && next.testImpl(name)
         }
     }
 
@@ -19,9 +21,9 @@ fun interface ClassPredicate {
         private val includeStrategy: NamePredicates = emptyList(),
         private val excludeStrategy: NamePredicates = emptyList()
     ) : ClassPredicate {
-        override fun testImpl(classNode: ClassNode, name: String): Boolean {
-            val include = includeStrategy.matchedAnyBy(classNode.name)
-            val exclude = excludeStrategy.matchedAnyBy(classNode.name)
+        override fun testImpl(name: String): Boolean {
+            val include = includeStrategy.matchedAnyBy(name)
+            val exclude = excludeStrategy.matchedAnyBy(name)
             return include && !exclude
         }
     }
@@ -30,22 +32,34 @@ fun interface ClassPredicate {
         private val mapping: Map<String, String>,
         private val delegate: ClassPredicate
     ) : ClassPredicate {
-        override fun testImpl(classNode: ClassNode, name: String): Boolean {
-            return delegate.testImpl(classNode, mapping.getOrDefault(classNode.name, classNode.name))
+        override fun testImpl(name: String): Boolean {
+            return delegate.testImpl(mapping.getOrDefault(name, name))
         }
     }
 }
 
+fun ClassPredicate.test(name: String): Boolean {
+    return testImpl(name)
+}
+
 fun ClassPredicate.test(classNode: ClassNode): Boolean {
-    return testImpl(classNode, classNode.name)
+    return testImpl(classNode.name)
 }
 
 fun Sequence<ClassNode>.filter(classPredicate: ClassPredicate): Sequence<ClassNode> {
-    return filter { classPredicate.test(it) }
+    return sequence {
+        for (classNode in this@filter) {
+            if (classPredicate.test(classNode)) yield(classNode)
+        }
+    }
 }
 
 fun Iterable<ClassNode>.filter(classPredicate: ClassPredicate): List<ClassNode> {
-    return filter { classPredicate.test(it) }
+    val result = ArrayList<ClassNode>()
+    for (classNode in this) {
+        if (classPredicate.test(classNode)) result += classNode
+    }
+    return result
 }
 
 fun ClassPredicate.withMapping(mapping: Map<String, String>): ClassPredicate {

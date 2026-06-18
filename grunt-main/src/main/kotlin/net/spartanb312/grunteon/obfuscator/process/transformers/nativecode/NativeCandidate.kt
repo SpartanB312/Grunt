@@ -23,9 +23,11 @@ import net.spartanb312.grunteon.obfuscator.util.extensions.hasAnnotation
 import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
 import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
-import net.spartanb312.grunteon.obfuscator.util.extensions.methodFullDesc
 import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
+import net.spartanb312.grunteon.obfuscator.util.filters.withMapping
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.commons.Remapper
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
 
@@ -129,7 +131,12 @@ class NativeCandidate : Transformer<NativeCandidate.Config>(
             val classPredicate = instance.globalExclusion
                 .and(instance.mixinExclusion)
                 .and(config.classFilter.toClassPredicate())
-            val result = markCandidates(instance.workRes.inputClassCollection.filter { classPredicate.testImpl(it, it.name) }, config)
+                .withMapping(instance.nameMapping.revMappings)
+            val result = markCandidates(
+                instance.workRes.inputClassCollection.filter { classPredicate.testImpl(it) },
+                config,
+                instance.nameMapping.revMappings
+            )
             credit.add(result.marked.size * 50L)
 
             Logger.info(" - NativeCandidate:")
@@ -157,7 +164,11 @@ class NativeCandidate : Transformer<NativeCandidate.Config>(
         }
     }
 
-    internal fun markCandidates(classes: Iterable<ClassNode>, config: Config): MarkResult {
+    internal fun markCandidates(
+        classes: Iterable<ClassNode>,
+        config: Config,
+        classNameMapping: Map<String, String> = emptyMap()
+    ): MarkResult {
         val targetAnnotation = normalizeAnnotation(config.annotation)
         if (targetAnnotation.isBlank()) {
             return MarkResult(emptyList(), config.rules.map { it.name })
@@ -173,7 +184,7 @@ class NativeCandidate : Transformer<NativeCandidate.Config>(
         val marked = mutableListOf<MarkedMethod>()
         for (classNode in classes) {
             for (method in classNode.methods.orEmpty()) {
-                val rule = compiledRules.firstOrNull { it.matches(classNode, method) } ?: continue
+                val rule = compiledRules.firstOrNull { it.matches(classNode, method, classNameMapping) } ?: continue
                 val status = if (method.hasAnnotation(targetAnnotation)) {
                     MarkStatus.AlreadyMarked
                 } else {
@@ -199,7 +210,7 @@ class NativeCandidate : Transformer<NativeCandidate.Config>(
         private val requiredAnnotations = rule.requiredAnnotationList.map { normalizeAnnotation(it) }.filter { it.isNotBlank() }
         private val excludedAnnotations = rule.excludedAnnotationList.map { normalizeAnnotation(it) }.filter { it.isNotBlank() }
 
-        fun matches(classNode: ClassNode, method: MethodNode): Boolean {
+        fun matches(classNode: ClassNode, method: MethodNode, classNameMapping: Map<String, String>): Boolean {
             if (!rule.includeInterfaceMethods && classNode.isInterface) return false
             if (!rule.includeAbstract && method.isAbstract) return false
             if (!rule.includeNative && method.isNative) return false
@@ -214,11 +225,16 @@ class NativeCandidate : Transformer<NativeCandidate.Config>(
                 return false
             }
 
-            val fullDesc = methodFullDesc(classNode, method)
-            if (includePredicates.isNotEmpty() && !includePredicates.matchedAnyBy(fullDesc)) return false
-            if (excludePredicates.isNotEmpty() && excludePredicates.matchedAnyBy(fullDesc)) return false
-            if (rule.descriptorInclude.isNotEmpty() && !rule.descriptorInclude.any { wildcardMatches(it, method.desc) }) return false
-            if (rule.descriptorExclude.any { wildcardMatches(it, method.desc) }) return false
+            val fullDescs = methodFullDescs(classNode, method, classNameMapping)
+            if (includePredicates.isNotEmpty() && fullDescs.none { includePredicates.matchedAnyBy(it) }) return false
+            if (excludePredicates.isNotEmpty() && fullDescs.any { excludePredicates.matchedAnyBy(it) }) return false
+            val descriptors = methodDescriptors(method, classNameMapping)
+            if (rule.descriptorInclude.isNotEmpty() &&
+                !rule.descriptorInclude.any { pattern -> descriptors.any { wildcardMatches(pattern, it) } }
+            ) {
+                return false
+            }
+            if (rule.descriptorExclude.any { pattern -> descriptors.any { wildcardMatches(pattern, it) } }) return false
             return true
         }
     }
@@ -253,6 +269,39 @@ private fun ClassNode.hasAnyAnnotation(annotations: List<String>): Boolean {
 
 private fun MethodNode.hasAnyAnnotation(annotations: List<String>): Boolean {
     return annotations.any { hasAnnotation(it) }
+}
+
+private fun methodFullDescs(
+    classNode: ClassNode,
+    method: MethodNode,
+    classNameMapping: Map<String, String>
+): Set<String> {
+    val fullDescs = linkedSetOf<String>()
+    val owners = linkedSetOf(classNode.name)
+    val originalOwner = classNameMapping[classNode.name]
+    if (!originalOwner.isNullOrBlank() && originalOwner != classNode.name) {
+        owners += originalOwner
+    }
+    val descriptors = methodDescriptors(method, classNameMapping)
+    for (owner in owners) {
+        for (descriptor in descriptors) {
+            fullDescs += "$owner.${method.name}$descriptor"
+        }
+    }
+    return fullDescs
+}
+
+private fun methodDescriptors(method: MethodNode, classNameMapping: Map<String, String>): Set<String> {
+    return linkedSetOf(method.desc, method.desc.toOriginalDescriptor(classNameMapping))
+}
+
+private fun String.toOriginalDescriptor(classNameMapping: Map<String, String>): String {
+    if (classNameMapping.isEmpty() || 'L' !in this) return this
+    return object : Remapper(Opcodes.ASM9) {
+        override fun map(internalName: String): String {
+            return classNameMapping[internalName] ?: internalName
+        }
+    }.mapMethodDesc(this)
 }
 
 private fun normalizeAnnotation(value: String): String {

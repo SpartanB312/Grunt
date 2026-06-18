@@ -184,7 +184,7 @@ fun parForEachClassesFiltered(
     action: context(Grunteon, ScopeValueAccess) (ClassNode) -> Unit
 ) {
     parForEachClasses(batchSize) {
-        if (predicate.testImpl(it, it.name)) action(it)
+        if (predicate.testImpl(it)) action(it)
     }
 }
 

@@ -111,6 +111,101 @@ class NativeCandidateTest {
     }
 
     @Test
+    fun marksMethodsByOriginalClassNameAfterClassRename() {
+        val target = method("target", "(I)I")
+        val clazz = clazz("a/b/C", target)
+
+        val result = NativeCandidate().markCandidates(
+            listOf(clazz),
+            NativeCandidate.Config(
+                rules = listOf(
+                    NativeCandidate.Rule(
+                        name = "original-owner",
+                        methodInclude = listOf("test/Foo.target(I)I")
+                    )
+                )
+            ),
+            mapOf("a/b/C" to "test/Foo")
+        )
+
+        assertEquals(listOf("a/b/C.target(I)I"), result.marked.map { it.displayName })
+        assertTrue(target.hasAnnotation(NATIVE_INCLUDED))
+    }
+
+    @Test
+    fun marksMethodsByOriginalDescriptorAfterClassRename() {
+        val target = method("target", "(La/b/D;)La/b/D;")
+        val clazz = clazz("a/b/C", target)
+
+        val result = NativeCandidate().markCandidates(
+            listOf(clazz),
+            NativeCandidate.Config(
+                rules = listOf(
+                    NativeCandidate.Rule(
+                        name = "original-desc",
+                        methodInclude = listOf("test/Foo.target(Ltest/Bar;)Ltest/Bar;"),
+                        descriptorInclude = listOf("(Ltest/Bar;)*")
+                    )
+                )
+            ),
+            mapOf(
+                "a/b/C" to "test/Foo",
+                "a/b/D" to "test/Bar"
+            )
+        )
+
+        assertEquals(listOf("a/b/C.target(La/b/D;)La/b/D;"), result.marked.map { it.displayName })
+        assertTrue(target.hasAnnotation(NATIVE_INCLUDED))
+    }
+
+    @Test
+    fun marksMethodsByOriginalDescriptorWhenOnlyArgumentClassWasRenamed() {
+        val target = method("target", "(La/b/D;)La/b/D;")
+        val clazz = clazz("test/Foo", target)
+
+        val result = NativeCandidate().markCandidates(
+            listOf(clazz),
+            NativeCandidate.Config(
+                rules = listOf(
+                    NativeCandidate.Rule(
+                        name = "original-desc",
+                        methodInclude = listOf("test/Foo.target(Ltest/Bar;)Ltest/Bar;")
+                    )
+                )
+            ),
+            mapOf("a/b/D" to "test/Bar")
+        )
+
+        assertEquals(listOf("test/Foo.target(La/b/D;)La/b/D;"), result.marked.map { it.displayName })
+        assertTrue(target.hasAnnotation(NATIVE_INCLUDED))
+    }
+
+    @Test
+    fun originalClassNameExclusionWinsAfterClassRename() {
+        val target = method("target", "()V")
+        val other = method("other", "()V")
+        val clazz = clazz("a/b/C", target, other)
+
+        val result = NativeCandidate().markCandidates(
+            listOf(clazz),
+            NativeCandidate.Config(
+                rules = listOf(
+                    NativeCandidate.Rule(
+                        name = "original-owner",
+                        methodInclude = listOf("test/Foo"),
+                        methodExclude = listOf("test/Foo.target()V")
+                    )
+                )
+            ),
+            mapOf("a/b/C" to "test/Foo")
+        )
+
+        assertEquals(listOf("a/b/C.other()V"), result.marked.map { it.displayName })
+        assertFalse(target.hasAnnotation(NATIVE_INCLUDED))
+        assertTrue(other.hasAnnotation(NATIVE_INCLUDED))
+    }
+
+    @Test
     fun inactiveRulesAreReportedAndDoNotMarkEverything() {
         val target = method("target", "()V")
         val clazz = clazz("test/Foo", target)

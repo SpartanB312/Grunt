@@ -7,6 +7,7 @@ import net.spartanb312.grunteon.obfuscator.pipeline.before
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
+import net.spartanb312.grunteon.obfuscator.util.filters.withMapping
 import org.objectweb.asm.ConstantDynamic
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -68,6 +69,7 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
             instance.globalExclusion
                 .and(instance.mixinExclusion)
                 .and(config.classFilter.toClassPredicate())
+                .withMapping(instance.nameMapping.revMappings)
         ) { classNode ->
             val result = bridgeInvokeDynamics(classNode, config)
             if (result.indyCount != 0 || result.constantDynamicCount != 0 || result.methodHandleInvokeCount != 0) {
