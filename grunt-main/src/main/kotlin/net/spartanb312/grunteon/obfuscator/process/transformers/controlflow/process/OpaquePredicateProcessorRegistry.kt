@@ -40,7 +40,8 @@ internal data class OpaquePredicateProcessorOptions(
     val randomBoundMin: Int = 3,
     val randomBoundMax: Int = 17,
     val randomBoundMaxDelta: Int = 8,
-    val nativeCandidate: Boolean = false
+    val nativeCandidate: Boolean = false,
+    val nativeCandidateRatio: Double = 0.1
 ) {
     val mainStepRange: IntRange
         get() = normalizedIntRange(minMainSteps, maxMainSteps, minimum = 1)
@@ -69,6 +70,15 @@ internal data class OpaquePredicateProcessorOptions(
 
     val normalizedRandomBoundChance: Double
         get() = randomBoundChance.coerceIn(0.0, 1.0)
+
+    fun shouldMarkNativeCandidate(random: UniformRandomProvider): Boolean {
+        if (!nativeCandidate) return false
+        return when {
+            nativeCandidateRatio <= 0.0 -> false
+            nativeCandidateRatio >= 1.0 -> true
+            else -> random.nextDouble() < nativeCandidateRatio
+        }
+    }
 }
 
 internal sealed interface OpaquePredicateCall {
@@ -192,8 +202,7 @@ internal class OpaquePredicateProcessorRegistry(
         return classes.computeIfAbsent(owner) {
             ProcessorClassPlan(
                 name = processorClassName(owner),
-                version = ownerVersion.takeIf { it > 0 } ?: Opcodes.V1_8,
-                nativeCandidate = options.nativeCandidate
+                version = ownerVersion.takeIf { it > 0 } ?: Opcodes.V1_8
             )
         }
     }
@@ -222,6 +231,7 @@ internal class OpaquePredicateProcessorRegistry(
             val action = PredicateActionPlan.create(
                 name = "predicate_${methodMarker}_${siteId.toString(36)}",
                 options = options,
+                nativeCandidate = options.shouldMarkNativeCandidate(random),
                 random = random
             )
             return registry.processorClassPlan(owner, ownerVersion).add(action)
@@ -253,6 +263,7 @@ internal class OpaquePredicateProcessorRegistry(
                     name = "predicate_${methodMarker}_${siteId.toString(36)}_v",
                     target = value,
                     options = options,
+                    nativeCandidate = options.shouldMarkNativeCandidate(random),
                     random = random
                 )
             )
@@ -261,6 +272,7 @@ internal class OpaquePredicateProcessorRegistry(
                     name = "predicate_${methodMarker}_${siteId.toString(36)}_b",
                     target = bound,
                     options = options,
+                    nativeCandidate = options.shouldMarkNativeCandidate(random),
                     random = random
                 )
             )
@@ -279,8 +291,7 @@ internal class OpaquePredicateProcessorRegistry(
 
     private class ProcessorClassPlan(
         val name: String,
-        private val version: Int,
-        private val nativeCandidate: Boolean
+        private val version: Int
     ) {
         private val actions = ConcurrentHashMap<String, PredicateActionPlan>()
 
@@ -333,7 +344,7 @@ internal class OpaquePredicateProcessorRegistry(
             ) {
                 actions.values
                     .sortedBy { it.name }
-                    .forEach { +it.toMethodNode(nativeCandidate) }
+                    .forEach { +it.toMethodNode() }
             }.appendAnnotation(GENERATED_CLASS)
         }
     }
@@ -351,9 +362,10 @@ internal class OpaquePredicateProcessorRegistry(
         val steps: List<PredicateStep>,
         val result: Int,
         val comparison: Comparison,
-        val compareValue: IntConstChain
+        val compareValue: IntConstChain,
+        val nativeCandidate: Boolean
     ) {
-        fun toMethodNode(nativeCandidate: Boolean): MethodNode {
+        fun toMethodNode(): MethodNode {
             val node = method(
                 PUBLIC + STATIC,
                 name,
@@ -388,6 +400,7 @@ internal class OpaquePredicateProcessorRegistry(
             fun create(
                 name: String,
                 options: OpaquePredicateProcessorOptions,
+                nativeCandidate: Boolean,
                 random: UniformRandomProvider
             ): PredicateActionPlan {
                 val leftDecoder = IntConstChain.random(random, options.chainStepRange)
@@ -420,7 +433,8 @@ internal class OpaquePredicateProcessorRegistry(
                     steps = steps,
                     result = result,
                     comparison = comparison,
-                    compareValue = compareValue
+                    compareValue = compareValue,
+                    nativeCandidate = nativeCandidate
                 )
             }
 
@@ -428,6 +442,7 @@ internal class OpaquePredicateProcessorRegistry(
                 name: String,
                 target: Int,
                 options: OpaquePredicateProcessorOptions,
+                nativeCandidate: Boolean,
                 random: UniformRandomProvider
             ): PredicateActionPlan {
                 val chainRange = options.randomBoundChainStepRange
@@ -469,7 +484,8 @@ internal class OpaquePredicateProcessorRegistry(
                     steps = steps,
                     result = result,
                     comparison = comparison,
-                    compareValue = compareValue
+                    compareValue = compareValue,
+                    nativeCandidate = nativeCandidate
                 )
             }
 

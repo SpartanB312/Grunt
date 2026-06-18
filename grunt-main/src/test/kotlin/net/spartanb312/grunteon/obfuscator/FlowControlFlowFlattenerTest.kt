@@ -383,6 +383,16 @@ class FlowControlFlowFlattenerTest {
     }
 
     @Test
+    fun opaquePredicateProcessorNativeCandidateRatioControlsMethodAnnotations() {
+        val none = opaquePredicateProcessorNativeCandidateCount(nativeCandidateRatio = 0.0)
+        val all = opaquePredicateProcessorNativeCandidateCount(nativeCandidateRatio = 1.0)
+
+        assertEquals(0, none.first)
+        assertEquals(all.second, all.first)
+        assertTrue(all.second > 0)
+    }
+
+    @Test
     fun opaquePredicateProcessorActionsAreExecutable() {
         val registry = OpaquePredicateProcessorRegistry("OpaqueExec", classExists = { false })
         val processor = registry.methodProcessor(Owner, Opcodes.V17, "MethodSalt")
@@ -575,9 +585,30 @@ class FlowControlFlowFlattenerTest {
         }
         val methods = registry.materialize().single().methods
         return methods.count { method ->
-            method.visibleAnnotations.orEmpty().any { it.desc == NATIVE_INCLUDED } ||
-                method.invisibleAnnotations.orEmpty().any { it.desc == NATIVE_INCLUDED }
+            method.hasNativeIncludedAnnotation()
         } to methods.size
+    }
+
+    private fun opaquePredicateProcessorNativeCandidateCount(nativeCandidateRatio: Double): Pair<Int, Int> {
+        val registry = OpaquePredicateProcessorRegistry(
+            classMarker = "NativeRatio",
+            classExists = { false },
+            options = OpaquePredicateProcessorOptions(
+                nativeCandidate = true,
+                nativeCandidateRatio = nativeCandidateRatio
+            )
+        )
+        val processor = registry.methodProcessor(Owner, Opcodes.V17, "MethodSalt")
+        repeat(16) { index ->
+            processor.reserveAlwaysTrue(index, testRandom("opaque-native-ratio-$nativeCandidateRatio-$index"))
+        }
+        val methods = registry.materialize().single().methods
+        return methods.count { it.hasNativeIncludedAnnotation() } to methods.size
+    }
+
+    private fun MethodNode.hasNativeIncludedAnnotation(): Boolean {
+        return visibleAnnotations.orEmpty().any { it.desc == NATIVE_INCLUDED } ||
+            invisibleAnnotations.orEmpty().any { it.desc == NATIVE_INCLUDED }
     }
 
     private fun compareOpcode(opcode: Int, left: Int, right: Int): Boolean {

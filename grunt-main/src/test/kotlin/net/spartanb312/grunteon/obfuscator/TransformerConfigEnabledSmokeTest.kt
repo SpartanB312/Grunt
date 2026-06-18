@@ -150,6 +150,8 @@ class TransformerConfigEnabledSmokeTest {
             assertContains(text, "\"randomBoundPredicateMaxExtraSteps\": 0")
             assertContains(text, "\"randomBoundPredicateMinChainSteps\": 1")
             assertContains(text, "\"randomBoundPredicateMaxChainSteps\": 1")
+            assertContains(text, "\"predicateProcessorNativeCandidate\": false")
+            assertContains(text, "\"predicateProcessorNativeCandidateRatio\": \"0.1\"")
             assertIs<ControlflowJump.Config>(readSingleConfig(path))
         } finally {
             path.deleteIfExists()

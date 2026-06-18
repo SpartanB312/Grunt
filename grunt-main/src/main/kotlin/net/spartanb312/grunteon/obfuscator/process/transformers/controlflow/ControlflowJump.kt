@@ -142,6 +142,10 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         @SettingDesc("Mark generated opaque predicate processor methods as native codegen candidates")
         @SettingName("Predicate native candidate")
         val predicateProcessorNativeCandidate: Boolean = false,
+        @SettingDesc("Ratio of generated opaque predicate processor methods marked as native candidates when predicate native candidate is enabled")
+        @DecimalRangeVal(min = 0.0, max = 1.0, step = 0.01)
+        @SettingName("Predicate native candidate ratio")
+        val predicateProcessorNativeCandidateRatio: Decimal = 0.1.toDecimal(),
         @SettingDesc("Maximum junk call preludes emitted before a junk terminal return")
         @IntRangeVal(min = 0, max = 8)
         @SettingName("Max prelude calls")
@@ -221,7 +225,8 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
                     randomBoundMaxExtraSteps = config.randomBoundPredicateMaxExtraSteps,
                     randomBoundMinChainSteps = config.randomBoundPredicateMinChainSteps,
                     randomBoundMaxChainSteps = config.randomBoundPredicateMaxChainSteps,
-                    nativeCandidate = config.predicateProcessorNativeCandidate
+                    nativeCandidate = config.predicateProcessorNativeCandidate,
+                    nativeCandidateRatio = config.predicateProcessorNativeCandidateRatio.toDouble()
                 )
             )
         }

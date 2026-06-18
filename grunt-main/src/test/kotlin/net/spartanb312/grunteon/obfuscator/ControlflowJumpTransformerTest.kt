@@ -6,6 +6,7 @@ import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
 import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening
 import net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump
+import net.spartanb312.grunteon.obfuscator.util.NATIVE_INCLUDED
 import net.spartanb312.grunteon.obfuscator.util.toDecimal
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
@@ -20,6 +21,7 @@ import kotlin.io.path.deleteIfExists
 import kotlin.io.path.outputStream
 import kotlin.io.path.pathString
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -45,6 +47,16 @@ class ControlflowJumpTransformerTest {
                     it.desc == "(III)I"
             }
         )
+    }
+
+    @Test
+    fun predicateProcessorNativeCandidateRatioControlsMethodAnnotations() {
+        val none = predicateProcessorNativeCandidateCount(nativeCandidateRatio = 0.0)
+        val all = predicateProcessorNativeCandidateCount(nativeCandidateRatio = 1.0)
+
+        assertEquals(0, none.first)
+        assertEquals(all.second, all.first)
+        assertTrue(all.second > 0)
     }
 
     @Test
@@ -224,6 +236,29 @@ class ControlflowJumpTransformerTest {
 
     private fun runControlflowJumpClasses(config: ControlflowJump.Config): Map<String, ClassNode> {
         return runTransformerClasses(listOf(config))
+    }
+
+    private fun predicateProcessorNativeCandidateCount(nativeCandidateRatio: Double): Pair<Int, Int> {
+        val classes = runControlflowJumpClasses(
+            ControlflowJump.Config(
+                chance = 1.0.toDecimal(),
+                mangledIfChance = 0.0.toDecimal(),
+                maxBranchesPerMethod = 1,
+                predicateProcessorNativeCandidate = true,
+                predicateProcessorNativeCandidateRatio = nativeCandidateRatio.toDecimal(),
+                verifyBytecode = true
+            )
+        )
+        val methods = classes.values
+            .single { it.name.contains("\$PredicateProcessor\$") }
+            .methods
+            .filter { it.desc == "(III)I" }
+        return methods.count { it.hasNativeIncludedAnnotation() } to methods.size
+    }
+
+    private fun MethodNode.hasNativeIncludedAnnotation(): Boolean {
+        return visibleAnnotations.orEmpty().any { it.desc == NATIVE_INCLUDED } ||
+            invisibleAnnotations.orEmpty().any { it.desc == NATIVE_INCLUDED }
     }
 
     private fun runTransformerClasses(transformerConfigs: List<TransformerConfig>): Map<String, ClassNode> {
