@@ -17,10 +17,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
-import io.github.composefluent.component.ButtonDefaults
-import io.github.composefluent.component.ContentDialog
-import io.github.composefluent.component.DialogSize
-import io.github.composefluent.component.Text
+import io.github.composefluent.component.*
 import net.spartanb312.grunteon.obfuscator.process.ObfConfig
 import net.spartanb312.grunteon.obfuscator.process.TransformerEntry
 import java.awt.Cursor
@@ -330,7 +327,10 @@ fun PipelineEditorPage(
         size = DialogSize.Standard,
         primaryButtonText = "Confirm",
         onButtonClick = {
-            dialogData?.onConfirm()
+            if (it == ContentDialogButton.Primary) {
+                dialogData?.onConfirm()
+            }
+            state.dialog = null
         },
         secondaryButtonText = "Cancel",
         content = {
