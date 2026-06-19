@@ -78,16 +78,19 @@ class WorkResources private constructor(
     }
 
     fun getClassNode(name: String): ClassNode? {
-        return inputClassMap[name] ?: libraryClassMap.computeIfAbsent(name) {
+        // computeIfAbsent's mapping function can return null, and it will skip inserting the pair
+        // Just Kotlin trolling
+        @Suppress("UNCHECKED_CAST", "JavaCollectionWithNullableTypeArgument")
+        return inputClassMap[name] ?: (libraryClassMap as ConcurrentHashMap<String, ClassNode?>).computeIfAbsent(name) {
             try {
                 ClassNode().apply {
                     ClassReader(name)
                         .accept(this, ClassReader.EXPAND_FRAMES)
                 }
             } catch (_: Exception) {
-                DUMMY_CLASSNODE
+                null
             }
-        }.takeIf { it !== DUMMY_CLASSNODE }
+        }
     }
 
     fun addIndexedLibrary(classInfo: ClassInfo) {
@@ -108,8 +111,6 @@ class WorkResources private constructor(
 
     companion object {
         const val ANTI_LLM_STRING_POOL = "anti-llm"
-
-        private val DUMMY_CLASSNODE = ClassNode()
 
         private fun toZipRootPath(zipPath: Path): Path {
             val jarURI = URI.create("jar:" + zipPath.toUri())
