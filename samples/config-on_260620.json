@@ -1,0 +1,890 @@
+{
+    "globalConfig": {
+        "input": "C:\\Users\\24977\\Desktop\\Codes\\Grunteon\\obftest\\AT\\engine\\boar-main-origin.jar",
+        "libs": [
+            "C:\\Users\\24977\\Desktop\\Codes\\Grunteon\\obftest\\AT\\libs",
+            "C:\\Users\\24977\\Desktop\\Codes\\Grunteon\\obftest\\AT\\boar-launch.jar"
+        ],
+        "output": "C:\\Users\\24977\\Desktop\\Codes\\Grunteon\\obftest\\AT\\engine\\boar-main.jar",
+        "dumpMappings": true,
+        "exclusions": [
+            ""
+        ],
+        "mixinExclusions": [
+            ""
+        ],
+        "controllableRandom": true,
+        "inputSeed": "AT",
+        "customDictionary": "customDictionary.txt",
+        "customIncrementalDictionary": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "k",
+            "l",
+            "m",
+            "n"
+        ],
+        "forceComputeMax": false,
+        "missingCheck": true,
+        "corruptHeaders": false,
+        "corruptCRC32": false,
+        "removeTimeStamps": false,
+        "compressionLevel": 9,
+        "archiveComment": "",
+        "fileRemovePrefix": [],
+        "fileRemoveSuffix": [],
+        "profiler": false
+    },
+    "transformers": [
+        {
+            "name": "ReflectionSupport",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.other.ReflectionSupport.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "classLiterals": true,
+                "memberLiterals": true,
+                "methodHandleLiterals": true,
+                "unknownOwnerFallback": true
+            }
+        },
+        {
+            "name": "MethodInliner",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.optimize.MethodInliner.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "maxInstructions": 10,
+                "maxInlinePerMethod": 64,
+                "inlineStatic": true,
+                "inlinePrivate": true,
+                "inlineFinal": true,
+                "preserveNullCheck": true,
+                "exclusion": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Class.method",
+                    "net/dummy/Class.method()V"
+                ]
+            }
+        },
+        {
+            "name": "ClassShrink",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.optimize.ClassShrink.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "innerClasses": true,
+                "unusedLabels": true,
+                "nopRemove": true,
+                "methodSignatures": true
+            }
+        },
+        {
+            "name": "DeadCodeRemove",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.optimize.DeadCodeRemove.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "pop": true,
+                "pop2": true,
+                "fallthrough": true
+            }
+        },
+        {
+            "name": "EnumOptimize",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.optimize.EnumOptimize.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "KotlinClassShrink",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.optimize.KotlinClassShrink.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "metaData": true,
+                "intrinsics": true,
+                "intrinsicsRemoval": [
+                    "checkExpressionValueIsNotNull",
+                    "checkNotNullExpressionValue",
+                    "checkReturnedValueIsNotNull",
+                    "checkFieldIsNotNull",
+                    "checkParameterIsNotNull",
+                    "checkNotNullParameter"
+                ],
+                "replaceLDC": true
+            }
+        },
+        {
+            "name": "SourceDebugInfoHide",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.optimize.SourceDebugInfoHide.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "sourceFiles": "Remove",
+                "lineNumbers": true,
+                "sourceNames": [
+                    ""
+                ]
+            }
+        },
+        {
+            "name": "StringEqualsOptimize",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.optimize.StringEqualsOptimize.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "ignoreCase": true
+            }
+        },
+        {
+            "name": "ParameterObfuscate",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.ParameterObfuscate.Config",
+                "onlyPrivateMethod": true,
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "DeclaredFieldsExtract",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.miscellaneous.DeclaredFieldsExtract.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "InvokeDispatcher",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.redirect.InvokeDispatcher.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "chance": "0.3",
+                "maxParams": 10,
+                "maxHandles": 10,
+                "exclusion": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Class.method",
+                    "net/dummy/Class.method()V"
+                ]
+            }
+        },
+        {
+            "name": "FieldAccessProxy",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.redirect.FieldAccessProxy.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "chance": "1.0",
+                "getStatic": true,
+                "putStatic": true,
+                "getField": true,
+                "putField": true,
+                "outer": true,
+                "exclusion": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Class.method",
+                    "net/dummy/Class.method()V"
+                ]
+            }
+        },
+        {
+            "name": "InvokeProxy",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.redirect.InvokeProxy.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "chance": "0.3",
+                "outer": true,
+                "exclusion": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Class.method",
+                    "net/dummy/Class.method()V"
+                ]
+            }
+        },
+        {
+            "name": "AntiLLM",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.AntiLLM.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "userPhrases": [],
+                "defaultPhrases": true,
+                "poolSize": 128,
+                "maxStringLength": 384,
+                "feedJunkCode": true,
+                "sourceDebug": true,
+                "sourceDebugSize": 1536,
+                "classAnnotations": true,
+                "memberAnnotations": true,
+                "maxAnnotatedMembersPerClass": 6,
+                "fakeResources": true,
+                "resourceCount": 4,
+                "resourceSize": 4096,
+                "carrierClasses": true,
+                "carrierClassCount": 2,
+                "carrierPackage": "net/spartanb312/grunteon/internal/llm"
+            }
+        },
+        {
+            "name": "RuntimeMaterial",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.antidebug.RuntimeMaterial.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "classChance": "1.0",
+                "clinit": true,
+                "constructors": true,
+                "constructorLimit": 8,
+                "detectSources": {
+                    "inputArguments": true,
+                    "javaToolOptionsEnv": true,
+                    "jdkJavaOptionsEnv": true,
+                    "javaOptionsEnv": true,
+                    "jmxRemoteProperty": false
+                },
+                "detectTokens": {
+                    "jdwp": true,
+                    "xdebug": true,
+                    "xrunjdwp": true,
+                    "noVerify": true,
+                    "dtSocket": true,
+                    "dtShmem": true,
+                    "genericAgentlib": false,
+                    "genericAgentpath": false,
+                    "javaAgent": false,
+                    "jmxRemote": false,
+                    "extra": []
+                },
+                "draftMaterialMetadata": true
+            }
+        },
+        {
+            "name": "NumberBasicEncrypt",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.number.NumberBasicEncrypt.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "integer": true,
+                "integerChance": "1.0",
+                "long": true,
+                "longChance": "1.0",
+                "float": true,
+                "floatChance": "1.0",
+                "double": true,
+                "doubleChance": "1.0",
+                "maxInstructions": 16384,
+                "dynamicStrength": true,
+                "exclusion": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Class.method",
+                    "net/dummy/Class.method()V"
+                ]
+            }
+        },
+        {
+            "name": "StringBasicEncrypt",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.encrypt.string.StringArrayedEncrypt.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "carray": true,
+                "invokeDynamics": true,
+                "exclusion": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Class.method",
+                    "net/dummy/Class.method()V"
+                ]
+            }
+        },
+        {
+            "name": "ControlflowFlattening",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowFlattening.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "verifyBytecode": true,
+                "flowAnalyzer": "Hierarchy",
+                "includeMethodEntry": true,
+                "includeExceptionBlocks": true,
+                "includeConstructors": true,
+                "includeSyntheticBridgeMethods": true,
+                "includeDefaultHelperMethods": true,
+                "includeUninitializedFrames": false,
+                "minFlattenedBlocks": 2,
+                "maxFlattenedBlocks": 0,
+                "maxDispatcherIslands": 0,
+                "fakeCasesPerDispatcher": 1,
+                "junkCases": true,
+                "junkCaseChance": "0.35",
+                "sharedFakeCaseTerminatorChance": "0.65",
+                "maxJunkPreludeCalls": 2,
+                "assignableJunkReturns": true,
+                "naturalReferenceValues": true,
+                "expandedJunkCalls": true,
+                "minStateOpsPerCase": 2,
+                "maxStateOpsPerCase": 5,
+                "stateKeyMode": "Mixed",
+                "stateKeyProcessorChance": "0.5",
+                "keyProcessorComplexity": "Light",
+                "keyProcessorMinMainSteps": 1,
+                "keyProcessorMaxMainSteps": 3,
+                "keyProcessorMinExtraSteps": 0,
+                "keyProcessorMaxExtraSteps": 1,
+                "keyProcessorMinChainSteps": 0,
+                "keyProcessorMaxChainSteps": 0,
+                "keyProcessorNativeCandidate": true,
+                "keyProcessorNativeCandidateRatio": "1.0",
+                "shuffleRegionBlocks": true,
+                "dispatcherTrailingRealBlock": true,
+                "dispatcherTrailingRealBlockChance": "1.0",
+                "maxExecutableInstructions": 0,
+                "maxFlowBlocks": 0,
+                "workerBatchSize": 16,
+                "logSkips": true,
+                "ignoreFailures": false
+            }
+        },
+        {
+            "name": "ControlflowJump",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.controlflow.ControlflowJump.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/spartanb312/everett/launch/**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "chance": "0.25",
+                "mangledIfChance": "0.25",
+                "maxBranchesPerMethod": 4,
+                "maxMangledIfsPerMethod": 4,
+                "mangledFakeLoopChance": "0.35",
+                "sharedJunkExitChance": "0.65",
+                "junkTerminalThrowChance": "0.2",
+                "dispatcherLandingJunkChance": "0.0",
+                "maxDispatcherLandingJunkBlocksPerMethod": 4,
+                "exceptionBridgeChance": "0.0",
+                "maxExceptionBridgesPerMethod": 4,
+                "predicateProcessorMinMainSteps": 1,
+                "predicateProcessorMaxMainSteps": 2,
+                "predicateProcessorMinExtraSteps": 0,
+                "predicateProcessorMaxExtraSteps": 1,
+                "predicateProcessorMinChainSteps": 1,
+                "predicateProcessorMaxChainSteps": 2,
+                "predicateRandomBoundChance": "0.15",
+                "randomBoundPredicateMinMainSteps": 1,
+                "randomBoundPredicateMaxMainSteps": 1,
+                "randomBoundPredicateMinExtraSteps": 0,
+                "randomBoundPredicateMaxExtraSteps": 0,
+                "randomBoundPredicateMinChainSteps": 1,
+                "randomBoundPredicateMaxChainSteps": 1,
+                "predicateProcessorNativeCandidate": true,
+                "predicateProcessorNativeCandidateRatio": "1.00",
+                "maxPreludeCalls": 2,
+                "assignableJunkReturns": true,
+                "naturalReferenceValues": true,
+                "expandedJunkCalls": true,
+                "verifyBytecode": true,
+                "flowAnalyzer": "Hierarchy",
+                "ignoreFailures": false,
+                "workerBatchSize": 16,
+                "exclusion": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Class.method",
+                    "net/dummy/Class.method()V"
+                ]
+            }
+        },
+        {
+            "name": "LocalVarRenamer",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.rename.LocalVarRenamer.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "dictionary": "Alphabet",
+                "prefix": "‮",
+                "deleteASMInfo": false,
+                "exclusion": [
+                    "net/dummy/**",
+                    "net/dummy/Class",
+                    "net/dummy/Class.method",
+                    "net/dummy/Class.method()V"
+                ]
+            }
+        },
+        {
+            "name": "ClassRenamer",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.rename.ClassRenamer.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "dictionary": "Alphabet",
+                "parent": "net/spartanb312/obf/",
+                "prefix": "",
+                "reversed": false,
+                "shuffled": false,
+                "corruptedName": false,
+                "corruptedExclusion": [],
+                "corruptExPredicate": []
+            }
+        },
+        {
+            "name": "MethodRenamer",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.rename.MethodRenamer.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "dictionary": "Alphabet",
+                "enums": true,
+                "interfaces": true,
+                "heavyOverloads": true,
+                "aggressiveShadowNames": true,
+                "solveBridge": true
+            }
+        },
+        {
+            "name": "FieldRenamer",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.rename.FieldRenamer.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "dictionary": "Alphabet",
+                "prefix": "",
+                "reversed": false,
+                "shuffled": true,
+                "heavyOverloads": true,
+                "aggressiveShadowNames": true,
+                "excludedNames": [
+                    "INSTANCE",
+                    "Companion"
+                ],
+                "malPrefix": ""
+            }
+        },
+        {
+            "name": "FakeSyntheticBridge",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.other.FakeSyntheticBridge.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "ReferenceObfuscate",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.other.ReferenceObfuscate.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "chance": "1.0",
+                "metadataClass": "net/spartanb312/grunteon/internal/Metadata",
+                "reobfBSM": true,
+                "massiveString": false,
+                "generatedHelperNativeCandidate": true,
+                "generatedHelperNativeCandidateRatio": "0.1",
+                "exclusion": []
+            }
+        },
+        {
+            "name": "Watermark",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.other.Watermark.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "names": [
+                    "Grunt",
+                    "Gruntpocalypse",
+                    "Grunteon"
+                ],
+                "messages": [
+                    "PROTECTED BY GRUNTEON",
+                    "PROTECTED BY EVERETT",
+                    "PROTECTED BY YuShengJun"
+                ],
+                "fieldMark": true,
+                "methodMark": true
+            }
+        },
+        {
+            "name": "DecompilerCrasher",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.other.DecompilerCrasher.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "blankString": false
+            }
+        },
+        {
+            "name": "NativePreProcessor",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.nativecode.NativePreProcessor.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "helperPrefix": "__grt$indy$",
+                "constantDynamicHelperPrefix": "__grt$condy$",
+                "methodHandleHelperPrefix": "__grt$mh$",
+                "bridgeMethodHandleInvokes": true,
+                "processGeneratedMethods": true
+            }
+        },
+        {
+            "name": "NativeCandidate",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.nativecode.NativeCandidate.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "rules": [
+                    {
+                        "name": "full-AimTrainer-original-name",
+                        "methodInclude": [
+                            "net/spartanb312/everett/AimTrainer"
+                        ],
+                        "methodExclude": [],
+                        "descriptorInclude": [],
+                        "descriptorExclude": [],
+                        "requiredAnnotationList": [],
+                        "excludedAnnotationList": [
+                            "Lnet/spartanb312/grunteon/annotation/native/NativeExcluded;"
+                        ],
+                        "includeGenerated": true,
+                        "includeConstructors": false,
+                        "includeClassInitializers": false,
+                        "includeAbstract": false,
+                        "includeNative": false,
+                        "includeInterfaceMethods": false
+                    }
+                ],
+                "annotation": "Lnet/spartanb312/grunteon/annotation/native/NativeIncluded;",
+                "logMarkedMethods": true,
+                "logLimit": 512
+            }
+        },
+        {
+            "name": "PostProcess",
+            "enabled": true,
+            "config": {
+                "type": "net.spartanb312.grunteon.obfuscator.process.transformers.PostProcess.Config",
+                "classFilter": {
+                    "excludeStrategy": [
+                        "net/dummy/**",
+                        "net/dummy/Class",
+                        "net/dummy/Event**"
+                    ],
+                    "includeStrategy": [
+                        "**"
+                    ]
+                },
+                "manifest": true,
+                "pluginMain": true,
+                "bungeeMain": true,
+                "fabricMain": true,
+                "velocityMain": true,
+                "manifestReplace": [
+                    "Main-Class:",
+                    "Launch-Entry:"
+                ]
+            }
+        }
+    ],
+    "nativePipeline": {
+        "enabled": true,
+        "includedAnnotationList": [
+            "Lnet/spartanb312/grunteon/annotation/native/NativeIncluded;"
+        ],
+        "excludedAnnotationList": [
+            "Lnet/spartanb312/grunteon/annotation/native/NativeExcluded;"
+        ],
+        "classFilter": {
+            "excludeStrategy": [],
+            "includeStrategy": [
+                "**"
+            ]
+        },
+        "failOnValidationError": false,
+        "failOnCompileError": true,
+        "cleanNativeAnnotations": true,
+        "logSkips": true,
+        "backend": "Cpp",
+        "workDir": "C:\\Users\\24977\\Desktop\\Codes\\Grunteon\\obfTest",
+        "splitSourceFiles": true,
+        "maxMethodsPerSourceFile": 64,
+        "parallelCompileJobs": 32,
+        "optimizationLevel": "O2",
+        "compilerExecutable": null,
+        "compilerArgs": []
+    }
+}
