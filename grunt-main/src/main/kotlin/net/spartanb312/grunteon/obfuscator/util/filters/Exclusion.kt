@@ -5,14 +5,14 @@ import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 import org.objectweb.asm.tree.MethodNode
 
-typealias NamePredicate = (String) -> Boolean
+typealias NamePredicate = (String?) -> Boolean
 typealias NamePredicates = List<NamePredicate>
 
 // class
 fun buildClassNamePredicate(rule: String): NamePredicate {
     if (rule.endsWith("**")) {
         val packageName = rule.removeSuffix("**")
-        return { it.startsWith(packageName) }
+        return { it?.startsWith(packageName) ?: false }
     } // package
     else return { it == rule } // name
 }
@@ -25,11 +25,11 @@ fun buildClassNamePredicates(rules: List<String>): NamePredicates {
 fun buildMethodNamePredicate(rule: String): NamePredicate {
     if (rule.endsWith("**")) return {
         val packageName = rule.removeSuffix("**")
-        it.startsWith(packageName)
+        it?.startsWith(packageName) ?: false
     } // package
     else if (rule.contains(".") && rule.contains("(")) return { it == rule } // method with desc
-    else if (rule.contains(".")) return { it.substringBefore("(") == rule } // method name
-    else return { it.substringBefore(".") == rule } // class name
+    else if (rule.contains(".")) return { it?.substringBefore("(") == rule } // method name
+    else return { it?.substringBefore(".") == rule } // class name
 }
 
 fun buildMethodNamePredicates(rules: List<String>): NamePredicates {

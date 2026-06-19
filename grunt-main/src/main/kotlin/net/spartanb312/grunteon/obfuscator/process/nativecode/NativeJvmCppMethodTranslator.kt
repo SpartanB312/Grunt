@@ -519,7 +519,10 @@ internal object NativeJvmCppMethodTranslator {
                 is Float -> pushFloat(cst)
                 is Double -> pushDouble(cst)
                 is String -> {
-                    append("    cstack[sp++].l = grt_ldc_string(env, \"")
+                    val slot = referenceSlots.stringSlot(cst)
+                    append("    cstack[sp++].l = grt_ldc_string(env, ")
+                        .append(slot)
+                        .append(", \"")
                         .append(cppModifiedUtf8String(cst))
                         .appendLine("\");")
                 }

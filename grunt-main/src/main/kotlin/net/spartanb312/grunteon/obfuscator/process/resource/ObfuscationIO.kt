@@ -14,6 +14,7 @@ interface ResourceOutput {
     val description: String
     val fileName: String
     fun exists(): Boolean
+    fun sizeBytes(): Long? = null
     fun openOutputStream(): OutputStream
 }
 
@@ -30,6 +31,7 @@ data class PathResourceOutput(
     override val description: String get() = path.absolutePathString()
     override val fileName: String get() = path.name
     override fun exists(): Boolean = path.exists()
+    override fun sizeBytes(): Long? = if (path.exists()) path.fileSize() else null
 
     override fun openOutputStream(): OutputStream {
         path.toAbsolutePath().parent?.createDirectories()

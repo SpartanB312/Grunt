@@ -189,6 +189,9 @@ object JarDumper {
                 }
             }
         }
+        output.sizeBytes()?.let { size ->
+            Logger.info("Dumped jar size: $size bytes")
+        }
     }
 
     private val lookup = ImplLookupGetter.getLookup()

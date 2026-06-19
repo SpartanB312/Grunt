@@ -37,7 +37,7 @@ class Grunteon(
     }
 
     fun execute() {
-        // TODO: Profiler
+        // JVM obfuscate stage
         context(workRes) {
             Logger.info("Obfuscating...")
             val pipelineBuilder = PipelineBuilder()
@@ -59,16 +59,12 @@ class Grunteon(
             }
         }
 
+        // Native obfuscate stage
         val nativeConfig = nativePipelineConfig
-        context(this) {
-            NativePipelineRunner.run(nativeConfig)
-        }
+        NativePipelineRunner.run(nativeConfig)
 
-        // TODO: make this optional
-        val output = io.output
-        if (output != null) {
-            JarDumper.dumpJar(output)
-        }
+        // Output stage
+        io.output?.let { JarDumper.dumpJar(it) }
         if (globalConfig.dumpMappings) {
             io.mappingsOutput?.let { nameMapping.dump(it) }
         }

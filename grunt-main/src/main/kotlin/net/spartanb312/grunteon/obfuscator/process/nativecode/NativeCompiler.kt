@@ -42,6 +42,7 @@ internal object NativeCompiler {
             )
         }
 
+        val compileStartNanos = System.nanoTime()
         val result = if (compiler.kind == NativeCompilerKind.GnuLike && bundle.compilableSourcePaths().size > 1) {
             compileGnuLikeSplit(bundle, compiler.command, includeRoot, includeOs, config)
         } else {
@@ -50,10 +51,16 @@ internal object NativeCompiler {
                 bundle.sourcePath.parent
             )
         }
+        val compileTimeMillis = (System.nanoTime() - compileStartNanos) / 1_000_000L
         return if (result.exitCode == 0 && Files.exists(bundle.libraryPath)) {
-            NativeCompileResult(true, bundle.libraryPath, result.output)
+            NativeCompileResult(true, bundle.libraryPath, result.output, compileTimeMillis)
         } else {
-            NativeCompileResult(false, null, "Native compiler exited with code ${result.exitCode}\n${result.output}")
+            NativeCompileResult(
+                success = false,
+                libraryPath = null,
+                output = "Native compiler exited with code ${result.exitCode}\n${result.output}",
+                compileTimeMillis = compileTimeMillis
+            )
         }
     }
 

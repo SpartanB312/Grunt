@@ -1,8 +1,11 @@
 package net.spartanb312.grunteon.obfuscator.process.resource
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.io.path.createTempFile
+import kotlin.io.path.writeBytes
 
 class JarDumperTest {
 
@@ -65,5 +68,13 @@ class JarDumperTest {
                 processableByGlobalExclusion = false
             )
         )
+    }
+
+    @Test
+    fun pathResourceOutputReportsSizeWhenAvailable() {
+        val path = createTempFile("grunteon-output-size", ".jar")
+        path.writeBytes(byteArrayOf(1, 2, 3, 4))
+
+        assertEquals(4, PathResourceOutput(path).sizeBytes())
     }
 }

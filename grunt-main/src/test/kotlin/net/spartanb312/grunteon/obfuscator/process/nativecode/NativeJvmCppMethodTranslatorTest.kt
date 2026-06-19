@@ -48,8 +48,11 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(source, "struct GrtMethodCacheEntry { jweak clazz; jmethodID id; };")
         assertContains(source, "struct GrtFieldCacheEntry { jweak clazz; jfieldID id; };")
         assertContains(source, "struct GrtMethodSlot { std::mutex mutex; std::vector<GrtMethodCacheEntry> entries; };")
+        assertContains(source, "struct GrtStringSlot { std::mutex mutex; jstring value = nullptr; };")
         assertContains(source, "static constexpr jint grt_method_slot_count = 0;")
+        assertContains(source, "static constexpr jint grt_string_slot_count = 0;")
         assertContains(source, "static GrtMethodSlot grt_method_slots[1];")
+        assertContains(source, "static GrtStringSlot grt_string_slots[1];")
         assertContains(source, "static jmethodID grt_get_method_id(JNIEnv* env, jclass clazz, jint slot, const char* name, const char* desc, bool isStatic)")
         assertContains(source, "static jfieldID grt_get_field_id(JNIEnv* env, jclass clazz, jint slot, const char* name, const char* desc, bool isStatic)")
         assertFalse(source.contains("grt_member_cache_key"))
@@ -83,10 +86,12 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(source, "static inline void grt_track_ref(JNIEnv* env, GrtLocalRefs& refs, jobject ref)")
         assertContains(source, "static inline void grt_clear_refs(JNIEnv* env, GrtLocalRefs& refs)")
         assertFalse(source.contains("#include <unordered_set>"))
+        assertFalse(source.contains("#include <unordered_map>"))
         assertContains(source, "grt_string_intern_method = env->GetMethodID(grt_string_class, \"intern\", \"()Ljava/lang/String;\");")
-        assertContains(source, "static inline jstring grt_ldc_string(JNIEnv* env, const char* value)")
-        assertContains(source, "static std::unordered_map<std::string, jstring> grt_string_cache;")
-        assertContains(source, "auto cached = grt_string_cache.find(value);")
+        assertContains(source, "static jstring grt_new_interned_string(JNIEnv* env, const char* value)")
+        assertContains(source, "static inline jstring grt_ldc_string(JNIEnv* env, jint slot, const char* value)")
+        assertContains(source, "GrtStringSlot& stringSlot = grt_string_slots[slot];")
+        assertFalse(source.contains("grt_string_cache"))
         assertContains(source, "static jclass grt_boolean_array_class = nullptr;")
         assertContains(source, "jclass localBooleanArray = env->FindClass(\"[Z\");")
         assertContains(source, "grt_boolean_array_class = (jclass) env->NewGlobalRef(localBooleanArray);")
@@ -499,7 +504,7 @@ class NativeJvmCppMethodTranslatorTest {
     fun emitsInternedStringLdcConstants() {
         val stringLiteral = translate(stringLiteralMethod())
 
-        assertContains(stringLiteral, "cstack[sp++].l = grt_ldc_string(env, \"same\");")
+        assertContains(stringLiteral, "cstack[sp++].l = grt_ldc_string(env, 0, \"same\");")
         assertFalse(stringLiteral.contains("cstack[sp++].l = env->NewStringUTF(\"same\");"))
     }
 
@@ -507,7 +512,22 @@ class NativeJvmCppMethodTranslatorTest {
     fun emitsModifiedUtf8StringLdcConstants() {
         val stringLiteral = translate(modifiedUtf8StringLiteralMethod())
 
-        assertContains(stringLiteral, "cstack[sp++].l = grt_ldc_string(env, \"\\300\\200A\\303\\251\");")
+        assertContains(stringLiteral, "cstack[sp++].l = grt_ldc_string(env, 0, \"\\300\\200A\\303\\251\");")
+    }
+
+    @Test
+    fun backendSlotsStringLdcConstants() {
+        val source = NativeCppBackend.generate(
+            methods = listOf(validated(repeatedStringLiteralMethod())),
+            config = NativePipelineConfig(enabled = true),
+            classExists = { false }
+        ).sourceText
+
+        assertContains(source, "static constexpr jint grt_string_slot_count = 2;")
+        assertContains(source, "static GrtStringSlot grt_string_slots[2];")
+        assertContains(source, "cstack[sp++].l = grt_ldc_string(env, 0, \"same\");")
+        assertContains(source, "cstack[sp++].l = grt_ldc_string(env, 1, \"other\");")
+        assertTrue(source.indexOf("grt_ldc_string(env, 0, \"same\")") != source.lastIndexOf("grt_ldc_string(env, 0, \"same\")"))
     }
 
     @Test
@@ -591,6 +611,7 @@ class NativeJvmCppMethodTranslatorTest {
 
         assertContains(headerSource, "extern jclass grt_methodhandles_lookup_class;")
         assertContains(headerSource, "bool grt_init_runtime(JNIEnv* env);")
+        assertContains(headerSource, "jstring grt_ldc_string(JNIEnv* env, jint slot, const char* value);")
         assertContains(headerSource, "uint32_t grt_rotl32(uint32_t value, uint32_t distance);")
         assertContains(runtimeSource, "jclass grt_methodhandles_lookup_class = nullptr;")
         assertContains(runtimeSource, "bool grt_init_runtime(JNIEnv* env)")
@@ -1351,6 +1372,19 @@ class NativeJvmCppMethodTranslatorTest {
             instructions.add(LdcInsnNode("\u0000A\u00e9"))
             instructions.add(InsnNode(Opcodes.POP))
             instructions.add(InsnNode(Opcodes.RETURN))
+            maxStack = 1
+            maxLocals = 0
+        }
+    }
+
+    private fun repeatedStringLiteralMethod(): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "repeatedStringLiteral", "()Ljava/lang/String;", null, null).apply {
+            instructions.add(LdcInsnNode("same"))
+            instructions.add(InsnNode(Opcodes.POP))
+            instructions.add(LdcInsnNode("other"))
+            instructions.add(InsnNode(Opcodes.POP))
+            instructions.add(LdcInsnNode("same"))
+            instructions.add(InsnNode(Opcodes.ARETURN))
             maxStack = 1
             maxLocals = 0
         }

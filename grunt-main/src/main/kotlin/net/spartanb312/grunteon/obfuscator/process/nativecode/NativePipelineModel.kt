@@ -136,10 +136,15 @@ internal data class NativeClassRef(
     val internalName: String
 )
 
+internal data class NativeStringRef(
+    val value: String
+)
+
 internal class NativeReferenceSlots {
     private val classSlots = linkedMapOf<NativeClassRef, Int>()
     private val methodSlots = linkedMapOf<NativeMethodRef, Int>()
     private val fieldSlots = linkedMapOf<NativeFieldRef, Int>()
+    private val stringSlots = linkedMapOf<NativeStringRef, Int>()
 
     val classSlotCount: Int
         get() = classSlots.size
@@ -149,6 +154,9 @@ internal class NativeReferenceSlots {
 
     val fieldSlotCount: Int
         get() = fieldSlots.size
+
+    val stringSlotCount: Int
+        get() = stringSlots.size
 
     fun classSlot(internalName: String): Int {
         return classSlots.getOrPut(NativeClassRef(internalName)) { classSlots.size }
@@ -160,6 +168,10 @@ internal class NativeReferenceSlots {
 
     fun fieldSlot(owner: String, name: String, desc: String, isStatic: Boolean): Int {
         return fieldSlots.getOrPut(NativeFieldRef(owner, name, desc, isStatic)) { fieldSlots.size }
+    }
+
+    fun stringSlot(value: String): Int {
+        return stringSlots.getOrPut(NativeStringRef(value)) { stringSlots.size }
     }
 }
 
@@ -179,7 +191,8 @@ internal data class NativeSourceFile(
 internal data class NativeCompileResult(
     val success: Boolean,
     val libraryPath: Path? = null,
-    val output: String = ""
+    val output: String = "",
+    val compileTimeMillis: Long = 0L
 )
 
 internal class NativeValidationException(

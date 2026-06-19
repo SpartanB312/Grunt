@@ -3,7 +3,8 @@ package net.spartanb312.grunteon.obfuscator.util.filters
 import org.objectweb.asm.tree.ClassNode
 
 fun interface ClassPredicate {
-    fun testImpl(classNode: ClassNode): Boolean = testImpl(classNode.name)
+
+    fun testImpl(classNode: ClassNode): Boolean = testImpl(classNode.name ?: throw Exception("Class name is null"))
 
     fun testImpl(name: String): Boolean
 

@@ -52,6 +52,15 @@ object NativePipelineRunner {
         Logger.info(" - NativePipeline:")
         Logger.info("    Nativeized ${accepted.size} methods in ${sourceBundle.plan.classes.size} classes")
         Logger.info("    Wrote ${sourceBundle.sourceFiles.size} native source file(s) under ${sourceBundle.sourcePath.parent}")
+        Logger.info("    Native compiler elapsed ${compileResult.compileTimeMillis} ms")
+        Logger.info("    Native library size ${libraryBytes.size} bytes")
+        Logger.info(
+            "    Reference slots: " +
+                "classes=${sourceBundle.plan.referenceSlots.classSlotCount}, " +
+                "methods=${sourceBundle.plan.referenceSlots.methodSlotCount}, " +
+                "fields=${sourceBundle.plan.referenceSlots.fieldSlotCount}, " +
+                "strings=${sourceBundle.plan.referenceSlots.stringSlotCount}"
+        )
         Logger.info("    Injected native library resource ${sourceBundle.plan.resourceName}")
     }
 
