@@ -18,3 +18,4 @@ output.jar
 /grunt-ui/plugins
 ui.ini
 /docs
+/design

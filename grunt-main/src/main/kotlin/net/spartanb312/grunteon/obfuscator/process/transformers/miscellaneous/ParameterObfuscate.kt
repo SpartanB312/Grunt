@@ -10,6 +10,7 @@ import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
 import net.spartanb312.grunteon.obfuscator.util.filters.NamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicates
+import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
@@ -31,24 +32,11 @@ class ParameterObfuscate : Transformer<ParameterObfuscate.Config>(
         @SettingName("Only private method")
         val onlyPrivateMethod: Boolean = true, // Not stable for all methods
         val classFilter: ClassFilterConfig = ClassFilterConfig(),
-        @SettingDesc("Specify method exclusions.")
-        @SettingName("Exclusion")
-        val exclusion: List<String> = listOf(
-            "net/dummy/**",
-            "net/dummy/Class",
-            "net/dummy/Class.method",
-            "net/dummy/Class.method()V"
-        )
     ) : TransformerConfig()
-
-    private lateinit var methodExPredicate: NamePredicates
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
         barrier()
-        pre {
-            methodExPredicate = buildMethodNamePredicates(config.exclusion)
-        }
         val counter = reducibleScopeValue { MergeableCounter() }
         val remapJobs = globalScopeValue { ConcurrentHashMap<String, String>() }
 

@@ -54,13 +54,10 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
         )
     ) : TransformerConfig()
 
-    private lateinit var methodExPredicate: NamePredicates
-
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
-        pre {
-            //Logger.info(" > StringBasicEncrypt: Encrypting strings...")
-            methodExPredicate = buildMethodNamePredicates(config.exclusion)
+        val methodExPredicate =globalScopeValue {
+            buildMethodNamePredicates(config.exclusion)
         }
         val counter = reducibleScopeValue { MergeableCounter() }
 
@@ -79,6 +76,7 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
             if (config.invokeDynamics) context(randomGen, counter) {
                 replaceInvokeDynamics(classNode)
             }
+            val methodExPredicate = methodExPredicate.global
             // Then, go over all LDC instructions and collect them.
             classNode.methods.shuffled(randomGen).forEach { method ->
                 if (method.isExcluded(DISABLE_STRING_ENCRYPT)) return@forEach

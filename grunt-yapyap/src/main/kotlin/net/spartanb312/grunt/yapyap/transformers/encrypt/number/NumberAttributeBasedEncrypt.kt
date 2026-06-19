@@ -111,13 +111,11 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
         )
     ) : TransformerConfig()
 
-    private lateinit var methodExPredicate: NamePredicates
-
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
         barrier()
-        pre {
-            methodExPredicate = buildMethodNamePredicates(config.exclusion)
+        val methodExPredicate = globalScopeValue {
+            buildMethodNamePredicates(config.exclusion)
         }
 
         val counter = reducibleScopeValue { MergeableCounter() }
@@ -147,7 +145,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
             if (classNode.version < Opcodes.V1_5) return@parForEachClassesFiltered
 
             val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, "number-abe"))
-            val pool = collectPool(config, classNode, randomGen)
+            val pool = collectPool(config, classNode, randomGen, methodExPredicate.global)
             if (pool.size < config.minPoolSize) return@parForEachClassesFiltered
 
             Logger.debug("   NumberABE: Processing ${classNode.name}")
@@ -181,7 +179,8 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
     private fun collectPool(
         config: Config,
         classNode: ClassNode,
-        randomGen: UniformRandomProvider
+        randomGen: UniformRandomProvider,
+        methodPredicate: NamePredicates
     ): NumberPool {
         val pool = NumberPool()
         classNode.methods.toList().asSequence()
@@ -190,7 +189,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
                 if (method.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@forEach
                 if (method.isExcluded(DISABLE_NUMBER_ABE)) return@forEach
                 if (method.instructions == null || method.instructions.size() >= config.maxInstructions) return@forEach
-                if (methodExPredicate.matchedAnyBy(methodFullDesc(classNode, method))) return@forEach
+                if (methodPredicate.matchedAnyBy(methodFullDesc(classNode, method))) return@forEach
 
                 method.instructions.toList().forEach { instruction ->
                     if (pool.size >= config.maxPoolSize) return@forEach
@@ -360,7 +359,7 @@ class NumberAttributeBasedEncrypt : Transformer<NumberAttributeBasedEncrypt.Conf
                 RUNTIME_NAME,
                 "decrypt",
                 "($PAIRING_DESC$SECRET_KEY_DESC$CIPHER_TEXT_DESC" +
-                        "Ljava/lang/String;)$ELEMENT_DESC"
+                    "Ljava/lang/String;)$ELEMENT_DESC"
             )
             ASTORE(4)
 

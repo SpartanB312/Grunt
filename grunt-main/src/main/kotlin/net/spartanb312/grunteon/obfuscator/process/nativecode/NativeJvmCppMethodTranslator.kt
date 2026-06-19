@@ -42,9 +42,10 @@ internal object NativeJvmCppMethodTranslator {
     fun translate(
         method: NativeValidatedMethod,
         functionName: String,
-        commitKind: NativeMethodCommitKind = NativeMethodCommitKind.Direct
+        commitKind: NativeMethodCommitKind = NativeMethodCommitKind.Direct,
+        referenceSlots: NativeReferenceSlots = NativeReferenceSlots()
     ): String {
-        return translate(method.methodNode, method.jvmIr, method.fullJvmSupport, functionName, commitKind)
+        return translate(method.methodNode, method.jvmIr, method.fullJvmSupport, functionName, commitKind, referenceSlots)
     }
 
     private fun translate(
@@ -52,7 +53,8 @@ internal object NativeJvmCppMethodTranslator {
         ir: NativeJvmMethodIr,
         support: NativeJvmSupportReport,
         functionName: String,
-        commitKind: NativeMethodCommitKind
+        commitKind: NativeMethodCommitKind,
+        referenceSlots: NativeReferenceSlots = NativeReferenceSlots()
     ): String {
         if (!support.isFullJvmLoweringReady) {
             throw UnsupportedNativeInstruction(
@@ -180,7 +182,7 @@ internal object NativeJvmCppMethodTranslator {
                 if (instruction.instructionIndex in refCleanupEntries) {
                     emitReferenceCleanup(instruction, stackShape)
                 }
-                emitInstruction(instruction, returnType, labels, stackShape)
+                emitInstruction(instruction, returnType, labels, stackShape, referenceSlots)
                 if (!isTerminal(instruction.opcode)) {
                     appendExceptionCheck(instruction, dispatchPlan.labelFor(instruction), returnType)
                     if (instruction.opcode == Opcodes.ATHROW) {
@@ -282,7 +284,8 @@ internal object NativeJvmCppMethodTranslator {
         instruction: NativeJvmInstruction,
         returnType: Type,
         labels: LabelTargetResolver,
-        stackShape: StackShapeAnalyzer
+        stackShape: StackShapeAnalyzer,
+        referenceSlots: NativeReferenceSlots
     ) {
         when (val opcode = instruction.opcode) {
             Opcodes.NOP -> Unit
@@ -473,23 +476,24 @@ internal object NativeJvmCppMethodTranslator {
                     "if (lock == nullptr) { grt_throw(env, \"java/lang/NullPointerException\", \"MONITOREXIT npe\"); } " +
                     "else { env->MonitorExit(lock); } }"
             )
-            else -> emitTypedInstruction(instruction, labels, stackShape)
+            else -> emitTypedInstruction(instruction, labels, stackShape, referenceSlots)
         }
     }
 
     private fun StringBuilder.emitTypedInstruction(
         instruction: NativeJvmInstruction,
         labels: LabelTargetResolver,
-        stackShape: StackShapeAnalyzer
+        stackShape: StackShapeAnalyzer,
+        referenceSlots: NativeReferenceSlots
     ) {
         when (val node = instruction.node) {
             is JumpInsnNode -> emitJumpInstruction(instruction, node, labels)
             is TableSwitchInsnNode -> emitTableSwitchInstruction(node, labels)
             is LookupSwitchInsnNode -> emitLookupSwitchInstruction(node, labels)
-            is MethodInsnNode -> emitMethodInstruction(instruction, node)
-            is FieldInsnNode -> emitFieldInstruction(instruction, node)
+            is MethodInsnNode -> emitMethodInstruction(instruction, node, referenceSlots)
+            is FieldInsnNode -> emitFieldInstruction(instruction, node, referenceSlots)
             is TypeInsnNode -> emitTypeInstruction(instruction, node)
-            is MultiANewArrayInsnNode -> emitMultiANewArrayInstruction(instruction, node)
+            is MultiANewArrayInsnNode -> emitMultiANewArrayInstruction(instruction, node, referenceSlots)
             is IincInsnNode -> emitIincInstruction(node)
             is VarInsnNode -> when (node.opcode) {
                 Opcodes.ILOAD -> appendLine("    cstack[sp++].i = clocal[${node.`var`}].i;")
@@ -522,12 +526,12 @@ internal object NativeJvmCppMethodTranslator {
                 }
                 is Type -> {
                     if (cst.sort == Type.METHOD) {
-                        emitMethodTypeConstant(instruction, cst)
+                        emitMethodTypeConstant(instruction, cst, referenceSlots)
                     } else {
-                        emitClassConstant(instruction, cst)
+                        emitClassConstant(instruction, cst, referenceSlots)
                     }
                 }
-                is Handle -> emitMethodHandleConstant(instruction, cst)
+                is Handle -> emitMethodHandleConstant(instruction, cst, referenceSlots)
                 else -> throw UnsupportedNativeInstruction(
                     NativeSkipReason.UnsupportedInstruction,
                     "full JVM C++ translator does not support LDC constant ${cst?.javaClass?.name ?: "null"}"
@@ -549,13 +553,15 @@ internal object NativeJvmCppMethodTranslator {
 
     private fun StringBuilder.emitFieldInstruction(
         instruction: NativeJvmInstruction,
-        node: FieldInsnNode
+        node: FieldInsnNode,
+        referenceSlots: NativeReferenceSlots
     ) {
         val fieldType = Type.getType(node.desc)
         validateFieldType(fieldType, "${node.owner}.${node.name}:${node.desc}")
         val ownerClassName = "fieldOwner_${instruction.instructionIndex}"
         val fieldIdName = "fieldId_${instruction.instructionIndex}"
         val isStatic = node.opcode == Opcodes.GETSTATIC || node.opcode == Opcodes.PUTSTATIC
+        val fieldSlot = referenceSlots.fieldSlot(node.owner, node.name, node.desc, isStatic)
 
         appendLine("    {")
         if (!isStatic) {
@@ -579,6 +585,8 @@ internal object NativeJvmCppMethodTranslator {
             .append(fieldIdName)
             .append(" = grt_get_field_id(env, ")
             .append(ownerClassName)
+            .append(", ")
+            .append(fieldSlot)
             .append(", \"")
             .append(cppModifiedUtf8String(node.name))
             .append("\", \"")
@@ -692,11 +700,12 @@ internal object NativeJvmCppMethodTranslator {
 
     private fun StringBuilder.emitClassConstant(
         instruction: NativeJvmInstruction,
-        type: Type
+        type: Type,
+        referenceSlots: NativeReferenceSlots
     ) {
         val classObjectName = "classObject_${instruction.instructionIndex}"
         appendLine("    {")
-        emitClassObjectLookup(instruction, type, classObjectName, "        ")
+        emitClassObjectLookup(instruction, type, classObjectName, "        ", referenceSlots)
         appendLine("        if ($classObjectName != nullptr) { cstack[sp++].l = $classObjectName; grt_track_ref(env, refs, cstack[sp - 1].l); }")
         appendLine("    }")
     }
@@ -705,7 +714,8 @@ internal object NativeJvmCppMethodTranslator {
         instruction: NativeJvmInstruction,
         type: Type,
         targetName: String,
-        indent: String
+        indent: String,
+        referenceSlots: NativeReferenceSlots
     ) {
         appendLine("${indent}jobject $targetName = nullptr;")
         when (type.sort) {
@@ -726,7 +736,7 @@ internal object NativeJvmCppMethodTranslator {
             Type.INT,
             Type.LONG,
             Type.FLOAT,
-            Type.DOUBLE -> emitPrimitiveClassObjectLookup(instruction, type, targetName, indent)
+            Type.DOUBLE -> emitPrimitiveClassObjectLookup(instruction, type, targetName, indent, referenceSlots)
             else -> throw UnsupportedNativeInstruction(
                 NativeSkipReason.UnsupportedInstruction,
                 "full JVM C++ translator does not support class constant Type sort ${type.sort}"
@@ -738,7 +748,8 @@ internal object NativeJvmCppMethodTranslator {
         instruction: NativeJvmInstruction,
         type: Type,
         targetName: String,
-        indent: String
+        indent: String,
+        referenceSlots: NativeReferenceSlots
     ) {
         val wrapper = when (type.sort) {
             Type.VOID -> "java/lang/Void"
@@ -757,7 +768,8 @@ internal object NativeJvmCppMethodTranslator {
             .appendLine("\");")
         appendLine("${indent}grt_track_ref(env, refs, wrapperClass_${instruction.instructionIndex});")
         appendLine("${indent}if (wrapperClass_${instruction.instructionIndex} != nullptr) {")
-        appendLine("${indent}    jfieldID typeField_${instruction.instructionIndex} = grt_get_field_id(env, wrapperClass_${instruction.instructionIndex}, \"TYPE\", \"Ljava/lang/Class;\", true);")
+        val typeFieldSlot = referenceSlots.fieldSlot(wrapper, "TYPE", "Ljava/lang/Class;", true)
+        appendLine("${indent}    jfieldID typeField_${instruction.instructionIndex} = grt_get_field_id(env, wrapperClass_${instruction.instructionIndex}, $typeFieldSlot, \"TYPE\", \"Ljava/lang/Class;\", true);")
         appendLine("${indent}    if (typeField_${instruction.instructionIndex} != nullptr) {")
         appendLine("${indent}        $targetName = env->GetStaticObjectField(wrapperClass_${instruction.instructionIndex}, typeField_${instruction.instructionIndex});")
         appendLine("${indent}        grt_track_ref(env, refs, $targetName);")
@@ -767,7 +779,8 @@ internal object NativeJvmCppMethodTranslator {
 
     private fun StringBuilder.emitMethodTypeConstant(
         instruction: NativeJvmInstruction,
-        type: Type
+        type: Type,
+        referenceSlots: NativeReferenceSlots
     ) {
         if (type.sort != Type.METHOD) unsupportedDescriptor(type.descriptor)
         val methodTypeName = "methodTypeConstant_${instruction.instructionIndex}"
@@ -776,7 +789,8 @@ internal object NativeJvmCppMethodTranslator {
             suffix = "constant_${instruction.instructionIndex}",
             descriptor = type.descriptor,
             targetName = methodTypeName,
-            indent = "        "
+            indent = "        ",
+            referenceSlots = referenceSlots
         )
         appendLine("        if ($methodTypeName != nullptr) { cstack[sp++].l = $methodTypeName; grt_track_ref(env, refs, cstack[sp - 1].l); }")
         appendLine("    }")
@@ -786,13 +800,20 @@ internal object NativeJvmCppMethodTranslator {
         suffix: String,
         descriptor: String,
         targetName: String,
-        indent: String
+        indent: String,
+        referenceSlots: NativeReferenceSlots
     ) {
         appendLine("${indent}jobject $targetName = nullptr;")
         appendLine("${indent}jclass methodTypeClass_$suffix = grt_find_class(env, classloader, \"java/lang/invoke/MethodType\");")
         appendLine("${indent}grt_track_ref(env, refs, methodTypeClass_$suffix);")
         appendLine("${indent}if (methodTypeClass_$suffix != nullptr) {")
-        appendLine("${indent}    jmethodID fromDescriptor_$suffix = grt_get_method_id(env, methodTypeClass_$suffix, \"fromMethodDescriptorString\", \"(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;\", true);")
+        val fromDescriptorSlot = referenceSlots.methodSlot(
+            "java/lang/invoke/MethodType",
+            "fromMethodDescriptorString",
+            "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;",
+            true
+        )
+        appendLine("${indent}    jmethodID fromDescriptor_$suffix = grt_get_method_id(env, methodTypeClass_$suffix, $fromDescriptorSlot, \"fromMethodDescriptorString\", \"(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;\", true);")
         appendLine("${indent}    if (fromDescriptor_$suffix != nullptr) {")
         append("${indent}        jstring descriptor_$suffix = env->NewStringUTF(\"")
             .append(cppModifiedUtf8String(descriptor))
@@ -811,7 +832,8 @@ internal object NativeJvmCppMethodTranslator {
 
     private fun StringBuilder.emitMethodHandleConstant(
         instruction: NativeJvmInstruction,
-        handle: Handle
+        handle: Handle,
+        referenceSlots: NativeReferenceSlots
     ) {
         val suffix = "handle_${instruction.instructionIndex}"
         val resultName = "methodHandle_${instruction.instructionIndex}"
@@ -828,12 +850,12 @@ internal object NativeJvmCppMethodTranslator {
             Opcodes.H_GETFIELD,
             Opcodes.H_GETSTATIC,
             Opcodes.H_PUTFIELD,
-            Opcodes.H_PUTSTATIC -> emitFieldMethodHandleLookup(instruction, handle, suffix, resultName)
+            Opcodes.H_PUTSTATIC -> emitFieldMethodHandleLookup(instruction, handle, suffix, resultName, referenceSlots)
             Opcodes.H_INVOKEVIRTUAL,
             Opcodes.H_INVOKEINTERFACE,
             Opcodes.H_INVOKESTATIC,
-            Opcodes.H_INVOKESPECIAL -> emitMethodMethodHandleLookup(instruction, handle, suffix, resultName)
-            Opcodes.H_NEWINVOKESPECIAL -> emitConstructorMethodHandleLookup(instruction, handle, suffix, resultName)
+            Opcodes.H_INVOKESPECIAL -> emitMethodMethodHandleLookup(instruction, handle, suffix, resultName, referenceSlots)
+            Opcodes.H_NEWINVOKESPECIAL -> emitConstructorMethodHandleLookup(instruction, handle, suffix, resultName, referenceSlots)
             else -> throw UnsupportedNativeInstruction(
                 NativeSkipReason.UnsupportedInstruction,
                 "unsupported MethodHandle tag ${handle.tag}"
@@ -849,7 +871,8 @@ internal object NativeJvmCppMethodTranslator {
         instruction: NativeJvmInstruction,
         handle: Handle,
         suffix: String,
-        resultName: String
+        resultName: String,
+        referenceSlots: NativeReferenceSlots
     ) {
         val fieldTypeName = "fieldType_$suffix"
         val findName = when (handle.tag) {
@@ -865,9 +888,15 @@ internal object NativeJvmCppMethodTranslator {
         append("                jstring memberName_$suffix = env->NewStringUTF(\"")
             .append(cppModifiedUtf8String(handle.name))
             .appendLine("\");")
-        emitClassObjectLookup(instruction, Type.getType(handle.desc), fieldTypeName, "                ")
+        emitClassObjectLookup(instruction, Type.getType(handle.desc), fieldTypeName, "                ", referenceSlots)
         appendLine("                if (memberName_$suffix != nullptr && $fieldTypeName != nullptr) {")
-        appendLine("                    jmethodID findMethod_$suffix = grt_get_method_id(env, grt_methodhandles_lookup_class, \"$findName\", \"(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/invoke/MethodHandle;\", false);")
+        val findMethodSlot = referenceSlots.methodSlot(
+            "java/lang/invoke/MethodHandles\$Lookup",
+            findName,
+            "(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/invoke/MethodHandle;",
+            false
+        )
+        appendLine("                    jmethodID findMethod_$suffix = grt_get_method_id(env, grt_methodhandles_lookup_class, $findMethodSlot, \"$findName\", \"(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/invoke/MethodHandle;\", false);")
         appendLine("                    if (findMethod_$suffix != nullptr) {")
         appendLine("                        jvalue findArgs_$suffix[3] = {};")
         appendLine("                        findArgs_$suffix[0].l = ownerClass_$suffix;")
@@ -883,7 +912,8 @@ internal object NativeJvmCppMethodTranslator {
         instruction: NativeJvmInstruction,
         handle: Handle,
         suffix: String,
-        resultName: String
+        resultName: String,
+        referenceSlots: NativeReferenceSlots
     ) {
         val methodTypeName = "methodType_$suffix"
         val findName = when (handle.tag) {
@@ -908,10 +938,17 @@ internal object NativeJvmCppMethodTranslator {
             suffix = "${suffix}_type",
             descriptor = handle.desc,
             targetName = methodTypeName,
-            indent = "                "
+            indent = "                ",
+            referenceSlots = referenceSlots
         )
         appendLine("                if (memberName_$suffix != nullptr && $methodTypeName != nullptr) {")
-        appendLine("                    jmethodID findMethod_$suffix = grt_get_method_id(env, grt_methodhandles_lookup_class, \"$findName\", \"$findDesc\", false);")
+        val findMethodSlot = referenceSlots.methodSlot(
+            "java/lang/invoke/MethodHandles\$Lookup",
+            findName,
+            findDesc,
+            false
+        )
+        appendLine("                    jmethodID findMethod_$suffix = grt_get_method_id(env, grt_methodhandles_lookup_class, $findMethodSlot, \"$findName\", \"$findDesc\", false);")
         appendLine("                    if (findMethod_$suffix != nullptr) {")
         val argCount = if (handle.tag == Opcodes.H_INVOKESPECIAL) 4 else 3
         appendLine("                        jvalue findArgs_$suffix[$argCount] = {};")
@@ -931,17 +968,25 @@ internal object NativeJvmCppMethodTranslator {
         instruction: NativeJvmInstruction,
         handle: Handle,
         suffix: String,
-        resultName: String
+        resultName: String,
+        referenceSlots: NativeReferenceSlots
     ) {
         val methodTypeName = "methodType_$suffix"
         emitMethodTypeObject(
             suffix = "${suffix}_ctor_type",
             descriptor = handle.desc,
             targetName = methodTypeName,
-            indent = "                "
+            indent = "                ",
+            referenceSlots = referenceSlots
         )
         appendLine("                if ($methodTypeName != nullptr) {")
-        appendLine("                    jmethodID findMethod_$suffix = grt_get_method_id(env, grt_methodhandles_lookup_class, \"findConstructor\", \"(Ljava/lang/Class;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;\", false);")
+        val findConstructorSlot = referenceSlots.methodSlot(
+            "java/lang/invoke/MethodHandles\$Lookup",
+            "findConstructor",
+            "(Ljava/lang/Class;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;",
+            false
+        )
+        appendLine("                    jmethodID findMethod_$suffix = grt_get_method_id(env, grt_methodhandles_lookup_class, $findConstructorSlot, \"findConstructor\", \"(Ljava/lang/Class;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;\", false);")
         appendLine("                    if (findMethod_$suffix != nullptr) {")
         appendLine("                        jvalue findArgs_$suffix[2] = {};")
         appendLine("                        findArgs_$suffix[0].l = ownerClass_$suffix;")
@@ -953,7 +998,8 @@ internal object NativeJvmCppMethodTranslator {
 
     private fun StringBuilder.emitMultiANewArrayInstruction(
         instruction: NativeJvmInstruction,
-        node: MultiANewArrayInsnNode
+        node: MultiANewArrayInsnNode,
+        referenceSlots: NativeReferenceSlots
     ) {
         val componentType = multiArrayComponentType(node.desc, node.dims)
         val dimsArrayName = "dimensions_${instruction.instructionIndex}"
@@ -969,12 +1015,18 @@ internal object NativeJvmCppMethodTranslator {
         appendLine("        if ($dimsJniArrayName != nullptr) {")
         appendLine("            env->SetIntArrayRegion($dimsJniArrayName, 0, ${node.dims}, $dimsArrayName);")
         appendLine("            if (!env->ExceptionCheck()) {")
-        emitClassObjectLookup(instruction, componentType, componentClassName, "                ")
+        emitClassObjectLookup(instruction, componentType, componentClassName, "                ", referenceSlots)
         appendLine("                if ($componentClassName != nullptr) {")
         appendLine("                    jclass reflectArrayClass_${instruction.instructionIndex} = grt_find_class(env, classloader, \"java/lang/reflect/Array\");")
         appendLine("                    grt_track_ref(env, refs, reflectArrayClass_${instruction.instructionIndex});")
         appendLine("                    if (reflectArrayClass_${instruction.instructionIndex} != nullptr) {")
-        appendLine("                        jmethodID newInstance_${instruction.instructionIndex} = grt_get_method_id(env, reflectArrayClass_${instruction.instructionIndex}, \"newInstance\", \"(Ljava/lang/Class;[I)Ljava/lang/Object;\", true);")
+        val newInstanceSlot = referenceSlots.methodSlot(
+            "java/lang/reflect/Array",
+            "newInstance",
+            "(Ljava/lang/Class;[I)Ljava/lang/Object;",
+            true
+        )
+        appendLine("                        jmethodID newInstance_${instruction.instructionIndex} = grt_get_method_id(env, reflectArrayClass_${instruction.instructionIndex}, $newInstanceSlot, \"newInstance\", \"(Ljava/lang/Class;[I)Ljava/lang/Object;\", true);")
         appendLine("                        if (newInstance_${instruction.instructionIndex} != nullptr) {")
         appendLine("                            jvalue args_${instruction.instructionIndex}[2] = {};")
         appendLine("                            args_${instruction.instructionIndex}[0].l = $componentClassName;")
@@ -1001,7 +1053,8 @@ internal object NativeJvmCppMethodTranslator {
 
     private fun StringBuilder.emitMethodInstruction(
         instruction: NativeJvmInstruction,
-        node: MethodInsnNode
+        node: MethodInsnNode,
+        referenceSlots: NativeReferenceSlots
     ) {
         val argumentTypes = Type.getArgumentTypes(node.desc)
         val returnType = Type.getReturnType(node.desc)
@@ -1030,6 +1083,7 @@ internal object NativeJvmCppMethodTranslator {
         val isStatic = node.opcode == Opcodes.INVOKESTATIC
         val ownerClassName = "ownerClass_${instruction.instructionIndex}"
         val methodIdName = "methodId_${instruction.instructionIndex}"
+        val methodSlot = referenceSlots.methodSlot(node.owner, node.name, node.desc, isStatic)
         if (!isStatic) {
             appendLine("        jobject receiver = cstack[--sp].l;")
             appendLine("        if (receiver == nullptr) {")
@@ -1047,6 +1101,8 @@ internal object NativeJvmCppMethodTranslator {
             .append(methodIdName)
             .append(" = grt_get_method_id(env, ")
             .append(ownerClassName)
+            .append(", ")
+            .append(methodSlot)
             .append(", \"")
             .append(cppModifiedUtf8String(node.name))
             .append("\", \"")

@@ -88,13 +88,10 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
         )
     ) : TransformerConfig()
 
-    private lateinit var methodExPredicate: NamePredicates
-
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
-        pre {
-            //Logger.info(" > NumberBasicEncrypt: Encrypting numbers...")
-            methodExPredicate = buildMethodNamePredicates(config.exclusion)
+        val methodExPredicate = globalScopeValue {
+            buildMethodNamePredicates(config.exclusion)
         }
         val counter = reducibleScopeValue { MergeableCounter() }
         val shuffledListCache = localScopeValue { FastObjectArrayList<AbstractInsnNode>() }
@@ -105,6 +102,7 @@ class NumberBasicEncrypt : Transformer<NumberBasicEncrypt.Config>(
         ) { classNode ->
             val counter = counter.local
             if (classNode.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@parForEachClassesFiltered
+            val methodExPredicate = methodExPredicate.global
             classNode.methods.asSequence()
                 .filter { !it.isAbstract && !it.isNative }
                 .forEach { method ->

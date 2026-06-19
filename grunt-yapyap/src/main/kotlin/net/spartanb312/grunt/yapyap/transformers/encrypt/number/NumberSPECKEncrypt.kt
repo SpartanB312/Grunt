@@ -70,12 +70,10 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
         )
     ) : TransformerConfig()
 
-    private lateinit var methodExPredicate: NamePredicates
-
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
-        pre {
-            methodExPredicate = buildMethodNamePredicates(config.exclusion)
+        val methodExPredicate = globalScopeValue {
+            buildMethodNamePredicates(config.exclusion)
         }
 
         val counter = reducibleScopeValue { MergeableCounter() }
@@ -113,7 +111,7 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
                 .filter { !it.isAbstract && !it.isNative }
                 .forEach { method ->
                     if (method.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@forEach
-                    if (methodExPredicate.matchedAnyBy(methodFullDesc(classNode, method))) return@forEach
+                    if (methodExPredicate.global.matchedAnyBy(methodFullDesc(classNode, method))) return@forEach
                     if ((method.instructions?.size() ?: 0) >= config.maxInstructions) return@forEach
 
                     val chanceModifier =

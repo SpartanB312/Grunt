@@ -82,7 +82,7 @@ internal object NativeCompiler {
             add(compiler)
             add("-std=c++17")
             add(gnuOptimizationFlag(config))
-            add("-fPIC")
+            addAll(positionIndependentCodeArgs(bundle.plan.platform))
             add(sharedFlag)
             addAll(defaultGnuLikeCompilerArgs(bundle.plan.platform))
             addAll(config.compilerArgs)
@@ -108,7 +108,7 @@ internal object NativeCompiler {
             add(compiler)
             add("-std=c++17")
             add(gnuOptimizationFlag(config))
-            add("-fPIC")
+            addAll(positionIndependentCodeArgs(NativePlatform.current()))
             addAll(config.compilerArgs)
             add("-I")
             add(includeRoot.absolutePathString())
@@ -145,6 +145,10 @@ internal object NativeCompiler {
         } else {
             emptyList()
         }
+    }
+
+    private fun positionIndependentCodeArgs(platform: NativePlatform): List<String> {
+        return if (platform.os == "windows") emptyList() else listOf("-fPIC")
     }
 
     private fun buildMsvcCommand(

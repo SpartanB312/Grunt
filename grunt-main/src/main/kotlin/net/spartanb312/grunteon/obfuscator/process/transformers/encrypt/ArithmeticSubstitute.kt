@@ -55,13 +55,10 @@ class ArithmeticSubstitute : Transformer<ArithmeticSubstitute.Config>(
         )
     ) : TransformerConfig()
 
-    private lateinit var methodExPredicate: NamePredicates
-
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
-        pre {
-            //Logger.info(" > ArithmeticSubstitute: Replacing arithmetic instructions...")
-            methodExPredicate = buildMethodNamePredicates(config.exclusion)
+        val methodExPredicate = globalScopeValue {
+            buildMethodNamePredicates(config.exclusion)
         }
         val counter = reducibleScopeValue { MergeableCounter() }
         parForEachClassesFiltered(
@@ -71,6 +68,7 @@ class ArithmeticSubstitute : Transformer<ArithmeticSubstitute.Config>(
         ) { classNode ->
             val counter = counter.local
             if (classNode.isExcluded(DISABLE_ARITHMETIC_SUBSTITUTE)) return@parForEachClassesFiltered
+            val methodExPredicate = methodExPredicate.global
             classNode.methods.asSequence()
                 .filter { !it.isAbstract && !it.isNative }
                 .forEach { method ->

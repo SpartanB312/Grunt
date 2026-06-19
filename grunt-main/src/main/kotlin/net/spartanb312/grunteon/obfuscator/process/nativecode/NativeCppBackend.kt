@@ -116,7 +116,7 @@ internal object NativeCppBackend {
                 add(
                     NativeSourceFile(
                         sourceRoot.resolve("grunteon_native_chunk_${index.toString().padStart(4, '0')}.cpp"),
-                        emitSplitChunkSource(index, classPlans, commonPrefix)
+                        emitSplitChunkSource(index, classPlans, commonPrefix, plan.referenceSlots)
                     )
                 )
             }
@@ -154,14 +154,15 @@ internal object NativeCppBackend {
     private fun emitSplitChunkSource(
         chunkIndex: Int,
         classPlans: List<NativeClassPlan>,
-        commonPrefix: String
+        commonPrefix: String,
+        referenceSlots: NativeReferenceSlots
     ): String {
         return buildString {
             append(commonPrefix)
             classPlans.forEach { classPlan ->
                 classPlan.methods.forEach { binding ->
                     appendLine("// ${binding.method.displayName}")
-                    appendLine(emitNativeMethod(binding))
+                    appendLine(emitNativeMethod(binding, referenceSlots))
                 }
             }
             classPlans.forEach { classPlan ->
@@ -249,6 +250,11 @@ internal object NativeCppBackend {
     }
 
     private fun emitSource(plan: NativeBuildPlan): String {
+        val methodSources = plan.classes.flatMap { classPlan ->
+            classPlan.methods.map { binding ->
+                "// ${binding.method.displayName}\n${emitNativeMethod(binding, plan.referenceSlots)}"
+            }
+        }
         return buildString {
             appendLine("#include <jni.h>")
             appendLine("#include <cmath>")
@@ -271,10 +277,12 @@ internal object NativeCppBackend {
             appendLine("static std::unordered_map<std::string, std::vector<GrtClassCacheEntry>> grt_class_cache;")
             appendLine("struct GrtMethodCacheEntry { jweak clazz; jmethodID id; };")
             appendLine("struct GrtFieldCacheEntry { jweak clazz; jfieldID id; };")
-            appendLine("static std::mutex grt_method_cache_mutex;")
-            appendLine("static std::mutex grt_field_cache_mutex;")
-            appendLine("static std::unordered_map<std::string, std::vector<GrtMethodCacheEntry>> grt_method_cache;")
-            appendLine("static std::unordered_map<std::string, std::vector<GrtFieldCacheEntry>> grt_field_cache;")
+            appendLine("struct GrtMethodSlot { std::mutex mutex; std::vector<GrtMethodCacheEntry> entries; };")
+            appendLine("struct GrtFieldSlot { std::mutex mutex; std::vector<GrtFieldCacheEntry> entries; };")
+            appendLine("static constexpr jint grt_method_slot_count = ${plan.referenceSlots.methodSlotCount};")
+            appendLine("static constexpr jint grt_field_slot_count = ${plan.referenceSlots.fieldSlotCount};")
+            appendLine("static GrtMethodSlot grt_method_slots[${maxOf(1, plan.referenceSlots.methodSlotCount)}];")
+            appendLine("static GrtFieldSlot grt_field_slots[${maxOf(1, plan.referenceSlots.fieldSlotCount)}];")
             appendLine("static jclass grt_no_class_def_found_class = nullptr;")
             appendLine("static jmethodID grt_no_class_def_found_init = nullptr;")
             appendLine("static jclass grt_throwable_class = nullptr;")
@@ -286,63 +294,75 @@ internal object NativeCppBackend {
             appendLine("static std::unordered_map<std::string, jstring> grt_string_cache;")
             appendLine("static jclass grt_methodhandles_lookup_class = nullptr;")
             appendLine("static jmethodID grt_lookup_init_method = nullptr;")
+            appendLine("static std::mutex grt_runtime_init_mutex;")
+            appendLine("static bool grt_runtime_initialized = false;")
+            appendLine("static bool grt_runtime_failed = false;")
             appendLine()
+            appendLine("static bool grt_runtime_init_failed() {")
+            appendLine("    grt_runtime_failed = true;")
+            appendLine("    return false;")
+            appendLine("}")
             appendLine("static bool grt_init_runtime(JNIEnv* env) {")
+            appendLine("    std::lock_guard<std::mutex> runtimeLock(grt_runtime_init_mutex);")
+            appendLine("    if (grt_runtime_initialized) return true;")
+            appendLine("    if (grt_runtime_failed) return false;")
             appendLine("    jclass localClass = env->FindClass(\"java/lang/Class\");")
-            appendLine("    if (localClass == nullptr) return false;")
+            appendLine("    if (localClass == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_class_class = (jclass) env->NewGlobalRef(localClass);")
             appendLine("    env->DeleteLocalRef(localClass);")
-            appendLine("    if (grt_class_class == nullptr) return false;")
+            appendLine("    if (grt_class_class == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_get_classloader_method = env->GetMethodID(grt_class_class, \"getClassLoader\", \"()Ljava/lang/ClassLoader;\");")
-            appendLine("    if (grt_get_classloader_method == nullptr) return false;")
+            appendLine("    if (grt_get_classloader_method == nullptr) return grt_runtime_init_failed();")
             appendLine()
             appendLine("    jclass localClassLoader = env->FindClass(\"java/lang/ClassLoader\");")
-            appendLine("    if (localClassLoader == nullptr) return false;")
+            appendLine("    if (localClassLoader == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_classloader_class = (jclass) env->NewGlobalRef(localClassLoader);")
             appendLine("    env->DeleteLocalRef(localClassLoader);")
-            appendLine("    if (grt_classloader_class == nullptr) return false;")
+            appendLine("    if (grt_classloader_class == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_load_class_method = env->GetMethodID(grt_classloader_class, \"loadClass\", \"(Ljava/lang/String;)Ljava/lang/Class;\");")
-            appendLine("    if (grt_load_class_method == nullptr) return false;")
+            appendLine("    if (grt_load_class_method == nullptr) return grt_runtime_init_failed();")
             appendLine()
             appendLine("    jclass localBooleanArray = env->FindClass(\"[Z\");")
-            appendLine("    if (localBooleanArray == nullptr) return false;")
+            appendLine("    if (localBooleanArray == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_boolean_array_class = (jclass) env->NewGlobalRef(localBooleanArray);")
             appendLine("    env->DeleteLocalRef(localBooleanArray);")
-            appendLine("    if (grt_boolean_array_class == nullptr) return false;")
+            appendLine("    if (grt_boolean_array_class == nullptr) return grt_runtime_init_failed();")
             appendLine()
             appendLine("    jclass localNoClassDef = env->FindClass(\"java/lang/NoClassDefFoundError\");")
-            appendLine("    if (localNoClassDef == nullptr) return false;")
+            appendLine("    if (localNoClassDef == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_no_class_def_found_class = (jclass) env->NewGlobalRef(localNoClassDef);")
             appendLine("    env->DeleteLocalRef(localNoClassDef);")
-            appendLine("    if (grt_no_class_def_found_class == nullptr) return false;")
+            appendLine("    if (grt_no_class_def_found_class == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_no_class_def_found_init = env->GetMethodID(grt_no_class_def_found_class, \"<init>\", \"(Ljava/lang/String;)V\");")
-            appendLine("    if (grt_no_class_def_found_init == nullptr) return false;")
+            appendLine("    if (grt_no_class_def_found_init == nullptr) return grt_runtime_init_failed();")
             appendLine()
             appendLine("    jclass localThrowable = env->FindClass(\"java/lang/Throwable\");")
-            appendLine("    if (localThrowable == nullptr) return false;")
+            appendLine("    if (localThrowable == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_throwable_class = (jclass) env->NewGlobalRef(localThrowable);")
             appendLine("    env->DeleteLocalRef(localThrowable);")
-            appendLine("    if (grt_throwable_class == nullptr) return false;")
+            appendLine("    if (grt_throwable_class == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_throwable_get_message_method = env->GetMethodID(grt_throwable_class, \"getMessage\", \"()Ljava/lang/String;\");")
-            appendLine("    if (grt_throwable_get_message_method == nullptr) return false;")
+            appendLine("    if (grt_throwable_get_message_method == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_throwable_init_cause_method = env->GetMethodID(grt_throwable_class, \"initCause\", \"(Ljava/lang/Throwable;)Ljava/lang/Throwable;\");")
-            appendLine("    if (grt_throwable_init_cause_method == nullptr) return false;")
+            appendLine("    if (grt_throwable_init_cause_method == nullptr) return grt_runtime_init_failed();")
             appendLine()
             appendLine("    jclass localString = env->FindClass(\"java/lang/String\");")
-            appendLine("    if (localString == nullptr) return false;")
+            appendLine("    if (localString == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_string_class = (jclass) env->NewGlobalRef(localString);")
             appendLine("    env->DeleteLocalRef(localString);")
-            appendLine("    if (grt_string_class == nullptr) return false;")
+            appendLine("    if (grt_string_class == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_string_intern_method = env->GetMethodID(grt_string_class, \"intern\", \"()Ljava/lang/String;\");")
-            appendLine("    if (grt_string_intern_method == nullptr) return false;")
+            appendLine("    if (grt_string_intern_method == nullptr) return grt_runtime_init_failed();")
             appendLine()
             appendLine("    jclass localLookup = env->FindClass(\"java/lang/invoke/MethodHandles${'$'}Lookup\");")
-            appendLine("    if (localLookup == nullptr) return false;")
+            appendLine("    if (localLookup == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_methodhandles_lookup_class = (jclass) env->NewGlobalRef(localLookup);")
             appendLine("    env->DeleteLocalRef(localLookup);")
-            appendLine("    if (grt_methodhandles_lookup_class == nullptr) return false;")
+            appendLine("    if (grt_methodhandles_lookup_class == nullptr) return grt_runtime_init_failed();")
             appendLine("    grt_lookup_init_method = env->GetMethodID(grt_methodhandles_lookup_class, \"<init>\", \"(Ljava/lang/Class;)V\");")
-            appendLine("    return grt_lookup_init_method != nullptr;")
+            appendLine("    if (grt_lookup_init_method == nullptr) return grt_runtime_init_failed();")
+            appendLine("    grt_runtime_initialized = true;")
+            appendLine("    return true;")
             appendLine("}")
             appendLine("static inline jobject grt_get_classloader(JNIEnv* env, jclass clazz) {")
             appendLine("    if (clazz == nullptr || grt_get_classloader_method == nullptr) return nullptr;")
@@ -432,23 +452,16 @@ internal object NativeCppBackend {
             appendLine("    }")
             appendLine("    refs.clear();")
             appendLine("}")
-            appendLine("static inline std::string grt_member_cache_key(const char* name, const char* desc, bool isStatic) {")
-            appendLine("    std::string key(isStatic ? \"S:\" : \"I:\");")
-            appendLine("    key += name == nullptr ? \"\" : name;")
-            appendLine("    key += '\\n';")
-            appendLine("    key += desc == nullptr ? \"\" : desc;")
-            appendLine("    return key;")
-            appendLine("}")
-            appendLine("static jmethodID grt_get_method_id(JNIEnv* env, jclass clazz, const char* name, const char* desc, bool isStatic) {")
+            appendLine("static jmethodID grt_get_method_id(JNIEnv* env, jclass clazz, jint slot, const char* name, const char* desc, bool isStatic) {")
             appendLine("    if (clazz == nullptr || name == nullptr || desc == nullptr) return nullptr;")
-            appendLine("    std::string key = grt_member_cache_key(name, desc, isStatic);")
+            appendLine("    if (slot < 0 || slot >= grt_method_slot_count) {")
+            appendLine("        return isStatic ? env->GetStaticMethodID(clazz, name, desc) : env->GetMethodID(clazz, name, desc);")
+            appendLine("    }")
+            appendLine("    GrtMethodSlot& methodSlot = grt_method_slots[slot];")
             appendLine("    {")
-            appendLine("        std::lock_guard<std::mutex> lock(grt_method_cache_mutex);")
-            appendLine("        auto cached = grt_method_cache.find(key);")
-            appendLine("        if (cached != grt_method_cache.end()) {")
-            appendLine("            for (const GrtMethodCacheEntry& entry : cached->second) {")
-            appendLine("                if (entry.id != nullptr && entry.clazz != nullptr && !env->IsSameObject(entry.clazz, nullptr) && env->IsSameObject(entry.clazz, clazz)) return entry.id;")
-            appendLine("            }")
+            appendLine("        std::lock_guard<std::mutex> lock(methodSlot.mutex);")
+            appendLine("        for (const GrtMethodCacheEntry& entry : methodSlot.entries) {")
+            appendLine("            if (entry.id != nullptr && entry.clazz != nullptr && !env->IsSameObject(entry.clazz, nullptr) && env->IsSameObject(entry.clazz, clazz)) return entry.id;")
             appendLine("        }")
             appendLine("    }")
             appendLine("    jmethodID resolved = isStatic ? env->GetStaticMethodID(clazz, name, desc) : env->GetMethodID(clazz, name, desc);")
@@ -456,28 +469,27 @@ internal object NativeCppBackend {
             appendLine("    jweak classRef = env->NewWeakGlobalRef(clazz);")
             appendLine("    if (classRef == nullptr) return nullptr;")
             appendLine("    {")
-            appendLine("        std::lock_guard<std::mutex> lock(grt_method_cache_mutex);")
-            appendLine("        auto& entries = grt_method_cache[key];")
-            appendLine("        for (const GrtMethodCacheEntry& entry : entries) {")
+            appendLine("        std::lock_guard<std::mutex> lock(methodSlot.mutex);")
+            appendLine("        for (const GrtMethodCacheEntry& entry : methodSlot.entries) {")
             appendLine("            if (entry.id != nullptr && entry.clazz != nullptr && !env->IsSameObject(entry.clazz, nullptr) && env->IsSameObject(entry.clazz, clazz)) {")
             appendLine("                env->DeleteWeakGlobalRef(classRef);")
             appendLine("                return entry.id;")
             appendLine("            }")
             appendLine("        }")
-            appendLine("        entries.push_back({ classRef, resolved });")
+            appendLine("        methodSlot.entries.push_back({ classRef, resolved });")
             appendLine("    }")
             appendLine("    return resolved;")
             appendLine("}")
-            appendLine("static jfieldID grt_get_field_id(JNIEnv* env, jclass clazz, const char* name, const char* desc, bool isStatic) {")
+            appendLine("static jfieldID grt_get_field_id(JNIEnv* env, jclass clazz, jint slot, const char* name, const char* desc, bool isStatic) {")
             appendLine("    if (clazz == nullptr || name == nullptr || desc == nullptr) return nullptr;")
-            appendLine("    std::string key = grt_member_cache_key(name, desc, isStatic);")
+            appendLine("    if (slot < 0 || slot >= grt_field_slot_count) {")
+            appendLine("        return isStatic ? env->GetStaticFieldID(clazz, name, desc) : env->GetFieldID(clazz, name, desc);")
+            appendLine("    }")
+            appendLine("    GrtFieldSlot& fieldSlot = grt_field_slots[slot];")
             appendLine("    {")
-            appendLine("        std::lock_guard<std::mutex> lock(grt_field_cache_mutex);")
-            appendLine("        auto cached = grt_field_cache.find(key);")
-            appendLine("        if (cached != grt_field_cache.end()) {")
-            appendLine("            for (const GrtFieldCacheEntry& entry : cached->second) {")
-            appendLine("                if (entry.id != nullptr && entry.clazz != nullptr && !env->IsSameObject(entry.clazz, nullptr) && env->IsSameObject(entry.clazz, clazz)) return entry.id;")
-            appendLine("            }")
+            appendLine("        std::lock_guard<std::mutex> lock(fieldSlot.mutex);")
+            appendLine("        for (const GrtFieldCacheEntry& entry : fieldSlot.entries) {")
+            appendLine("            if (entry.id != nullptr && entry.clazz != nullptr && !env->IsSameObject(entry.clazz, nullptr) && env->IsSameObject(entry.clazz, clazz)) return entry.id;")
             appendLine("        }")
             appendLine("    }")
             appendLine("    jfieldID resolved = isStatic ? env->GetStaticFieldID(clazz, name, desc) : env->GetFieldID(clazz, name, desc);")
@@ -485,15 +497,14 @@ internal object NativeCppBackend {
             appendLine("    jweak classRef = env->NewWeakGlobalRef(clazz);")
             appendLine("    if (classRef == nullptr) return nullptr;")
             appendLine("    {")
-            appendLine("        std::lock_guard<std::mutex> lock(grt_field_cache_mutex);")
-            appendLine("        auto& entries = grt_field_cache[key];")
-            appendLine("        for (const GrtFieldCacheEntry& entry : entries) {")
+            appendLine("        std::lock_guard<std::mutex> lock(fieldSlot.mutex);")
+            appendLine("        for (const GrtFieldCacheEntry& entry : fieldSlot.entries) {")
             appendLine("            if (entry.id != nullptr && entry.clazz != nullptr && !env->IsSameObject(entry.clazz, nullptr) && env->IsSameObject(entry.clazz, clazz)) {")
             appendLine("                env->DeleteWeakGlobalRef(classRef);")
             appendLine("                return entry.id;")
             appendLine("            }")
             appendLine("        }")
-            appendLine("        entries.push_back({ classRef, resolved });")
+            appendLine("        fieldSlot.entries.push_back({ classRef, resolved });")
             appendLine("    }")
             appendLine("    return resolved;")
             appendLine("}")
@@ -619,12 +630,7 @@ internal object NativeCppBackend {
             appendLine("}")
             appendLine()
 
-            plan.classes.forEach { classPlan ->
-                classPlan.methods.forEach { binding ->
-                    appendLine("// ${binding.method.displayName}")
-                    appendLine(emitNativeMethod(binding))
-                }
-            }
+            methodSources.forEach { appendLine(it) }
 
             plan.classes.forEach { classPlan ->
                 appendClassRegistrar(classPlan, externalLinkage = false, initializeRuntime = false)
@@ -714,7 +720,7 @@ internal object NativeCppBackend {
         appendLine()
     }
 
-    private fun emitNativeMethod(binding: NativeMethodBinding): String {
+    private fun emitNativeMethod(binding: NativeMethodBinding, referenceSlots: NativeReferenceSlots): String {
         return when (binding.method.lowering) {
             NativeLoweringKind.SsaPrimitive,
             NativeLoweringKind.SsaPrimitiveInt -> NativeSsaIntMethodTranslator.translate(
@@ -730,7 +736,8 @@ internal object NativeCppBackend {
             NativeLoweringKind.FullJvm -> NativeJvmCppMethodTranslator.translate(
                 binding.method,
                 binding.functionName,
-                binding.commitKind
+                binding.commitKind,
+                referenceSlots
             )
         }
     }

@@ -114,8 +114,42 @@ internal data class NativeBuildPlan(
     val resourceName: String,
     val libraryFileName: String,
     val platform: NativePlatform,
-    val classes: List<NativeClassPlan>
+    val classes: List<NativeClassPlan>,
+    val referenceSlots: NativeReferenceSlots = NativeReferenceSlots()
 )
+
+internal data class NativeMethodRef(
+    val owner: String,
+    val name: String,
+    val desc: String,
+    val isStatic: Boolean
+)
+
+internal data class NativeFieldRef(
+    val owner: String,
+    val name: String,
+    val desc: String,
+    val isStatic: Boolean
+)
+
+internal class NativeReferenceSlots {
+    private val methodSlots = linkedMapOf<NativeMethodRef, Int>()
+    private val fieldSlots = linkedMapOf<NativeFieldRef, Int>()
+
+    val methodSlotCount: Int
+        get() = methodSlots.size
+
+    val fieldSlotCount: Int
+        get() = fieldSlots.size
+
+    fun methodSlot(owner: String, name: String, desc: String, isStatic: Boolean): Int {
+        return methodSlots.getOrPut(NativeMethodRef(owner, name, desc, isStatic)) { methodSlots.size }
+    }
+
+    fun fieldSlot(owner: String, name: String, desc: String, isStatic: Boolean): Int {
+        return fieldSlots.getOrPut(NativeFieldRef(owner, name, desc, isStatic)) { fieldSlots.size }
+    }
+}
 
 internal data class NativeSourceBundle(
     val plan: NativeBuildPlan,

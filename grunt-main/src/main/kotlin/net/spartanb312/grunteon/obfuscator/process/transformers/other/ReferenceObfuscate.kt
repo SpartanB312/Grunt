@@ -16,8 +16,6 @@ import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
-import net.spartanb312.grunteon.obfuscator.util.filters.NamePredicates
-import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.withMapping
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Label
@@ -78,15 +76,10 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         )
     ) : TransformerConfig()
 
-    private lateinit var methodExPredicate: NamePredicates
 
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
         barrier()
-        pre {
-            //Logger.info(" > ReferenceObfuscate: Hiding method call references...")
-            methodExPredicate = buildMethodNamePredicates(config.exclusion)
-        }
         seq {
             // Add metadata annotation class
             val metadata = clazz(

@@ -49,14 +49,11 @@ class InvokeProxy : Transformer<InvokeProxy.Config>(
         )
     ) : TransformerConfig()
 
-    private lateinit var methodExPredicate: NamePredicates
-
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
         barrier()
-        pre {
-            //Logger.info(" > InvokeProxy: Redirecting method calls...")
-            methodExPredicate = buildMethodNamePredicates(config.exclusion)
+        val methodExPredicate = globalScopeValue {
+            buildMethodNamePredicates(config.exclusion)
         }
         val counter = reducibleScopeValue { MergeableCounter() }
         val newClasses = globalScopeValue { mutableMapOf<ClassNode, ClassNode>() }// Owner Companion
@@ -67,6 +64,7 @@ class InvokeProxy : Transformer<InvokeProxy.Config>(
         ) { classNode ->
             val counter = counter.local
             if (classNode.isExcluded(DISABLE_INVOKE_PROXY)) return@parForEachClassesFiltered
+            val methodExPredicate = methodExPredicate.global
             classNode.methods.toList().asSequence()
                 .runIf(classNode.isEnum) {
                     filterNot { it.isStatic && it.name in ENUM_METHOD_EXCLUDES }

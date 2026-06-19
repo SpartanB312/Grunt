@@ -46,9 +46,17 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(source, "return localClass;")
         assertContains(source, "struct GrtMethodCacheEntry { jweak clazz; jmethodID id; };")
         assertContains(source, "struct GrtFieldCacheEntry { jweak clazz; jfieldID id; };")
-        assertContains(source, "static jmethodID grt_get_method_id(JNIEnv* env, jclass clazz, const char* name, const char* desc, bool isStatic)")
-        assertContains(source, "static jfieldID grt_get_field_id(JNIEnv* env, jclass clazz, const char* name, const char* desc, bool isStatic)")
+        assertContains(source, "struct GrtMethodSlot { std::mutex mutex; std::vector<GrtMethodCacheEntry> entries; };")
+        assertContains(source, "static constexpr jint grt_method_slot_count = 0;")
+        assertContains(source, "static GrtMethodSlot grt_method_slots[1];")
+        assertContains(source, "static jmethodID grt_get_method_id(JNIEnv* env, jclass clazz, jint slot, const char* name, const char* desc, bool isStatic)")
+        assertContains(source, "static jfieldID grt_get_field_id(JNIEnv* env, jclass clazz, jint slot, const char* name, const char* desc, bool isStatic)")
+        assertFalse(source.contains("grt_member_cache_key"))
+        assertFalse(source.contains("grt_method_cache"))
+        assertFalse(source.contains("grt_field_cache"))
         assertContains(source, "grt_load_class_method = env->GetMethodID(grt_classloader_class, \"loadClass\", \"(Ljava/lang/String;)Ljava/lang/Class;\");")
+        assertContains(source, "static bool grt_runtime_initialized = false;")
+        assertContains(source, "if (grt_runtime_initialized) return true;")
         assertContains(source, "if (!grt_init_runtime(env)) return JNI_ERR;")
         assertContains(source, "static inline jint grt_i32(uint32_t value)")
         assertContains(source, "static inline jbyte grt_i8(uint32_t value)")
@@ -112,12 +120,12 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(intCall, "grt_track_ref(env, ownedRefs, classloader);")
         assertContains(intCall, "grt_find_class(env, classloader, \"java/lang/Integer\")")
         assertContains(intCall, "grt_track_ref(env, refs, ownerClass_1);")
-        assertContains(intCall, "grt_get_method_id(env, ownerClass_1, \"bitCount\", \"(I)I\", true)")
+        assertContains(intCall, "grt_get_method_id(env, ownerClass_1, 0, \"bitCount\", \"(I)I\", true)")
         assertContains(intCall, "cstack[sp++].i = static_cast<jint>(env->CallStaticIntMethodA(ownerClass_1, methodId_1, args_1));")
 
         val objectCall = translate(invokeStaticObjectMethod())
         assertContains(objectCall, "grt_find_class(env, classloader, \"java/lang/String\")")
-        assertContains(objectCall, "grt_get_method_id(env, ownerClass_1, \"valueOf\", \"(I)Ljava/lang/String;\", true)")
+        assertContains(objectCall, "grt_get_method_id(env, ownerClass_1, 0, \"valueOf\", \"(I)Ljava/lang/String;\", true)")
         assertContains(objectCall, "cstack[sp++].l = env->CallStaticObjectMethodA(ownerClass_1, methodId_1, args_1);")
         assertContains(objectCall, "jobject result = cstack[--sp].l; refs.erase(result); grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result;")
     }
@@ -126,12 +134,12 @@ class NativeJvmCppMethodTranslatorTest {
     fun emitsFieldAccesses() {
         val getStatic = translate(getStaticFieldMethod())
         assertContains(getStatic, "grt_track_ref(env, refs, fieldOwner_0);")
-        assertContains(getStatic, "grt_get_field_id(env, fieldOwner_0, \"VALUE\", \"I\", true)")
+        assertContains(getStatic, "grt_get_field_id(env, fieldOwner_0, 0, \"VALUE\", \"I\", true)")
         assertContains(getStatic, "cstack[sp++].i = static_cast<jint>(env->GetStaticIntField(fieldOwner_0, fieldId_0));")
 
         val putField = translate(putFieldMethod())
         assertContains(putField, "jint fieldValue_2 = static_cast<jint>(cstack[--sp].i);")
-        assertContains(putField, "grt_get_field_id(env, fieldOwner_2, \"value\", \"I\", false)")
+        assertContains(putField, "grt_get_field_id(env, fieldOwner_2, 0, \"value\", \"I\", false)")
         assertContains(putField, "env->SetIntField(receiver, fieldId_2, fieldValue_2);")
     }
 
@@ -166,7 +174,7 @@ class NativeJvmCppMethodTranslatorTest {
         val primitiveClassLiteral = translate(primitiveClassLiteralMethod())
         assertContains(primitiveClassLiteral, "grt_find_class(env, classloader, \"java/lang/Integer\")")
         assertContains(primitiveClassLiteral, "grt_track_ref(env, refs, wrapperClass_0);")
-        assertContains(primitiveClassLiteral, "grt_get_field_id(env, wrapperClass_0, \"TYPE\", \"Ljava/lang/Class;\", true)")
+        assertContains(primitiveClassLiteral, "grt_get_field_id(env, wrapperClass_0, 0, \"TYPE\", \"Ljava/lang/Class;\", true)")
         assertContains(primitiveClassLiteral, "env->GetStaticObjectField(wrapperClass_0, typeField_0)")
     }
 
@@ -411,7 +419,7 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(multiIntArray, "grt_find_class(env, classloader, \"java/lang/Integer\")")
         assertContains(multiIntArray, "grt_find_class(env, classloader, \"java/lang/reflect/Array\")")
         assertContains(multiIntArray, "grt_track_ref(env, refs, reflectArrayClass_2);")
-        assertContains(multiIntArray, "grt_get_method_id(env, reflectArrayClass_2, \"newInstance\", \"(Ljava/lang/Class;[I)Ljava/lang/Object;\", true)")
+        assertContains(multiIntArray, "grt_get_method_id(env, reflectArrayClass_2, 0, \"newInstance\", \"(Ljava/lang/Class;[I)Ljava/lang/Object;\", true)")
         assertContains(multiIntArray, "cstack[sp++].l = env->CallStaticObjectMethodA(reflectArrayClass_2, newInstance_2, args_2);")
 
         val partialObjectArray = translate(partialMultiObjectArrayMethod())
@@ -423,7 +431,7 @@ class NativeJvmCppMethodTranslatorTest {
         val methodType = translate(methodTypeLdcMethod())
         assertContains(methodType, "grt_find_class(env, classloader, \"java/lang/invoke/MethodType\")")
         assertContains(methodType, "grt_track_ref(env, refs, methodTypeClass_constant_0);")
-        assertContains(methodType, "grt_get_method_id(env, methodTypeClass_constant_0, \"fromMethodDescriptorString\", \"(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;\", true)")
+        assertContains(methodType, "grt_get_method_id(env, methodTypeClass_constant_0, 0, \"fromMethodDescriptorString\", \"(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;\", true)")
         assertContains(methodType, "descriptor_constant_0 = env->NewStringUTF(\"(I)Ljava/lang/String;\");")
 
         val methodHandle = translate(methodHandleLdcMethod())
@@ -432,7 +440,7 @@ class NativeJvmCppMethodTranslatorTest {
         assertContains(methodHandle, "if (lookup == nullptr) { lookup = grt_get_lookup(env, currentClass); grt_track_ref(env, ownedRefs, lookup); }")
         assertContains(methodHandle, "ownerClass_handle_0 = grt_find_class(env, classloader, \"java/lang/Integer\");")
         assertContains(methodHandle, "grt_track_ref(env, refs, ownerClass_handle_0);")
-        assertContains(methodHandle, "grt_get_method_id(env, grt_methodhandles_lookup_class, \"findStatic\", \"(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;\", false)")
+        assertContains(methodHandle, "grt_get_method_id(env, grt_methodhandles_lookup_class, 1, \"findStatic\", \"(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;\", false)")
         assertContains(methodHandle, "methodTypeArgs_handle_0_type[0].l = descriptor_handle_0_type;")
         assertContains(methodHandle, "methodHandle_0 = env->CallObjectMethodA(lookup, findMethod_handle_0, findArgs_handle_0);")
     }

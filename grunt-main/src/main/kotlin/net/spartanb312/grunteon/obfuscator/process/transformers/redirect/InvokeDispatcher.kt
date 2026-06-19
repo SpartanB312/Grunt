@@ -53,8 +53,6 @@ class InvokeDispatcher : Transformer<InvokeDispatcher.Config>(
         )
     ) : TransformerConfig()
 
-    private lateinit var methodExPredicate: NamePredicates
-
     init {
         before(FieldAccessProxy::class.java, "InvokeDispatcher should run before FieldAccessProxy")
         before(InvokeProxy::class.java, "InvokeDispatcher should run before InvokeProxy")
@@ -63,9 +61,9 @@ class InvokeDispatcher : Transformer<InvokeDispatcher.Config>(
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
         barrier()
-        pre {
+        val methodExPredicate = globalScopeValue {
             //Logger.info(" > InvokeDispatcher: Redirecting invokes to dispatcher...")
-            methodExPredicate = buildMethodNamePredicates(config.exclusion)
+            buildMethodNamePredicates(config.exclusion)
         }
         val counter = reducibleScopeValue { MergeableCounter() }
         val counter2 = reducibleScopeValue { MergeableCounter() }
@@ -79,6 +77,7 @@ class InvokeDispatcher : Transformer<InvokeDispatcher.Config>(
             if (classNode.isExcluded(DISABLE_INVOKE_DISPATCHER)) return@parForEachClassesFiltered
             val invokeInstances = mutableListOf<CallInstance>()
             val randomGen = Xoshiro256PPRandom(getSeed(classNode.name))
+            val methodExPredicate = methodExPredicate.global
             // Collect invokes
             classNode.methods.toList().asSequence()
                 .filter { !it.isAbstract && !it.isNative && !it.isInitializer }

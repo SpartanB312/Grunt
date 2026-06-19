@@ -62,16 +62,13 @@ class FieldAccessProxy : Transformer<FieldAccessProxy.Config>(
         )
     ) : TransformerConfig()
 
-    private lateinit var methodExPredicate: NamePredicates
-
     context(instance: Grunteon, _: PipelineBuilder)
     override fun buildStageImpl(config: Config) {
         data class ProxyMethod(val sourceNode: ClassNode, val ownerName: String, val method: MethodNode)
 
         barrier()
-        pre {
-            //Logger.info(" > FieldAccessProxy: Redirecting field calls...")
-            methodExPredicate = buildMethodNamePredicates(config.exclusion)
+        val methodExPredicate = globalScopeValue {
+            buildMethodNamePredicates(config.exclusion)
         }
         val counter = reducibleScopeValue { MergeableCounter() }
         // Owner class name to method
@@ -87,6 +84,7 @@ class FieldAccessProxy : Transformer<FieldAccessProxy.Config>(
             val counter = counter.local
             val genMethods = genMethods.local
             if (classNode.isExcluded(DISABLE_FIELD_PROXY)) return@parForEachClassesFiltered
+            val methodExPredicate = methodExPredicate.global
             classNode.methods.toList().asSequence()
                 .filter { !it.isAbstract && !it.isNative && !it.isInitializer }
                 .forEach { method ->
