@@ -25,6 +25,7 @@ the near future
 
 * [X] SSA-IR direct to cpp
 * [X] JVM bytecode to cpp
+* [X] Native candidate scanner
 * [X] Native method validator
 * [X] Native runtime bridges
 * [X] Native cache optimization
@@ -112,13 +113,15 @@ Grunteon is a free and open source obfuscator framework licensed under Apache Li
 
 Yapyap is a grunt extension pack licensed under PolyForm Strict License 1.0.0
 
+Grunteon nativecode licensed under PolyForm Strict License 1.0.0
+
 The license of each Grunt version：
 
-| Generation     | Versions    | Aim of obfuscation            | License | Commercial Use |
-|----------------|-------------|-------------------------------|---------|----------------|
-| Grunt          | 1.0.0-1.5.x | Lightweight and stability     | MIT     | Allowed        |
-| Gruntpocalypse | 2.0.0-2.5.x | Diversity and intensity       | LGPL3   | Restricted     |
-| Grunteon       | 3.0.0-      | Industrial-aimed and strength | Apache2 | Allowed        |
+| Generation     | Versions    | Aim of obfuscation            | License  | Commercial Use |
+|----------------|-------------|-------------------------------|----------|----------------|
+| Grunt          | 1.0.0-1.5.x | Lightweight and stability     | MIT      | Allowed        |
+| Gruntpocalypse | 2.0.0-2.5.x | Diversity and intensity       | LGPL3    | Restricted     |
+| Grunteon       | 3.0.0-      | Industrial-aimed and strength | Apache2* | Allowed        |
 
 ## Stargazers over time
 
