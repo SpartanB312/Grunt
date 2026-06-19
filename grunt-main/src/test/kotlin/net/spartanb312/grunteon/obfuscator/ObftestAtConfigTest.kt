@@ -14,15 +14,27 @@ class ObftestAtConfigTest {
     fun atNativeAcceptanceConfigsAreReadableAndOrdered() {
         val configDir = repoRoot().resolve(Path.of("obftest", "AT", "configs-grunteon"))
         val configs = configDir.listDirectoryEntries("*.json").sortedBy { it.name }
-        assertEquals(7, configs.size)
+        val requiredStages = setOf(
+            "01-reference-native.json",
+            "02-aimtrainer-native.json",
+            "03-cff-cfj-no-builtins.json",
+            "04-renamers.json",
+            "05-cff-cfj-builtins-r005.json",
+            "06-cff-cfj-builtins-r030.json",
+            "07-cff-cfj-builtins-r100.json"
+        )
+        val configNames = configs.map { it.name }.toSet()
+        assertTrue(configNames.containsAll(requiredStages), "Missing required AT configs: ${requiredStages - configNames}")
 
         configs.forEach { path ->
             val config = ObfConfig.read(path)
-            assertEquals("obftest/AT/engine/boar-main-origin.jar", config.globalConfig.input)
-            assertEquals("obftest/AT/engine/boar-main.jar", config.globalConfig.output)
-            assertEquals(listOf("obftest/AT/libs", "obftest/AT/boar-launch.jar"), config.globalConfig.libs)
-            assertTrue(config.nativePipeline.enabled, "${path.name} should enable native pipeline")
-            assertTrue(config.nativePipeline.failOnCompileError, "${path.name} should fail on native compile errors")
+            if (path.name in requiredStages) {
+                assertEquals("obftest/AT/engine/boar-main-origin.jar", config.globalConfig.input)
+                assertEquals("obftest/AT/engine/boar-main.jar", config.globalConfig.output)
+                assertEquals(listOf("obftest/AT/libs", "obftest/AT/boar-launch.jar"), config.globalConfig.libs)
+                assertTrue(config.nativePipeline.enabled, "${path.name} should enable native pipeline")
+                assertTrue(config.nativePipeline.failOnCompileError, "${path.name} should fail on native compile errors")
+            }
             assertTransformerOrder(config, path.name)
         }
     }

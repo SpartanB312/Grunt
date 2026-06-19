@@ -78,9 +78,22 @@ fun TopToolbar(
         }
     }
 
+    val errorDialog = appModel.uiState.errorDialog
+    ContentDialog(
+        title = errorDialog?.title ?: "",
+        visible = errorDialog != null,
+        primaryButtonText = "OK",
+        onButtonClick = {
+            appModel.uiState.errorDialog = null
+        },
+        content = {
+            Text(errorDialog?.message ?: "")
+        }
+    )
+
     val discardConfirmState = appModel.discardConfirmState
     ContentDialog(
-        title = "Confirm Discard Changes",
+        title = "Confirm Discard Config Changes",
         visible = discardConfirmState != null,
         primaryButtonText = "Save",
         secondaryButtonText = "Discard",
@@ -108,7 +121,7 @@ fun TopToolbar(
             }
         },
         content = {
-            Text("You have unsaved changes. Do you want to save them before proceeding?")
+            Text("You have unsaved config changes. Do you want to save them before proceeding?")
         }
     )
 

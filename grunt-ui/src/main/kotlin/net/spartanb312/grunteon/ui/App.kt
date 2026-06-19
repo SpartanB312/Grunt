@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
@@ -221,9 +222,12 @@ fun FrameWindowScope.App(
                             when (appModel.uiState.currentPage) {
                                 AppPage.General -> GeneralPage(appModel)
                                 AppPage.Editor -> PipelineEditorPage(pipelineEditorState)
+                                AppPage.Native -> NativePage(appModel)
                                 AppPage.Obfuscation -> ObfuscationPage(
                                     logs = obfuscationLogs,
                                     running = obfuscationRunning,
+                                    enabledTransformerCount = appModel.obfConfig.transformers.count { it.enabled },
+                                    nativePipelineEnabled = appModel.obfConfig.nativePipeline.enabled,
                                     onObfuscate = ::runObfuscation,
                                     modifier = Modifier.fillMaxSize()
                                 )
@@ -307,22 +311,21 @@ private fun BottomStatusBar(appModel: AppModel) {
     Card(Modifier.fillMaxWidth(), shape = FluentTheme.shapes.intersectionEdge) {
         Row(
             modifier = Modifier
+                .fillMaxWidth()
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 appModel.uiState.globalStatus,
                 modifier = Modifier.weight(1f),
-            )
-            Text(
-                appModel.uiState.pageStatus,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 "$VERSION [$SUBTITLE]",
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.padding(start = 16.dp),
                 textAlign = TextAlign.End,
+                maxLines = 1,
             )
         }
     }

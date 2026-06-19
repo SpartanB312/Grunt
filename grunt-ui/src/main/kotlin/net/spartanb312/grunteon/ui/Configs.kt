@@ -72,8 +72,8 @@ fun <T : Any> ConfigEditor(
         .sortedBy { copyFunParameterOrder[it.name] ?: Int.MAX_VALUE }
 
     properties.forEachIndexed { index, property ->
-        val propValue = property.get(value)!!
-        val newParameterFunc = { newValue: Any ->
+        val propValue = property.get(value)
+        val newParameterFunc = { newValue: Any? ->
             val newParameters = copyFunc.callBy(
                 mapOf(
                     copyFunc.parameters[0] to value,
@@ -96,17 +96,18 @@ fun <T : Any> ConfigEditor(
 private fun ConfigField(
     index: Int,
     prop: KProperty<*>,
-    propValue: Any,
-    onChange: (Any) -> Unit
+    propValue: Any?,
+    onChange: (Any?) -> Unit
 ) {
+    val propValueClass = propValue?.let { it::class }
     val section = prop.findAnnotation<SettingSection>()?.enText
-        ?: propValue::class.findAnnotation<SettingSection>()?.enText
+        ?: propValueClass?.findAnnotation<SettingSection>()?.enText
 
     val label = prop.findAnnotation<SettingName>()?.enText
-        ?: propValue::class.findAnnotation<SettingName>()?.enText
+        ?: propValueClass?.findAnnotation<SettingName>()?.enText
         ?: camelCaseToWords(prop.name)
     val description = prop.findAnnotation<SettingDesc>()?.enText
-        ?: propValue::class.findAnnotation<SettingDesc>()?.enText
+        ?: propValueClass?.findAnnotation<SettingDesc>()?.enText
 
     if (section != null) {
         Text(
@@ -119,7 +120,13 @@ private fun ConfigField(
     val pathBrowseSpec = prop.pathBrowseSpec()
     when (propValue) {
         is String -> InspectorCard(label = label, description = description) {
-            if (pathBrowseSpec != null) {
+            if (prop.isNullableString()) {
+                NullableStringField(
+                    value = propValue,
+                    onValueChange = onChange,
+                    browseSpec = pathBrowseSpec
+                )
+            } else if (pathBrowseSpec != null) {
                 PathField(
                     value = propValue,
                     onValueChange = onChange,
@@ -130,6 +137,17 @@ private fun ConfigField(
                     value = propValue,
                     onValueChange = onChange
                 )
+            }
+        }
+        null -> InspectorCard(label = label, description = description) {
+            if (prop.isNullableString()) {
+                NullableStringField(
+                    value = null,
+                    onValueChange = onChange,
+                    browseSpec = pathBrowseSpec
+                )
+            } else {
+                ReadOnlyValue("null")
             }
         }
         is Int -> {
@@ -244,8 +262,11 @@ private fun InspectorCard(
     )
 }
 
+private fun KProperty<*>.isNullableString(): Boolean =
+    returnType.isMarkedNullable && returnType.classifier == String::class
+
 @Composable
-private fun BooleanField(value: Boolean, onChange: (Any) -> Unit) {
+private fun BooleanField(value: Boolean, onChange: (Any?) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(if (value) "On" else "Off", color = FluentTheme.colors.text.text.secondary)
         Switcher(checked = value, onCheckStateChange = { it: Boolean -> onChange(it) }, text = null)
@@ -253,7 +274,7 @@ private fun BooleanField(value: Boolean, onChange: (Any) -> Unit) {
 }
 
 @Composable
-private fun StringField(value: String, onValueChange: (Any) -> Unit) {
+private fun StringField(value: String, onValueChange: (Any?) -> Unit) {
     TextField(
         value = value,
         onValueChange = { onValueChange(it) },
@@ -263,7 +284,62 @@ private fun StringField(value: String, onValueChange: (Any) -> Unit) {
 }
 
 @Composable
-private fun IntField(value: Int, onValueChange: (Any) -> Unit) {
+private fun NullableStringField(
+    value: String?,
+    onValueChange: (Any?) -> Unit,
+    browseSpec: PathBrowseSpec?,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val textValue = value.orEmpty()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TextField(
+            value = textValue,
+            onValueChange = { onValueChange(it) },
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+        )
+        if (browseSpec != null) {
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        browseSpec.browse(textValue)?.let { onValueChange(it) }
+                    }
+                },
+                modifier = Modifier.width(if (browseSpec.browseDirectory == null) 96.dp else 72.dp)
+            ) {
+                Text(browseSpec.browseLabel)
+            }
+            if (browseSpec.browseDirectory != null && browseSpec.browseDirectoryLabel != null) {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            browseSpec.browseDirectory.invoke(textValue)?.let { onValueChange(it) }
+                        }
+                    },
+                    modifier = Modifier.width(72.dp)
+                ) {
+                    Text(browseSpec.browseDirectoryLabel)
+                }
+            }
+        }
+        Button(
+            onClick = { onValueChange(null) },
+            iconOnly = true
+        ) {
+            Icon(
+                imageVector = Icons.Default.Dismiss,
+                contentDescription = "Clear value"
+            )
+        }
+    }
+}
+
+@Composable
+private fun IntField(value: Int, onValueChange: (Any?) -> Unit) {
     TextField(
         value = value.toString(),
         onValueChange = { it.toIntOrNull()?.let { onValueChange(it) } },
@@ -273,7 +349,7 @@ private fun IntField(value: Int, onValueChange: (Any) -> Unit) {
 }
 
 @Composable
-private fun DecimalField(value: Decimal, onValueChange: (Any) -> Unit) {
+private fun DecimalField(value: Decimal, onValueChange: (Any?) -> Unit) {
     TextField(
         value = value.toString(),
         onValueChange = { it.toBigDecimalOrNull()?.let { onValueChange(it) } },
@@ -283,7 +359,7 @@ private fun DecimalField(value: Decimal, onValueChange: (Any) -> Unit) {
 }
 
 @Composable
-private fun EnumField(value: Enum<*>, onValueChange: (Any) -> Unit) {
+private fun EnumField(value: Enum<*>, onValueChange: (Any?) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     fun enumName(enumConst: Enum<*>): String =
         enumConst.name
@@ -316,7 +392,7 @@ private fun IntSliderField(
     description: String?,
     value: Int,
     range: IntRangeVal,
-    onValueChange: (Any) -> Unit,
+    onValueChange: (Any?) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var typedValue by remember(value) { mutableStateOf(value.toString()) }
@@ -415,7 +491,7 @@ private fun DecimalSliderField(
     description: String?,
     value: Decimal,
     range: DecimalRangeVal,
-    onValueChange: (Any) -> Unit,
+    onValueChange: (Any?) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var typedValue by remember(value) { mutableStateOf(value.toString()) }
@@ -500,7 +576,7 @@ private fun DecimalSliderField(
 }
 
 @Composable
-private fun NestedConfigField(label: String, description: String?, value: Any, onChange: (Any) -> Unit) {
+private fun NestedConfigField(label: String, description: String?, value: Any, onChange: (Any?) -> Unit) {
     CardExpanderItem(
         heading = {
             var expanded by remember { mutableStateOf(false) }
@@ -671,8 +747,10 @@ private fun <E : Any> ListField(
             return@Expander
         }
         listUpdater.forEachIndexed { index, item ->
-            val onChange = { newItem: Any ->
-                listUpdater[index] = newItem as E
+            val onChange = { newItem: Any? ->
+                if (newItem != null) {
+                    listUpdater[index] = newItem as E
+                }
             }
             when (item) {
                 is String -> ListEntryCard(index) {
@@ -820,7 +898,7 @@ private fun ReadOnlyValue(text: String) {
 @Composable
 private fun PathField(
     value: String,
-    onValueChange: (Any) -> Unit,
+    onValueChange: (Any?) -> Unit,
     browseSpec: PathBrowseSpec,
 ) {
     val coroutineScope = rememberCoroutineScope()

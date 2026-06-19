@@ -1,6 +1,8 @@
 package net.spartanb312.grunteon.obfuscator.process.nativecode
 
 import net.spartanb312.grunteon.obfuscator.Grunteon
+import net.spartanb312.grunteon.obfuscator.util.NATIVE_EXCLUDED
+import net.spartanb312.grunteon.obfuscator.util.NATIVE_INCLUDED
 import net.spartanb312.grunteon.obfuscator.util.filters.filter
 import net.spartanb312.grunteon.obfuscator.util.filters.withMapping
 
@@ -8,8 +10,8 @@ internal object NativeCandidateScanner {
 
     context(instance: Grunteon)
     fun scan(config: NativePipelineConfig): List<NativeCandidate> {
-        val includedAnnotations = normalizedAnnotationSet(config.includedAnnotationList)
-        val excludedAnnotations = normalizedAnnotationSet(config.excludedAnnotationList)
+        val includedAnnotations = normalizedAnnotationSet(config.includedAnnotationList + NATIVE_INCLUDED)
+        val excludedAnnotations = normalizedAnnotationSet(config.excludedAnnotationList + NATIVE_EXCLUDED)
         if (includedAnnotations.isEmpty()) return emptyList()
 
         val filter = instance.globalExclusion

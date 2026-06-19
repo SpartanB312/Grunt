@@ -19,10 +19,17 @@ import io.github.composefluent.surface.Card
 fun ObfuscationPage(
     logs: List<String>,
     running: Boolean,
+    enabledTransformerCount: Int,
+    nativePipelineEnabled: Boolean,
     onObfuscate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
+    val enabledTransformersText = if (nativePipelineEnabled) {
+        "Enabled $enabledTransformerCount transformers with native obfuscation"
+    } else {
+        "Enabled $enabledTransformerCount transformers"
+    }
 
     LaunchedEffect(logs.size) {
         scrollState.animateScrollTo(scrollState.maxValue)
@@ -70,7 +77,7 @@ fun ObfuscationPage(
                     .height(120.dp)
             ) {
                 Box(Modifier.fillMaxSize().padding(12.dp)) {
-                    Text("Reserved", color = FluentTheme.colors.text.text.secondary)
+                    Text(enabledTransformersText, color = FluentTheme.colors.text.text.secondary)
                     Row(
                         modifier = Modifier.align(Alignment.BottomEnd),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
