@@ -4,28 +4,14 @@ import kotlinx.serialization.Serializable
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.pipeline.before
-import net.spartanb312.grunteon.obfuscator.process.Category
-import net.spartanb312.grunteon.obfuscator.process.ClassFilterConfig
-import net.spartanb312.grunteon.obfuscator.process.IntRangeVal
-import net.spartanb312.grunteon.obfuscator.process.PipelineBuilder
-import net.spartanb312.grunteon.obfuscator.process.SettingDesc
-import net.spartanb312.grunteon.obfuscator.process.SettingName
-import net.spartanb312.grunteon.obfuscator.process.StableLevel
-import net.spartanb312.grunteon.obfuscator.process.Transformer
-import net.spartanb312.grunteon.obfuscator.process.TransformerConfig
-import net.spartanb312.grunteon.obfuscator.process.seq
+import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.GENERATED_METHOD
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.NATIVE_EXCLUDED
 import net.spartanb312.grunteon.obfuscator.util.NATIVE_INCLUDED
-import net.spartanb312.grunteon.obfuscator.util.extensions.appendAnnotation
-import net.spartanb312.grunteon.obfuscator.util.extensions.hasAnnotation
-import net.spartanb312.grunteon.obfuscator.util.extensions.isAbstract
-import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
-import net.spartanb312.grunteon.obfuscator.util.extensions.isNative
+import net.spartanb312.grunteon.obfuscator.util.extensions.*
 import net.spartanb312.grunteon.obfuscator.util.filters.buildMethodNamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
-import net.spartanb312.grunteon.obfuscator.util.filters.withMapping
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.commons.Remapper
 import org.objectweb.asm.tree.ClassNode
@@ -133,7 +119,7 @@ class NativeCandidate : Transformer<NativeCandidate.Config>(
                 .and(config.classFilter.toClassPredicate())
                 .withMapping(instance.nameMapping.revMappings)
             val result = markCandidates(
-                instance.workRes.inputClassCollection.filter { classPredicate.testImpl(it) },
+                instance.workRes.inputClassCollection.filter { classPredicate.test(it) },
                 config,
                 instance.nameMapping.revMappings
             )

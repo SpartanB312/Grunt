@@ -22,7 +22,6 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.M
 import net.spartanb312.grunteon.obfuscator.util.IndyChecker
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
-import net.spartanb312.grunteon.obfuscator.util.filters.test
 import org.objectweb.asm.Type
 
 /**

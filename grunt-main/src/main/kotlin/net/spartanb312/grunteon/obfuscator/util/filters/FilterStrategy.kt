@@ -2,15 +2,18 @@ package net.spartanb312.grunteon.obfuscator.util.filters
 
 import org.objectweb.asm.tree.ClassNode
 
-fun interface ClassPredicate {
+abstract class ClassPredicate {
+    abstract fun testImpl(name: String): Boolean
 
-    fun testImpl(classNode: ClassNode): Boolean = testImpl(classNode.name ?: throw Exception("Class name is null"))
-
-    fun testImpl(name: String): Boolean
+    fun test(classNode: ClassNode): Boolean {
+        return testImpl(classNode.name ?: throw Exception("Class name is null"))
+    }
 
     fun and(next: ClassPredicate): ClassPredicate {
-        return { name ->
-            this.testImpl(name) && next.testImpl(name)
+        return object : ClassPredicate() {
+            override fun testImpl(name: String): Boolean {
+                return this@ClassPredicate.testImpl(name) && next.testImpl(name)
+            }
         }
     }
 
@@ -18,10 +21,15 @@ fun interface ClassPredicate {
         return if (cond) and(next) else this
     }
 
+    fun withMapping(mapping: Map<String, String>): ClassPredicate {
+        return ClassPredicate.MappingAdaptor(mapping, this)
+    }
+
+
     class IncludeExclude(
         private val includeStrategy: NamePredicates = emptyList(),
         private val excludeStrategy: NamePredicates = emptyList()
-    ) : ClassPredicate {
+    ) : ClassPredicate() {
         override fun testImpl(name: String): Boolean {
             val include = includeStrategy.matchedAnyBy(name)
             val exclude = excludeStrategy.matchedAnyBy(name)
@@ -32,19 +40,11 @@ fun interface ClassPredicate {
     class MappingAdaptor(
         private val mapping: Map<String, String>,
         private val delegate: ClassPredicate
-    ) : ClassPredicate {
+    ) : ClassPredicate() {
         override fun testImpl(name: String): Boolean {
             return delegate.testImpl(mapping.getOrDefault(name, name))
         }
     }
-}
-
-fun ClassPredicate.test(name: String): Boolean {
-    return testImpl(name)
-}
-
-fun ClassPredicate.test(classNode: ClassNode): Boolean {
-    return testImpl(classNode.name)
 }
 
 fun Sequence<ClassNode>.filter(classPredicate: ClassPredicate): Sequence<ClassNode> {
@@ -61,8 +61,4 @@ fun Iterable<ClassNode>.filter(classPredicate: ClassPredicate): List<ClassNode> 
         if (classPredicate.test(classNode)) result += classNode
     }
     return result
-}
-
-fun ClassPredicate.withMapping(mapping: Map<String, String>): ClassPredicate {
-    return ClassPredicate.MappingAdaptor(mapping, this)
 }

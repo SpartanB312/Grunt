@@ -4,7 +4,6 @@ import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.util.NATIVE_EXCLUDED
 import net.spartanb312.grunteon.obfuscator.util.NATIVE_INCLUDED
 import net.spartanb312.grunteon.obfuscator.util.filters.filter
-import net.spartanb312.grunteon.obfuscator.util.filters.withMapping
 
 internal object NativeCandidateScanner {
 

@@ -4,5 +4,6 @@ import net.spartanb312.grunteon.obfuscator.Grunteon
 
 abstract class ExecutionStage(val name: String) {
     abstract fun Grunteon.execute()
-    fun execute(grunteon: Grunteon) = grunteon.execute()
 }
+
+fun ExecutionStage.execute(grunteon: Grunteon) = grunteon.execute()

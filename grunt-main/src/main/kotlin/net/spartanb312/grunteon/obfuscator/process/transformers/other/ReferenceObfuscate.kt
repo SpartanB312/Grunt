@@ -16,7 +16,6 @@ import net.spartanb312.grunteon.obfuscator.util.*
 import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
 import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
-import net.spartanb312.grunteon.obfuscator.util.filters.withMapping
 import org.apache.commons.rng.UniformRandomProvider
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes

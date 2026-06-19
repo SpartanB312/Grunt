@@ -1,14 +1,8 @@
 package net.spartanb312.grunteon.obfuscator
 
-import net.spartanb312.grunteon.obfuscator.pipeline.CreditsCalc
-import net.spartanb312.grunteon.obfuscator.pipeline.CreditsSummary
-import net.spartanb312.grunteon.obfuscator.pipeline.FinalOutput
-import net.spartanb312.grunteon.obfuscator.pipeline.JvmObfuscation
-import net.spartanb312.grunteon.obfuscator.pipeline.NativeObfuscation
+import net.spartanb312.grunteon.obfuscator.pipeline.*
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.nativecode.NativePipelineConfig
-import net.spartanb312.grunteon.obfuscator.process.nativecode.NativePipelineRunner
-import net.spartanb312.grunteon.obfuscator.process.resource.JarDumper
 import net.spartanb312.grunteon.obfuscator.process.resource.ObfuscationIO
 import net.spartanb312.grunteon.obfuscator.process.resource.WorkResources
 import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.MappingApplier
@@ -17,9 +11,6 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.N
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.filters.ClassPredicate
 import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
-import net.spartanb312.grunteon.obfuscator.util.numerical.formatInteger
-import java.util.*
-import kotlin.math.roundToLong
 
 // Grunteon process instance
 class Grunteon(
