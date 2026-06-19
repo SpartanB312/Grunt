@@ -132,15 +132,27 @@ internal data class NativeFieldRef(
     val isStatic: Boolean
 )
 
+internal data class NativeClassRef(
+    val internalName: String
+)
+
 internal class NativeReferenceSlots {
+    private val classSlots = linkedMapOf<NativeClassRef, Int>()
     private val methodSlots = linkedMapOf<NativeMethodRef, Int>()
     private val fieldSlots = linkedMapOf<NativeFieldRef, Int>()
+
+    val classSlotCount: Int
+        get() = classSlots.size
 
     val methodSlotCount: Int
         get() = methodSlots.size
 
     val fieldSlotCount: Int
         get() = fieldSlots.size
+
+    fun classSlot(internalName: String): Int {
+        return classSlots.getOrPut(NativeClassRef(internalName)) { classSlots.size }
+    }
 
     fun methodSlot(owner: String, name: String, desc: String, isStatic: Boolean): Int {
         return methodSlots.getOrPut(NativeMethodRef(owner, name, desc, isStatic)) { methodSlots.size }

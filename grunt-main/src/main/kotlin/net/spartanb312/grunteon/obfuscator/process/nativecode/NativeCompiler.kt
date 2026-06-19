@@ -220,10 +220,12 @@ internal object NativeCompiler {
         val sourceRoot = bundle.sourcePath.parent
         val expectedSources = bundle.sourceFiles.map { it.path.toAbsolutePath().normalize() }.toSet()
         if (sourceRoot.exists()) {
-            Files.newDirectoryStream(sourceRoot, "grunteon_native*.cpp").use { entries ->
-                entries.forEach { existing ->
-                    if (existing.toAbsolutePath().normalize() !in expectedSources) {
-                        Files.deleteIfExists(existing)
+            listOf("grunteon_native*.cpp", "grunteon_native*.hpp").forEach { glob ->
+                Files.newDirectoryStream(sourceRoot, glob).use { entries ->
+                    entries.forEach { existing ->
+                        if (existing.toAbsolutePath().normalize() !in expectedSources) {
+                            Files.deleteIfExists(existing)
+                        }
                     }
                 }
             }

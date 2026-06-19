@@ -71,6 +71,7 @@ internal object NativeJvmCppMethodTranslator {
         val needsMethodHandleLookup = ir.instructions.any {
             (it.node as? LdcInsnNode)?.cst is Handle
         }
+        val maxHeldMonitors = ir.instructions.count { it.opcode == Opcodes.MONITORENTER }
         val labels = LabelTargetResolver(methodNode)
         val stackShape = StackShapeAnalyzer(ir.ownerInternalName, methodNode)
         val argumentLocalSlots = arguments.sumOf { it.size } + if (ir.isStatic) 0 else 1
@@ -102,8 +103,12 @@ internal object NativeJvmCppMethodTranslator {
             appendLine("    jvalue clocal[$maxLocals] = {};")
             appendLine("    jint sp = 0;")
             appendLine("    (void) sp;")
-            appendLine("    std::unordered_set<jobject> refs;")
-            appendLine("    std::unordered_set<jobject> ownedRefs;")
+            appendLine("    GrtLocalRefs refs;")
+            appendLine("    GrtLocalRefs ownedRefs;")
+            appendLine("    std::vector<jobject> heldMonitors;")
+            if (maxHeldMonitors > 0) {
+                appendLine("    heldMonitors.reserve($maxHeldMonitors);")
+            }
             if (isLoaderProxy) {
                 appendLine("    (void) loaderClazz;")
                 if (ir.isStatic) {
@@ -137,20 +142,14 @@ internal object NativeJvmCppMethodTranslator {
                 if (ir.isStatic) {
                     appendLine("    jclass currentClass = clazz;")
                 } else {
-                    append("    jclass currentClass = grt_find_class(env, classloader, \"")
-                        .append(cppModifiedUtf8String(ir.ownerInternalName))
-                        .appendLine("\");")
+                    emitFindClass("    ", "currentClass", ir.ownerInternalName, referenceSlots)
                     appendLine("    grt_track_ref(env, ownedRefs, currentClass);")
                     appendLine("    if (currentClass == nullptr || env->ExceptionCheck()) { ${cleanupAndDefaultReturn(returnType)} }")
                 }
                 appendLine("    jobject lookup = nullptr;")
             }
             catchClassBindings.forEach { (caughtType, variableName) ->
-                append("    jclass ")
-                    .append(variableName)
-                    .append(" = grt_find_class(env, classloader, \"")
-                    .append(cppModifiedUtf8String(caughtType))
-                    .appendLine("\");")
+                emitFindClass("    ", variableName, caughtType, referenceSlots)
                 appendLine("    grt_track_ref(env, ownedRefs, $variableName);")
                 appendLine("    if ($variableName == nullptr || env->ExceptionCheck()) { ${cleanupAndDefaultReturn(returnType)} }")
             }
@@ -191,6 +190,7 @@ internal object NativeJvmCppMethodTranslator {
                 }
             }
 
+            appendLine("    grt_release_held_monitors(env, heldMonitors);")
             appendLine("    grt_clear_refs(env, refs);")
             appendLine("    grt_clear_refs(env, ownedRefs);")
             appendLine("    ${defaultReturn(returnType)}")
@@ -209,7 +209,8 @@ internal object NativeJvmCppMethodTranslator {
                         }
                     }
                     appendLine("    env->Throw((jthrowable) cstack[0].l);")
-                    appendLine("    refs.erase(cstack[0].l);")
+                    appendLine("    grt_forget_ref(refs, cstack[0].l);")
+                    appendLine("    grt_release_held_monitors(env, heldMonitors);")
                     appendLine("    grt_clear_refs(env, refs);")
                     appendLine("    grt_clear_refs(env, ownedRefs);")
                     appendLine("    ${defaultReturn(returnType)}")
@@ -272,10 +273,10 @@ internal object NativeJvmCppMethodTranslator {
         val localSlots = stackShape.referenceLocalSlots(instruction) ?: return
         val stackSlots = stackShape.referenceStackSlots(instruction) ?: return
         localSlots.forEach { slot ->
-            appendLine("    refs.erase(clocal[$slot].l);")
+            appendLine("    grt_forget_ref(refs, clocal[$slot].l);")
         }
         stackSlots.forEach { slot ->
-            appendLine("    refs.erase(cstack[$slot].l);")
+            appendLine("    grt_forget_ref(refs, cstack[$slot].l);")
         }
         appendLine("    grt_clear_refs(env, refs);")
     }
@@ -439,27 +440,27 @@ internal object NativeJvmCppMethodTranslator {
             )
             Opcodes.IRETURN -> {
                 ensureIntLikeReturn(returnType)
-                appendLine("    { ${cppType(returnType)} result = static_cast<${cppType(returnType)}>(cstack[--sp].i); grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result; }")
+                appendLine("    { ${cppType(returnType)} result = static_cast<${cppType(returnType)}>(cstack[--sp].i); ${cleanupOnly()} return result; }")
             }
             Opcodes.LRETURN -> {
                 ensureReturnSort(returnType, Type.LONG)
-                appendLine("    { jlong result = cstack[--sp].j; grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result; }")
+                appendLine("    { jlong result = cstack[--sp].j; ${cleanupOnly()} return result; }")
             }
             Opcodes.FRETURN -> {
                 ensureReturnSort(returnType, Type.FLOAT)
-                appendLine("    { jfloat result = cstack[--sp].f; grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result; }")
+                appendLine("    { jfloat result = cstack[--sp].f; ${cleanupOnly()} return result; }")
             }
             Opcodes.DRETURN -> {
                 ensureReturnSort(returnType, Type.DOUBLE)
-                appendLine("    { jdouble result = cstack[--sp].d; grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result; }")
+                appendLine("    { jdouble result = cstack[--sp].d; ${cleanupOnly()} return result; }")
             }
             Opcodes.ARETURN -> {
                 ensureReferenceReturn(returnType)
-                appendLine("    { jobject result = cstack[--sp].l; refs.erase(result); grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result; }")
+                appendLine("    { jobject result = cstack[--sp].l; grt_forget_ref(refs, result); ${cleanupOnly()} return result; }")
             }
             Opcodes.RETURN -> {
                 ensureReturnSort(returnType, Type.VOID)
-                appendLine("    { grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return; }")
+                appendLine("    { ${cleanupOnly()} return; }")
             }
             Opcodes.ATHROW -> appendLine(
                 "    { jobject exception = cstack[--sp].l; " +
@@ -468,13 +469,11 @@ internal object NativeJvmCppMethodTranslator {
             )
             Opcodes.MONITORENTER -> appendLine(
                 "    { jobject lock = cstack[--sp].l; " +
-                    "if (lock == nullptr) { grt_throw(env, \"java/lang/NullPointerException\", \"MONITORENTER npe\"); } " +
-                    "else { env->MonitorEnter(lock); } }"
+                    "grt_monitor_enter(env, lock, heldMonitors); }"
             )
             Opcodes.MONITOREXIT -> appendLine(
                 "    { jobject lock = cstack[--sp].l; " +
-                    "if (lock == nullptr) { grt_throw(env, \"java/lang/NullPointerException\", \"MONITOREXIT npe\"); } " +
-                    "else { env->MonitorExit(lock); } }"
+                    "grt_monitor_exit(env, lock, heldMonitors); }"
             )
             else -> emitTypedInstruction(instruction, labels, stackShape, referenceSlots)
         }
@@ -492,7 +491,7 @@ internal object NativeJvmCppMethodTranslator {
             is LookupSwitchInsnNode -> emitLookupSwitchInstruction(node, labels)
             is MethodInsnNode -> emitMethodInstruction(instruction, node, referenceSlots)
             is FieldInsnNode -> emitFieldInstruction(instruction, node, referenceSlots)
-            is TypeInsnNode -> emitTypeInstruction(instruction, node)
+            is TypeInsnNode -> emitTypeInstruction(instruction, node, referenceSlots)
             is MultiANewArrayInsnNode -> emitMultiANewArrayInstruction(instruction, node, referenceSlots)
             is IincInsnNode -> emitIincInstruction(node)
             is VarInsnNode -> when (node.opcode) {
@@ -551,6 +550,23 @@ internal object NativeJvmCppMethodTranslator {
             .appendLine("));")
     }
 
+    private fun StringBuilder.emitFindClass(
+        indent: String,
+        variableName: String,
+        internalName: String,
+        referenceSlots: NativeReferenceSlots
+    ) {
+        val classSlot = referenceSlots.classSlot(internalName)
+        append(indent)
+            .append("jclass ")
+            .append(variableName)
+            .append(" = grt_find_class(env, classloader, ")
+            .append(classSlot)
+            .append(", \"")
+            .append(cppModifiedUtf8String(internalName))
+            .appendLine("\");")
+    }
+
     private fun StringBuilder.emitFieldInstruction(
         instruction: NativeJvmInstruction,
         node: FieldInsnNode,
@@ -574,11 +590,7 @@ internal object NativeJvmCppMethodTranslator {
             popToLocal("fieldValue_${instruction.instructionIndex}", fieldType)
         }
 
-        append("        jclass ")
-            .append(ownerClassName)
-            .append(" = grt_find_class(env, classloader, \"")
-            .append(cppModifiedUtf8String(node.owner))
-            .appendLine("\");")
+        emitFindClass("        ", ownerClassName, node.owner, referenceSlots)
         appendLine("        grt_track_ref(env, refs, $ownerClassName);")
         appendLine("        if ($ownerClassName != nullptr) {")
         append("            jfieldID ")
@@ -612,14 +624,13 @@ internal object NativeJvmCppMethodTranslator {
 
     private fun StringBuilder.emitTypeInstruction(
         instruction: NativeJvmInstruction,
-        node: TypeInsnNode
+        node: TypeInsnNode,
+        referenceSlots: NativeReferenceSlots
     ) {
         when (node.opcode) {
             Opcodes.NEW -> {
                 appendLine("    {")
-                append("        jclass typeClass = grt_find_class(env, classloader, \"")
-                    .append(cppModifiedUtf8String(node.desc))
-                    .appendLine("\");")
+                emitFindClass("        ", "typeClass", node.desc, referenceSlots)
                 appendLine("        grt_track_ref(env, refs, typeClass);")
                 appendLine("        if (typeClass != nullptr) { cstack[sp++].l = env->AllocObject(typeClass); grt_track_ref(env, refs, cstack[sp - 1].l); }")
                 appendLine("    }")
@@ -628,9 +639,7 @@ internal object NativeJvmCppMethodTranslator {
                 appendLine("    {")
                 appendLine("        jobject value = cstack[sp - 1].l;")
                 appendLine("        if (value != nullptr) {")
-                append("            jclass typeClass = grt_find_class(env, classloader, \"")
-                    .append(cppModifiedUtf8String(node.desc))
-                    .appendLine("\");")
+                emitFindClass("            ", "typeClass", node.desc, referenceSlots)
                 appendLine("            grt_track_ref(env, refs, typeClass);")
                 appendLine("            if (typeClass != nullptr && !env->IsInstanceOf(value, typeClass)) {")
                 append("                grt_throw(env, \"java/lang/ClassCastException\", \"")
@@ -646,9 +655,7 @@ internal object NativeJvmCppMethodTranslator {
                 appendLine("        if (value == nullptr) {")
                 appendLine("            cstack[sp++].i = 0;")
                 appendLine("        } else {")
-                append("            jclass typeClass = grt_find_class(env, classloader, \"")
-                    .append(cppModifiedUtf8String(node.desc))
-                    .appendLine("\");")
+                emitFindClass("            ", "typeClass", node.desc, referenceSlots)
                 appendLine("            grt_track_ref(env, refs, typeClass);")
                 appendLine("            cstack[sp++].i = typeClass != nullptr && env->IsInstanceOf(value, typeClass) ? 1 : 0;")
                 appendLine("        }")
@@ -660,9 +667,7 @@ internal object NativeJvmCppMethodTranslator {
                 appendLine("        if (count < 0) {")
                 appendLine("            grt_throw(env, \"java/lang/NegativeArraySizeException\", \"negative array size\");")
                 appendLine("        } else {")
-                append("            jclass elementClass = grt_find_class(env, classloader, \"")
-                    .append(cppModifiedUtf8String(node.desc))
-                    .appendLine("\");")
+                emitFindClass("            ", "elementClass", node.desc, referenceSlots)
                 appendLine("            grt_track_ref(env, refs, elementClass);")
                 appendLine("            if (elementClass != nullptr) { cstack[sp++].l = env->NewObjectArray(count, elementClass, nullptr); grt_track_ref(env, refs, cstack[sp - 1].l); }")
                 appendLine("        }")
@@ -722,9 +727,7 @@ internal object NativeJvmCppMethodTranslator {
             Type.OBJECT,
             Type.ARRAY -> {
                 val className = if (type.sort == Type.ARRAY) type.descriptor else type.internalName
-                append("${indent}jclass classLookup_${instruction.instructionIndex} = grt_find_class(env, classloader, \"")
-                    .append(cppModifiedUtf8String(className))
-                    .appendLine("\");")
+                emitFindClass(indent, "classLookup_${instruction.instructionIndex}", className, referenceSlots)
                 appendLine("${indent}grt_track_ref(env, refs, classLookup_${instruction.instructionIndex});")
                 appendLine("${indent}if (classLookup_${instruction.instructionIndex} != nullptr) { $targetName = classLookup_${instruction.instructionIndex}; }")
             }
@@ -763,9 +766,7 @@ internal object NativeJvmCppMethodTranslator {
             Type.DOUBLE -> "java/lang/Double"
             else -> unsupportedDescriptor(type.descriptor)
         }
-        append("${indent}jclass wrapperClass_${instruction.instructionIndex} = grt_find_class(env, classloader, \"")
-            .append(cppModifiedUtf8String(wrapper))
-            .appendLine("\");")
+        emitFindClass(indent, "wrapperClass_${instruction.instructionIndex}", wrapper, referenceSlots)
         appendLine("${indent}grt_track_ref(env, refs, wrapperClass_${instruction.instructionIndex});")
         appendLine("${indent}if (wrapperClass_${instruction.instructionIndex} != nullptr) {")
         val typeFieldSlot = referenceSlots.fieldSlot(wrapper, "TYPE", "Ljava/lang/Class;", true)
@@ -804,7 +805,7 @@ internal object NativeJvmCppMethodTranslator {
         referenceSlots: NativeReferenceSlots
     ) {
         appendLine("${indent}jobject $targetName = nullptr;")
-        appendLine("${indent}jclass methodTypeClass_$suffix = grt_find_class(env, classloader, \"java/lang/invoke/MethodType\");")
+        emitFindClass(indent, "methodTypeClass_$suffix", "java/lang/invoke/MethodType", referenceSlots)
         appendLine("${indent}grt_track_ref(env, refs, methodTypeClass_$suffix);")
         appendLine("${indent}if (methodTypeClass_$suffix != nullptr) {")
         val fromDescriptorSlot = referenceSlots.methodSlot(
@@ -841,9 +842,7 @@ internal object NativeJvmCppMethodTranslator {
         appendLine("        jobject $resultName = nullptr;")
         appendLine("        if (lookup == nullptr) { lookup = grt_get_lookup(env, currentClass); grt_track_ref(env, ownedRefs, lookup); }")
         appendLine("        if (lookup != nullptr) {")
-        append("            jclass ownerClass_$suffix = grt_find_class(env, classloader, \"")
-            .append(cppModifiedUtf8String(handle.owner))
-            .appendLine("\");")
+        emitFindClass("            ", "ownerClass_$suffix", handle.owner, referenceSlots)
         appendLine("            grt_track_ref(env, refs, ownerClass_$suffix);")
         appendLine("            if (ownerClass_$suffix != nullptr) {")
         when (handle.tag) {
@@ -1017,7 +1016,7 @@ internal object NativeJvmCppMethodTranslator {
         appendLine("            if (!env->ExceptionCheck()) {")
         emitClassObjectLookup(instruction, componentType, componentClassName, "                ", referenceSlots)
         appendLine("                if ($componentClassName != nullptr) {")
-        appendLine("                    jclass reflectArrayClass_${instruction.instructionIndex} = grt_find_class(env, classloader, \"java/lang/reflect/Array\");")
+        emitFindClass("                    ", "reflectArrayClass_${instruction.instructionIndex}", "java/lang/reflect/Array", referenceSlots)
         appendLine("                    grt_track_ref(env, refs, reflectArrayClass_${instruction.instructionIndex});")
         appendLine("                    if (reflectArrayClass_${instruction.instructionIndex} != nullptr) {")
         val newInstanceSlot = referenceSlots.methodSlot(
@@ -1090,11 +1089,7 @@ internal object NativeJvmCppMethodTranslator {
             appendLine("            grt_throw(env, \"java/lang/NullPointerException\", \"invoke receiver npe\");")
             appendLine("        } else {")
         }
-        append("        jclass ")
-            .append(ownerClassName)
-            .append(" = grt_find_class(env, classloader, \"")
-            .append(cppModifiedUtf8String(node.owner))
-            .appendLine("\");")
+        emitFindClass("        ", ownerClassName, node.owner, referenceSlots)
         appendLine("        grt_track_ref(env, refs, $ownerClassName);")
         appendLine("        if ($ownerClassName != nullptr) {")
         append("            jmethodID ")
@@ -1773,7 +1768,11 @@ internal object NativeJvmCppMethodTranslator {
     }
 
     private fun cleanupAndDefaultReturn(returnType: Type): String {
-        return "grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); ${defaultReturn(returnType)}"
+        return "${cleanupOnly()} ${defaultReturn(returnType)}"
+    }
+
+    private fun cleanupOnly(): String {
+        return "grt_release_held_monitors(env, heldMonitors); grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs);"
     }
 
     private fun canThrow(opcode: Int): Boolean {
