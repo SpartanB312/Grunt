@@ -218,7 +218,7 @@ class NativePipelineRunnerIntegrationTest {
                 )
             )
         )
-        instance.execute()
+        instance.run()
 
         JarFile(outputJar.toFile()).use { jar ->
             assertNotNull(jar.getEntry("test/NativePipelineJar.class"))
@@ -286,7 +286,7 @@ class NativePipelineRunnerIntegrationTest {
                 )
             )
         )
-        instance.execute()
+        instance.run()
 
         val transformed = instance.workRes.inputClassMap.getValue("test/NativePipelineFullJvm")
         assertTrue(transformed.methods.single { it.name == "safeDivide" }.access and Opcodes.ACC_NATIVE != 0)
@@ -351,7 +351,7 @@ class NativePipelineRunnerIntegrationTest {
                 )
             )
         )
-        instance.execute()
+        instance.run()
 
         val transformedInterface = instance.workRes.inputClassMap.getValue("test/NativePipelineFace")
         assertTrue(transformedInterface.methods.single { it.name == "defaultAdd" }.access and Opcodes.ACC_NATIVE == 0)
@@ -418,7 +418,7 @@ class NativePipelineRunnerIntegrationTest {
                 )
             )
         )
-        instance.execute()
+        instance.run()
 
         val transformed = instance.workRes.inputClassMap.getValue("test/NativePipelineClinit")
         assertTrue(transformed.methods.any {
@@ -487,7 +487,7 @@ class NativePipelineRunnerIntegrationTest {
                 )
             )
         )
-        instance.execute()
+        instance.run()
 
         val transformed = instance.workRes.inputClassMap.getValue("test/NativePipelineObjects")
         listOf(
@@ -566,7 +566,7 @@ class NativePipelineRunnerIntegrationTest {
                 )
             )
         )
-        instance.execute()
+        instance.run()
 
         val transformed = instance.workRes.inputClassMap.getValue("test/NativePipelineMethodHandleBridge")
         assertTrue(transformed.methods.single { it.name == "invokeHandle" }.access and Opcodes.ACC_NATIVE != 0)

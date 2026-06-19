@@ -16,7 +16,7 @@ import kotlin.time.measureTime
  * 3rd generation of Grunt
  */
 const val VERSION = "3.0.0"
-const val SUBTITLE = "build 260615"
+const val SUBTITLE = "build 260620"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
 // Local run
@@ -48,7 +48,7 @@ fun main(args: Array<String>) {
     val instance = Grunteon.create(config)
 
     measureTime {
-        instance.execute()
+        instance.run()
     }.toDouble(DurationUnit.MILLISECONDS).also { time ->
         println("Execution time: ${"%.2f".format(time)} ms")
     }

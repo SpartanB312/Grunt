@@ -63,7 +63,7 @@ object WorkerJobRunner {
                 mappingsOutput = PathResourceOutput(mappingsPath),
             )
 
-            Grunteon.create(config, io).execute()
+            Grunteon.create(config, io).run()
             createResultZip(normalizedJobDir.resolve("result.zip"), outputPath, mappingsPath, logPath, normalizedConfigPath)
         } catch (error: Throwable) {
             runCatching {

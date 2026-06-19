@@ -115,7 +115,7 @@ fun FrameWindowScope.App(
                 try {
                     Logger.info("Starting obfuscation with ${runConfig.transformers.count { it.enabled }} enabled transformer nodes")
                     val instance = Grunteon.create(runConfig)
-                    instance.execute()
+                    instance.run()
                     Logger.info("Obfuscation finished")
                     SwingUtilities.invokeLater {
                         appModel.uiState.globalStatus = "Obfuscation finished"

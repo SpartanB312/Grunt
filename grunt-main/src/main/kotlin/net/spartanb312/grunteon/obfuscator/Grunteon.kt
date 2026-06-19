@@ -2,6 +2,9 @@ package net.spartanb312.grunteon.obfuscator
 
 import net.spartanb312.grunteon.obfuscator.pipeline.CreditsCalc
 import net.spartanb312.grunteon.obfuscator.pipeline.CreditsSummary
+import net.spartanb312.grunteon.obfuscator.pipeline.FinalOutput
+import net.spartanb312.grunteon.obfuscator.pipeline.JvmObfuscation
+import net.spartanb312.grunteon.obfuscator.pipeline.NativeObfuscation
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.process.nativecode.NativePipelineConfig
 import net.spartanb312.grunteon.obfuscator.process.nativecode.NativePipelineRunner
@@ -31,43 +34,15 @@ class Grunteon(
      */
     val nameMapping = NameMapping()
     var creditsSummary: CreditsSummary = CreditsSummary.EMPTY
-        private set
 
-    fun init() {
-    }
-
-    fun execute() {
+    fun run() {
+        // TODO: Stage pipeline
         // JVM obfuscate stage
-        context(workRes) {
-            Logger.info("Obfuscating...")
-            val pipelineBuilder = PipelineBuilder()
-            transformers.forEach { (transformer, config) ->
-                transformer.buildStageImpl(pipelineBuilder, config)
-            }
-            val workerContext = WorkerContext()
-            workerContext.execute(this, pipelineBuilder)
-            creditsSummary = CreditsCalc.summarize(transformers.map { it.first })
-            val totalCredits = creditsSummary.totalCredits
-            Logger.info("Credits used: ${formatInteger(totalCredits.roundToLong())}")
-            creditsSummary.transformers.forEach {
-                val rate = it.credits / totalCredits * 100
-                Logger.info(
-                    "    ${it.name}[${String.format(Locale.US, "%.2f", rate)}%]:" +
-                        " credits=${formatInteger(it.credits.roundToLong())}, " +
-                        "raw=${formatInteger(it.raw)}, multiplier=${it.baseMultiplier}"
-                )
-            }
-        }
-
+        JvmObfuscation().execute(this)
         // Native obfuscate stage
-        val nativeConfig = nativePipelineConfig
-        NativePipelineRunner.run(nativeConfig)
-
+        NativeObfuscation().execute(this)
         // Output stage
-        io.output?.let { JarDumper.dumpJar(it) }
-        if (globalConfig.dumpMappings) {
-            io.mappingsOutput?.let { nameMapping.dump(it) }
-        }
+        FinalOutput().execute(this)
     }
 
     val mixinInclusion = ClassPredicate.IncludeExclude(

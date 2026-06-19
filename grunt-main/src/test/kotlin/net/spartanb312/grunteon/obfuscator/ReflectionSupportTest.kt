@@ -68,7 +68,7 @@ class ReflectionSupportTest {
                 )
             )
         )
-        instance.execute()
+        instance.run()
         instance.workRes.inputClassCollection.forEach { classNode ->
             classNode.methods.forEach { methodNode ->
                 assertFalse(methodNode.hasAnnotation(STRING_BLACKLIST))

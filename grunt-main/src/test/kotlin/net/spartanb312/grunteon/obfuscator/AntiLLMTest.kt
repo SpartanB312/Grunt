@@ -38,7 +38,7 @@ class AntiLLMTest {
         )
 
         context(instance.workRes, instance) {
-            instance.execute()
+            instance.run()
         }
 
         val pool = instance.workRes.getStringPool(WorkResources.ANTI_LLM_STRING_POOL)

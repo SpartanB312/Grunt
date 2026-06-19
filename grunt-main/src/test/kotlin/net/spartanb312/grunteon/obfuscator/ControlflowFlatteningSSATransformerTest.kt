@@ -48,7 +48,7 @@ class ControlflowFlatteningSSATransformerTest {
             )
 
             context(instance.workRes, instance) {
-                instance.execute()
+                instance.run()
             }
 
             ZipFile(output.toFile()).use { zip ->
@@ -87,7 +87,7 @@ class ControlflowFlatteningSSATransformerTest {
             )
 
             context(instance.workRes, instance) {
-                instance.execute()
+                instance.run()
             }
 
             ZipFile(output.toFile()).use { zip ->
@@ -133,7 +133,7 @@ class ControlflowFlatteningSSATransformerTest {
             )
 
             context(instance.workRes, instance) {
-                instance.execute()
+                instance.run()
             }
 
             ZipFile(output.toFile()).use { zip ->
@@ -180,7 +180,7 @@ class ControlflowFlatteningSSATransformerTest {
             )
 
             context(instance.workRes, instance) {
-                instance.execute()
+                instance.run()
             }
 
             ZipFile(output.toFile()).use { zip ->
@@ -227,7 +227,7 @@ class ControlflowFlatteningSSATransformerTest {
             )
 
             context(instance.workRes, instance) {
-                instance.execute()
+                instance.run()
             }
 
             ZipFile(output.toFile()).use { zip ->
@@ -282,7 +282,7 @@ class ControlflowFlatteningSSATransformerTest {
             )
 
             context(instance.workRes, instance) {
-                instance.execute()
+                instance.run()
             }
 
             ZipFile(output.toFile()).use { zip ->

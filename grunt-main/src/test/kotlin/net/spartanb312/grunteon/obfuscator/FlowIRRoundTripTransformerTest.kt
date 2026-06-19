@@ -40,7 +40,7 @@ class FlowIRRoundTripTransformerTest {
             )
 
             context(instance.workRes, instance) {
-                instance.execute()
+                instance.run()
             }
 
             ZipFile(output.toFile()).use { zip ->

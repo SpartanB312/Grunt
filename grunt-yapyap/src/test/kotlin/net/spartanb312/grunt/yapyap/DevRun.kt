@@ -106,7 +106,7 @@ fun main(args: Array<String>) {
         val instance = Grunteon.create(config)
 
         measureTime {
-            instance.execute()
+            instance.run()
         }.toDouble(DurationUnit.MILLISECONDS).also { time ->
             while (queue.size >= 5) queue.poll()
             queue.add(time)

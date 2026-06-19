@@ -40,7 +40,7 @@ class MethodRenamerTest {
             )
         )
         context(instance.workRes, instance) {
-            instance.execute()
+            instance.run()
         }
         tempDir =
             Path("build/tmp/grunteon-net.spartanb312.grunteon.obfuscator.MethodRenamerTest").also { println(it.absolutePathString()) }

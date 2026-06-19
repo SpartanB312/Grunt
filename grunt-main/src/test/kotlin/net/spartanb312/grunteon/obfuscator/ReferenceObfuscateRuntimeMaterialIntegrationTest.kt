@@ -159,7 +159,7 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
             configOf(*configs)
         )
         context(instance.workRes, instance) {
-            instance.execute()
+            instance.run()
         }
 
         val classNode = instance.workRes.inputClassMap[CLASS_NAME]
@@ -198,7 +198,7 @@ class ReferenceObfuscateRuntimeMaterialIntegrationTest {
             )
         )
         context(instance.workRes, instance) {
-            instance.execute()
+            instance.run()
         }
         return instance
     }
