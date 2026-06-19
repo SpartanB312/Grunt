@@ -1,6 +1,7 @@
 package net.spartanb312.grunteon.obfuscator.process.nativecode
 
 import java.nio.file.Path
+import kotlin.io.path.readText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -103,6 +104,60 @@ class NativeCompilerTest {
         assertTrue("-static" in linkCommand)
         assertTrue(bundle.libraryPath.toAbsolutePath().toString() in linkCommand)
         assertEquals(objectPath.toAbsolutePath().toString(), linkCommand.last())
+    }
+
+    @Test
+    fun buildsGnuLikeLinkCommandWithObjectResponseFile() {
+        val bundle = sourceBundle(NativePlatform("windows", "x86_64", "", ".dll", "win32"))
+        val objectPaths = listOf(
+            bundle.sourcePath.parent.resolve("obj").resolve("chunk one.o"),
+            bundle.sourcePath.parent.resolve("obj").resolve("chunk_two.o")
+        )
+
+        val command = NativeCompiler.buildGnuLikeLinkCommandWithObjectResponseFile(
+            bundle = bundle,
+            compiler = "g++.exe",
+            objectPaths = objectPaths,
+            config = NativePipelineConfig()
+        )
+
+        assertTrue(command.last().startsWith("@"))
+        assertFalse(command.any { it.endsWith("chunk one.o") || it.endsWith("chunk_two.o") })
+        val responseText = Path.of(command.last().removePrefix("@")).readText()
+        assertTrue("chunk one.o" in responseText)
+        assertTrue("chunk_two.o" in responseText)
+        assertTrue("\"" in responseText)
+    }
+
+    @Test
+    fun buildsMsvcCommandWithSourceResponseFile() {
+        val base = sourceBundle(NativePlatform("windows", "x86_64", "", ".dll", "win32"))
+        val bundle = base.copy(
+            sourceFiles = listOf(
+                NativeSourceFile(base.sourcePath.parent.resolve("chunk one.cpp"), ""),
+                NativeSourceFile(base.sourcePath.parent.resolve("chunk_two.cpp"), "")
+            )
+        )
+        val includeRoot = Path.of("build/test-jdk/include")
+        val includeOs = includeRoot.resolve("win32")
+
+        val command = NativeCompiler.buildMsvcCommandWithSourceResponseFile(
+            bundle = bundle,
+            compiler = "cl.exe",
+            includeRoot = includeRoot,
+            includeOs = includeOs,
+            config = NativePipelineConfig(compilerArgs = listOf("/MT"))
+        )
+
+        assertEquals("cl.exe", command.first())
+        assertTrue("/LD" in command)
+        assertTrue("/MT" in command)
+        assertTrue(command.last().startsWith("@"))
+        assertFalse(command.any { it.endsWith("chunk one.cpp") || it.endsWith("chunk_two.cpp") })
+        val responseText = Path.of(command.last().removePrefix("@")).readText()
+        assertTrue("chunk one.cpp" in responseText)
+        assertTrue("chunk_two.cpp" in responseText)
+        assertTrue("\"" in responseText)
     }
 
     @Test

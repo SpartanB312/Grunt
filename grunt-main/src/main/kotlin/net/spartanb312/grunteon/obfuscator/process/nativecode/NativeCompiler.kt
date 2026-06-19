@@ -43,13 +43,23 @@ internal object NativeCompiler {
         }
 
         val compileStartNanos = System.nanoTime()
-        val result = if (compiler.kind == NativeCompilerKind.GnuLike && bundle.compilableSourcePaths().size > 1) {
-            compileGnuLikeSplit(bundle, compiler.command, includeRoot, includeOs, config)
-        } else {
-            runCommand(
-                buildCompileCommand(bundle, compiler, includeRoot, includeOs, config),
-                bundle.sourcePath.parent
-            )
+        val sourceCount = bundle.compilableSourcePaths().size
+        val result = when {
+            compiler.kind == NativeCompilerKind.GnuLike && sourceCount > 1 -> {
+                compileGnuLikeSplit(bundle, compiler.command, includeRoot, includeOs, config)
+            }
+            compiler.kind == NativeCompilerKind.Msvc && sourceCount > 1 -> {
+                runCommand(
+                    buildMsvcCommandWithSourceResponseFile(bundle, compiler.command, includeRoot, includeOs, config),
+                    bundle.sourcePath.parent
+                )
+            }
+            else -> {
+                runCommand(
+                    buildCompileCommand(bundle, compiler, includeRoot, includeOs, config),
+                    bundle.sourcePath.parent
+                )
+            }
         }
         val compileTimeMillis = (System.nanoTime() - compileStartNanos) / 1_000_000L
         return if (result.exitCode == 0 && Files.exists(bundle.libraryPath)) {
@@ -180,6 +190,32 @@ internal object NativeCompiler {
         }
     }
 
+    internal fun buildMsvcCommandWithSourceResponseFile(
+        bundle: NativeSourceBundle,
+        compiler: String,
+        includeRoot: Path,
+        includeOs: Path,
+        config: NativePipelineConfig
+    ): List<String> {
+        val responseFile = writeResponseFile(
+            path = bundle.sourcePath.parent.resolve("grunteon_native_sources.rsp"),
+            args = bundle.compilableSourcePaths().map(::responsePathToken)
+        )
+        return buildList {
+            add(compiler)
+            add("/nologo")
+            add("/std:c++17")
+            add("/EHsc")
+            add(msvcOptimizationFlag(config))
+            add("/LD")
+            add("/I${includeRoot.absolutePathString()}")
+            add("/I${includeOs.absolutePathString()}")
+            addAll(config.compilerArgs)
+            add("/Fe:${bundle.libraryPath.absolutePathString()}")
+            add(responseFileArg(responseFile))
+        }
+    }
+
     private fun compileGnuLikeSplit(
         bundle: NativeSourceBundle,
         compiler: String,
@@ -217,10 +253,32 @@ internal object NativeCompiler {
             executor.shutdown()
         }
 
-        val linkCommand = buildGnuLikeLinkCommand(bundle, compiler, objectPaths, config)
+        val linkCommand = buildGnuLikeLinkCommandWithObjectResponseFile(bundle, compiler, objectPaths, config)
         val linkResult = runCommand(linkCommand, bundle.sourcePath.parent)
         if (linkResult.output.isNotBlank()) output.append(linkResult.output)
         return CommandResult(linkResult.exitCode, output.toString(), linkCommand)
+    }
+
+    internal fun buildGnuLikeLinkCommandWithObjectResponseFile(
+        bundle: NativeSourceBundle,
+        compiler: String,
+        objectPaths: List<Path>,
+        config: NativePipelineConfig
+    ): List<String> {
+        val responseFile = writeResponseFile(
+            path = bundle.sourcePath.parent.resolve("grunteon_native_objects.rsp"),
+            args = objectPaths.map(::responsePathToken)
+        )
+        val sharedFlag = if (bundle.plan.platform.os == "macos") "-dynamiclib" else "-shared"
+        return buildList {
+            add(compiler)
+            add(sharedFlag)
+            addAll(defaultGnuLikeCompilerArgs(bundle.plan.platform))
+            addAll(config.compilerArgs)
+            add("-o")
+            add(bundle.libraryPath.absolutePathString())
+            add(responseFileArg(responseFile))
+        }
     }
 
     private fun writeSourceFiles(bundle: NativeSourceBundle) {
@@ -261,13 +319,40 @@ internal object NativeCompiler {
         } catch (exception: IOException) {
             return CommandResult(
                 exitCode = -1,
-                output = "Failed to start native compiler ${command.firstOrNull().orEmpty()}: ${exception.message}",
+                output = "Failed to start native compiler ${command.firstOrNull().orEmpty()}: " +
+                    "${exception.message} (commandLineLength=${estimatedWindowsCommandLineLength(command)})",
                 command = command
             )
         }
         val output = process.inputStream.bufferedReader().use { it.readText() }
         val exitCode = process.waitFor()
         return CommandResult(exitCode, output, command)
+    }
+
+    private fun writeResponseFile(path: Path, args: List<String>): Path {
+        path.parent.createDirectories()
+        path.writeText(args.joinToString(System.lineSeparator(), postfix = System.lineSeparator()))
+        return path
+    }
+
+    private fun responseFileArg(path: Path): String {
+        return "@${path.absolutePathString()}"
+    }
+
+    private fun responsePathToken(path: Path): String {
+        val value = path.absolutePathString().let {
+            if (File.separatorChar == '\\') it.replace('\\', '/') else it
+        }
+        return responseToken(value)
+    }
+
+    private fun responseToken(value: String): String {
+        if (value.isNotEmpty() && value.none { it.isWhitespace() || it == '"' }) return value
+        return "\"" + value.replace("\"", "\\\"") + "\""
+    }
+
+    private fun estimatedWindowsCommandLineLength(command: List<String>): Int {
+        return command.sumOf { it.length + 3 }
     }
 
     internal fun effectiveParallelCompileJobs(config: NativePipelineConfig, sourceCount: Int): Int {
