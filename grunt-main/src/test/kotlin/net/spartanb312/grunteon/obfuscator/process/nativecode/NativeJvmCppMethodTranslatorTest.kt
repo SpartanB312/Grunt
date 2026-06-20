@@ -134,7 +134,7 @@ class NativeJvmCppMethodTranslatorTest {
 
     @Test
     fun emitsStaticMethodCallsWithIntAndObjectReturns() {
-        val intCall = translate(invokeStaticIntMethod())
+        val intCall = translate(invokeStaticIntMethod(), enablePrimitiveIntrinsics = false)
         assertContains(intCall, "jobject classloader = grt_get_classloader(env, clazz);")
         assertContains(intCall, "GrtLocalRefs ownedRefs;")
         assertContains(intCall, "grt_track_ref(env, ownedRefs, classloader);")
@@ -292,7 +292,7 @@ class NativeJvmCppMethodTranslatorTest {
 
     @Test
     fun emitsLongCallsAndArrayOperations() {
-        val longCall = translate(invokeStaticLongMethod())
+        val longCall = translate(invokeStaticLongMethod(), enablePrimitiveIntrinsics = false)
         assertContains(longCall, "args_2[0].j = cstack[--sp].j;")
         assertContains(longCall, "env->CallStaticLongMethodA(ownerClass_2, methodId_2, args_2)")
         assertContains(longCall, "jlong result = cstack[--sp].j; grt_release_held_monitors(env, heldMonitors); grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result;")
@@ -452,7 +452,7 @@ class NativeJvmCppMethodTranslatorTest {
         val doubleToInt = translate(doubleToIntMethod())
         assertContains(doubleToInt, "cstack[sp++].i = grt_d2i(value);")
 
-        val doubleCall = translate(invokeStaticDoubleMethod())
+        val doubleCall = translate(invokeStaticDoubleMethod(), enablePrimitiveIntrinsics = false)
         assertContains(doubleCall, "args_1[0].d = cstack[--sp].d;")
         assertContains(doubleCall, "env->CallStaticDoubleMethodA(ownerClass_1, methodId_1, args_1)")
         assertContains(doubleCall, "jdouble result = cstack[--sp].d; grt_release_held_monitors(env, heldMonitors); grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs); return result;")
@@ -627,8 +627,12 @@ class NativeJvmCppMethodTranslatorTest {
         assertFalse(chunkSource.contains("grt_class_slots["))
     }
 
-    private fun translate(method: MethodNode): String {
-        return NativeJvmCppMethodTranslator.translate(validated(method), "grt_test")
+    private fun translate(method: MethodNode, enablePrimitiveIntrinsics: Boolean = true): String {
+        return NativeJvmCppMethodTranslator.translate(
+            validated(method),
+            "grt_test",
+            enablePrimitiveIntrinsics = enablePrimitiveIntrinsics
+        )
     }
 
     private fun validated(

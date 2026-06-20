@@ -43,9 +43,20 @@ internal object NativeJvmCppMethodTranslator {
         method: NativeValidatedMethod,
         functionName: String,
         commitKind: NativeMethodCommitKind = NativeMethodCommitKind.Direct,
-        referenceSlots: NativeReferenceSlots = NativeReferenceSlots()
+        referenceSlots: NativeReferenceSlots = NativeReferenceSlots(),
+        enablePrimitiveIntrinsics: Boolean = true,
+        intrinsicStats: NativeJvmIntrinsicStats? = null
     ): String {
-        return translate(method.methodNode, method.jvmIr, method.fullJvmSupport, functionName, commitKind, referenceSlots)
+        return translate(
+            method.methodNode,
+            method.jvmIr,
+            method.fullJvmSupport,
+            functionName,
+            commitKind,
+            referenceSlots,
+            enablePrimitiveIntrinsics,
+            intrinsicStats
+        )
     }
 
     private fun translate(
@@ -54,7 +65,9 @@ internal object NativeJvmCppMethodTranslator {
         support: NativeJvmSupportReport,
         functionName: String,
         commitKind: NativeMethodCommitKind,
-        referenceSlots: NativeReferenceSlots = NativeReferenceSlots()
+        referenceSlots: NativeReferenceSlots = NativeReferenceSlots(),
+        enablePrimitiveIntrinsics: Boolean = true,
+        intrinsicStats: NativeJvmIntrinsicStats? = null
     ): String {
         if (!support.isFullJvmLoweringReady) {
             throw UnsupportedNativeInstruction(
@@ -181,9 +194,22 @@ internal object NativeJvmCppMethodTranslator {
                 if (instruction.instructionIndex in refCleanupEntries) {
                     emitReferenceCleanup(instruction, stackShape)
                 }
-                emitInstruction(instruction, returnType, labels, stackShape, referenceSlots)
+                emitInstruction(
+                    instruction,
+                    returnType,
+                    labels,
+                    stackShape,
+                    referenceSlots,
+                    enablePrimitiveIntrinsics,
+                    intrinsicStats
+                )
                 if (!isTerminal(instruction.opcode)) {
-                    appendExceptionCheck(instruction, dispatchPlan.labelFor(instruction), returnType)
+                    appendExceptionCheck(
+                        instruction,
+                        dispatchPlan.labelFor(instruction),
+                        returnType,
+                        enablePrimitiveIntrinsics
+                    )
                     if (instruction.opcode == Opcodes.ATHROW) {
                         appendLine("    ${cleanupAndDefaultReturn(returnType)}")
                     }
@@ -286,7 +312,9 @@ internal object NativeJvmCppMethodTranslator {
         returnType: Type,
         labels: LabelTargetResolver,
         stackShape: StackShapeAnalyzer,
-        referenceSlots: NativeReferenceSlots
+        referenceSlots: NativeReferenceSlots,
+        enablePrimitiveIntrinsics: Boolean,
+        intrinsicStats: NativeJvmIntrinsicStats?
     ) {
         when (val opcode = instruction.opcode) {
             Opcodes.NOP -> Unit
@@ -475,7 +503,14 @@ internal object NativeJvmCppMethodTranslator {
                 "    { jobject lock = cstack[--sp].l; " +
                     "grt_monitor_exit(env, lock, heldMonitors); }"
             )
-            else -> emitTypedInstruction(instruction, labels, stackShape, referenceSlots)
+            else -> emitTypedInstruction(
+                instruction,
+                labels,
+                stackShape,
+                referenceSlots,
+                enablePrimitiveIntrinsics,
+                intrinsicStats
+            )
         }
     }
 
@@ -483,13 +518,21 @@ internal object NativeJvmCppMethodTranslator {
         instruction: NativeJvmInstruction,
         labels: LabelTargetResolver,
         stackShape: StackShapeAnalyzer,
-        referenceSlots: NativeReferenceSlots
+        referenceSlots: NativeReferenceSlots,
+        enablePrimitiveIntrinsics: Boolean,
+        intrinsicStats: NativeJvmIntrinsicStats?
     ) {
         when (val node = instruction.node) {
             is JumpInsnNode -> emitJumpInstruction(instruction, node, labels)
             is TableSwitchInsnNode -> emitTableSwitchInstruction(node, labels)
             is LookupSwitchInsnNode -> emitLookupSwitchInstruction(node, labels)
-            is MethodInsnNode -> emitMethodInstruction(instruction, node, referenceSlots)
+            is MethodInsnNode -> emitMethodInstruction(
+                instruction,
+                node,
+                referenceSlots,
+                enablePrimitiveIntrinsics,
+                intrinsicStats
+            )
             is FieldInsnNode -> emitFieldInstruction(instruction, node, referenceSlots)
             is TypeInsnNode -> emitTypeInstruction(instruction, node, referenceSlots)
             is MultiANewArrayInsnNode -> emitMultiANewArrayInstruction(instruction, node, referenceSlots)
@@ -1056,11 +1099,16 @@ internal object NativeJvmCppMethodTranslator {
     private fun StringBuilder.emitMethodInstruction(
         instruction: NativeJvmInstruction,
         node: MethodInsnNode,
-        referenceSlots: NativeReferenceSlots
+        referenceSlots: NativeReferenceSlots,
+        enablePrimitiveIntrinsics: Boolean,
+        intrinsicStats: NativeJvmIntrinsicStats?
     ) {
         val argumentTypes = Type.getArgumentTypes(node.desc)
         val returnType = Type.getReturnType(node.desc)
         validateInvokeDescriptor(argumentTypes, returnType, "${node.owner}.${node.name}${node.desc}")
+        if (enablePrimitiveIntrinsics && NativeJvmIntrinsicRegistry.emit(this, node, intrinsicStats)) {
+            return
+        }
 
         val argumentCount = argumentTypes.size
         val argsName = "args_${instruction.instructionIndex}"
@@ -1216,8 +1264,10 @@ internal object NativeJvmCppMethodTranslator {
     private fun StringBuilder.appendExceptionCheck(
         instruction: NativeJvmInstruction,
         dispatchLabel: String?,
-        returnType: Type
+        returnType: Type,
+        enablePrimitiveIntrinsics: Boolean
     ) {
+        if (!canThrow(instruction, enablePrimitiveIntrinsics)) return
         if (dispatchLabel != null) {
             appendLine("    if (env->ExceptionCheck()) {")
             appendLine("        jthrowable exception = env->ExceptionOccurred();")
@@ -1227,7 +1277,7 @@ internal object NativeJvmCppMethodTranslator {
             appendLine("        grt_track_ref(env, refs, cstack[0].l);")
             appendLine("        goto $dispatchLabel;")
             appendLine("    }")
-        } else if (canThrow(instruction.opcode)) {
+        } else {
             appendLine("    if (env->ExceptionCheck()) { ${cleanupAndDefaultReturn(returnType)} }")
         }
     }
@@ -1778,7 +1828,12 @@ internal object NativeJvmCppMethodTranslator {
         return "grt_release_held_monitors(env, heldMonitors); grt_clear_refs(env, refs); grt_clear_refs(env, ownedRefs);"
     }
 
-    private fun canThrow(opcode: Int): Boolean {
+    private fun canThrow(instruction: NativeJvmInstruction, enablePrimitiveIntrinsics: Boolean): Boolean {
+        val node = instruction.node
+        if (enablePrimitiveIntrinsics && node is MethodInsnNode && NativeJvmIntrinsicRegistry.isIntrinsic(node)) {
+            return false
+        }
+        val opcode = instruction.opcode
         return opcode == Opcodes.IDIV ||
             opcode == Opcodes.IREM ||
             opcode == Opcodes.LDIV ||

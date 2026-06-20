@@ -28,7 +28,8 @@ the near future
 * [X] Native candidate scanner
 * [X] Native method validator
 * [X] Native runtime bridges
-* [X] Native cache optimization
+* [X] Native handle caches
+* [X] Native intrinsics
 * [X] Integrated workflow
 
 ### Controlflow flattening

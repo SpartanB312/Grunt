@@ -94,6 +94,9 @@ data class NativePipelineConfig(
     @SettingDesc("C++ compiler optimization level for generated native sources")
     @SettingName("Optimization level")
     val optimizationLevel: NativeOptimizationLevel = NativeOptimizationLevel.O1,
+    @SettingDesc("Lower safe primitive JDK helper calls directly to C++ in full-JVM native methods")
+    @SettingName("Enable primitive intrinsics")
+    val enablePrimitiveIntrinsics: Boolean = true,
     @SettingDesc("Native C++ compiler command style")
     @SettingName("Compiler mode")
     val compilerMode: NativeCompilerMode = NativeCompilerMode.Auto,

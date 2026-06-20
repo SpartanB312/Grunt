@@ -181,7 +181,9 @@ internal data class NativeSourceBundle(
     val sourcePath: Path,
     val libraryPath: Path,
     val sourceFiles: List<NativeSourceFile> = listOf(NativeSourceFile(sourcePath, sourceText)),
-    val libraryTargets: List<NativeLibraryTarget> = emptyList()
+    val libraryTargets: List<NativeLibraryTarget> = emptyList(),
+    val intrinsicStats: NativeJvmIntrinsicStats = NativeJvmIntrinsicStats(),
+    val ssaIntrinsicStats: NativeJvmIntrinsicStats = NativeJvmIntrinsicStats()
 ) {
     val resolvedLibraryTargets: List<NativeLibraryTarget>
         get() = libraryTargets.ifEmpty {

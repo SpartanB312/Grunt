@@ -181,13 +181,19 @@ class NativeSsaIntMethodTranslatorTest {
         assertEquals(0, skipped.size)
         assertEquals(NativeLoweringKind.SsaPrimitive, accepted.single().lowering)
 
-        val source = NativeCppBackend.generate(
+        val bundle = NativeCppBackend.generate(
             methods = accepted,
             config = NativePipelineConfig(enabled = true),
             classExists = { false }
-        ).sourceText
+        )
+        val source = bundle.sourceText
 
         assertContains(source, "grt_rotl32")
+        assertEquals(0, bundle.intrinsicStats.total)
+        assertEquals(1, bundle.ssaIntrinsicStats.total)
+        assertEquals("java/lang/Integer.rotateLeft(II)I", bundle.ssaIntrinsicStats.byKey.keys.single().let {
+            "${it.owner}.${it.name}${it.desc}"
+        })
     }
 
     @Test

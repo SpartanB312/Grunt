@@ -78,14 +78,25 @@ internal object NativeCppBackend {
             platform = platform,
             classes = classPlans
         )
-        val singleSource = emitSource(plan)
+        val intrinsicStats = NativeJvmIntrinsicStats()
+        val ssaIntrinsicStats = NativeJvmIntrinsicStats()
+        val methodCount = classPlans.sumOf { it.methods.size }
+        val shouldSplit = config.splitSourceFiles && methodCount > config.maxMethodsPerSourceFile
+        val singleSource = emitSource(
+            plan = plan,
+            config = config,
+            intrinsicStats = if (shouldSplit) NativeJvmIntrinsicStats() else intrinsicStats,
+            ssaIntrinsicStats = if (shouldSplit) NativeJvmIntrinsicStats() else ssaIntrinsicStats
+        )
         return NativeSourceBundle(
             plan = plan,
             sourceText = singleSource,
             sourcePath = sourcePath,
             libraryPath = libraryPath,
-            sourceFiles = emitSourceFiles(plan, sourcePath, singleSource, config),
-            libraryTargets = libraryTargets
+            sourceFiles = emitSourceFiles(plan, sourcePath, singleSource, config, intrinsicStats, ssaIntrinsicStats),
+            libraryTargets = libraryTargets,
+            intrinsicStats = intrinsicStats,
+            ssaIntrinsicStats = ssaIntrinsicStats
         )
     }
 
@@ -110,7 +121,9 @@ internal object NativeCppBackend {
         plan: NativeBuildPlan,
         sourcePath: Path,
         singleSource: String,
-        config: NativePipelineConfig
+        config: NativePipelineConfig,
+        intrinsicStats: NativeJvmIntrinsicStats,
+        ssaIntrinsicStats: NativeJvmIntrinsicStats
     ): List<NativeSourceFile> {
         val methodCount = plan.classes.sumOf { it.methods.size }
         if (!config.splitSourceFiles || methodCount <= config.maxMethodsPerSourceFile) {
@@ -133,7 +146,7 @@ internal object NativeCppBackend {
                 add(
                     NativeSourceFile(
                         sourceRoot.resolve("grunteon_native_chunk_${index.toString().padStart(4, '0')}.cpp"),
-                        emitSplitChunkSource(index, classPlans, plan.referenceSlots)
+                        emitSplitChunkSource(index, classPlans, plan.referenceSlots, config, intrinsicStats, ssaIntrinsicStats)
                     )
                 )
             }
@@ -171,14 +184,17 @@ internal object NativeCppBackend {
     private fun emitSplitChunkSource(
         chunkIndex: Int,
         classPlans: List<NativeClassPlan>,
-        referenceSlots: NativeReferenceSlots
+        referenceSlots: NativeReferenceSlots,
+        config: NativePipelineConfig,
+        intrinsicStats: NativeJvmIntrinsicStats,
+        ssaIntrinsicStats: NativeJvmIntrinsicStats
     ): String {
         return buildString {
             appendRuntimeHeaderInclude()
             classPlans.forEach { classPlan ->
                 classPlan.methods.forEach { binding ->
                     appendLine("// ${binding.method.displayName}")
-                    appendLine(emitNativeMethod(binding, referenceSlots))
+                    appendLine(emitNativeMethod(binding, referenceSlots, config, intrinsicStats, ssaIntrinsicStats))
                 }
             }
             classPlans.forEach { classPlan ->
@@ -295,12 +311,49 @@ internal object NativeCppBackend {
         appendLine("jfieldID grt_get_field_id(JNIEnv* env, jclass clazz, jint slot, const char* name, const char* desc, bool isStatic);")
         appendLine("jstring grt_ldc_string(JNIEnv* env, jint slot, const char* value);")
         appendLine("uint32_t grt_rotl32(uint32_t value, uint32_t distance);")
+        appendLine("uint32_t grt_rotr32(uint32_t value, uint32_t distance);")
+        appendLine("uint64_t grt_rotl64(uint64_t value, uint32_t distance);")
+        appendLine("uint64_t grt_rotr64(uint64_t value, uint32_t distance);")
+        appendLine("uint16_t grt_bswap16(uint16_t value);")
+        appendLine("uint32_t grt_bswap32(uint32_t value);")
+        appendLine("uint64_t grt_bswap64(uint64_t value);")
+        appendLine("uint32_t grt_reverse_bits32(uint32_t value);")
+        appendLine("uint64_t grt_reverse_bits64(uint64_t value);")
+        appendLine("jint grt_popcount32(uint32_t value);")
+        appendLine("jint grt_popcount64(uint64_t value);")
+        appendLine("jint grt_clz32(uint32_t value);")
+        appendLine("jint grt_clz64(uint64_t value);")
+        appendLine("jint grt_ctz32(uint32_t value);")
+        appendLine("jint grt_ctz64(uint64_t value);")
+        appendLine("jint grt_compare_u32(uint32_t lhs, uint32_t rhs);")
+        appendLine("jint grt_compare_u64(uint64_t lhs, uint64_t rhs);")
         appendLine("jint grt_i32(uint32_t value);")
         appendLine("jbyte grt_i8(uint32_t value);")
         appendLine("jshort grt_i16(uint32_t value);")
         appendLine("jlong grt_i64(uint64_t value);")
         appendLine("jint grt_ishr32(jint value, jint distance);")
         appendLine("jlong grt_lshr64(jlong value, jint distance);")
+        appendLine("jint grt_math_abs_i32(jint value);")
+        appendLine("jlong grt_math_abs_i64(jlong value);")
+        appendLine("jint grt_integer_rotate_left(jint value, jint distance);")
+        appendLine("jint grt_integer_rotate_right(jint value, jint distance);")
+        appendLine("jint grt_integer_reverse(jint value);")
+        appendLine("jint grt_integer_reverse_bytes(jint value);")
+        appendLine("jint grt_integer_bit_count(jint value);")
+        appendLine("jint grt_integer_number_of_leading_zeros(jint value);")
+        appendLine("jint grt_integer_number_of_trailing_zeros(jint value);")
+        appendLine("jint grt_integer_highest_one_bit(jint value);")
+        appendLine("jint grt_integer_lowest_one_bit(jint value);")
+        appendLine("jlong grt_long_rotate_left(jlong value, jint distance);")
+        appendLine("jlong grt_long_rotate_right(jlong value, jint distance);")
+        appendLine("jlong grt_long_reverse(jlong value);")
+        appendLine("jlong grt_long_reverse_bytes(jlong value);")
+        appendLine("jint grt_long_bit_count(jlong value);")
+        appendLine("jint grt_long_number_of_leading_zeros(jlong value);")
+        appendLine("jint grt_long_number_of_trailing_zeros(jlong value);")
+        appendLine("jlong grt_long_highest_one_bit(jlong value);")
+        appendLine("jlong grt_long_lowest_one_bit(jlong value);")
+        appendLine("jshort grt_short_reverse_bytes(jint value);")
         appendLine("void grt_throw(JNIEnv* env, const char* className, const char* message);")
         appendLine("bool grt_monitor_enter(JNIEnv* env, jobject lock, std::vector<jobject>& heldMonitors);")
         appendLine("bool grt_monitor_exit(JNIEnv* env, jobject lock, std::vector<jobject>& heldMonitors);")
@@ -323,10 +376,15 @@ internal object NativeCppBackend {
             .replace("static constexpr ", "constexpr ")
             .replace("static ", "")
 
-    private fun emitSource(plan: NativeBuildPlan): String {
+    private fun emitSource(
+        plan: NativeBuildPlan,
+        config: NativePipelineConfig,
+        intrinsicStats: NativeJvmIntrinsicStats,
+        ssaIntrinsicStats: NativeJvmIntrinsicStats
+    ): String {
         val methodSources = plan.classes.flatMap { classPlan ->
             classPlan.methods.map { binding ->
-                "// ${binding.method.displayName}\n${emitNativeMethod(binding, plan.referenceSlots)}"
+                "// ${binding.method.displayName}\n${emitNativeMethod(binding, plan.referenceSlots, config, intrinsicStats, ssaIntrinsicStats)}"
             }
         }
         return buildString {
@@ -646,6 +704,81 @@ internal object NativeCppBackend {
             appendLine("    distance &= 31u;")
             appendLine("    return distance == 0u ? value : ((value << distance) | (value >> (32u - distance)));")
             appendLine("}")
+            appendLine("static inline uint32_t grt_rotr32(uint32_t value, uint32_t distance) {")
+            appendLine("    distance &= 31u;")
+            appendLine("    return distance == 0u ? value : ((value >> distance) | (value << (32u - distance)));")
+            appendLine("}")
+            appendLine("static inline uint64_t grt_rotl64(uint64_t value, uint32_t distance) {")
+            appendLine("    distance &= 63u;")
+            appendLine("    return distance == 0u ? value : ((value << distance) | (value >> (64u - distance)));")
+            appendLine("}")
+            appendLine("static inline uint64_t grt_rotr64(uint64_t value, uint32_t distance) {")
+            appendLine("    distance &= 63u;")
+            appendLine("    return distance == 0u ? value : ((value >> distance) | (value << (64u - distance)));")
+            appendLine("}")
+            appendLine("static inline uint16_t grt_bswap16(uint16_t value) {")
+            appendLine("    return static_cast<uint16_t>((value >> 8u) | (value << 8u));")
+            appendLine("}")
+            appendLine("static inline uint32_t grt_bswap32(uint32_t value) {")
+            appendLine("    return ((value & 0x000000ffu) << 24u) | ((value & 0x0000ff00u) << 8u) |")
+            appendLine("        ((value & 0x00ff0000u) >> 8u) | ((value & 0xff000000u) >> 24u);")
+            appendLine("}")
+            appendLine("static inline uint64_t grt_bswap64(uint64_t value) {")
+            appendLine("    return ((value & 0x00000000000000ffULL) << 56u) | ((value & 0x000000000000ff00ULL) << 40u) |")
+            appendLine("        ((value & 0x0000000000ff0000ULL) << 24u) | ((value & 0x00000000ff000000ULL) << 8u) |")
+            appendLine("        ((value & 0x000000ff00000000ULL) >> 8u) | ((value & 0x0000ff0000000000ULL) >> 24u) |")
+            appendLine("        ((value & 0x00ff000000000000ULL) >> 40u) | ((value & 0xff00000000000000ULL) >> 56u);")
+            appendLine("}")
+            appendLine("static inline uint32_t grt_reverse_bits32(uint32_t value) {")
+            appendLine("    uint32_t result = 0u;")
+            appendLine("    for (int i = 0; i < 32; ++i) { result = (result << 1u) | (value & 1u); value >>= 1u; }")
+            appendLine("    return result;")
+            appendLine("}")
+            appendLine("static inline uint64_t grt_reverse_bits64(uint64_t value) {")
+            appendLine("    uint64_t result = 0ULL;")
+            appendLine("    for (int i = 0; i < 64; ++i) { result = (result << 1u) | (value & 1ULL); value >>= 1u; }")
+            appendLine("    return result;")
+            appendLine("}")
+            appendLine("static inline jint grt_popcount32(uint32_t value) {")
+            appendLine("    jint count = 0;")
+            appendLine("    while (value != 0u) { value &= value - 1u; ++count; }")
+            appendLine("    return count;")
+            appendLine("}")
+            appendLine("static inline jint grt_popcount64(uint64_t value) {")
+            appendLine("    jint count = 0;")
+            appendLine("    while (value != 0ULL) { value &= value - 1ULL; ++count; }")
+            appendLine("    return count;")
+            appendLine("}")
+            appendLine("static inline jint grt_clz32(uint32_t value) {")
+            appendLine("    if (value == 0u) return 32;")
+            appendLine("    jint count = 0;")
+            appendLine("    for (uint32_t bit = 0x80000000u; (value & bit) == 0u; bit >>= 1u) ++count;")
+            appendLine("    return count;")
+            appendLine("}")
+            appendLine("static inline jint grt_clz64(uint64_t value) {")
+            appendLine("    if (value == 0ULL) return 64;")
+            appendLine("    jint count = 0;")
+            appendLine("    for (uint64_t bit = 0x8000000000000000ULL; (value & bit) == 0ULL; bit >>= 1u) ++count;")
+            appendLine("    return count;")
+            appendLine("}")
+            appendLine("static inline jint grt_ctz32(uint32_t value) {")
+            appendLine("    if (value == 0u) return 32;")
+            appendLine("    jint count = 0;")
+            appendLine("    while ((value & 1u) == 0u) { value >>= 1u; ++count; }")
+            appendLine("    return count;")
+            appendLine("}")
+            appendLine("static inline jint grt_ctz64(uint64_t value) {")
+            appendLine("    if (value == 0ULL) return 64;")
+            appendLine("    jint count = 0;")
+            appendLine("    while ((value & 1ULL) == 0ULL) { value >>= 1u; ++count; }")
+            appendLine("    return count;")
+            appendLine("}")
+            appendLine("static inline jint grt_compare_u32(uint32_t lhs, uint32_t rhs) {")
+            appendLine("    return lhs == rhs ? 0 : (lhs < rhs ? -1 : 1);")
+            appendLine("}")
+            appendLine("static inline jint grt_compare_u64(uint64_t lhs, uint64_t rhs) {")
+            appendLine("    return lhs == rhs ? 0 : (lhs < rhs ? -1 : 1);")
+            appendLine("}")
             appendLine("static inline jint grt_i32(uint32_t value) {")
             appendLine("    jint result;")
             appendLine("    std::memcpy(&result, &value, sizeof(result));")
@@ -668,6 +801,91 @@ internal object NativeCppBackend {
             appendLine("    std::memcpy(&result, &value, sizeof(result));")
             appendLine("    return result;")
             appendLine("}")
+            appendLine("static inline uint32_t grt_f32_bits(jfloat value) {")
+            appendLine("    uint32_t bits;")
+            appendLine("    std::memcpy(&bits, &value, sizeof(bits));")
+            appendLine("    return bits;")
+            appendLine("}")
+            appendLine("static inline jfloat grt_f32_from_bits(uint32_t bits) {")
+            appendLine("    jfloat value;")
+            appendLine("    std::memcpy(&value, &bits, sizeof(value));")
+            appendLine("    return value;")
+            appendLine("}")
+            appendLine("static inline uint64_t grt_f64_bits(jdouble value) {")
+            appendLine("    uint64_t bits;")
+            appendLine("    std::memcpy(&bits, &value, sizeof(bits));")
+            appendLine("    return bits;")
+            appendLine("}")
+            appendLine("static inline jdouble grt_f64_from_bits(uint64_t bits) {")
+            appendLine("    jdouble value;")
+            appendLine("    std::memcpy(&value, &bits, sizeof(value));")
+            appendLine("    return value;")
+            appendLine("}")
+            appendLine("static inline bool grt_float_is_nan_bits(uint32_t bits) {")
+            appendLine("    return (bits & 0x7f800000u) == 0x7f800000u && (bits & 0x007fffffu) != 0u;")
+            appendLine("}")
+            appendLine("static inline bool grt_double_is_nan_bits(uint64_t bits) {")
+            appendLine("    return (bits & 0x7ff0000000000000ULL) == 0x7ff0000000000000ULL && (bits & 0x000fffffffffffffULL) != 0ULL;")
+            appendLine("}")
+            appendLine("static inline jint grt_float_to_raw_int_bits(jfloat value) {")
+            appendLine("    return grt_i32(grt_f32_bits(value));")
+            appendLine("}")
+            appendLine("static inline jint grt_float_to_int_bits(jfloat value) {")
+            appendLine("    uint32_t bits = grt_f32_bits(value);")
+            appendLine("    return grt_i32(grt_float_is_nan_bits(bits) ? 0x7fc00000u : bits);")
+            appendLine("}")
+            appendLine("static inline jfloat grt_float_int_bits_to_float(jint value) {")
+            appendLine("    return grt_f32_from_bits(static_cast<uint32_t>(value));")
+            appendLine("}")
+            appendLine("static inline bool grt_float_is_nan(jfloat value) {")
+            appendLine("    return grt_float_is_nan_bits(grt_f32_bits(value));")
+            appendLine("}")
+            appendLine("static inline bool grt_float_is_infinite(jfloat value) {")
+            appendLine("    return (grt_f32_bits(value) & 0x7fffffffu) == 0x7f800000u;")
+            appendLine("}")
+            appendLine("static inline bool grt_float_is_finite(jfloat value) {")
+            appendLine("    return (grt_f32_bits(value) & 0x7f800000u) != 0x7f800000u;")
+            appendLine("}")
+            appendLine("static inline jint grt_float_compare(jfloat lhs, jfloat rhs) {")
+            appendLine("    if (lhs < rhs) return -1;")
+            appendLine("    if (lhs > rhs) return 1;")
+            appendLine("    jint lhsBits = grt_float_to_int_bits(lhs);")
+            appendLine("    jint rhsBits = grt_float_to_int_bits(rhs);")
+            appendLine("    return lhsBits == rhsBits ? 0 : (lhsBits < rhsBits ? -1 : 1);")
+            appendLine("}")
+            appendLine("static inline jint grt_float_hash_code(jfloat value) {")
+            appendLine("    return grt_float_to_int_bits(value);")
+            appendLine("}")
+            appendLine("static inline jlong grt_double_to_raw_long_bits(jdouble value) {")
+            appendLine("    return grt_i64(grt_f64_bits(value));")
+            appendLine("}")
+            appendLine("static inline jlong grt_double_to_long_bits(jdouble value) {")
+            appendLine("    uint64_t bits = grt_f64_bits(value);")
+            appendLine("    return grt_i64(grt_double_is_nan_bits(bits) ? 0x7ff8000000000000ULL : bits);")
+            appendLine("}")
+            appendLine("static inline jdouble grt_double_long_bits_to_double(jlong value) {")
+            appendLine("    return grt_f64_from_bits(static_cast<uint64_t>(value));")
+            appendLine("}")
+            appendLine("static inline bool grt_double_is_nan(jdouble value) {")
+            appendLine("    return grt_double_is_nan_bits(grt_f64_bits(value));")
+            appendLine("}")
+            appendLine("static inline bool grt_double_is_infinite(jdouble value) {")
+            appendLine("    return (grt_f64_bits(value) & 0x7fffffffffffffffULL) == 0x7ff0000000000000ULL;")
+            appendLine("}")
+            appendLine("static inline bool grt_double_is_finite(jdouble value) {")
+            appendLine("    return (grt_f64_bits(value) & 0x7ff0000000000000ULL) != 0x7ff0000000000000ULL;")
+            appendLine("}")
+            appendLine("static inline jint grt_double_compare(jdouble lhs, jdouble rhs) {")
+            appendLine("    if (lhs < rhs) return -1;")
+            appendLine("    if (lhs > rhs) return 1;")
+            appendLine("    jlong lhsBits = grt_double_to_long_bits(lhs);")
+            appendLine("    jlong rhsBits = grt_double_to_long_bits(rhs);")
+            appendLine("    return lhsBits == rhsBits ? 0 : (lhsBits < rhsBits ? -1 : 1);")
+            appendLine("}")
+            appendLine("static inline jint grt_double_hash_code(jdouble value) {")
+            appendLine("    uint64_t bits = static_cast<uint64_t>(grt_double_to_long_bits(value));")
+            appendLine("    return grt_i32(static_cast<uint32_t>(bits ^ (bits >> 32u)));")
+            appendLine("}")
             appendLine("static inline uint32_t grt_ishr32_bits(uint32_t bits, uint32_t distance) {")
             appendLine("    uint32_t shift = distance & 31u;")
             appendLine("    if (shift == 0u) return bits;")
@@ -687,6 +905,167 @@ internal object NativeCppBackend {
             appendLine("}")
             appendLine("static inline jlong grt_lshr64(jlong value, jint distance) {")
             appendLine("    return grt_i64(grt_lshr64_bits(static_cast<uint64_t>(value), static_cast<uint32_t>(distance)));")
+            appendLine("}")
+            appendLine("static inline jint grt_math_abs_i32(jint value) {")
+            appendLine("    return value < 0 ? grt_i32(0u - static_cast<uint32_t>(value)) : value;")
+            appendLine("}")
+            appendLine("static inline jlong grt_math_abs_i64(jlong value) {")
+            appendLine("    return value < 0 ? grt_i64(0ULL - static_cast<uint64_t>(value)) : value;")
+            appendLine("}")
+            appendLine("static inline jfloat grt_math_abs_f32(jfloat value) {")
+            appendLine("    return grt_f32_from_bits(grt_f32_bits(value) & 0x7fffffffu);")
+            appendLine("}")
+            appendLine("static inline jdouble grt_math_abs_f64(jdouble value) {")
+            appendLine("    return grt_f64_from_bits(grt_f64_bits(value) & 0x7fffffffffffffffULL);")
+            appendLine("}")
+            appendLine("static inline jfloat grt_math_min_f32(jfloat lhs, jfloat rhs) {")
+            appendLine("    uint32_t lhsBits = grt_f32_bits(lhs);")
+            appendLine("    uint32_t rhsBits = grt_f32_bits(rhs);")
+            appendLine("    if (grt_float_is_nan_bits(lhsBits)) return grt_f32_from_bits(lhsBits);")
+            appendLine("    if (grt_float_is_nan_bits(rhsBits)) return grt_f32_from_bits(rhsBits);")
+            appendLine("    if (lhs == 0.0f && rhs == 0.0f) {")
+            appendLine("        return ((lhsBits | rhsBits) & 0x80000000u) != 0u ? grt_f32_from_bits(0x80000000u) : grt_f32_from_bits(0u);")
+            appendLine("    }")
+            appendLine("    return lhs <= rhs ? lhs : rhs;")
+            appendLine("}")
+            appendLine("static inline jfloat grt_math_max_f32(jfloat lhs, jfloat rhs) {")
+            appendLine("    uint32_t lhsBits = grt_f32_bits(lhs);")
+            appendLine("    uint32_t rhsBits = grt_f32_bits(rhs);")
+            appendLine("    if (grt_float_is_nan_bits(lhsBits)) return grt_f32_from_bits(lhsBits);")
+            appendLine("    if (grt_float_is_nan_bits(rhsBits)) return grt_f32_from_bits(rhsBits);")
+            appendLine("    if (lhs == 0.0f && rhs == 0.0f) {")
+            appendLine("        return ((lhsBits & rhsBits) & 0x80000000u) != 0u ? grt_f32_from_bits(0x80000000u) : grt_f32_from_bits(0u);")
+            appendLine("    }")
+            appendLine("    return lhs >= rhs ? lhs : rhs;")
+            appendLine("}")
+            appendLine("static inline jdouble grt_math_min_f64(jdouble lhs, jdouble rhs) {")
+            appendLine("    uint64_t lhsBits = grt_f64_bits(lhs);")
+            appendLine("    uint64_t rhsBits = grt_f64_bits(rhs);")
+            appendLine("    if (grt_double_is_nan_bits(lhsBits)) return grt_f64_from_bits(lhsBits);")
+            appendLine("    if (grt_double_is_nan_bits(rhsBits)) return grt_f64_from_bits(rhsBits);")
+            appendLine("    if (lhs == 0.0 && rhs == 0.0) {")
+            appendLine("        return ((lhsBits | rhsBits) & 0x8000000000000000ULL) != 0ULL ? grt_f64_from_bits(0x8000000000000000ULL) : grt_f64_from_bits(0ULL);")
+            appendLine("    }")
+            appendLine("    return lhs <= rhs ? lhs : rhs;")
+            appendLine("}")
+            appendLine("static inline jdouble grt_math_max_f64(jdouble lhs, jdouble rhs) {")
+            appendLine("    uint64_t lhsBits = grt_f64_bits(lhs);")
+            appendLine("    uint64_t rhsBits = grt_f64_bits(rhs);")
+            appendLine("    if (grt_double_is_nan_bits(lhsBits)) return grt_f64_from_bits(lhsBits);")
+            appendLine("    if (grt_double_is_nan_bits(rhsBits)) return grt_f64_from_bits(rhsBits);")
+            appendLine("    if (lhs == 0.0 && rhs == 0.0) {")
+            appendLine("        return ((lhsBits & rhsBits) & 0x8000000000000000ULL) != 0ULL ? grt_f64_from_bits(0x8000000000000000ULL) : grt_f64_from_bits(0ULL);")
+            appendLine("    }")
+            appendLine("    return lhs >= rhs ? lhs : rhs;")
+            appendLine("}")
+            appendLine("static inline jint grt_integer_rotate_left(jint value, jint distance) {")
+            appendLine("    return grt_i32(grt_rotl32(static_cast<uint32_t>(value), static_cast<uint32_t>(distance)));")
+            appendLine("}")
+            appendLine("static inline jint grt_integer_rotate_right(jint value, jint distance) {")
+            appendLine("    return grt_i32(grt_rotr32(static_cast<uint32_t>(value), static_cast<uint32_t>(distance)));")
+            appendLine("}")
+            appendLine("static inline jint grt_integer_reverse(jint value) {")
+            appendLine("    return grt_i32(grt_reverse_bits32(static_cast<uint32_t>(value)));")
+            appendLine("}")
+            appendLine("static inline jint grt_integer_reverse_bytes(jint value) {")
+            appendLine("    return grt_i32(grt_bswap32(static_cast<uint32_t>(value)));")
+            appendLine("}")
+            appendLine("static inline jint grt_integer_bit_count(jint value) {")
+            appendLine("    return grt_popcount32(static_cast<uint32_t>(value));")
+            appendLine("}")
+            appendLine("static inline jint grt_integer_number_of_leading_zeros(jint value) {")
+            appendLine("    return grt_clz32(static_cast<uint32_t>(value));")
+            appendLine("}")
+            appendLine("static inline jint grt_integer_number_of_trailing_zeros(jint value) {")
+            appendLine("    return grt_ctz32(static_cast<uint32_t>(value));")
+            appendLine("}")
+            appendLine("static inline jint grt_integer_highest_one_bit(jint value) {")
+            appendLine("    uint32_t bits = static_cast<uint32_t>(value);")
+            appendLine("    return bits == 0u ? 0 : grt_i32(0x80000000u >> grt_clz32(bits));")
+            appendLine("}")
+            appendLine("static inline jint grt_integer_lowest_one_bit(jint value) {")
+            appendLine("    uint32_t bits = static_cast<uint32_t>(value);")
+            appendLine("    return grt_i32(bits & (0u - bits));")
+            appendLine("}")
+            appendLine("static inline jlong grt_long_rotate_left(jlong value, jint distance) {")
+            appendLine("    return grt_i64(grt_rotl64(static_cast<uint64_t>(value), static_cast<uint32_t>(distance)));")
+            appendLine("}")
+            appendLine("static inline jlong grt_long_rotate_right(jlong value, jint distance) {")
+            appendLine("    return grt_i64(grt_rotr64(static_cast<uint64_t>(value), static_cast<uint32_t>(distance)));")
+            appendLine("}")
+            appendLine("static inline jlong grt_long_reverse(jlong value) {")
+            appendLine("    return grt_i64(grt_reverse_bits64(static_cast<uint64_t>(value)));")
+            appendLine("}")
+            appendLine("static inline jlong grt_long_reverse_bytes(jlong value) {")
+            appendLine("    return grt_i64(grt_bswap64(static_cast<uint64_t>(value)));")
+            appendLine("}")
+            appendLine("static inline jint grt_long_bit_count(jlong value) {")
+            appendLine("    return grt_popcount64(static_cast<uint64_t>(value));")
+            appendLine("}")
+            appendLine("static inline jint grt_long_number_of_leading_zeros(jlong value) {")
+            appendLine("    return grt_clz64(static_cast<uint64_t>(value));")
+            appendLine("}")
+            appendLine("static inline jint grt_long_number_of_trailing_zeros(jlong value) {")
+            appendLine("    return grt_ctz64(static_cast<uint64_t>(value));")
+            appendLine("}")
+            appendLine("static inline jlong grt_long_highest_one_bit(jlong value) {")
+            appendLine("    uint64_t bits = static_cast<uint64_t>(value);")
+            appendLine("    return bits == 0ULL ? 0LL : grt_i64(0x8000000000000000ULL >> grt_clz64(bits));")
+            appendLine("}")
+            appendLine("static inline jlong grt_long_lowest_one_bit(jlong value) {")
+            appendLine("    uint64_t bits = static_cast<uint64_t>(value);")
+            appendLine("    return grt_i64(bits & (0ULL - bits));")
+            appendLine("}")
+            appendLine("static inline jint grt_long_hash_code(jlong value) {")
+            appendLine("    uint64_t bits = static_cast<uint64_t>(value);")
+            appendLine("    return grt_i32(static_cast<uint32_t>(bits ^ (bits >> 32u)));")
+            appendLine("}")
+            appendLine("static inline jshort grt_short_reverse_bytes(jint value) {")
+            appendLine("    uint16_t bits = static_cast<uint16_t>(static_cast<uint32_t>(value) & 0xffffu);")
+            appendLine("    return grt_i16(grt_bswap16(bits));")
+            appendLine("}")
+            appendLine("static inline jint grt_byte_compare(jint lhs, jint rhs) {")
+            appendLine("    jint a = static_cast<jint>(static_cast<jbyte>(lhs));")
+            appendLine("    jint b = static_cast<jint>(static_cast<jbyte>(rhs));")
+            appendLine("    return a - b;")
+            appendLine("}")
+            appendLine("static inline jint grt_byte_compare_unsigned(jint lhs, jint rhs) {")
+            appendLine("    jint a = static_cast<jint>(static_cast<uint32_t>(lhs) & 0xffu);")
+            appendLine("    jint b = static_cast<jint>(static_cast<uint32_t>(rhs) & 0xffu);")
+            appendLine("    return a - b;")
+            appendLine("}")
+            appendLine("static inline jint grt_short_compare(jint lhs, jint rhs) {")
+            appendLine("    jint a = static_cast<jint>(static_cast<jshort>(lhs));")
+            appendLine("    jint b = static_cast<jint>(static_cast<jshort>(rhs));")
+            appendLine("    return a - b;")
+            appendLine("}")
+            appendLine("static inline jint grt_short_compare_unsigned(jint lhs, jint rhs) {")
+            appendLine("    jint a = static_cast<jint>(static_cast<uint32_t>(lhs) & 0xffffu);")
+            appendLine("    jint b = static_cast<jint>(static_cast<uint32_t>(rhs) & 0xffffu);")
+            appendLine("    return a - b;")
+            appendLine("}")
+            appendLine("static inline jint grt_character_compare(jint lhs, jint rhs) {")
+            appendLine("    jint a = static_cast<jint>(static_cast<uint32_t>(lhs) & 0xffffu);")
+            appendLine("    jint b = static_cast<jint>(static_cast<uint32_t>(rhs) & 0xffffu);")
+            appendLine("    return a - b;")
+            appendLine("}")
+            appendLine("static inline bool grt_character_is_high_surrogate(jint value) {")
+            appendLine("    uint32_t bits = static_cast<uint32_t>(value) & 0xffffu;")
+            appendLine("    return bits >= 0xd800u && bits <= 0xdbffu;")
+            appendLine("}")
+            appendLine("static inline bool grt_character_is_low_surrogate(jint value) {")
+            appendLine("    uint32_t bits = static_cast<uint32_t>(value) & 0xffffu;")
+            appendLine("    return bits >= 0xdc00u && bits <= 0xdfffu;")
+            appendLine("}")
+            appendLine("static inline bool grt_character_is_surrogate(jint value) {")
+            appendLine("    uint32_t bits = static_cast<uint32_t>(value) & 0xffffu;")
+            appendLine("    return bits >= 0xd800u && bits <= 0xdfffu;")
+            appendLine("}")
+            appendLine("static inline jint grt_character_to_code_point(jint high, jint low) {")
+            appendLine("    uint32_t highBits = static_cast<uint32_t>(high) & 0xffffu;")
+            appendLine("    uint32_t lowBits = static_cast<uint32_t>(low) & 0xffffu;")
+            appendLine("    uint32_t result = ((highBits - 0xd800u) << 10u) + (lowBits - 0xdc00u) + 0x10000u;")
+            appendLine("    return grt_i32(result);")
             appendLine("}")
             appendLine("static inline void grt_throw(JNIEnv* env, const char* className, const char* message) {")
             appendLine("    jclass clazz = env->FindClass(className);")
@@ -897,12 +1276,19 @@ internal object NativeCppBackend {
         appendLine()
     }
 
-    private fun emitNativeMethod(binding: NativeMethodBinding, referenceSlots: NativeReferenceSlots): String {
+    private fun emitNativeMethod(
+        binding: NativeMethodBinding,
+        referenceSlots: NativeReferenceSlots,
+        config: NativePipelineConfig,
+        intrinsicStats: NativeJvmIntrinsicStats,
+        ssaIntrinsicStats: NativeJvmIntrinsicStats
+    ): String {
         return when (binding.method.lowering) {
             NativeLoweringKind.SsaPrimitive,
             NativeLoweringKind.SsaPrimitiveInt -> NativeSsaIntMethodTranslator.translate(
                 binding.method,
-                binding.functionName
+                binding.functionName,
+                ssaIntrinsicStats
             )
 
             NativeLoweringKind.PrimitiveInt -> NativeIntMethodTranslator.translate(
@@ -914,7 +1300,9 @@ internal object NativeCppBackend {
                 binding.method,
                 binding.functionName,
                 binding.commitKind,
-                referenceSlots
+                referenceSlots,
+                config.enablePrimitiveIntrinsics,
+                intrinsicStats
             )
         }
     }

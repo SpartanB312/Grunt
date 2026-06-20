@@ -71,6 +71,32 @@ object NativePipelineRunner {
                 "fields=${sourceBundle.plan.referenceSlots.fieldSlotCount}, " +
                 "strings=${sourceBundle.plan.referenceSlots.stringSlotCount}"
         )
+        Logger.info(
+            "    Primitive intrinsic optimizations: " +
+                "calls=${sourceBundle.intrinsicStats.total}, " +
+                "kinds=${sourceBundle.intrinsicStats.unique}/${NativeJvmIntrinsicRegistry.keys.size}"
+        )
+        if (sourceBundle.intrinsicStats.total > 0) {
+            sourceBundle.intrinsicStats.byKey
+                .toList()
+                .sortedWith(compareBy({ it.first.owner }, { it.first.name }, { it.first.desc }))
+                .forEach { (key, count) ->
+                    Logger.info("      ${key.owner}.${key.name}${key.desc}: $count")
+                }
+        }
+        Logger.info(
+            "    SSA primitive intrinsic optimizations: " +
+                "calls=${sourceBundle.ssaIntrinsicStats.total}, " +
+                "kinds=${sourceBundle.ssaIntrinsicStats.unique}"
+        )
+        if (sourceBundle.ssaIntrinsicStats.total > 0) {
+            sourceBundle.ssaIntrinsicStats.byKey
+                .toList()
+                .sortedWith(compareBy({ it.first.owner }, { it.first.name }, { it.first.desc }))
+                .forEach { (key, count) ->
+                    Logger.info("      ${key.owner}.${key.name}${key.desc}: $count")
+                }
+        }
         Logger.info("    Injected native library resources: ${libraries.joinToString { it.resourceName }}")
     }
 

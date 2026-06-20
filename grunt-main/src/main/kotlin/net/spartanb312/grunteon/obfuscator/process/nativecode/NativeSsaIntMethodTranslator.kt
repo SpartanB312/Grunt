@@ -46,16 +46,31 @@ import org.objectweb.asm.tree.MethodNode
 import java.util.Locale
 
 internal object NativeSsaIntMethodTranslator {
+    private val IntegerRotateLeftKey = NativeJvmIntrinsicKey(
+        Opcodes.INVOKESTATIC,
+        "java/lang/Integer",
+        "rotateLeft",
+        "(II)I"
+    )
 
     fun validate(methodNode: MethodNode, ir: NativeJvmMethodIr) {
-        translate(methodNode, ir, "grt_validate")
+        translate(methodNode, ir, "grt_validate", intrinsicStats = null)
     }
 
-    fun translate(method: NativeValidatedMethod, functionName: String): String {
-        return translate(method.methodNode, method.jvmIr, functionName)
+    fun translate(
+        method: NativeValidatedMethod,
+        functionName: String,
+        intrinsicStats: NativeJvmIntrinsicStats? = null
+    ): String {
+        return translate(method.methodNode, method.jvmIr, functionName, intrinsicStats)
     }
 
-    private fun translate(methodNode: MethodNode, ir: NativeJvmMethodIr, functionName: String): String {
+    private fun translate(
+        methodNode: MethodNode,
+        ir: NativeJvmMethodIr,
+        functionName: String,
+        intrinsicStats: NativeJvmIntrinsicStats?
+    ): String {
         val argumentTypes = Type.getArgumentTypes(methodNode.desc)
         val returnType = Type.getReturnType(methodNode.desc)
         if (methodNode.access and Opcodes.ACC_STATIC == 0 ||
@@ -161,7 +176,7 @@ internal object NativeSsaIntMethodTranslator {
                 appendLine("{")
                 block.instructions.forEach { instruction ->
                     val result = instruction.result ?: unsupportedInstruction(instruction, "instruction has no SSA result")
-                    val value = expression(instruction, environment, overlay.metadata)
+                    val value = expression(instruction, environment, overlay.metadata, intrinsicStats)
                     append("    ")
                         .append(resultVariable(result))
                         .append(" = ")
@@ -453,7 +468,8 @@ internal object NativeSsaIntMethodTranslator {
     private fun expression(
         instruction: SSAInstruction,
         environment: Map<SSAValue, String>,
-        metadata: JvmSSAMetadata
+        metadata: JvmSSAMetadata,
+        intrinsicStats: NativeJvmIntrinsicStats?
     ): String {
         val allowedFloatingArithmetic = instruction is SSABinaryInstruction &&
             instruction.result.type.isFloatScalar() &&
@@ -478,7 +494,7 @@ internal object NativeSsaIntMethodTranslator {
             is SSACompareInstruction -> compareExpression(instruction, environment, metadata)
             is SSAUnaryInstruction -> unaryExpression(instruction, environment, metadata)
             is SSAConvertInstruction -> convertExpression(instruction, environment, metadata)
-            is SSACallInstruction -> callExpression(instruction, environment, metadata)
+            is SSACallInstruction -> callExpression(instruction, environment, metadata, intrinsicStats)
             is SSAIntrinsicInstruction -> intrinsicExpression(instruction, environment, metadata)
             else -> unsupportedInstruction(instruction, "unsupported SSA instruction ${instruction::class.simpleName}")
         }
@@ -627,11 +643,13 @@ internal object NativeSsaIntMethodTranslator {
     private fun callExpression(
         instruction: SSACallInstruction,
         environment: Map<SSAValue, String>,
-        metadata: JvmSSAMetadata
+        metadata: JvmSSAMetadata,
+        intrinsicStats: NativeJvmIntrinsicStats?
     ): String {
         if (!instruction.isIntegerRotateLeft(metadata) || instruction.args.size != 2) {
             unsupportedInstruction(instruction, "unsupported SSA call in primitive int lowering")
         }
+        intrinsicStats?.record(IntegerRotateLeftKey)
         val value = expression(instruction.args[0], environment, metadata)
         val distance = expression(instruction.args[1], environment, metadata)
         return "grt_rotl32($value, $distance)"

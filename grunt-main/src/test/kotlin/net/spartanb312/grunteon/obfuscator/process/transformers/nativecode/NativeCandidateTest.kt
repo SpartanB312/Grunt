@@ -249,7 +249,7 @@ class NativeCandidateTest {
 
     @Test
     fun interfaceMethodsRequireExplicitOptIn() {
-        val target = method("target", "()V", Opcodes.ACC_PUBLIC or Opcodes.ACC_ABSTRACT)
+        val target = method("target", "()V", Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC)
         val clazz = clazz("test/Api", target).apply {
             access = Opcodes.ACC_PUBLIC or Opcodes.ACC_INTERFACE or Opcodes.ACC_ABSTRACT
         }
@@ -261,8 +261,7 @@ class NativeCandidateTest {
                 rules = listOf(
                     NativeCandidate.Rule(
                         name = "class",
-                        methodInclude = listOf("test/Api"),
-                        includeAbstract = true
+                        methodInclude = listOf("test/Api")
                     )
                 )
             )
@@ -277,7 +276,6 @@ class NativeCandidateTest {
                     NativeCandidate.Rule(
                         name = "class",
                         methodInclude = listOf("test/Api"),
-                        includeAbstract = true,
                         includeInterfaceMethods = true
                     )
                 )
