@@ -78,12 +78,6 @@ class NativeCandidate : Transformer<NativeCandidate.Config>(
         @SettingDesc("Allow class initializers")
         @SettingName("Include class initializers")
         val includeClassInitializers: Boolean = false,
-        @SettingDesc("Allow abstract methods")
-        @SettingName("Include abstract")
-        val includeAbstract: Boolean = false,
-        @SettingDesc("Allow methods already declared native")
-        @SettingName("Include native")
-        val includeNative: Boolean = false,
         @SettingDesc("Allow methods declared in interface classes")
         @SettingName("Include interface methods")
         val includeInterfaceMethods: Boolean = false
@@ -197,9 +191,8 @@ class NativeCandidate : Transformer<NativeCandidate.Config>(
         private val excludedAnnotations = rule.excludedAnnotationList.map { normalizeAnnotation(it) }.filter { it.isNotBlank() }
 
         fun matches(classNode: ClassNode, method: MethodNode, classNameMapping: Map<String, String>): Boolean {
+            if (method.isNative || method.isAbstract) return false
             if (!rule.includeInterfaceMethods && classNode.isInterface) return false
-            if (!rule.includeAbstract && method.isAbstract) return false
-            if (!rule.includeNative && method.isNative) return false
             if (!rule.includeConstructors && method.name == "<init>") return false
             if (!rule.includeClassInitializers && method.name == "<clinit>") return false
             if (!rule.includeGenerated && method.hasAnnotation(GENERATED_METHOD)) return false
