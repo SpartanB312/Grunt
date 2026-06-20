@@ -35,6 +35,7 @@ import kotlin.reflect.KProperty
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaField
 
@@ -612,6 +613,40 @@ private fun NestedConfigField(label: String, description: String?, value: Any, o
 }
 
 @Suppress("UNCHECKED_CAST")
+private fun <E : Any> KProperty<*>.newListEntryValue(): E? {
+    val elementClass = returnType.arguments.firstOrNull()?.type?.classifier as? KClass<*> ?: return null
+    val value = when (elementClass) {
+        String::class -> ""
+        Int::class -> 0
+        Decimal::class -> Decimal.ZERO
+        Boolean::class -> false
+        else -> elementClass.defaultDataClassValue()
+    } ?: return null
+    return value as? E
+}
+
+private fun KClass<*>.defaultDataClassValue(): Any? {
+    if (!isData) return null
+    val constructor = primaryConstructor ?: return null
+    if (constructor.parameters.any { !it.isOptional }) return null
+    return runCatching { constructor.callBy(emptyMap()) }.getOrNull()
+}
+
+private data class ConfigDisplayInfo(
+    val label: String,
+    val description: String?,
+)
+
+private fun KClass<*>.configDisplayInfo(fallback: String): ConfigDisplayInfo {
+    return ConfigDisplayInfo(
+        label = findAnnotation<SettingName>()?.enText
+            ?: simpleName?.let(::camelCaseToWords)
+            ?: fallback,
+        description = findAnnotation<SettingDesc>()?.enText,
+    )
+}
+
+@Suppress("UNCHECKED_CAST")
 @Composable
 private fun <E : Any> ListField(
     prop: KProperty<*>,
@@ -624,7 +659,10 @@ private fun <E : Any> ListField(
     val pathBrowseSpec = prop.pathBrowseSpec()
 
     @Composable
-    fun ListEntryCard(index: Int, content: @Composable () -> Unit) {
+    fun ListEntryCard(
+        index: Int,
+        content: @Composable () -> Unit
+    ) {
         CardExpanderItem(
             icon = null,
             heading = {
@@ -668,21 +706,77 @@ private fun <E : Any> ListField(
         )
     }
 
+    @Composable
+    fun DataClassListEntryCard(
+        index: Int,
+        displayInfo: ConfigDisplayInfo,
+        content: @Composable () -> Unit
+    ) {
+        var itemExpanded by remember { mutableStateOf(false) }
+        Expander(
+            expanded = itemExpanded,
+            onExpandedChanged = { itemExpanded = it },
+            icon = null,
+            heading = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(0.7f)
+                ) {
+                    Text(
+                        displayInfo.label,
+                        style = FluentTheme.typography.bodyStrong,
+                    )
+                    if (displayInfo.description != null) {
+                        Text(
+                            displayInfo.description,
+                            color = FluentTheme.colors.text.text.secondary,
+                            style = FluentTheme.typography.caption
+                        )
+                    }
+                }
+            },
+            trailing = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = { listUpdater.add(index, value[index]) },
+                        iconOnly = true
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Copy,
+                            contentDescription = "Duplicate Entry"
+                        )
+                    }
+                    Button(
+                        onClick = { listUpdater.removeAt(index) },
+                        iconOnly = true
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Entry"
+                        )
+                    }
+                }
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
+            ) {
+                content()
+            }
+        }
+    }
+
     var expanded by remember { mutableStateOf(false) }
-    val newEntry: (() -> Unit)? = when (prop.returnType.arguments.first().type?.classifier) {
-        String::class -> {
-            { listUpdater.add("" as E) }
+    val newEntryValue = prop.newListEntryValue<E>()
+    val newEntry: (() -> Unit)? = newEntryValue?.let { entry ->
+        {
+            expanded = true
+            listUpdater.add(entry)
         }
-        Int::class -> {
-            { listUpdater.add(0 as E) }
-        }
-        Decimal::class -> {
-            { listUpdater.add(Decimal.ZERO as E) }
-        }
-        Boolean::class -> {
-            { listUpdater.add(false as E) }
-        }
-        else -> null
     }
 
     Expander(
@@ -821,12 +915,15 @@ private fun <E : Any> ListField(
                     val propType = item::class
                     when {
                         propType.isData -> {
-                            NestedConfigField(
-                                label = label,
-                                description = description,
-                                value = item,
-                                onChange = onChange
-                            )
+                            DataClassListEntryCard(
+                                index = index,
+                                displayInfo = propType.configDisplayInfo("#$index")
+                            ) {
+                                ConfigEditor(
+                                    value = item,
+                                    onChange = onChange
+                                )
+                            }
                         }
                         else -> InspectorCard(label, description) {
                             ReadOnlyValue(item.toString())

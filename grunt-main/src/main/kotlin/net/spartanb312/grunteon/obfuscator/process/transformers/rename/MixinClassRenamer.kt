@@ -21,6 +21,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.filter
 import net.spartanb312.grunteon.obfuscator.util.splash
 import java.nio.charset.StandardCharsets
 
+@Transformer.CreditMultiplier(2.0)
 @Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.rename.mixin_class_renamer.desc",
@@ -100,6 +101,7 @@ class MixinClassRenamer : Transformer<MixinClassRenamer.Config>(
                 instance.nameMapping.putClassMapping(classNode.name, newName)
             }
 
+            credit.add(mappings.size * 500L)
             Logger.info("    Generated mapping for ${mappings.size} mixin classes")
             if (mappings.isNotEmpty()) {
                 remapMixinFiles(config, mappings)

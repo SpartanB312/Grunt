@@ -47,6 +47,8 @@ class NativeCandidate : Transformer<NativeCandidate.Config>(
     ) : TransformerConfig()
 
     @Serializable
+    @SettingDesc("Set detection rule for scanner")
+    @SettingName("Detection rule")
     data class Rule(
         @SettingDesc("Human readable rule name shown in the summary")
         @SettingName("Name")

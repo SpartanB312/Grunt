@@ -17,6 +17,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.filter
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 
+@Transformer.CreditMultiplier(2.0)
 @Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.rename.mixin_field_renamer.desc",
@@ -67,9 +68,6 @@ class MixinFieldRenamer : Transformer<MixinFieldRenamer.Config>(
         @SettingName("Excluded annotations")
         val excludedAnnotations: List<String> = listOf(
             "Lorg/spongepowered/asm/mixin/Shadow;",
-            "Lorg/spongepowered/asm/mixin/Unique;",
-            "Lorg/spongepowered/asm/mixin/Final;",
-            "Lorg/spongepowered/asm/mixin/Mutable;",
             "Lorg/spongepowered/asm/mixin/Dynamic;"
         )
     ) : TransformerConfig()
@@ -135,6 +133,7 @@ class MixinFieldRenamer : Transformer<MixinFieldRenamer.Config>(
                 }
             }
 
+            credit.add(counter * 200L)
             Logger.info("    Generated mapping for $counter mixin fields")
         }
     }
