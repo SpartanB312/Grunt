@@ -17,8 +17,7 @@ import net.spartanb312.grunteon.obfuscator.util.filters.filter
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 
-@HiddenTransformer
-@Transformer.Stability(StableLevel.Developing)
+@Transformer.Stability(StableLevel.Stable)
 @Transformer.Description(
     "process.rename.mixin_field_renamer.desc",
     "Renaming fields in mixin classes"
@@ -36,8 +35,9 @@ class MixinFieldRenamer : Transformer<MixinFieldRenamer.Config>(
         after(Category.Miscellaneous, "Mixin renamer should run after miscellaneous category")
         after(Category.Optimization, "Mixin renamer should run after optimization category")
         after(Category.Redirect, "Mixin renamer should run after redirect category")
-        after(ControlflowJump::class.java, "Mixin renamer should run after ControlflowJump")
+        after(ControlflowJump::class.java, "MixinFieldRenamer should run after ControlflowJump")
         after(MixinClassRenamer::class.java, "MixinFieldRenamer should run after MixinClassRenamer")
+        after(FieldRenamer::class.java, "MixinFieldRenamer should run after FieldRenamer")
     }
 
     @Serializable
@@ -66,10 +66,11 @@ class MixinFieldRenamer : Transformer<MixinFieldRenamer.Config>(
         @SettingDesc("Mixin annotations that bind target members")
         @SettingName("Excluded annotations")
         val excludedAnnotations: List<String> = listOf(
-            "Lorg/spongepowered/asm/mixin/gen/Accessor;",
-            "Lorg/spongepowered/asm/mixin/gen/Invoker;",
             "Lorg/spongepowered/asm/mixin/Shadow;",
-            "Lorg/spongepowered/asm/mixin/Overwrite;"
+            "Lorg/spongepowered/asm/mixin/Unique;",
+            "Lorg/spongepowered/asm/mixin/Final;",
+            "Lorg/spongepowered/asm/mixin/Mutable;",
+            "Lorg/spongepowered/asm/mixin/Dynamic;"
         )
     ) : TransformerConfig()
 
