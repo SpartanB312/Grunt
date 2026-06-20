@@ -18,10 +18,38 @@ import org.objectweb.asm.tree.VarInsnNode
 
 internal object NativeLoaderClassFactory {
 
+    data class NativeLoaderLibrary(
+        val resourceDirectory: String,
+        val resourcePath: String,
+        val librarySuffix: String
+    )
+
     fun create(
         loaderInternalName: String,
         resourcePath: String,
         librarySuffix: String,
+        proxyMethods: List<Pair<String, String>> = emptyList()
+    ): ClassNode {
+        val normalizedResourcePath = resourcePath.removePrefix("/")
+        val resourceDirectory = normalizedResourcePath
+            .substringAfter("grunteon/native/", "")
+            .substringBefore("/", NativePlatform.current().resourceDirectory)
+        return create(
+            loaderInternalName = loaderInternalName,
+            libraries = listOf(
+                NativeLoaderLibrary(
+                    resourceDirectory = resourceDirectory,
+                    resourcePath = "/$normalizedResourcePath",
+                    librarySuffix = librarySuffix
+                )
+            ),
+            proxyMethods = proxyMethods
+        )
+    }
+
+    fun create(
+        loaderInternalName: String,
+        libraries: List<NativeLoaderLibrary>,
         proxyMethods: List<Pair<String, String>> = emptyList()
     ): ClassNode {
         return ClassNode(Opcodes.ASM9).apply {
@@ -43,7 +71,11 @@ internal object NativeLoaderClassFactory {
             proxyMethods.forEach { (name, desc) ->
                 methods.add(createProxyNative(name, desc))
             }
-            methods.add(createLoadMethod(loaderInternalName, resourcePath, librarySuffix))
+            methods.add(createNormalizeOsMethod())
+            methods.add(createNormalizeArchMethod())
+            methods.add(createSelectNativeLibraryResourceMethod(loaderInternalName, libraries))
+            methods.add(createSelectNativeLibrarySuffixMethod(loaderInternalName, libraries))
+            methods.add(createLoadMethod(loaderInternalName))
         }
     }
 
@@ -91,10 +123,244 @@ internal object NativeLoaderClassFactory {
         }
     }
 
-    private fun createLoadMethod(
+    private fun createNormalizeOsMethod(): MethodNode {
+        val method = MethodNode(
+            Opcodes.ASM9,
+            Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
+            "normalizeOs",
+            "(Ljava/lang/String;)Ljava/lang/String;",
+            null,
+            null
+        )
+        val notNull = LabelNode()
+        val mac = LabelNode()
+        val darwin = LabelNode()
+        val linux = LabelNode()
+        val nix = LabelNode()
+        val nux = LabelNode()
+        val aix = LabelNode()
+        val unknown = LabelNode()
+        method.instructions.apply {
+            add(VarInsnNode(Opcodes.ALOAD, 0))
+            add(JumpInsnNode(Opcodes.IFNONNULL, notNull))
+            add(LdcInsnNode(""))
+            add(VarInsnNode(Opcodes.ASTORE, 0))
+            add(notNull)
+            add(VarInsnNode(Opcodes.ALOAD, 0))
+            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "toLowerCase", "()Ljava/lang/String;", false))
+            add(VarInsnNode(Opcodes.ASTORE, 1))
+            addContainsBranch("win", mac)
+            add(LdcInsnNode("windows"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(mac)
+            addContainsBranch("mac", darwin)
+            add(LdcInsnNode("macos"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(darwin)
+            addContainsBranch("darwin", linux)
+            add(LdcInsnNode("macos"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(linux)
+            addContainsBranch("linux", nix)
+            add(LdcInsnNode("linux"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(nix)
+            addContainsBranch("nix", nux)
+            add(LdcInsnNode("linux"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(nux)
+            addContainsBranch("nux", aix)
+            add(LdcInsnNode("linux"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(aix)
+            addContainsBranch("aix", unknown)
+            add(LdcInsnNode("linux"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(unknown)
+            add(LdcInsnNode("unknown"))
+            add(InsnNode(Opcodes.ARETURN))
+        }
+        method.maxStack = 2
+        method.maxLocals = 2
+        return method
+    }
+
+    private fun createNormalizeArchMethod(): MethodNode {
+        val method = MethodNode(
+            Opcodes.ASM9,
+            Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
+            "normalizeArch",
+            "(Ljava/lang/String;)Ljava/lang/String;",
+            null,
+            null
+        )
+        val notNull = LabelNode()
+        val x86_64 = LabelNode()
+        val aarch64 = LabelNode()
+        val x86 = LabelNode()
+        val i386 = LabelNode()
+        val i686 = LabelNode()
+        val unknown = LabelNode()
+        method.instructions.apply {
+            add(VarInsnNode(Opcodes.ALOAD, 0))
+            add(JumpInsnNode(Opcodes.IFNONNULL, notNull))
+            add(LdcInsnNode(""))
+            add(VarInsnNode(Opcodes.ASTORE, 0))
+            add(notNull)
+            add(VarInsnNode(Opcodes.ALOAD, 0))
+            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "toLowerCase", "()Ljava/lang/String;", false))
+            add(VarInsnNode(Opcodes.ASTORE, 1))
+            addEqualsBranch("amd64", x86_64)
+            add(LdcInsnNode("x86_64"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(x86_64)
+            addEqualsBranch("x86_64", aarch64)
+            add(LdcInsnNode("x86_64"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(aarch64)
+            addEqualsBranch("aarch64", x86)
+            add(LdcInsnNode("aarch64"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(x86)
+            addEqualsBranch("arm64", i386)
+            add(LdcInsnNode("aarch64"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(i386)
+            addEqualsBranch("x86", i686)
+            add(LdcInsnNode("x86"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(i686)
+            addEqualsBranch("i386", unknown)
+            add(LdcInsnNode("x86"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(VarInsnNode(Opcodes.ALOAD, 1))
+            add(LdcInsnNode("i686"))
+            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false))
+            add(JumpInsnNode(Opcodes.IFEQ, unknown))
+            add(LdcInsnNode("x86"))
+            add(InsnNode(Opcodes.ARETURN))
+            add(unknown)
+            add(LdcInsnNode("unknown"))
+            add(InsnNode(Opcodes.ARETURN))
+        }
+        method.maxStack = 2
+        method.maxLocals = 2
+        return method
+    }
+
+    private fun createSelectNativeLibraryResourceMethod(
         loaderInternalName: String,
-        resourcePath: String,
-        librarySuffix: String
+        libraries: List<NativeLoaderLibrary>
+    ): MethodNode {
+        return createSelectNativeLibraryMethod(
+            loaderInternalName = loaderInternalName,
+            libraries = libraries,
+            name = "selectNativeLibraryResource",
+            selectedValue = { it.resourcePath }
+        )
+    }
+
+    private fun createSelectNativeLibrarySuffixMethod(
+        loaderInternalName: String,
+        libraries: List<NativeLoaderLibrary>
+    ): MethodNode {
+        return createSelectNativeLibraryMethod(
+            loaderInternalName = loaderInternalName,
+            libraries = libraries,
+            name = "selectNativeLibrarySuffix",
+            selectedValue = { it.librarySuffix }
+        )
+    }
+
+    private fun createSelectNativeLibraryMethod(
+        loaderInternalName: String,
+        libraries: List<NativeLoaderLibrary>,
+        name: String,
+        selectedValue: (NativeLoaderLibrary) -> String
+    ): MethodNode {
+        val method = MethodNode(
+            Opcodes.ASM9,
+            Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
+            name,
+            "()Ljava/lang/String;",
+            null,
+            null
+        )
+        val available = libraries.joinToString { it.resourceDirectory }
+        method.instructions.apply {
+            add(LdcInsnNode("os.name"))
+            add(LdcInsnNode(""))
+            add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                "java/lang/System",
+                "getProperty",
+                "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+                false
+            ))
+            add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                loaderInternalName,
+                "normalizeOs",
+                "(Ljava/lang/String;)Ljava/lang/String;",
+                false
+            ))
+            add(VarInsnNode(Opcodes.ASTORE, 0))
+            add(LdcInsnNode("os.arch"))
+            add(LdcInsnNode(""))
+            add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                "java/lang/System",
+                "getProperty",
+                "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+                false
+            ))
+            add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                loaderInternalName,
+                "normalizeArch",
+                "(Ljava/lang/String;)Ljava/lang/String;",
+                false
+            ))
+            add(VarInsnNode(Opcodes.ASTORE, 1))
+            add(VarInsnNode(Opcodes.ALOAD, 0))
+            add(LdcInsnNode("-"))
+            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;", false))
+            add(VarInsnNode(Opcodes.ALOAD, 1))
+            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;", false))
+            add(VarInsnNode(Opcodes.ASTORE, 2))
+            libraries.forEach { library ->
+                val next = LabelNode()
+                add(VarInsnNode(Opcodes.ALOAD, 2))
+                add(LdcInsnNode(library.resourceDirectory))
+                add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false))
+                add(JumpInsnNode(Opcodes.IFEQ, next))
+                add(LdcInsnNode(selectedValue(library)))
+                add(InsnNode(Opcodes.ARETURN))
+                add(next)
+            }
+            add(TypeInsnNode(Opcodes.NEW, "java/lang/UnsatisfiedLinkError"))
+            add(InsnNode(Opcodes.DUP))
+            add(LdcInsnNode("Unsupported native library platform: "))
+            add(VarInsnNode(Opcodes.ALOAD, 2))
+            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;", false))
+            add(LdcInsnNode(", available: $available"))
+            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;", false))
+            add(MethodInsnNode(
+                Opcodes.INVOKESPECIAL,
+                "java/lang/UnsatisfiedLinkError",
+                "<init>",
+                "(Ljava/lang/String;)V",
+                false
+            ))
+            add(InsnNode(Opcodes.ATHROW))
+        }
+        method.maxStack = 4
+        method.maxLocals = 3
+        return method
+    }
+
+    private fun createLoadMethod(
+        loaderInternalName: String
     ): MethodNode {
         val method = MethodNode(
             Opcodes.ASM9,
@@ -117,7 +383,13 @@ internal object NativeLoaderClassFactory {
             add(InsnNode(Opcodes.RETURN))
 
             add(alreadyLoading)
-            add(LdcInsnNode(resourcePath))
+            add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                loaderInternalName,
+                "selectNativeLibraryResource",
+                "()Ljava/lang/String;",
+                false
+            ))
             add(VarInsnNode(Opcodes.ASTORE, 0))
 
             add(LdcInsnNode(Type.getObjectType(loaderInternalName)))
@@ -156,7 +428,13 @@ internal object NativeLoaderClassFactory {
             add(hasStream)
             add(copyStart)
             add(LdcInsnNode("grunteon-native-"))
-            add(LdcInsnNode(librarySuffix))
+            add(MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                loaderInternalName,
+                "selectNativeLibrarySuffix",
+                "()Ljava/lang/String;",
+                false
+            ))
             add(InsnNode(Opcodes.ICONST_0))
             add(TypeInsnNode(Opcodes.ANEWARRAY, "java/nio/file/attribute/FileAttribute"))
             add(MethodInsnNode(
@@ -220,5 +498,19 @@ internal object NativeLoaderClassFactory {
         method.maxStack = 6
         method.maxLocals = 5
         return method
+    }
+
+    private fun org.objectweb.asm.tree.InsnList.addContainsBranch(value: String, falseTarget: LabelNode) {
+        add(VarInsnNode(Opcodes.ALOAD, 1))
+        add(LdcInsnNode(value))
+        add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "contains", "(Ljava/lang/CharSequence;)Z", false))
+        add(JumpInsnNode(Opcodes.IFEQ, falseTarget))
+    }
+
+    private fun org.objectweb.asm.tree.InsnList.addEqualsBranch(value: String, falseTarget: LabelNode) {
+        add(VarInsnNode(Opcodes.ALOAD, 1))
+        add(LdcInsnNode(value))
+        add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false))
+        add(JumpInsnNode(Opcodes.IFEQ, falseTarget))
     }
 }

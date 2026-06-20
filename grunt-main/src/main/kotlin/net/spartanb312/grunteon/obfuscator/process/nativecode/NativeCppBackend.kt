@@ -14,13 +14,25 @@ internal object NativeCppBackend {
         config: NativePipelineConfig,
         classExists: (String) -> Boolean
     ): NativeSourceBundle {
-        val platform = NativePlatform.current()
+        val targetPlatforms = NativePlatform.targetsFor(config)
+        val platform = targetPlatforms.firstOrNull {
+            it.resourceDirectory == NativePlatform.current().resourceDirectory
+        } ?: targetPlatforms.first()
         val loaderInternalName = uniqueLoaderName(classExists)
         val libraryFileName = platform.libraryPrefix + LibraryBaseName + platform.librarySuffix
         val resourceName = "grunteon/native/${platform.resourceDirectory}/$libraryFileName"
         val workDir = Path.of(config.workDir)
         val sourcePath = workDir.resolve("src").resolve("grunteon_native.cpp")
         val libraryPath = workDir.resolve("lib").resolve(platform.resourceDirectory).resolve(libraryFileName)
+        val libraryTargets = targetPlatforms.map { target ->
+            val targetLibraryFileName = target.libraryPrefix + LibraryBaseName + target.librarySuffix
+            NativeLibraryTarget(
+                platform = target,
+                resourceName = "grunteon/native/${target.resourceDirectory}/$targetLibraryFileName",
+                libraryFileName = targetLibraryFileName,
+                libraryPath = workDir.resolve("lib").resolve(target.resourceDirectory).resolve(targetLibraryFileName)
+            )
+        }
 
         val grouped = methods
             .groupBy { it.classNode }
@@ -72,7 +84,8 @@ internal object NativeCppBackend {
             sourceText = singleSource,
             sourcePath = sourcePath,
             libraryPath = libraryPath,
-            sourceFiles = emitSourceFiles(plan, sourcePath, singleSource, config)
+            sourceFiles = emitSourceFiles(plan, sourcePath, singleSource, config),
+            libraryTargets = libraryTargets
         )
     }
 

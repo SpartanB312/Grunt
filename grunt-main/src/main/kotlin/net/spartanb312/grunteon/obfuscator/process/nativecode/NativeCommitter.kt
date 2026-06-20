@@ -24,8 +24,13 @@ internal object NativeCommitter {
         instance.workRes.addGeneratedClass(
             NativeLoaderClassFactory.create(
                 loaderInternalName = plan.loaderInternalName,
-                resourcePath = "/${plan.resourceName}",
-                librarySuffix = plan.platform.librarySuffix,
+                libraries = bundle.resolvedLibraryTargets.map {
+                    NativeLoaderClassFactory.NativeLoaderLibrary(
+                        resourceDirectory = it.platform.resourceDirectory,
+                        resourcePath = "/${it.resourceName}",
+                        librarySuffix = it.platform.librarySuffix
+                    )
+                },
                 proxyMethods = loaderProxyMethods
             )
         )

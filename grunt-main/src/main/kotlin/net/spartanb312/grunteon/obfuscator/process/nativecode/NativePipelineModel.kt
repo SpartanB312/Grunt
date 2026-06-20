@@ -180,19 +180,46 @@ internal data class NativeSourceBundle(
     val sourceText: String,
     val sourcePath: Path,
     val libraryPath: Path,
-    val sourceFiles: List<NativeSourceFile> = listOf(NativeSourceFile(sourcePath, sourceText))
-)
+    val sourceFiles: List<NativeSourceFile> = listOf(NativeSourceFile(sourcePath, sourceText)),
+    val libraryTargets: List<NativeLibraryTarget> = emptyList()
+) {
+    val resolvedLibraryTargets: List<NativeLibraryTarget>
+        get() = libraryTargets.ifEmpty {
+            listOf(
+                NativeLibraryTarget(
+                    platform = plan.platform,
+                    resourceName = plan.resourceName,
+                    libraryFileName = plan.libraryFileName,
+                    libraryPath = libraryPath
+                )
+            )
+        }
+}
 
 internal data class NativeSourceFile(
     val path: Path,
     val text: String
 )
 
+internal data class NativeLibraryTarget(
+    val platform: NativePlatform,
+    val resourceName: String,
+    val libraryFileName: String,
+    val libraryPath: Path
+)
+
+internal data class NativeCompiledLibrary(
+    val platform: NativePlatform,
+    val resourceName: String,
+    val libraryPath: Path
+)
+
 internal data class NativeCompileResult(
     val success: Boolean,
     val libraryPath: Path? = null,
     val output: String = "",
-    val compileTimeMillis: Long = 0L
+    val compileTimeMillis: Long = 0L,
+    val libraries: List<NativeCompiledLibrary> = emptyList()
 )
 
 internal class NativeValidationException(

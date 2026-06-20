@@ -5,6 +5,7 @@ import kotlin.io.path.readText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class NativeCompilerTest {
@@ -161,6 +162,135 @@ class NativeCompilerTest {
     }
 
     @Test
+    fun buildsZigCommandWithTargetAndSourceResponseFile() {
+        val platform = NativePlatform.zigBuiltInTargets.single { it.resourceDirectory == "linux-x86_64" }
+        val base = sourceBundle(platform)
+        val bundle = base.copy(
+            sourceFiles = listOf(
+                NativeSourceFile(base.sourcePath.parent.resolve("chunk one.cpp"), ""),
+                NativeSourceFile(base.sourcePath.parent.resolve("chunk_two.cpp"), "")
+            )
+        )
+        val target = bundle.resolvedLibraryTargets.single()
+        val includeRoot = Path.of("build/test-jdk/include")
+        val includeOs = includeRoot.resolve("linux")
+
+        val command = NativeCompiler.buildZigCommand(
+            bundle = bundle,
+            target = target,
+            compiler = "zig",
+            includeRoot = includeRoot,
+            includeOs = includeOs,
+            config = NativePipelineConfig(
+                compilerMode = NativeCompilerMode.Zig,
+                compilerArgs = listOf("-DALL=1"),
+                targetCompilerArgs = mapOf("linux-x86_64" to listOf("-DTARGET=1"))
+            )
+        )
+
+        assertEquals("zig", command[0])
+        assertEquals("c++", command[1])
+        assertTrue("-target" in command)
+        assertTrue("x86_64-linux-gnu" in command)
+        assertTrue("-shared" in command)
+        assertTrue("-fPIC" in command)
+        assertTrue("-DALL=1" in command)
+        assertTrue("-DTARGET=1" in command)
+        assertFalse("-static-libgcc" in command)
+        assertTrue(command.last().startsWith("@"))
+        val responseText = Path.of(command.last().removePrefix("@")).readText()
+        assertTrue("chunk one.cpp" in responseText)
+        assertTrue("chunk_two.cpp" in responseText)
+    }
+
+    @Test
+    fun buildsZigLinkCommandWithTargetSpecificObjectResponseFile() {
+        val platform = NativePlatform.zigBuiltInTargets.single { it.resourceDirectory == "windows-x86_64" }
+        val bundle = sourceBundle(platform)
+        val target = bundle.resolvedLibraryTargets.single()
+        val objectPaths = listOf(
+            bundle.sourcePath.parent.resolve("obj").resolve("windows-x86_64").resolve("chunk one.o"),
+            bundle.sourcePath.parent.resolve("obj").resolve("windows-x86_64").resolve("chunk_two.o")
+        )
+
+        val command = NativeCompiler.buildZigLinkCommandWithObjectResponseFile(
+            bundle = bundle,
+            target = target,
+            compiler = "zig.exe",
+            objectPaths = objectPaths,
+            config = NativePipelineConfig(compilerMode = NativeCompilerMode.Zig)
+        )
+
+        assertEquals("zig.exe", command[0])
+        assertEquals("c++", command[1])
+        assertTrue("x86_64-windows-gnu" in command)
+        assertTrue("-shared" in command)
+        assertFalse("-static-libgcc" in command)
+        assertFalse("-static-libstdc++" in command)
+        assertTrue(command.last().startsWith("@"))
+        val responseText = Path.of(command.last().removePrefix("@")).readText()
+        assertTrue("windows-x86_64" in responseText)
+        assertTrue("chunk one.o" in responseText)
+    }
+
+    @Test
+    fun buildsMandatoryZigTargetLogLines() {
+        val platform = NativePlatform.zigBuiltInTargets.single { it.resourceDirectory == "linux-x86_64" }
+        val bundle = sourceBundle(platform)
+        val target = bundle.resolvedLibraryTargets.single()
+
+        val lines = NativeCompiler.zigTargetLogLines(
+            target = target,
+            compiler = "C:/Tools/zig/zig.exe",
+            includes = NativeJniIncludeResolution(
+                includeRoot = Path.of("C:/Program Files/Java/jdk-25/include"),
+                includeRootSource = "java.home",
+                platformInclude = Path.of("C:/CrossJdk/linux/include/linux"),
+                platformIncludeSource = "configured"
+            )
+        )
+
+        assertTrue(lines.any { it.contains("linux-x86_64") })
+        assertTrue(lines.any { it.contains("x86_64-linux-gnu") })
+        assertTrue(lines.any { it.contains("grunteon/native/linux-x86_64/libgrunteon_native.so") })
+        assertTrue(lines.any { it.contains("java.home") })
+        assertTrue(lines.any { it.contains("configured") })
+        assertTrue(lines.any { it.contains("C:/Tools/zig/zig.exe") })
+    }
+
+    @Test
+    fun compilesBuiltInZigTargetsWhenExecutableIsProvided() {
+        val zigExecutable = (System.getProperty("grunteon.zig.executable")
+            ?: System.getenv("GRUNTEON_ZIG_EXECUTABLE"))
+            ?.takeIf { it.isNotBlank() }
+            ?: return
+        val bundle = sourceBundleForTargets(NativePlatform.zigBuiltInTargets)
+
+        val result = NativeCompiler.compile(
+            bundle = bundle,
+            config = NativePipelineConfig(
+                compilerMode = NativeCompilerMode.Zig,
+                compilerExecutable = zigExecutable,
+                workDir = "build/native-compiler-zig-smoke/work",
+                optimizationLevel = NativeOptimizationLevel.O0
+            )
+        )
+
+        assertTrue(result.success, result.output)
+        assertEquals(NativePlatform.zigBuiltInTargets.size, result.libraries.size, result.output)
+        NativePlatform.zigBuiltInTargets.forEach { platform ->
+            val library = assertNotNull(
+                result.libraries.singleOrNull { it.platform.resourceDirectory == platform.resourceDirectory },
+                "Missing compiled Zig target ${platform.resourceDirectory}\n${result.output}"
+            )
+            assertTrue(
+                library.libraryPath.toFile().isFile,
+                "Missing library file for ${platform.resourceDirectory}: ${library.libraryPath}\n${result.output}"
+            )
+        }
+    }
+
+    @Test
     fun choosesConservativeAutomaticParallelCompileJobs() {
         val jobs = NativeCompiler.effectiveParallelCompileJobs(
             config = NativePipelineConfig(parallelCompileJobs = 0),
@@ -225,10 +355,16 @@ class NativeCompilerTest {
         assertEquals(NativeCompiler.NativeCompilerKind.Msvc, NativeCompiler.compilerKind("C:/LLVM/bin/clang-cl.exe"))
         assertEquals(NativeCompiler.NativeCompilerKind.GnuLike, NativeCompiler.compilerKind("clang++"))
         assertEquals(NativeCompiler.NativeCompilerKind.GnuLike, NativeCompiler.compilerKind("/usr/bin/g++"))
+        assertEquals(NativeCompiler.NativeCompilerKind.Zig, NativeCompiler.compilerKind("zig"))
+        assertEquals(NativeCompiler.NativeCompilerKind.Zig, NativeCompiler.compilerKind("anything", NativeCompilerMode.Zig))
     }
 
     private fun sourceBundle(platform: NativePlatform): NativeSourceBundle {
         val root = Path.of("build/native-compiler-test")
+        val sourceText = """
+            #include <jni.h>
+            extern "C" JNIEXPORT jint JNICALL grt_dummy(JNIEnv*, jclass) { return 1; }
+        """.trimIndent() + "\n"
         return NativeSourceBundle(
             plan = NativeBuildPlan(
                 loaderInternalName = "test/NativeLoader",
@@ -237,10 +373,32 @@ class NativeCompilerTest {
                 platform = platform,
                 classes = emptyList()
             ),
-            sourceText = "extern \"C\" int grt_dummy() { return 1; }\n",
+            sourceText = sourceText,
             sourcePath = root.resolve("src").resolve("grunteon_native.cpp"),
             libraryPath = root.resolve("lib").resolve(platform.resourceDirectory)
                 .resolve("${platform.libraryPrefix}grunteon_native${platform.librarySuffix}")
+        )
+    }
+
+    private fun sourceBundleForTargets(platforms: List<NativePlatform>): NativeSourceBundle {
+        val first = platforms.first()
+        val root = Path.of("build/native-compiler-zig-smoke")
+        val sourcePath = root.resolve("src").resolve("grunteon_native.cpp")
+        val base = sourceBundle(first)
+        return base.copy(
+            sourcePath = sourcePath,
+            libraryPath = root.resolve("lib").resolve(first.resourceDirectory)
+                .resolve("${first.libraryPrefix}grunteon_native${first.librarySuffix}"),
+            sourceFiles = listOf(NativeSourceFile(sourcePath, base.sourceText)),
+            libraryTargets = platforms.map { platform ->
+                NativeLibraryTarget(
+                    platform = platform,
+                    resourceName = "grunteon/native/${platform.resourceDirectory}/${platform.libraryPrefix}grunteon_native${platform.librarySuffix}",
+                    libraryFileName = "${platform.libraryPrefix}grunteon_native${platform.librarySuffix}",
+                    libraryPath = root.resolve("lib").resolve(platform.resourceDirectory)
+                        .resolve("${platform.libraryPrefix}grunteon_native${platform.librarySuffix}")
+                )
+            }
         )
     }
 }
