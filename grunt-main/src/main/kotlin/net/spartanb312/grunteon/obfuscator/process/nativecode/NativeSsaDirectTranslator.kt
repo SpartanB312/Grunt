@@ -13,7 +13,6 @@ import net.spartanb312.grunt.ir.ssa.core.SSACompareInstruction
 import net.spartanb312.grunt.ir.ssa.core.SSAComparePredicate
 import net.spartanb312.grunt.ir.ssa.core.SSAConvertInstruction
 import net.spartanb312.grunt.ir.ssa.core.SSAConvertKind
-import net.spartanb312.grunt.ir.ssa.core.SSAExternalFunctionRef
 import net.spartanb312.grunt.ir.ssa.core.SSAF32Type
 import net.spartanb312.grunt.ir.ssa.core.SSAF64Type
 import net.spartanb312.grunt.ir.ssa.core.SSAFloatLiteral
@@ -45,14 +44,22 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.tree.MethodNode
 import java.util.Locale
 
-internal object NativeSsaIntMethodTranslator {
-    private val IntegerRotateLeftKey = NativeJvmIntrinsicKey(
-        Opcodes.INVOKESTATIC,
-        "java/lang/Integer",
-        "rotateLeft",
-        "(II)I"
-    )
-
+/**
+ * Lowers the narrow SSA-direct path straight to C++ without the FullJvm operand-stack/JNI simulation layer.
+ *
+ * Current boundary:
+ * - static methods only;
+ * - primitive scalar parameters and return values only: boolean, byte, short, char, int, long, float, double;
+ * - pure SSA arithmetic/bitwise operations, branches, switch, primitive conversions, cmp3, and calls present in
+ *   NativeJvmIntrinsicRegistry when NativeSsaIntrinsicLowerer can express them directly;
+ * - checked int/long div/rem preserves JVM ArithmeticException and MIN_VALUE / -1 semantics.
+ *
+ * This path intentionally rejects objects, arrays, fields, instance calls, monitor enter/exit, try/catch regions,
+ * non-registry calls, and any SSA value with side effects outside this closed scalar subset. Rejected methods fall
+ * back to FullJvm in NativeValidator.
+ * TODO: Full SSA-IR direct translator
+ */
+internal object NativeSsaDirectTranslator {
     fun validate(methodNode: MethodNode, ir: NativeJvmMethodIr) {
         translate(methodNode, ir, "grt_validate", intrinsicStats = null)
     }
@@ -79,39 +86,39 @@ internal object NativeSsaIntMethodTranslator {
         ) {
             throw UnsupportedNativeInstruction(
                 NativeSkipReason.UnsupportedDescriptor,
-                "SSA primitive lowering accepts static primitive scalar helpers; descriptor=${methodNode.desc}"
+                "SSA direct lowering accepts static primitive scalar helpers; descriptor=${methodNode.desc}"
             )
         }
 
         val overlay = ir.ssaOverlay ?: throw UnsupportedNativeInstruction(
             NativeSkipReason.UnsupportedInstruction,
-            "SSA overlay is unavailable for primitive int lowering"
+            "SSA overlay is unavailable for SSA direct lowering"
         )
         val function = overlay.function
         if (function.exceptionRegions.isNotEmpty()) {
             throw UnsupportedNativeInstruction(
                 NativeSkipReason.TryCatch,
-                "SSA primitive int lowering does not handle exception regions"
+                "SSA direct lowering does not handle exception regions"
             )
         }
         if (function.parameters.size != argumentTypes.size) {
             throw UnsupportedNativeInstruction(
                 NativeSkipReason.UnsupportedDescriptor,
-                "SSA primitive lowering parameter count does not match descriptor"
+                "SSA direct lowering parameter count does not match descriptor"
             )
         }
         function.parameters.zip(argumentTypes).forEach { (parameter, type) ->
             if (!parameter.type.matchesJvmPrimitive(type)) {
                 throw UnsupportedNativeInstruction(
                     NativeSkipReason.UnsupportedDescriptor,
-                    "SSA primitive lowering requires int/long parameter types to match descriptor"
+                    "SSA direct lowering requires primitive scalar parameter types to match descriptor"
                 )
             }
         }
         if (!function.returnType.matchesJvmPrimitive(returnType)) {
             throw UnsupportedNativeInstruction(
                 NativeSkipReason.UnsupportedDescriptor,
-                "SSA primitive lowering requires int/long return type to match descriptor"
+                "SSA direct lowering requires a primitive scalar return type to match descriptor"
             )
         }
 
@@ -138,7 +145,7 @@ internal object NativeSsaIntMethodTranslator {
                 .append(jniType(returnType))
                 .append(" JNICALL ")
                 .append(functionName)
-                .append("(JNIEnv*, jclass")
+                .append("(JNIEnv* env, jclass")
             argumentTypes.forEachIndexed { index, type ->
                 append(", ")
                     .append(jniType(type))
@@ -175,13 +182,7 @@ internal object NativeSsaIntMethodTranslator {
                 appendLine("${label(block)}:")
                 appendLine("{")
                 block.instructions.forEach { instruction ->
-                    val result = instruction.result ?: unsupportedInstruction(instruction, "instruction has no SSA result")
-                    val value = expression(instruction, environment, overlay.metadata, intrinsicStats)
-                    append("    ")
-                        .append(resultVariable(result))
-                        .append(" = ")
-                        .append(value)
-                        .appendLine(";")
+                    emitInstruction(instruction, environment, overlay.metadata, intrinsicStats, returnType)
                 }
                 emitTerminator(block, block.terminator, environment, overlay.metadata)
                 appendLine("}")
@@ -207,7 +208,7 @@ internal object NativeSsaIntMethodTranslator {
                 if (!arg.type.isPrimitiveScalar()) {
                     throw UnsupportedNativeInstruction(
                             NativeSkipReason.UnsupportedDescriptor,
-                            "SSA primitive lowering requires primitive scalar block arguments"
+                            "SSA direct lowering requires primitive scalar block arguments"
                     )
                 }
             }
@@ -227,14 +228,14 @@ internal object NativeSsaIntMethodTranslator {
                     if (!terminator.value.type.isI32Like()) {
                         throw UnsupportedNativeInstruction(
                             NativeSkipReason.UnsupportedDescriptor,
-                            "SSA primitive int switch requires an i32-like switch value"
+                            "SSA direct lowering requires an i32-like switch value"
                         )
                     }
                     terminator.cases.forEach { case ->
                         if (case.key < Int.MIN_VALUE.toLong() || case.key > Int.MAX_VALUE.toLong()) {
                             throw UnsupportedNativeInstruction(
                                 NativeSkipReason.UnsupportedInstruction,
-                                "SSA primitive int switch key is outside JVM int range: ${case.key}"
+                                "SSA direct switch key is outside JVM int range: ${case.key}"
                             )
                         }
                         validateSuccessor(case.target)
@@ -246,17 +247,17 @@ internal object NativeSsaIntMethodTranslator {
                     if (value == null || !value.type.isPrimitiveScalar()) {
                         throw UnsupportedNativeInstruction(
                             NativeSkipReason.UnsupportedDescriptor,
-                            "SSA primitive lowering requires primitive scalar return values"
+                            "SSA direct lowering requires primitive scalar return values"
                         )
                     }
                 }
                 is SSAUnreachableTerminator -> throw UnsupportedNativeInstruction(
                     NativeSkipReason.UnsupportedInstruction,
-                    "SSA primitive int lowering does not support reachable unreachable terminators"
+                    "SSA direct lowering does not support reachable unreachable terminators"
                 )
                 else -> throw UnsupportedNativeInstruction(
                     NativeSkipReason.UnsupportedInstruction,
-                    "SSA primitive int lowering does not support ${terminator::class.simpleName}"
+                    "SSA direct lowering does not support ${terminator::class.simpleName}"
                 )
             }
         }
@@ -272,7 +273,7 @@ internal object NativeSsaIntMethodTranslator {
         if (successor.args.any { !it.type.isPrimitiveScalar() }) {
             throw UnsupportedNativeInstruction(
                 NativeSkipReason.UnsupportedDescriptor,
-                "SSA primitive lowering requires primitive scalar successor arguments"
+                "SSA direct lowering requires primitive scalar successor arguments"
             )
         }
     }
@@ -322,7 +323,7 @@ internal object NativeSsaIntMethodTranslator {
             is SSAReturnTerminator -> {
                 val value = terminator.value ?: throw UnsupportedNativeInstruction(
                     NativeSkipReason.UnsupportedDescriptor,
-                    "SSA primitive lowering requires a primitive scalar return value"
+                    "SSA direct lowering requires a primitive scalar return value"
                 )
                 append("    return ")
                     .append(returnExpression(value.type, expression(value, environment, metadata)))
@@ -381,6 +382,10 @@ internal object NativeSsaIntMethodTranslator {
 
     private fun argumentExpression(type: SSAType, argument: String): String {
         return when (type) {
+            SSABoolType -> "(($argument) != 0 ? 1u : 0u)"
+            SSAI8Type -> "static_cast<uint32_t>(static_cast<jbyte>($argument))"
+            SSAI16Type -> "static_cast<uint32_t>(static_cast<jshort>($argument))"
+            SSACharType -> "static_cast<uint32_t>(static_cast<jchar>($argument))"
             SSAI64Type -> "static_cast<uint64_t>($argument)"
             SSAF32Type,
             SSAF64Type -> argument
@@ -390,6 +395,10 @@ internal object NativeSsaIntMethodTranslator {
 
     private fun returnExpression(type: SSAType, expression: String): String {
         return when (type) {
+            SSABoolType -> "static_cast<jboolean>(($expression) != 0u)"
+            SSAI8Type -> "grt_i8($expression)"
+            SSAI16Type -> "grt_i16($expression)"
+            SSACharType -> "static_cast<jchar>(($expression) & 0xffffu)"
             SSAI64Type -> "grt_i64($expression)"
             SSAF32Type -> "static_cast<jfloat>($expression)"
             SSAF64Type -> "static_cast<jdouble>($expression)"
@@ -417,23 +426,38 @@ internal object NativeSsaIntMethodTranslator {
 
     private fun jniType(type: Type): String {
         return when (type.sort) {
+            Type.BOOLEAN -> "jboolean"
+            Type.BYTE -> "jbyte"
+            Type.SHORT -> "jshort"
+            Type.CHAR -> "jchar"
             Type.INT -> "jint"
             Type.LONG -> "jlong"
             Type.FLOAT -> "jfloat"
             Type.DOUBLE -> "jdouble"
             else -> throw UnsupportedNativeInstruction(
                 NativeSkipReason.UnsupportedDescriptor,
-                "SSA primitive lowering accepts only primitive scalar descriptors"
+                "SSA direct lowering accepts only primitive scalar descriptors"
             )
         }
     }
 
     private fun Type.isPrimitiveScalar(): Boolean {
-        return sort == Type.INT || sort == Type.LONG || sort == Type.FLOAT || sort == Type.DOUBLE
+        return sort == Type.BOOLEAN ||
+            sort == Type.BYTE ||
+            sort == Type.SHORT ||
+            sort == Type.CHAR ||
+            sort == Type.INT ||
+            sort == Type.LONG ||
+            sort == Type.FLOAT ||
+            sort == Type.DOUBLE
     }
 
     private fun SSAType.matchesJvmPrimitive(type: Type): Boolean {
         return when (type.sort) {
+            Type.BOOLEAN -> this == SSABoolType
+            Type.BYTE -> this == SSAI8Type
+            Type.SHORT -> this == SSAI16Type
+            Type.CHAR -> this == SSACharType
             Type.INT -> isI32Like()
             Type.LONG -> this == SSAI64Type
             Type.FLOAT -> this == SSAF32Type
@@ -456,11 +480,83 @@ internal object NativeSsaIntMethodTranslator {
             is SSAInstructionResult -> environment[value]
                 ?: throw UnsupportedNativeInstruction(
                     NativeSkipReason.UnsupportedInstruction,
-                    "SSA value $value is not available in primitive int lowering"
+                    "SSA value $value is not available in SSA direct lowering"
                 )
             else -> throw UnsupportedNativeInstruction(
                 NativeSkipReason.UnsupportedInstruction,
                 "unsupported SSA value ${value::class.simpleName}"
+            )
+        }
+    }
+
+    private fun StringBuilder.emitInstruction(
+        instruction: SSAInstruction,
+        environment: Map<SSAValue, String>,
+        metadata: JvmSSAMetadata,
+        intrinsicStats: NativeJvmIntrinsicStats?,
+        returnType: Type
+    ) {
+        val result = instruction.result ?: unsupportedInstruction(instruction, "instruction has no SSA result")
+        if (instruction is SSABinaryInstruction && instruction.isCheckedIntegerDivRem()) {
+            emitCheckedIntegerDivRem(instruction, result, environment, metadata, returnType)
+            return
+        }
+        val value = expression(instruction, environment, metadata, intrinsicStats)
+        append("    ")
+            .append(resultVariable(result))
+            .append(" = ")
+            .append(value)
+            .appendLine(";")
+    }
+
+    private fun SSABinaryInstruction.isCheckedIntegerDivRem(): Boolean {
+        return !result.type.isFloatScalar() && (op == SSABinaryOp.Div || op == SSABinaryOp.Rem)
+    }
+
+    private fun StringBuilder.emitCheckedIntegerDivRem(
+        instruction: SSABinaryInstruction,
+        result: SSAInstructionResult,
+        environment: Map<SSAValue, String>,
+        metadata: JvmSSAMetadata,
+        returnType: Type
+    ) {
+        if (result.type != SSAI32Type && result.type != SSAI64Type) {
+            unsupportedInstruction(instruction, "checked SSA div/rem requires int or long result")
+        }
+        val lhs = expression(instruction.lhs, environment, metadata)
+        val rhs = expression(instruction.rhs, environment, metadata)
+        val helper = when {
+            result.type == SSAI64Type && instruction.op == SSABinaryOp.Div -> "grt_idiv64"
+            result.type == SSAI64Type && instruction.op == SSABinaryOp.Rem -> "grt_irem64"
+            instruction.op == SSABinaryOp.Div -> "grt_idiv32"
+            else -> "grt_irem32"
+        }
+        append("    if (!")
+            .append(helper)
+            .append("(env, ")
+            .append(lhs)
+            .append(", ")
+            .append(rhs)
+            .append(", &")
+            .append(resultVariable(result))
+            .append(")) return ")
+            .append(exceptionReturnLiteral(returnType))
+            .appendLine(";")
+    }
+
+    private fun exceptionReturnLiteral(type: Type): String {
+        return when (type.sort) {
+            Type.BOOLEAN,
+            Type.BYTE,
+            Type.SHORT,
+            Type.CHAR,
+            Type.INT -> "0"
+            Type.LONG -> "0LL"
+            Type.FLOAT -> "0.0f"
+            Type.DOUBLE -> "0.0"
+            else -> throw UnsupportedNativeInstruction(
+                NativeSkipReason.UnsupportedDescriptor,
+                "SSA direct lowering accepts only primitive scalar descriptors"
             )
         }
     }
@@ -474,7 +570,8 @@ internal object NativeSsaIntMethodTranslator {
         val allowedFloatingArithmetic = instruction is SSABinaryInstruction &&
             instruction.result.type.isFloatScalar() &&
             (instruction.op == SSABinaryOp.Div || instruction.op == SSABinaryOp.Rem)
-        if (!allowedFloatingArithmetic && (instruction.effect.mayThrow ||
+        val allowedCheckedIntegerArithmetic = instruction is SSABinaryInstruction && instruction.isCheckedIntegerDivRem()
+        if (!allowedFloatingArithmetic && !allowedCheckedIntegerArithmetic && (instruction.effect.mayThrow ||
             instruction.effect.readsMemory ||
             instruction.effect.writesMemory ||
             instruction.effect.readsExternalState ||
@@ -484,8 +581,8 @@ internal object NativeSsaIntMethodTranslator {
             instruction.effect.isBarrier)
         ) {
             val call = instruction as? SSACallInstruction
-            if (call == null || !call.isIntegerRotateLeft(metadata)) {
-                unsupportedInstruction(instruction, "SSA instruction has effects outside pure primitive lowering")
+            if (call == null || !NativeSsaIntrinsicLowerer.isSupportedCall(call, metadata)) {
+                unsupportedInstruction(instruction, "SSA instruction has effects outside SSA direct lowering")
             }
         }
 
@@ -541,7 +638,7 @@ internal object NativeSsaIntMethodTranslator {
             }
             SSABinaryOp.UShr -> "(($lhs) >> (($rhs) & $shiftMask))"
             SSABinaryOp.Div,
-            SSABinaryOp.Rem -> unsupportedInstruction(instruction, "trapping integer binary op is not in the SSA primitive subset")
+            SSABinaryOp.Rem -> unsupportedInstruction(instruction, "checked integer binary op must be emitted as a statement")
         }
     }
 
@@ -553,13 +650,13 @@ internal object NativeSsaIntMethodTranslator {
         if (instruction.predicate == SSAComparePredicate.RefEq ||
             instruction.predicate == SSAComparePredicate.RefNe
         ) {
-            unsupportedInstruction(instruction, "reference compare is not in the SSA primitive int subset")
+            unsupportedInstruction(instruction, "reference compare is not in the SSA direct subset")
         }
         if (!instruction.lhs.type.isPrimitiveIntLike() ||
             !instruction.rhs.type.isPrimitiveIntLike() ||
             instruction.lhs.type.isWide() != instruction.rhs.type.isWide()
         ) {
-            unsupportedInstruction(instruction, "SSA primitive compare requires matching int/long operands")
+            unsupportedInstruction(instruction, "SSA direct compare requires matching primitive scalar operands")
         }
         val lhs = expression(instruction.lhs, environment, metadata)
         val rhs = expression(instruction.rhs, environment, metadata)
@@ -607,11 +704,11 @@ internal object NativeSsaIntMethodTranslator {
         metadata: JvmSSAMetadata
     ): String {
         if (instruction.kind != SSAConvertKind.Numeric && instruction.kind != SSAConvertKind.Bitcast) {
-            unsupportedInstruction(instruction, "SSA primitive int lowering only supports numeric/bitcast conversions")
+            unsupportedInstruction(instruction, "SSA direct lowering only supports numeric/bitcast conversions")
         }
         val value = expression(instruction.value, environment, metadata)
         return when (instruction.targetType) {
-            SSABoolType -> "($value)"
+            SSABoolType -> "(($value) != 0u ? 1u : 0u)"
             SSAI32Type -> when (instruction.value.type) {
                 SSAI64Type -> "static_cast<uint32_t>($value)"
                 SSAF32Type -> "static_cast<uint32_t>(grt_f2i($value))"
@@ -646,13 +743,8 @@ internal object NativeSsaIntMethodTranslator {
         metadata: JvmSSAMetadata,
         intrinsicStats: NativeJvmIntrinsicStats?
     ): String {
-        if (!instruction.isIntegerRotateLeft(metadata) || instruction.args.size != 2) {
-            unsupportedInstruction(instruction, "unsupported SSA call in primitive int lowering")
-        }
-        intrinsicStats?.record(IntegerRotateLeftKey)
-        val value = expression(instruction.args[0], environment, metadata)
-        val distance = expression(instruction.args[1], environment, metadata)
-        return "grt_rotl32($value, $distance)"
+        val args = instruction.args.map { expression(it, environment, metadata) }
+        return NativeSsaIntrinsicLowerer.emit(instruction, args, metadata, intrinsicStats)
     }
 
     private fun intrinsicExpression(
@@ -662,7 +754,7 @@ internal object NativeSsaIntMethodTranslator {
     ): String {
         val name = instruction.intrinsic.name
         if (!name.startsWith("cmp3.") || instruction.args.size != 2) {
-            unsupportedInstruction(instruction, "unsupported SSA intrinsic $name in primitive lowering")
+            unsupportedInstruction(instruction, "unsupported SSA intrinsic $name in SSA direct lowering")
         }
         val opcode = name.removePrefix("cmp3.").toIntOrNull()
             ?: unsupportedInstruction(instruction, "invalid cmp3 opcode in SSA intrinsic $name")
@@ -676,15 +768,6 @@ internal object NativeSsaIntMethodTranslator {
             Opcodes.DCMPG -> doubleCompare3(lhs, rhs, nanResult = 1)
             else -> unsupportedInstruction(instruction, "unsupported cmp3 opcode $opcode")
         }
-    }
-
-    private fun SSACallInstruction.isIntegerRotateLeft(metadata: JvmSSAMetadata): Boolean {
-        val target = target as? SSAExternalFunctionRef ?: return false
-        val method = metadata.methods[target.ref] ?: return false
-        return method.opcode == Opcodes.INVOKESTATIC &&
-            method.owner == "java/lang/Integer" &&
-            method.name == "rotateLeft" &&
-            method.desc == "(II)I"
     }
 
     private fun floatCompare3(lhs: String, rhs: String, nanResult: Int): String {

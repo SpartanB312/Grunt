@@ -331,10 +331,40 @@ internal object NativeCppBackend {
         appendLine("jbyte grt_i8(uint32_t value);")
         appendLine("jshort grt_i16(uint32_t value);")
         appendLine("jlong grt_i64(uint64_t value);")
+        appendLine("uint32_t grt_ishr32_bits(uint32_t bits, uint32_t distance);")
+        appendLine("uint64_t grt_lshr64_bits(uint64_t bits, uint32_t distance);")
         appendLine("jint grt_ishr32(jint value, jint distance);")
         appendLine("jlong grt_lshr64(jlong value, jint distance);")
+        appendLine("jint grt_f2i(jfloat value);")
+        appendLine("jlong grt_f2l(jfloat value);")
+        appendLine("jint grt_d2i(jdouble value);")
+        appendLine("jlong grt_d2l(jdouble value);")
+        appendLine("jfloat grt_f32_from_bits(uint32_t bits);")
+        appendLine("jdouble grt_f64_from_bits(uint64_t bits);")
+        appendLine("jint grt_float_to_raw_int_bits(jfloat value);")
+        appendLine("jint grt_float_to_int_bits(jfloat value);")
+        appendLine("jfloat grt_float_int_bits_to_float(jint value);")
+        appendLine("bool grt_float_is_nan(jfloat value);")
+        appendLine("bool grt_float_is_infinite(jfloat value);")
+        appendLine("bool grt_float_is_finite(jfloat value);")
+        appendLine("jint grt_float_compare(jfloat lhs, jfloat rhs);")
+        appendLine("jint grt_float_hash_code(jfloat value);")
+        appendLine("jlong grt_double_to_raw_long_bits(jdouble value);")
+        appendLine("jlong grt_double_to_long_bits(jdouble value);")
+        appendLine("jdouble grt_double_long_bits_to_double(jlong value);")
+        appendLine("bool grt_double_is_nan(jdouble value);")
+        appendLine("bool grt_double_is_infinite(jdouble value);")
+        appendLine("bool grt_double_is_finite(jdouble value);")
+        appendLine("jint grt_double_compare(jdouble lhs, jdouble rhs);")
+        appendLine("jint grt_double_hash_code(jdouble value);")
         appendLine("jint grt_math_abs_i32(jint value);")
         appendLine("jlong grt_math_abs_i64(jlong value);")
+        appendLine("jfloat grt_math_abs_f32(jfloat value);")
+        appendLine("jdouble grt_math_abs_f64(jdouble value);")
+        appendLine("jfloat grt_math_min_f32(jfloat lhs, jfloat rhs);")
+        appendLine("jfloat grt_math_max_f32(jfloat lhs, jfloat rhs);")
+        appendLine("jdouble grt_math_min_f64(jdouble lhs, jdouble rhs);")
+        appendLine("jdouble grt_math_max_f64(jdouble lhs, jdouble rhs);")
         appendLine("jint grt_integer_rotate_left(jint value, jint distance);")
         appendLine("jint grt_integer_rotate_right(jint value, jint distance);")
         appendLine("jint grt_integer_reverse(jint value);")
@@ -353,17 +383,27 @@ internal object NativeCppBackend {
         appendLine("jint grt_long_number_of_trailing_zeros(jlong value);")
         appendLine("jlong grt_long_highest_one_bit(jlong value);")
         appendLine("jlong grt_long_lowest_one_bit(jlong value);")
+        appendLine("jint grt_long_hash_code(jlong value);")
         appendLine("jshort grt_short_reverse_bytes(jint value);")
+        appendLine("jint grt_byte_compare(jint lhs, jint rhs);")
+        appendLine("jint grt_byte_compare_unsigned(jint lhs, jint rhs);")
+        appendLine("jint grt_short_compare(jint lhs, jint rhs);")
+        appendLine("jint grt_short_compare_unsigned(jint lhs, jint rhs);")
+        appendLine("jint grt_character_compare(jint lhs, jint rhs);")
+        appendLine("bool grt_character_is_high_surrogate(jint value);")
+        appendLine("bool grt_character_is_low_surrogate(jint value);")
+        appendLine("bool grt_character_is_surrogate(jint value);")
+        appendLine("jint grt_character_to_code_point(jint high, jint low);")
         appendLine("void grt_throw(JNIEnv* env, const char* className, const char* message);")
+        appendLine("bool grt_idiv32(JNIEnv* env, uint32_t lhs, uint32_t rhs, uint32_t* out);")
+        appendLine("bool grt_irem32(JNIEnv* env, uint32_t lhs, uint32_t rhs, uint32_t* out);")
+        appendLine("bool grt_idiv64(JNIEnv* env, uint64_t lhs, uint64_t rhs, uint64_t* out);")
+        appendLine("bool grt_irem64(JNIEnv* env, uint64_t lhs, uint64_t rhs, uint64_t* out);")
         appendLine("bool grt_monitor_enter(JNIEnv* env, jobject lock, std::vector<jobject>& heldMonitors);")
         appendLine("bool grt_monitor_exit(JNIEnv* env, jobject lock, std::vector<jobject>& heldMonitors);")
         appendLine("void grt_release_held_monitors(JNIEnv* env, std::vector<jobject>& heldMonitors);")
         appendLine("jint grt_baload(JNIEnv* env, jarray array, jint index);")
         appendLine("void grt_bastore(JNIEnv* env, jarray array, jint index, jint value);")
-        appendLine("jint grt_f2i(jfloat value);")
-        appendLine("jlong grt_f2l(jfloat value);")
-        appendLine("jint grt_d2i(jdouble value);")
-        appendLine("jlong grt_d2l(jdouble value);")
         appendLine("jobject grt_get_lookup(JNIEnv* env, jclass clazz);")
     }
 
@@ -1074,6 +1114,30 @@ internal object NativeCppBackend {
             appendLine("        env->DeleteLocalRef(clazz);")
             appendLine("    }")
             appendLine("}")
+            appendLine("static inline bool grt_idiv32(JNIEnv* env, uint32_t lhs, uint32_t rhs, uint32_t* out) {")
+            appendLine("    if (rhs == 0u) { grt_throw(env, \"java/lang/ArithmeticException\", \"/ by zero\"); return false; }")
+            appendLine("    if (lhs == 0x80000000u && rhs == 0xffffffffu) { *out = lhs; return true; }")
+            appendLine("    *out = static_cast<uint32_t>(grt_i32(lhs) / grt_i32(rhs));")
+            appendLine("    return true;")
+            appendLine("}")
+            appendLine("static inline bool grt_irem32(JNIEnv* env, uint32_t lhs, uint32_t rhs, uint32_t* out) {")
+            appendLine("    if (rhs == 0u) { grt_throw(env, \"java/lang/ArithmeticException\", \"/ by zero\"); return false; }")
+            appendLine("    if (lhs == 0x80000000u && rhs == 0xffffffffu) { *out = 0u; return true; }")
+            appendLine("    *out = static_cast<uint32_t>(grt_i32(lhs) % grt_i32(rhs));")
+            appendLine("    return true;")
+            appendLine("}")
+            appendLine("static inline bool grt_idiv64(JNIEnv* env, uint64_t lhs, uint64_t rhs, uint64_t* out) {")
+            appendLine("    if (rhs == 0ULL) { grt_throw(env, \"java/lang/ArithmeticException\", \"/ by zero\"); return false; }")
+            appendLine("    if (lhs == 0x8000000000000000ULL && rhs == 0xffffffffffffffffULL) { *out = lhs; return true; }")
+            appendLine("    *out = static_cast<uint64_t>(grt_i64(lhs) / grt_i64(rhs));")
+            appendLine("    return true;")
+            appendLine("}")
+            appendLine("static inline bool grt_irem64(JNIEnv* env, uint64_t lhs, uint64_t rhs, uint64_t* out) {")
+            appendLine("    if (rhs == 0ULL) { grt_throw(env, \"java/lang/ArithmeticException\", \"/ by zero\"); return false; }")
+            appendLine("    if (lhs == 0x8000000000000000ULL && rhs == 0xffffffffffffffffULL) { *out = 0ULL; return true; }")
+            appendLine("    *out = static_cast<uint64_t>(grt_i64(lhs) % grt_i64(rhs));")
+            appendLine("    return true;")
+            appendLine("}")
             appendLine("static inline bool grt_monitor_enter(JNIEnv* env, jobject lock, std::vector<jobject>& heldMonitors) {")
             appendLine("    if (lock == nullptr) { grt_throw(env, \"java/lang/NullPointerException\", \"MONITORENTER npe\"); return false; }")
             appendLine("    jobject held = env->NewLocalRef(lock);")
@@ -1284,16 +1348,15 @@ internal object NativeCppBackend {
         ssaIntrinsicStats: NativeJvmIntrinsicStats
     ): String {
         return when (binding.method.lowering) {
-            NativeLoweringKind.SsaPrimitive,
-            NativeLoweringKind.SsaPrimitiveInt -> NativeSsaIntMethodTranslator.translate(
-                binding.method,
-                binding.functionName,
-                ssaIntrinsicStats
-            )
-
             NativeLoweringKind.PrimitiveInt -> NativeIntMethodTranslator.translate(
                 binding.method.methodNode,
                 binding.functionName
+            )
+
+            NativeLoweringKind.SsaDirect -> NativeSsaDirectTranslator.translate(
+                binding.method,
+                binding.functionName,
+                ssaIntrinsicStats
             )
 
             NativeLoweringKind.FullJvm -> NativeJvmCppMethodTranslator.translate(

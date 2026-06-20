@@ -114,12 +114,12 @@ internal object NativeValidator {
         }
 
         return try {
-            NativeSsaIntMethodTranslator.validate(methodNode, jvmIr)
-            accepted(NativeLoweringKind.SsaPrimitive)
+            NativeIntMethodTranslator.validate(methodNode)
+            accepted(NativeLoweringKind.PrimitiveInt)
         } catch (_: UnsupportedNativeInstruction) {
             try {
-                NativeIntMethodTranslator.validate(methodNode)
-                accepted(NativeLoweringKind.PrimitiveInt)
+                NativeSsaDirectTranslator.validate(methodNode, jvmIr)
+                accepted(NativeLoweringKind.SsaDirect)
             } catch (exception: UnsupportedNativeInstruction) {
                 try {
                     NativeJvmCppMethodTranslator.validate(methodNode, jvmIr, fullJvmSupport)

@@ -37,10 +37,15 @@ internal data class NativeValidatedMethod(
         get() = candidate.displayName
 }
 
+/**
+ * Concrete C++ lowering path selected by NativeValidator.
+ *
+ * Selection order is intentional: try the narrow legacy int-only lowering first, then the scalar SSA-direct
+ * lowering, and use the FullJvm stack/JNI simulation path as the final fallback.
+ */
 internal enum class NativeLoweringKind {
-    SsaPrimitive,
-    SsaPrimitiveInt,
     PrimitiveInt,
+    SsaDirect,
     FullJvm
 }
 

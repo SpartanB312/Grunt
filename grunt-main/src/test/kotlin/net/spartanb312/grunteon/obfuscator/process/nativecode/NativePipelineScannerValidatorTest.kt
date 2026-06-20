@@ -102,7 +102,7 @@ class NativePipelineScannerValidatorTest {
 
         assertEquals(1, accepted.size)
         assertEquals(0, skipped.size)
-        assertEquals(NativeLoweringKind.SsaPrimitive, accepted.single().lowering)
+        assertEquals(NativeLoweringKind.PrimitiveInt, accepted.single().lowering)
     }
 
     @Test
@@ -141,14 +141,14 @@ class NativePipelineScannerValidatorTest {
 
     @Test
     fun validatorAcceptsInitialFullJvmBranchAndSwitchMethods() {
-        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = branchHelper()).lowering)
-        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = tableSwitchHelper()).lowering)
-        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = lookupSwitchHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = branchHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = tableSwitchHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = lookupSwitchHelper()).lowering)
     }
 
     @Test
     fun validatorAcceptsInitialFullJvmStaticMethodCalls() {
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = invokeStaticIntHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = invokeStaticIntHelper()).lowering)
         assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = invokeStaticObjectHelper()).lowering)
     }
 
@@ -204,7 +204,7 @@ class NativePipelineScannerValidatorTest {
     @Test
     fun validatorAcceptsInitialFullJvmLongMethods() {
         assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = materialKeyLongHelper()).lowering)
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = invokeStaticLongHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = invokeStaticLongHelper()).lowering)
         assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = longArrayStoreLoadHelper()).lowering)
     }
 
@@ -216,17 +216,17 @@ class NativePipelineScannerValidatorTest {
     @Test
     fun validatorAcceptsInitialFullJvmThrowAndTypedStackMethods() {
         assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = throwCatchHelper()).lowering)
-        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = dupX2LongHelper()).lowering)
-        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = dup2X1LongHelper()).lowering)
-        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = dup2X2LongHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = dupX2LongHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = dup2X1LongHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = dup2X2LongHelper()).lowering)
     }
 
     @Test
     fun validatorAcceptsInitialFullJvmFloatAndDoubleMethods() {
-        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = floatArithmeticHelper()).lowering)
-        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = doubleCompareHelper()).lowering)
-        assertEquals(NativeLoweringKind.SsaPrimitive, assertAccepted(method = doubleToIntHelper()).lowering)
-        assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = invokeStaticDoubleHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = floatArithmeticHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = doubleCompareHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = doubleToIntHelper()).lowering)
+        assertEquals(NativeLoweringKind.SsaDirect, assertAccepted(method = invokeStaticDoubleHelper()).lowering)
         assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = doubleArrayStoreLoadHelper()).lowering)
         assertEquals(NativeLoweringKind.FullJvm, assertAccepted(method = newFloatArrayHelper()).lowering)
     }

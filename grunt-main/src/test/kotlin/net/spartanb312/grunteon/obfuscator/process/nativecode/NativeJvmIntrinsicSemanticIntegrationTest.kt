@@ -26,6 +26,7 @@ import kotlin.io.path.pathString
 import kotlin.io.path.writeBytes
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class NativeJvmIntrinsicSemanticIntegrationTest {
@@ -98,6 +99,84 @@ class NativeJvmIntrinsicSemanticIntegrationTest {
                 assertIntrinsicResultEquals(key, inputs, expected, actual)
             }
         }
+    }
+
+    @Test
+    fun ssaDirectIntegerDivRemMatchesJavaExceptionSemanticsWhenToolchainExists() {
+        val compiler = findHostCompiler()
+        if (compiler == null) {
+            println("Skipping SSA div/rem semantic E2E: no C++ compiler found on PATH")
+            return
+        }
+        val includeRoot = resolveJniIncludeRoot(Path.of(System.getProperty("java.home")))
+        val includeOs = includeRoot.resolve(NativePlatform.current().jniIncludeOs)
+        if (!includeRoot.resolve("jni.h").exists() || !includeOs.exists()) {
+            println("Skipping SSA div/rem semantic E2E: JNI headers not found under $includeRoot and $includeOs")
+            return
+        }
+
+        val candidateClass = classNode(
+            "test/NativeSsaDivRemCandidate",
+            listOf(
+                intDivRemMethod("idiv", Opcodes.IDIV).appendAnnotation(NATIVE_INCLUDED),
+                intDivRemMethod("irem", Opcodes.IREM).appendAnnotation(NATIVE_INCLUDED),
+                longDivRemMethod("ldiv", Opcodes.LDIV).appendAnnotation(NATIVE_INCLUDED),
+                longDivRemMethod("lrem", Opcodes.LREM).appendAnnotation(NATIVE_INCLUDED)
+            )
+        )
+        val instance = instanceWith(candidateClass)
+
+        context(instance) {
+            NativePipelineRunner.run(
+                NativePipelineConfig(
+                    enabled = true,
+                    workDir = createTempDirectory("grunteon-native-ssa-divrem").pathString,
+                    splitSourceFiles = false,
+                    compilerExecutable = compiler.absolutePath,
+                    optimizationLevel = NativeOptimizationLevel.O0,
+                    failOnCompileError = true,
+                    failOnValidationError = true,
+                    cleanNativeAnnotations = true
+                )
+            )
+        }
+
+        val transformedClass = instance.workRes.inputClassMap.getValue("test/NativeSsaDivRemCandidate")
+        transformedClass.methods
+            .filter { it.name in setOf("idiv", "irem", "ldiv", "lrem") }
+            .forEach { method ->
+                assertTrue(method.access and Opcodes.ACC_NATIVE != 0, "${method.name} was not nativeized")
+            }
+
+        val classes = instance.workRes.inputClassMap.values.associate { classNode ->
+            classNode.name.replace('/', '.') to classNode.toBytes()
+        }
+        val loader = NativeIntrinsicClassLoader(
+            parent = javaClass.classLoader,
+            classes = classes,
+            resources = instance.workRes.generatedResources.toMap()
+        )
+        val native = Class.forName("test.NativeSsaDivRemCandidate", true, loader)
+        val idiv = native.getDeclaredMethod("idiv", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+        val irem = native.getDeclaredMethod("irem", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+        val ldiv = native.getDeclaredMethod("ldiv", Long::class.javaPrimitiveType, Long::class.javaPrimitiveType)
+        val lrem = native.getDeclaredMethod("lrem", Long::class.javaPrimitiveType, Long::class.javaPrimitiveType)
+
+        assertEquals(4, invokeStatic(idiv, arrayOf(8, 2)))
+        assertEquals(-4, invokeStatic(idiv, arrayOf(8, -2)))
+        assertEquals(Int.MIN_VALUE, invokeStatic(idiv, arrayOf(Int.MIN_VALUE, -1)))
+        assertEquals(1, invokeStatic(irem, arrayOf(7, 3)))
+        assertEquals(0, invokeStatic(irem, arrayOf(Int.MIN_VALUE, -1)))
+        assertFailsWith<ArithmeticException> { invokeStatic(idiv, arrayOf(1, 0)) }
+        assertFailsWith<ArithmeticException> { invokeStatic(irem, arrayOf(1, 0)) }
+
+        assertEquals(4L, invokeStatic(ldiv, arrayOf(8L, 2L)))
+        assertEquals(-4L, invokeStatic(ldiv, arrayOf(8L, -2L)))
+        assertEquals(Long.MIN_VALUE, invokeStatic(ldiv, arrayOf(Long.MIN_VALUE, -1L)))
+        assertEquals(1L, invokeStatic(lrem, arrayOf(7L, 3L)))
+        assertEquals(0L, invokeStatic(lrem, arrayOf(Long.MIN_VALUE, -1L)))
+        assertFailsWith<ArithmeticException> { invokeStatic(ldiv, arrayOf(1L, 0L)) }
+        assertFailsWith<ArithmeticException> { invokeStatic(lrem, arrayOf(1L, 0L)) }
     }
 
     private fun expectedIntrinsicResult(key: NativeJvmIntrinsicKey, inputs: Array<Any>): Any {
@@ -809,6 +888,28 @@ class NativeJvmIntrinsicSemanticIntegrationTest {
         method.maxStack = maxOf(maxStack, Type.getReturnType(key.desc).size, 1)
         method.maxLocals = maxOf(local, 1)
         return method
+    }
+
+    private fun intDivRemMethod(name: String, opcode: Int): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, name, "(II)I", null, null).apply {
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 0))
+            instructions.add(VarInsnNode(Opcodes.ILOAD, 1))
+            instructions.add(InsnNode(opcode))
+            instructions.add(InsnNode(Opcodes.IRETURN))
+            maxStack = 2
+            maxLocals = 2
+        }
+    }
+
+    private fun longDivRemMethod(name: String, opcode: Int): MethodNode {
+        return MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, name, "(JJ)J", null, null).apply {
+            instructions.add(VarInsnNode(Opcodes.LLOAD, 0))
+            instructions.add(VarInsnNode(Opcodes.LLOAD, 2))
+            instructions.add(InsnNode(opcode))
+            instructions.add(InsnNode(Opcodes.LRETURN))
+            maxStack = 4
+            maxLocals = 4
+        }
     }
 
     private fun methodName(key: NativeJvmIntrinsicKey): String {

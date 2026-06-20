@@ -85,9 +85,9 @@ object NativePipelineRunner {
                 }
         }
         Logger.info(
-            "    SSA primitive intrinsic optimizations: " +
+            "    SSA direct intrinsic optimizations: " +
                 "calls=${sourceBundle.ssaIntrinsicStats.total}, " +
-                "kinds=${sourceBundle.ssaIntrinsicStats.unique}"
+                "kinds=${sourceBundle.ssaIntrinsicStats.unique}/${NativeSsaIntrinsicLowerer.supportedKeys.size}"
         )
         if (sourceBundle.ssaIntrinsicStats.total > 0) {
             sourceBundle.ssaIntrinsicStats.byKey
