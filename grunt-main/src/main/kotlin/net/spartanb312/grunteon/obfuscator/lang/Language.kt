@@ -15,6 +15,7 @@ enum class Language(
     German("Deutsch", "de-DE"),
     Japanese("日本語", "ja-JP"),
     Korean("한국어", "ko-KR"),
+    Polish("polski", "pl-PL"),
     Portuguese("português", "pt", "pt-PT", "pt-BR"),
     Russian("русский", "ru-RU"),
     Spanish("español", "es-ES"),
