@@ -18,6 +18,7 @@ class LanguageTest {
                 "German",
                 "Japanese",
                 "Korean",
+                "Polish",
                 "Portuguese",
                 "Russian",
                 "Spanish",
