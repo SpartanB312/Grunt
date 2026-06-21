@@ -1,20 +1,16 @@
 package net.spartanb312.grunteon.obfuscator.process.nativecode
 
-import org.objectweb.asm.Opcodes
+import net.spartanb312.genesis.kotlin.InsnListBuilder
+import net.spartanb312.genesis.kotlin.clazz
+import net.spartanb312.genesis.kotlin.extensions.*
+import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.field
+import net.spartanb312.genesis.kotlin.method
+import org.objectweb.asm.Label
 import org.objectweb.asm.Type
-import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.AnnotationNode
-import org.objectweb.asm.tree.FieldInsnNode
-import org.objectweb.asm.tree.FieldNode
-import org.objectweb.asm.tree.InsnNode
-import org.objectweb.asm.tree.JumpInsnNode
-import org.objectweb.asm.tree.LabelNode
-import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
+import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.TryCatchBlockNode
-import org.objectweb.asm.tree.TypeInsnNode
-import org.objectweb.asm.tree.VarInsnNode
 
 internal object NativeLoaderClassFactory {
 
@@ -52,200 +48,162 @@ internal object NativeLoaderClassFactory {
         libraries: List<NativeLoaderLibrary>,
         proxyMethods: List<Pair<String, String>> = emptyList()
     ): ClassNode {
-        return ClassNode(Opcodes.ASM9).apply {
-            version = Opcodes.V1_6
-            access = Opcodes.ACC_PUBLIC or Opcodes.ACC_FINAL or Opcodes.ACC_SUPER
-            name = loaderInternalName
-            superName = "java/lang/Object"
-            fields.add(
-                FieldNode(
-                    Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC or Opcodes.ACC_VOLATILE,
-                    "loaded",
-                    "Z",
-                    null,
-                    null
-                )
-            )
-            methods.add(createConstructor())
-            methods.add(createRegisterNative())
+        return clazz(
+            access = PUBLIC + FINAL + SUPER,
+            name = loaderInternalName,
+            version = Java6
+        ) {
+            +field(PRIVATE + STATIC + VOLATILE, "loaded", "Z")
+            +createConstructor()
+            +createRegisterNative()
             proxyMethods.forEach { (name, desc) ->
-                methods.add(createProxyNative(name, desc))
+                +createProxyNative(name, desc)
             }
-            methods.add(createNormalizeOsMethod())
-            methods.add(createNormalizeArchMethod())
-            methods.add(createSelectNativeLibraryResourceMethod(loaderInternalName, libraries))
-            methods.add(createSelectNativeLibrarySuffixMethod(loaderInternalName, libraries))
-            methods.add(createLoadMethod(loaderInternalName))
+            +createNormalizeOsMethod()
+            +createNormalizeArchMethod()
+            +createSelectNativeLibraryResourceMethod(loaderInternalName, libraries)
+            +createSelectNativeLibrarySuffixMethod(loaderInternalName, libraries)
+            +createLoadMethod(loaderInternalName)
         }
     }
 
     private fun createConstructor(): MethodNode {
-        return MethodNode(
-            Opcodes.ASM9,
-            Opcodes.ACC_PRIVATE,
-            "<init>",
-            "()V",
-            null,
-            null
-        ).apply {
-            instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
-            instructions.add(MethodInsnNode(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false))
-            instructions.add(InsnNode(Opcodes.RETURN))
-            maxStack = 1
-            maxLocals = 1
+        return method(PRIVATE, "<init>", "()V") {
+            INSTRUCTIONS {
+                ALOAD(0)
+                INVOKESPECIAL("java/lang/Object", "<init>", "()V")
+                RETURN
+            }
+            MAXS(1, 1)
         }
     }
 
     private fun createRegisterNative(): MethodNode {
-        return MethodNode(
-            Opcodes.ASM9,
-            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC or Opcodes.ACC_NATIVE,
+        return method(
+            PUBLIC + STATIC + NATIVE,
             "registerNativesForClass",
-            "(ILjava/lang/Class;)V",
-            null,
-            null
+            "(ILjava/lang/Class;)V"
         )
     }
 
     private fun createProxyNative(name: String, desc: String): MethodNode {
-        return MethodNode(
-            Opcodes.ASM9,
-            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC or Opcodes.ACC_NATIVE or Opcodes.ACC_SYNTHETIC or Opcodes.ACC_BRIDGE,
+        return method(
+            PUBLIC + STATIC + NATIVE + SYNTHETIC + BRIDGE,
             name,
-            desc,
-            null,
-            null
-        ).apply {
-            visibleAnnotations = mutableListOf(
-                AnnotationNode("Ljava/lang/invoke/LambdaForm\$Hidden;"),
-                AnnotationNode("Ljdk/internal/vm/annotation/Hidden;")
-            )
+            desc
+        ) {
+            +AnnotationNode("Ljava/lang/invoke/LambdaForm\$Hidden;")
+            +AnnotationNode("Ljdk/internal/vm/annotation/Hidden;")
         }
     }
 
     private fun createNormalizeOsMethod(): MethodNode {
-        val method = MethodNode(
-            Opcodes.ASM9,
-            Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
-            "normalizeOs",
-            "(Ljava/lang/String;)Ljava/lang/String;",
-            null,
-            null
-        )
-        val notNull = LabelNode()
-        val mac = LabelNode()
-        val darwin = LabelNode()
-        val linux = LabelNode()
-        val nix = LabelNode()
-        val nux = LabelNode()
-        val aix = LabelNode()
-        val unknown = LabelNode()
-        method.instructions.apply {
-            add(VarInsnNode(Opcodes.ALOAD, 0))
-            add(JumpInsnNode(Opcodes.IFNONNULL, notNull))
-            add(LdcInsnNode(""))
-            add(VarInsnNode(Opcodes.ASTORE, 0))
-            add(notNull)
-            add(VarInsnNode(Opcodes.ALOAD, 0))
-            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "toLowerCase", "()Ljava/lang/String;", false))
-            add(VarInsnNode(Opcodes.ASTORE, 1))
-            addContainsBranch("win", mac)
-            add(LdcInsnNode("windows"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(mac)
-            addContainsBranch("mac", darwin)
-            add(LdcInsnNode("macos"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(darwin)
-            addContainsBranch("darwin", linux)
-            add(LdcInsnNode("macos"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(linux)
-            addContainsBranch("linux", nix)
-            add(LdcInsnNode("linux"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(nix)
-            addContainsBranch("nix", nux)
-            add(LdcInsnNode("linux"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(nux)
-            addContainsBranch("nux", aix)
-            add(LdcInsnNode("linux"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(aix)
-            addContainsBranch("aix", unknown)
-            add(LdcInsnNode("linux"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(unknown)
-            add(LdcInsnNode("unknown"))
-            add(InsnNode(Opcodes.ARETURN))
+        val notNull = Label()
+        val mac = Label()
+        val darwin = Label()
+        val linux = Label()
+        val nix = Label()
+        val nux = Label()
+        val aix = Label()
+        val unknown = Label()
+        return method(PRIVATE + STATIC, "normalizeOs", "(Ljava/lang/String;)Ljava/lang/String;") {
+            INSTRUCTIONS {
+                ALOAD(0)
+                IFNONNULL(notNull)
+                LDC("")
+                ASTORE(0)
+                LABEL(notNull)
+                ALOAD(0)
+                INVOKEVIRTUAL("java/lang/String", "toLowerCase", "()Ljava/lang/String;")
+                ASTORE(1)
+                addContainsBranch("win", mac)
+                LDC("windows")
+                ARETURN
+                LABEL(mac)
+                addContainsBranch("mac", darwin)
+                LDC("macos")
+                ARETURN
+                LABEL(darwin)
+                addContainsBranch("darwin", linux)
+                LDC("macos")
+                ARETURN
+                LABEL(linux)
+                addContainsBranch("linux", nix)
+                LDC("linux")
+                ARETURN
+                LABEL(nix)
+                addContainsBranch("nix", nux)
+                LDC("linux")
+                ARETURN
+                LABEL(nux)
+                addContainsBranch("nux", aix)
+                LDC("linux")
+                ARETURN
+                LABEL(aix)
+                addContainsBranch("aix", unknown)
+                LDC("linux")
+                ARETURN
+                LABEL(unknown)
+                LDC("unknown")
+                ARETURN
+            }
+            MAXS(2, 2)
         }
-        method.maxStack = 2
-        method.maxLocals = 2
-        return method
     }
 
     private fun createNormalizeArchMethod(): MethodNode {
-        val method = MethodNode(
-            Opcodes.ASM9,
-            Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
-            "normalizeArch",
-            "(Ljava/lang/String;)Ljava/lang/String;",
-            null,
-            null
-        )
-        val notNull = LabelNode()
-        val x86_64 = LabelNode()
-        val aarch64 = LabelNode()
-        val x86 = LabelNode()
-        val i386 = LabelNode()
-        val i686 = LabelNode()
-        val unknown = LabelNode()
-        method.instructions.apply {
-            add(VarInsnNode(Opcodes.ALOAD, 0))
-            add(JumpInsnNode(Opcodes.IFNONNULL, notNull))
-            add(LdcInsnNode(""))
-            add(VarInsnNode(Opcodes.ASTORE, 0))
-            add(notNull)
-            add(VarInsnNode(Opcodes.ALOAD, 0))
-            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "toLowerCase", "()Ljava/lang/String;", false))
-            add(VarInsnNode(Opcodes.ASTORE, 1))
-            addEqualsBranch("amd64", x86_64)
-            add(LdcInsnNode("x86_64"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(x86_64)
-            addEqualsBranch("x86_64", aarch64)
-            add(LdcInsnNode("x86_64"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(aarch64)
-            addEqualsBranch("aarch64", x86)
-            add(LdcInsnNode("aarch64"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(x86)
-            addEqualsBranch("arm64", i386)
-            add(LdcInsnNode("aarch64"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(i386)
-            addEqualsBranch("x86", i686)
-            add(LdcInsnNode("x86"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(i686)
-            addEqualsBranch("i386", unknown)
-            add(LdcInsnNode("x86"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(VarInsnNode(Opcodes.ALOAD, 1))
-            add(LdcInsnNode("i686"))
-            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false))
-            add(JumpInsnNode(Opcodes.IFEQ, unknown))
-            add(LdcInsnNode("x86"))
-            add(InsnNode(Opcodes.ARETURN))
-            add(unknown)
-            add(LdcInsnNode("unknown"))
-            add(InsnNode(Opcodes.ARETURN))
+        val notNull = Label()
+        val x86_64 = Label()
+        val aarch64 = Label()
+        val x86 = Label()
+        val i386 = Label()
+        val i686 = Label()
+        val unknown = Label()
+        return method(PRIVATE + STATIC, "normalizeArch", "(Ljava/lang/String;)Ljava/lang/String;") {
+            INSTRUCTIONS {
+                ALOAD(0)
+                IFNONNULL(notNull)
+                LDC("")
+                ASTORE(0)
+                LABEL(notNull)
+                ALOAD(0)
+                INVOKEVIRTUAL("java/lang/String", "toLowerCase", "()Ljava/lang/String;")
+                ASTORE(1)
+                addEqualsBranch("amd64", x86_64)
+                LDC("x86_64")
+                ARETURN
+                LABEL(x86_64)
+                addEqualsBranch("x86_64", aarch64)
+                LDC("x86_64")
+                ARETURN
+                LABEL(aarch64)
+                addEqualsBranch("aarch64", x86)
+                LDC("aarch64")
+                ARETURN
+                LABEL(x86)
+                addEqualsBranch("arm64", i386)
+                LDC("aarch64")
+                ARETURN
+                LABEL(i386)
+                addEqualsBranch("x86", i686)
+                LDC("x86")
+                ARETURN
+                LABEL(i686)
+                addEqualsBranch("i386", unknown)
+                LDC("x86")
+                ARETURN
+                ALOAD(1)
+                LDC("i686")
+                INVOKEVIRTUAL("java/lang/String", "equals", "(Ljava/lang/Object;)Z")
+                IFEQ(unknown)
+                LDC("x86")
+                ARETURN
+                LABEL(unknown)
+                LDC("unknown")
+                ARETURN
+            }
+            MAXS(2, 2)
         }
-        method.maxStack = 2
-        method.maxLocals = 2
-        return method
     }
 
     private fun createSelectNativeLibraryResourceMethod(
@@ -278,239 +236,152 @@ internal object NativeLoaderClassFactory {
         name: String,
         selectedValue: (NativeLoaderLibrary) -> String
     ): MethodNode {
-        val method = MethodNode(
-            Opcodes.ASM9,
-            Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC,
-            name,
-            "()Ljava/lang/String;",
-            null,
-            null
-        )
         val available = libraries.joinToString { it.resourceDirectory }
-        method.instructions.apply {
-            add(LdcInsnNode("os.name"))
-            add(LdcInsnNode(""))
-            add(MethodInsnNode(
-                Opcodes.INVOKESTATIC,
-                "java/lang/System",
-                "getProperty",
-                "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
-                false
-            ))
-            add(MethodInsnNode(
-                Opcodes.INVOKESTATIC,
-                loaderInternalName,
-                "normalizeOs",
-                "(Ljava/lang/String;)Ljava/lang/String;",
-                false
-            ))
-            add(VarInsnNode(Opcodes.ASTORE, 0))
-            add(LdcInsnNode("os.arch"))
-            add(LdcInsnNode(""))
-            add(MethodInsnNode(
-                Opcodes.INVOKESTATIC,
-                "java/lang/System",
-                "getProperty",
-                "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
-                false
-            ))
-            add(MethodInsnNode(
-                Opcodes.INVOKESTATIC,
-                loaderInternalName,
-                "normalizeArch",
-                "(Ljava/lang/String;)Ljava/lang/String;",
-                false
-            ))
-            add(VarInsnNode(Opcodes.ASTORE, 1))
-            add(VarInsnNode(Opcodes.ALOAD, 0))
-            add(LdcInsnNode("-"))
-            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;", false))
-            add(VarInsnNode(Opcodes.ALOAD, 1))
-            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;", false))
-            add(VarInsnNode(Opcodes.ASTORE, 2))
-            libraries.forEach { library ->
-                val next = LabelNode()
-                add(VarInsnNode(Opcodes.ALOAD, 2))
-                add(LdcInsnNode(library.resourceDirectory))
-                add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false))
-                add(JumpInsnNode(Opcodes.IFEQ, next))
-                add(LdcInsnNode(selectedValue(library)))
-                add(InsnNode(Opcodes.ARETURN))
-                add(next)
+        return method(PRIVATE + STATIC, name, "()Ljava/lang/String;") {
+            INSTRUCTIONS {
+                LDC("os.name")
+                LDC("")
+                INVOKESTATIC("java/lang/System", "getProperty", "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;")
+                INVOKESTATIC(loaderInternalName, "normalizeOs", "(Ljava/lang/String;)Ljava/lang/String;")
+                ASTORE(0)
+                LDC("os.arch")
+                LDC("")
+                INVOKESTATIC("java/lang/System", "getProperty", "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;")
+                INVOKESTATIC(loaderInternalName, "normalizeArch", "(Ljava/lang/String;)Ljava/lang/String;")
+                ASTORE(1)
+                ALOAD(0)
+                LDC("-")
+                INVOKEVIRTUAL("java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;")
+                ALOAD(1)
+                INVOKEVIRTUAL("java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;")
+                ASTORE(2)
+                libraries.forEach { library ->
+                    val next = Label()
+                    ALOAD(2)
+                    LDC(library.resourceDirectory)
+                    INVOKEVIRTUAL("java/lang/String", "equals", "(Ljava/lang/Object;)Z")
+                    IFEQ(next)
+                    LDC(selectedValue(library))
+                    ARETURN
+                    LABEL(next)
+                }
+                NEW("java/lang/UnsatisfiedLinkError")
+                DUP
+                LDC("Unsupported native library platform: ")
+                ALOAD(2)
+                INVOKEVIRTUAL("java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;")
+                LDC(", available: $available")
+                INVOKEVIRTUAL("java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;")
+                INVOKESPECIAL("java/lang/UnsatisfiedLinkError", "<init>", "(Ljava/lang/String;)V")
+                ATHROW
             }
-            add(TypeInsnNode(Opcodes.NEW, "java/lang/UnsatisfiedLinkError"))
-            add(InsnNode(Opcodes.DUP))
-            add(LdcInsnNode("Unsupported native library platform: "))
-            add(VarInsnNode(Opcodes.ALOAD, 2))
-            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;", false))
-            add(LdcInsnNode(", available: $available"))
-            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;", false))
-            add(MethodInsnNode(
-                Opcodes.INVOKESPECIAL,
-                "java/lang/UnsatisfiedLinkError",
-                "<init>",
-                "(Ljava/lang/String;)V",
-                false
-            ))
-            add(InsnNode(Opcodes.ATHROW))
+            MAXS(4, 3)
         }
-        method.maxStack = 4
-        method.maxLocals = 3
-        return method
     }
 
-    private fun createLoadMethod(
-        loaderInternalName: String
-    ): MethodNode {
-        val method = MethodNode(
-            Opcodes.ASM9,
-            Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC or Opcodes.ACC_SYNCHRONIZED,
-            "load",
-            "()V",
-            null,
-            null
-        )
-        val alreadyLoading = LabelNode()
-        val hasStream = LabelNode()
-        val copyStart = LabelNode()
-        val copyEnd = LabelNode()
-        val closeFailure = LabelNode()
-        val rethrow = LabelNode()
+    private fun createLoadMethod(loaderInternalName: String): MethodNode {
+        return method(PUBLIC + STATIC + SYNCHRONIZED, "load", "()V") {
+            val alreadyLoading = Label()
+            val hasStream = Label()
+            val copyStart = Label()
+            val copyEnd = Label()
+            val closeFailure = Label()
+            val rethrow = Label()
 
-        method.instructions.apply {
-            add(FieldInsnNode(Opcodes.GETSTATIC, loaderInternalName, "loaded", "Z"))
-            add(JumpInsnNode(Opcodes.IFEQ, alreadyLoading))
-            add(InsnNode(Opcodes.RETURN))
+            INSTRUCTIONS {
+                GETSTATIC(loaderInternalName, "loaded", "Z")
+                IFEQ(alreadyLoading)
+                RETURN
 
-            add(alreadyLoading)
-            add(MethodInsnNode(
-                Opcodes.INVOKESTATIC,
-                loaderInternalName,
-                "selectNativeLibraryResource",
-                "()Ljava/lang/String;",
-                false
-            ))
-            add(VarInsnNode(Opcodes.ASTORE, 0))
+                LABEL(alreadyLoading)
+                INVOKESTATIC(loaderInternalName, "selectNativeLibraryResource", "()Ljava/lang/String;")
+                ASTORE(0)
 
-            add(LdcInsnNode(Type.getObjectType(loaderInternalName)))
-            add(VarInsnNode(Opcodes.ALOAD, 0))
-            add(MethodInsnNode(
-                Opcodes.INVOKEVIRTUAL,
-                "java/lang/Class",
-                "getResourceAsStream",
-                "(Ljava/lang/String;)Ljava/io/InputStream;",
-                false
-            ))
-            add(VarInsnNode(Opcodes.ASTORE, 1))
-            add(VarInsnNode(Opcodes.ALOAD, 1))
-            add(JumpInsnNode(Opcodes.IFNONNULL, hasStream))
+                LDC(Type.getObjectType(loaderInternalName))
+                ALOAD(0)
+                INVOKEVIRTUAL("java/lang/Class", "getResourceAsStream", "(Ljava/lang/String;)Ljava/io/InputStream;")
+                ASTORE(1)
+                ALOAD(1)
+                IFNONNULL(hasStream)
 
-            add(TypeInsnNode(Opcodes.NEW, "java/lang/UnsatisfiedLinkError"))
-            add(InsnNode(Opcodes.DUP))
-            add(LdcInsnNode("Failed to open native library resource: "))
-            add(VarInsnNode(Opcodes.ALOAD, 0))
-            add(MethodInsnNode(
-                Opcodes.INVOKEVIRTUAL,
-                "java/lang/String",
-                "concat",
-                "(Ljava/lang/String;)Ljava/lang/String;",
-                false
-            ))
-            add(MethodInsnNode(
-                Opcodes.INVOKESPECIAL,
-                "java/lang/UnsatisfiedLinkError",
-                "<init>",
-                "(Ljava/lang/String;)V",
-                false
-            ))
-            add(InsnNode(Opcodes.ATHROW))
+                NEW("java/lang/UnsatisfiedLinkError")
+                DUP
+                LDC("Failed to open native library resource: ")
+                ALOAD(0)
+                INVOKEVIRTUAL("java/lang/String", "concat", "(Ljava/lang/String;)Ljava/lang/String;")
+                INVOKESPECIAL("java/lang/UnsatisfiedLinkError", "<init>", "(Ljava/lang/String;)V")
+                ATHROW
 
-            add(hasStream)
-            add(copyStart)
-            add(LdcInsnNode("grunteon-native-"))
-            add(MethodInsnNode(
-                Opcodes.INVOKESTATIC,
-                loaderInternalName,
-                "selectNativeLibrarySuffix",
-                "()Ljava/lang/String;",
-                false
-            ))
-            add(InsnNode(Opcodes.ICONST_0))
-            add(TypeInsnNode(Opcodes.ANEWARRAY, "java/nio/file/attribute/FileAttribute"))
-            add(MethodInsnNode(
-                Opcodes.INVOKESTATIC,
-                "java/nio/file/Files",
-                "createTempFile",
-                "(Ljava/lang/String;Ljava/lang/String;[Ljava/nio/file/attribute/FileAttribute;)Ljava/nio/file/Path;",
-                false
-            ))
-            add(VarInsnNode(Opcodes.ASTORE, 2))
+                LABEL(hasStream)
+                LABEL(copyStart)
+                LDC("grunteon-native-")
+                INVOKESTATIC(loaderInternalName, "selectNativeLibrarySuffix", "()Ljava/lang/String;")
+                ICONST_0
+                ANEWARRAY("java/nio/file/attribute/FileAttribute")
+                INVOKESTATIC(
+                    "java/nio/file/Files",
+                    "createTempFile",
+                    "(Ljava/lang/String;Ljava/lang/String;[Ljava/nio/file/attribute/FileAttribute;)Ljava/nio/file/Path;"
+                )
+                ASTORE(2)
 
-            add(VarInsnNode(Opcodes.ALOAD, 2))
-            add(MethodInsnNode(Opcodes.INVOKEINTERFACE, "java/nio/file/Path", "toFile", "()Ljava/io/File;", true))
-            add(VarInsnNode(Opcodes.ASTORE, 3))
-            add(VarInsnNode(Opcodes.ALOAD, 3))
-            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/io/File", "deleteOnExit", "()V", false))
+                ALOAD(2)
+                INVOKEINTERFACE("java/nio/file/Path", "toFile", "()Ljava/io/File;")
+                ASTORE(3)
+                ALOAD(3)
+                INVOKEVIRTUAL("java/io/File", "deleteOnExit", "()V")
 
-            add(VarInsnNode(Opcodes.ALOAD, 1))
-            add(VarInsnNode(Opcodes.ALOAD, 2))
-            add(InsnNode(Opcodes.ICONST_1))
-            add(TypeInsnNode(Opcodes.ANEWARRAY, "java/nio/file/CopyOption"))
-            add(InsnNode(Opcodes.DUP))
-            add(InsnNode(Opcodes.ICONST_0))
-            add(FieldInsnNode(
-                Opcodes.GETSTATIC,
-                "java/nio/file/StandardCopyOption",
-                "REPLACE_EXISTING",
-                "Ljava/nio/file/StandardCopyOption;"
-            ))
-            add(InsnNode(Opcodes.AASTORE))
-            add(MethodInsnNode(
-                Opcodes.INVOKESTATIC,
-                "java/nio/file/Files",
-                "copy",
-                "(Ljava/io/InputStream;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)J",
-                false
-            ))
-            add(InsnNode(Opcodes.POP2))
-            add(copyEnd)
+                ALOAD(1)
+                ALOAD(2)
+                ICONST_1
+                ANEWARRAY("java/nio/file/CopyOption")
+                DUP
+                ICONST_0
+                GETSTATIC("java/nio/file/StandardCopyOption", "REPLACE_EXISTING", "Ljava/nio/file/StandardCopyOption;")
+                AASTORE
+                INVOKESTATIC(
+                    "java/nio/file/Files",
+                    "copy",
+                    "(Ljava/io/InputStream;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)J"
+                )
+                POP2
+                LABEL(copyEnd)
 
-            add(VarInsnNode(Opcodes.ALOAD, 1))
-            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/io/InputStream", "close", "()V", false))
-            add(VarInsnNode(Opcodes.ALOAD, 3))
-            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/io/File", "getAbsolutePath", "()Ljava/lang/String;", false))
-            add(MethodInsnNode(Opcodes.INVOKESTATIC, "java/lang/System", "load", "(Ljava/lang/String;)V", false))
-            add(InsnNode(Opcodes.ICONST_1))
-            add(FieldInsnNode(Opcodes.PUTSTATIC, loaderInternalName, "loaded", "Z"))
-            add(InsnNode(Opcodes.RETURN))
+                ALOAD(1)
+                INVOKEVIRTUAL("java/io/InputStream", "close", "()V")
+                ALOAD(3)
+                INVOKEVIRTUAL("java/io/File", "getAbsolutePath", "()Ljava/lang/String;")
+                INVOKESTATIC("java/lang/System", "load", "(Ljava/lang/String;)V")
+                ICONST_1
+                PUTSTATIC(loaderInternalName, "loaded", "Z")
+                RETURN
 
-            add(closeFailure)
-            add(VarInsnNode(Opcodes.ASTORE, 4))
-            add(VarInsnNode(Opcodes.ALOAD, 1))
-            add(JumpInsnNode(Opcodes.IFNULL, rethrow))
-            add(VarInsnNode(Opcodes.ALOAD, 1))
-            add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/io/InputStream", "close", "()V", false))
-            add(rethrow)
-            add(VarInsnNode(Opcodes.ALOAD, 4))
-            add(InsnNode(Opcodes.ATHROW))
+                LABEL(closeFailure)
+                ASTORE(4)
+                ALOAD(1)
+                IFNULL(rethrow)
+                ALOAD(1)
+                INVOKEVIRTUAL("java/io/InputStream", "close", "()V")
+                LABEL(rethrow)
+                ALOAD(4)
+                ATHROW
+            }
+            TRYCATCH(copyStart, copyEnd, closeFailure, "java/lang/Throwable")
+            MAXS(6, 5)
         }
-        method.tryCatchBlocks.add(TryCatchBlockNode(copyStart, copyEnd, closeFailure, "java/lang/Throwable"))
-        method.maxStack = 6
-        method.maxLocals = 5
-        return method
     }
 
-    private fun org.objectweb.asm.tree.InsnList.addContainsBranch(value: String, falseTarget: LabelNode) {
-        add(VarInsnNode(Opcodes.ALOAD, 1))
-        add(LdcInsnNode(value))
-        add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "contains", "(Ljava/lang/CharSequence;)Z", false))
-        add(JumpInsnNode(Opcodes.IFEQ, falseTarget))
+    private fun InsnListBuilder.addContainsBranch(value: String, falseTarget: Label) {
+        ALOAD(1)
+        LDC(value)
+        INVOKEVIRTUAL("java/lang/String", "contains", "(Ljava/lang/CharSequence;)Z")
+        IFEQ(falseTarget)
     }
 
-    private fun org.objectweb.asm.tree.InsnList.addEqualsBranch(value: String, falseTarget: LabelNode) {
-        add(VarInsnNode(Opcodes.ALOAD, 1))
-        add(LdcInsnNode(value))
-        add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false))
-        add(JumpInsnNode(Opcodes.IFEQ, falseTarget))
+    private fun InsnListBuilder.addEqualsBranch(value: String, falseTarget: Label) {
+        ALOAD(1)
+        LDC(value)
+        INVOKEVIRTUAL("java/lang/String", "equals", "(Ljava/lang/Object;)Z")
+        IFEQ(falseTarget)
     }
 }

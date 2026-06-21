@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     id("buildsrc.convention.kotlin-jvm")
     alias(libs.plugins.compose)
@@ -85,6 +87,28 @@ tasks.register<Jar>("packageUniversalUberJar") {
             .filter { it.exists() }
             .map { if (it.isDirectory) it else zipTree(it) }
     })
+
+    doLast {
+        val requiredEntries = listOf(
+            "net/spartanb312/grunteon/ui/AppKt.class",
+            "net/spartanb312/grunteon/obfuscator/Grunteon.class",
+            "net/spartanb312/grunt/ir/ssa/core/SSAFunction.class",
+            "net/spartanb312/grunteon/index/io/ReadKt.class",
+            "net/spartanb312/everett/bootstrap/Main.class",
+            "skiko-windows-x64.dll",
+            "libskiko-linux-x64.so",
+            "libskiko-macos-x64.dylib",
+            "libskiko-macos-arm64.dylib",
+        )
+        val jarFile = archiveFile.get().asFile
+        ZipFile(jarFile).use { jar ->
+            val missingEntries = requiredEntries.filter { jar.getEntry(it) == null }
+            check(missingEntries.isEmpty()) {
+                "Universal UI JAR is missing required entries: ${missingEntries.joinToString()}"
+            }
+        }
+        logger.lifecycle("Universal UI JAR written to ${jarFile.absolutePath} (${jarFile.length() / 1024 / 1024} MiB)")
+    }
 }
 
 afterEvaluate {

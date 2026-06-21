@@ -1,6 +1,8 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.nativecode
 
 import kotlinx.serialization.Serializable
+import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.pipeline.after
 import net.spartanb312.grunteon.obfuscator.pipeline.before
@@ -212,31 +214,27 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
     private fun createIndyHelper(classNode: ClassNode, helperName: String, indy: InvokeDynamicInsnNode): MethodNode {
         val argTypes = Type.getArgumentTypes(indy.desc)
         val returnType = Type.getReturnType(indy.desc)
-        val helper = MethodNode(
-            Opcodes.ASM9,
+        val helper = method(
             helperAccess(classNode),
             helperName,
-            indy.desc,
-            null,
-            null
-        )
-
-        var local = 0
-        for (argType in argTypes) {
-            helper.instructions.add(VarInsnNode(argType.getOpcode(Opcodes.ILOAD), local))
-            local += argType.size
+            indy.desc
+        ) {
+            INSTRUCTIONS {
+                var local = 0
+                for (argType in argTypes) {
+                    +VarInsnNode(argType.getOpcode(Opcodes.ILOAD), local)
+                    local += argType.size
+                }
+                +InvokeDynamicInsnNode(
+                    indy.name,
+                    indy.desc,
+                    indy.bsm,
+                    *copyBootstrapArgs(indy.bsmArgs)
+                )
+                +InsnNode(returnType.getOpcode(Opcodes.IRETURN))
+            }
+            MAXS(maxOf(argTypes.sumOf { it.size }, returnType.size), argTypes.sumOf { it.size })
         }
-        helper.instructions.add(
-            InvokeDynamicInsnNode(
-                indy.name,
-                indy.desc,
-                indy.bsm,
-                *copyBootstrapArgs(indy.bsmArgs)
-            )
-        )
-        helper.instructions.add(InsnNode(returnType.getOpcode(Opcodes.IRETURN)))
-        helper.maxLocals = local
-        helper.maxStack = maxOf(argTypes.sumOf { it.size }, returnType.size)
         helper.appendNativeBridgeAnnotations()
         return helper
     }
@@ -253,33 +251,23 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
             Type.getObjectType("java/lang/invoke/MethodHandle"),
             *argTypes
         )
-        val helper = MethodNode(
-            Opcodes.ASM9,
+        val helper = method(
             helperAccess(classNode),
             helperName,
-            helperDesc,
-            null,
-            null
-        )
-
-        helper.instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
-        var local = 1
-        for (argType in argTypes) {
-            helper.instructions.add(VarInsnNode(argType.getOpcode(Opcodes.ILOAD), local))
-            local += argType.size
+            helperDesc
+        ) {
+            INSTRUCTIONS {
+                ALOAD(0)
+                var local = 1
+                for (argType in argTypes) {
+                    +VarInsnNode(argType.getOpcode(Opcodes.ILOAD), local)
+                    local += argType.size
+                }
+                INVOKEVIRTUAL("java/lang/invoke/MethodHandle", invoke.name, invoke.desc)
+                +InsnNode(returnType.getOpcode(Opcodes.IRETURN))
+            }
+            MAXS(maxOf(1 + argTypes.sumOf { it.size }, returnType.size), 1 + argTypes.sumOf { it.size })
         }
-        helper.instructions.add(
-            MethodInsnNode(
-                Opcodes.INVOKEVIRTUAL,
-                "java/lang/invoke/MethodHandle",
-                invoke.name,
-                invoke.desc,
-                false
-            )
-        )
-        helper.instructions.add(InsnNode(returnType.getOpcode(Opcodes.IRETURN)))
-        helper.maxLocals = local
-        helper.maxStack = maxOf(1 + argTypes.sumOf { it.size }, returnType.size)
         helper.appendNativeBridgeAnnotations()
         return helper
     }
@@ -290,32 +278,28 @@ class NativePreProcessor : Transformer<NativePreProcessor.Config>(
         constantDynamic: ConstantDynamic
     ): MethodNode {
         val returnType = Type.getType(constantDynamic.descriptor)
-        val helper = MethodNode(
-            Opcodes.ASM9,
+        val helper = method(
             helperAccess(classNode),
             helperName,
-            Type.getMethodDescriptor(returnType),
-            null,
-            null
-        )
-
-        helper.instructions.add(
-            LdcInsnNode(
-                ConstantDynamic(
-                    constantDynamic.name,
-                    constantDynamic.descriptor,
-                    constantDynamic.bootstrapMethod,
-                    *copyBootstrapArgs(
-                        Array(constantDynamic.bootstrapMethodArgumentCount) {
-                            constantDynamic.getBootstrapMethodArgument(it)
-                        }
+            Type.getMethodDescriptor(returnType)
+        ) {
+            INSTRUCTIONS {
+                +LdcInsnNode(
+                    ConstantDynamic(
+                        constantDynamic.name,
+                        constantDynamic.descriptor,
+                        constantDynamic.bootstrapMethod,
+                        *copyBootstrapArgs(
+                            Array(constantDynamic.bootstrapMethodArgumentCount) {
+                                constantDynamic.getBootstrapMethodArgument(it)
+                            }
+                        )
                     )
                 )
-            )
-        )
-        helper.instructions.add(InsnNode(returnType.getOpcode(Opcodes.IRETURN)))
-        helper.maxLocals = 0
-        helper.maxStack = returnType.size
+                +InsnNode(returnType.getOpcode(Opcodes.IRETURN))
+            }
+            MAXS(returnType.size, 0)
+        }
         helper.appendNativeBridgeAnnotations()
         return helper
     }

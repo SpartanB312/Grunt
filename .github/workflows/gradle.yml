@@ -40,6 +40,39 @@ jobs:
       - name: Package universal runnable UI JAR
         run: .\gradlew.bat :grunt-ui:packageUniversalUberJar --stacktrace --no-daemon
 
+      - name: Verify universal JAR contents
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $jar = Get-ChildItem -Path "grunt-ui/build/compose/jars" -Filter "*-all.jar" | Select-Object -First 1
+          if (-not $jar) {
+            throw "Universal UI JAR was not found."
+          }
+
+          $requiredEntries = @(
+            "net/spartanb312/grunteon/ui/AppKt.class",
+            "net/spartanb312/grunteon/obfuscator/Grunteon.class",
+            "net/spartanb312/grunt/ir/ssa/core/SSAFunction.class",
+            "net/spartanb312/grunteon/index/io/ReadKt.class",
+            "net/spartanb312/everett/bootstrap/Main.class",
+            "skiko-windows-x64.dll",
+            "libskiko-linux-x64.so",
+            "libskiko-macos-x64.dylib",
+            "libskiko-macos-arm64.dylib"
+          )
+
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($jar.FullName)
+          try {
+            $missingEntries = @($requiredEntries | Where-Object { $null -eq $zip.GetEntry($_) })
+            if ($missingEntries.Count -gt 0) {
+              throw "Universal UI JAR is missing required entries: $($missingEntries -join ', ')"
+            }
+          } finally {
+            $zip.Dispose()
+          }
+
+          Write-Host "Verified $($jar.Name) ($([math]::Round($jar.Length / 1MB, 2)) MiB)."
+
       - name: Upload universal runnable UI JAR
         if: success()
         uses: actions/upload-artifact@v4

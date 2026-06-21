@@ -1,5 +1,9 @@
 package net.spartanb312.grunteon.obfuscator.process.nativecode
 
+import net.spartanb312.genesis.kotlin.extensions.*
+import net.spartanb312.genesis.kotlin.extensions.insn.*
+import net.spartanb312.genesis.kotlin.instructions
+import net.spartanb312.genesis.kotlin.method
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -7,8 +11,6 @@ import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.InsnList
 import org.objectweb.asm.tree.InsnNode
-import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.VarInsnNode
 
@@ -84,20 +86,14 @@ internal object NativeCommitter {
     }
 
     private fun createClinitProxyMethod(classNode: ClassNode, binding: NativeMethodBinding) {
-        val proxy = MethodNode(
-            Opcodes.ASM9,
-            Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC or Opcodes.ACC_NATIVE or Opcodes.ACC_SYNTHETIC,
+        val proxy = method(
+            PRIVATE + STATIC + NATIVE + SYNTHETIC,
             binding.registeredName,
-            binding.registeredDesc,
-            null,
-            null
-        ).apply {
-            visibleAnnotations = mutableListOf(
-                AnnotationNode("Ljava/lang/invoke/LambdaForm\$Hidden;"),
-                AnnotationNode("Ljdk/internal/vm/annotation/Hidden;")
-            )
-            maxStack = 0
-            maxLocals = 0
+            binding.registeredDesc
+        ) {
+            +AnnotationNode("Ljava/lang/invoke/LambdaForm\$Hidden;")
+            +AnnotationNode("Ljdk/internal/vm/annotation/Hidden;")
+            MAXS(0, 0)
         }
         classNode.methods.add(proxy)
     }
@@ -112,16 +108,12 @@ internal object NativeCommitter {
         clinit.instructions.clear()
         clinit.tryCatchBlocks?.clear()
         clinit.localVariables?.clear()
-        clinit.instructions.add(MethodInsnNode(Opcodes.INVOKESTATIC, loaderInternalName, "load", "()V", false))
-        clinit.instructions.add(LdcInsnNode(Type.getObjectType(classNode.name)))
-        clinit.instructions.add(MethodInsnNode(
-            Opcodes.INVOKESTATIC,
-            loaderInternalName,
-            binding.registeredName,
-            binding.registeredDesc,
-            false
-        ))
-        clinit.instructions.add(InsnNode(Opcodes.RETURN))
+        clinit.instructions = instructions {
+            INVOKESTATIC(loaderInternalName, "load", "()V")
+            LDC(Type.getObjectType(classNode.name))
+            INVOKESTATIC(loaderInternalName, binding.registeredName, binding.registeredDesc)
+            RETURN
+        }
         clinit.maxStack = 1
         clinit.maxLocals = 0
     }
@@ -141,28 +133,22 @@ internal object NativeCommitter {
         method.tryCatchBlocks?.clear()
         method.localVariables?.clear()
 
-        method.instructions.apply {
-            add(MethodInsnNode(Opcodes.INVOKESTATIC, loaderInternalName, "load", "()V", false))
+        method.instructions = instructions {
+            INVOKESTATIC(loaderInternalName, "load", "()V")
             if (isStatic) {
-                add(LdcInsnNode(Type.getObjectType(classNode.name)))
+                LDC(Type.getObjectType(classNode.name))
             } else {
-                add(VarInsnNode(Opcodes.ALOAD, 0))
+                ALOAD(0)
             }
 
             var localIndex = if (isStatic) 0 else 1
             argumentTypes.forEach { argument ->
-                add(VarInsnNode(argument.getOpcode(Opcodes.ILOAD), localIndex))
+                +VarInsnNode(argument.getOpcode(Opcodes.ILOAD), localIndex)
                 localIndex += argument.size
             }
 
-            add(MethodInsnNode(
-                Opcodes.INVOKESTATIC,
-                loaderInternalName,
-                binding.registeredName,
-                binding.registeredDesc,
-                false
-            ))
-            add(InsnNode(returnType.getOpcode(Opcodes.IRETURN)))
+            INVOKESTATIC(loaderInternalName, binding.registeredName, binding.registeredDesc)
+            +InsnNode(returnType.getOpcode(Opcodes.IRETURN))
         }
 
         val argumentSlots = argumentTypes.sumOf { it.size }
@@ -181,15 +167,11 @@ internal object NativeCommitter {
         clinit.instructions.clear()
         clinit.tryCatchBlocks?.clear()
         clinit.localVariables?.clear()
-        clinit.instructions.add(registrationInstructions(classPlan, loaderInternalName))
-        clinit.instructions.add(MethodInsnNode(
-            Opcodes.INVOKESTATIC,
-            classNode.name,
-            binding.registeredName,
-            binding.registeredDesc,
-            false
-        ))
-        clinit.instructions.add(InsnNode(Opcodes.RETURN))
+        clinit.instructions = instructions {
+            +registrationInstructions(classPlan, loaderInternalName)
+            INVOKESTATIC(classNode.name, binding.registeredName, binding.registeredDesc)
+            RETURN
+        }
         clinit.maxStack = 2
         clinit.maxLocals = 0
     }
@@ -197,17 +179,16 @@ internal object NativeCommitter {
     private fun injectRegistration(classPlan: NativeClassPlan, loaderInternalName: String) {
         val classNode = classPlan.classNode
         val clinit = classNode.methods.firstOrNull { it.name == "<clinit>" && it.desc == "()V" }
-            ?: MethodNode(
-                Opcodes.ASM9,
-                Opcodes.ACC_STATIC,
+            ?: method(
+                STATIC,
                 "<clinit>",
-                "()V",
-                null,
-                null
-            ).also {
-                it.instructions.add(InsnNode(Opcodes.RETURN))
-                it.maxStack = 0
-                it.maxLocals = 0
+                "()V"
+            ) {
+                INSTRUCTIONS {
+                    RETURN
+                }
+                MAXS(0, 0)
+            }.also {
                 classNode.methods.add(it)
             }
 
@@ -218,17 +199,11 @@ internal object NativeCommitter {
 
     private fun registrationInstructions(classPlan: NativeClassPlan, loaderInternalName: String): InsnList {
         val classNode = classPlan.classNode
-        return InsnList().apply {
-            add(MethodInsnNode(Opcodes.INVOKESTATIC, loaderInternalName, "load", "()V", false))
-            add(LdcInsnNode(classPlan.classId))
-            add(LdcInsnNode(Type.getObjectType(classNode.name)))
-            add(MethodInsnNode(
-                Opcodes.INVOKESTATIC,
-                loaderInternalName,
-                "registerNativesForClass",
-                "(ILjava/lang/Class;)V",
-                false
-            ))
+        return instructions {
+            INVOKESTATIC(loaderInternalName, "load", "()V")
+            LDC(classPlan.classId)
+            LDC(Type.getObjectType(classNode.name))
+            INVOKESTATIC(loaderInternalName, "registerNativesForClass", "(ILjava/lang/Class;)V")
         }
     }
 
