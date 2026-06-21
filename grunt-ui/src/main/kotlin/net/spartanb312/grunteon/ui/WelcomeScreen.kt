@@ -33,10 +33,10 @@ fun WelcomeScreen(
             Text(status, color = FluentTheme.colors.text.text.secondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(8.dp))
             UiButton(onClick = onOpenConfig, modifier = Modifier.fillMaxWidth()) {
-                Text("Open existed config")
+                Text(uiText(UiText.Welcome.OpenExistingConfig))
             }
             UiOutlinedButton(onClick = onNewConfig, modifier = Modifier.fillMaxWidth()) {
-                Text("New config")
+                Text(uiText(UiText.Welcome.NewConfig))
             }
         }
     }

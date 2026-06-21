@@ -29,7 +29,7 @@ import org.objectweb.asm.tree.analysis.BasicInterpreter
 @Transformer.Stability(StableLevel.Moderate)
 @Transformer.Description(
     "process.controlflow.controlflow_jump.desc",
-    "Insert verifier-safe junk branches through Flow IR"
+    "Insert/edit verifier-safe branches through Flow IR"
 )
 class ControlflowJump : Transformer<ControlflowJump.Config>(
     "ControlflowJump",

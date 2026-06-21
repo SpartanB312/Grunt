@@ -82,7 +82,7 @@ fun TopToolbar(
     ContentDialog(
         title = errorDialog?.title ?: "",
         visible = errorDialog != null,
-        primaryButtonText = "OK",
+        primaryButtonText = uiText(UiText.Dialog.Ok),
         onButtonClick = {
             appModel.uiState.errorDialog = null
         },
@@ -93,11 +93,11 @@ fun TopToolbar(
 
     val discardConfirmState = appModel.discardConfirmState
     ContentDialog(
-        title = "Confirm Discard Config Changes",
+        title = uiText(UiText.Dialog.ConfirmDiscardConfigChangesTitle),
         visible = discardConfirmState != null,
-        primaryButtonText = "Save",
-        secondaryButtonText = "Discard",
-        closeButtonText = "Cancel",
+        primaryButtonText = uiText(UiText.Dialog.Save),
+        secondaryButtonText = uiText(UiText.Dialog.Discard),
+        closeButtonText = uiText(UiText.Dialog.Cancel),
         onButtonClick = {
             discardConfirmState?.let { state ->
                 when (it) {
@@ -121,7 +121,7 @@ fun TopToolbar(
             }
         },
         content = {
-            Text("You have unsaved config changes. Do you want to save them before proceeding?")
+            Text(uiText(UiText.Dialog.ConfirmDiscardConfigChangesMessage))
         }
     )
 
@@ -167,7 +167,7 @@ fun TopToolbar(
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.Document,
-                            text = "New Config",
+                            text = uiText(UiText.Toolbar.NewConfig),
                             trailingText = "Ctrl+N",
                         )
                         MenuFlyoutButton(
@@ -176,7 +176,7 @@ fun TopToolbar(
                                 requestOpenConfig()
                             },
                             icon = Icons.Default.FolderOpen,
-                            text = "Open Config",
+                            text = uiText(UiText.Toolbar.OpenConfig),
                             trailingText = "Ctrl+O",
                         )
                         MenuFlyoutSeparator()
@@ -186,7 +186,7 @@ fun TopToolbar(
                                 requestSaveConfig()
                             },
                             icon = Icons.Default.Save,
-                            text = "Save Config",
+                            text = uiText(UiText.Toolbar.SaveConfig),
                             trailingText = "Ctrl+S",
                         )
                         MenuFlyoutButton(
@@ -195,7 +195,7 @@ fun TopToolbar(
                                 requestSaveConfigAs()
                             },
                             icon = Icons.Default.SaveEdit,
-                            text = "Save Config As",
+                            text = uiText(UiText.Toolbar.SaveConfigAs),
                             trailingText = "Ctrl+Shift+S",
                         )
                         MenuFlyoutSeparator()
@@ -205,11 +205,11 @@ fun TopToolbar(
                                 appModel.onExit()
                             },
                             icon = Icons.Default.Dismiss,
-                            text = "Exit",
+                            text = uiText(UiText.Toolbar.Exit),
                         )
                     }
                 ) {
-                    Text("File")
+                    Text(uiText(UiText.Toolbar.File))
                 }
 
 
@@ -220,11 +220,11 @@ fun TopToolbar(
                                 // TODO: Run obfuscation
                             },
                             icon = Icons.Default.Play,
-                            text = "Run Obfuscation",
+                            text = uiText(UiText.Toolbar.RunObfuscation),
                         )
                     }
                 ) {
-                    Text("Tool")
+                    Text(uiText(UiText.Toolbar.Tool))
                 }
                 MenuBarItem(
                     items = {
@@ -234,7 +234,7 @@ fun TopToolbar(
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.BookQuestionMark,
-                            text = "Help",
+                            text = uiText(UiText.Toolbar.HelpItem),
                         )
                         MenuFlyoutSeparator()
                         MenuFlyoutButton(
@@ -243,7 +243,7 @@ fun TopToolbar(
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.Bug,
-                            text = "Submit a Bug Report",
+                            text = uiText(UiText.Toolbar.SubmitBugReport),
                         )
                         MenuFlyoutButton(
                             onClick = {
@@ -251,7 +251,7 @@ fun TopToolbar(
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.ChatHelp,
-                            text = "Submit Feature Request",
+                            text = uiText(UiText.Toolbar.SubmitFeatureRequest),
                         )
                         MenuFlyoutSeparator()
                         MenuFlyoutButton(
@@ -260,7 +260,7 @@ fun TopToolbar(
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.Globe,
-                            text = "Check for Updates",
+                            text = uiText(UiText.Toolbar.CheckForUpdates),
                         )
                         MenuFlyoutButton(
                             onClick = {
@@ -269,11 +269,11 @@ fun TopToolbar(
                                 isFlyoutVisible = false
                             },
                             icon = Icons.Default.Info,
-                            text = "About",
+                            text = uiText(UiText.Toolbar.About),
                         )
                     }
                 ) {
-                    Text("Help")
+                    Text(uiText(UiText.Toolbar.Help))
                 }
             }
             Box(Modifier.weight(1f).fillMaxHeight())
@@ -284,20 +284,24 @@ fun TopToolbar(
                 if (showWindowControls) {
                     WindowControlButton(
                         icon = Icons.Default.Subtract,
-                        contentDescription = "Minimize",
+                        contentDescription = uiText(UiText.Toolbar.Minimize),
                         buttonColors = ButtonDefaults.subtleButtonColors(),
                         onClick = onMinimize,
                     )
                     WindowControlButton(
                         icon = if (isMaximized) Icons.Default.SquareMultiple else Icons.Default.Square,
-                        contentDescription = if (isMaximized) "Restore" else "Maximize",
+                        contentDescription = if (isMaximized) {
+                            uiText(UiText.Toolbar.Restore)
+                        } else {
+                            uiText(UiText.Toolbar.Maximize)
+                        },
                         buttonColors = ButtonDefaults.subtleButtonColors(),
                         onClick = onToggleMaximize,
                     )
                     val defaultSubtle = ButtonDefaults.subtleButtonColors()
                     WindowControlButton(
                         icon = Icons.Default.Dismiss,
-                        contentDescription = "Close",
+                        contentDescription = uiText(UiText.Toolbar.Close),
                         buttonColors = ButtonDefaults.subtleButtonColors(
                             hovered = defaultSubtle.hovered.copy(fillColor = Color(0xFFC42B1C)),
                             pressed = defaultSubtle.pressed.copy(fillColor = Color(0xFFB3271C))
@@ -321,7 +325,7 @@ fun TopToolbar(
                     ) {
                         Row(modifier = Modifier.height(100.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                page.name,
+                                page.displayText(),
                                 modifier = Modifier
                                     .width(ToolbarTabWidth)
                                     .padding(4.dp),
@@ -332,6 +336,16 @@ fun TopToolbar(
                 }
             }
         }
+    }
+}
+
+private fun AppPage.displayText(): String {
+    return when (this) {
+        AppPage.General -> uiText(UiText.Toolbar.GeneralTab)
+        AppPage.Editor -> uiText(UiText.Toolbar.EditorTab)
+        AppPage.Native -> uiText(UiText.Toolbar.NativeTab)
+        AppPage.Obfuscation -> uiText(UiText.Toolbar.ObfuscationTab)
+        AppPage.Settings -> uiText(UiText.Toolbar.SettingsTab)
     }
 }
 

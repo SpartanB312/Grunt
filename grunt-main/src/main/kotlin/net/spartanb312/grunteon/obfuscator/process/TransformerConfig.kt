@@ -56,7 +56,7 @@ abstract class TransformerConfig {
 }
 
 @Serializable
-@I18NDescriptorPath("process.common")
+@I18NDescriptorPath("common.classFilter")
 @SettingDesc("Specify class include/exclude rules")
 @SettingName("Class filter")
 data class ClassFilterConfig(

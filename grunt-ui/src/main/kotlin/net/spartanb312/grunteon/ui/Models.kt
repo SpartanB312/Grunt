@@ -10,6 +10,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import net.spartanb312.grunteon.obfuscator.lang.I18n
+import net.spartanb312.grunteon.obfuscator.lang.Language
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Decimal
 import java.nio.file.Path
@@ -60,6 +62,7 @@ class TransformerDefinition(
     val configClass: KClass<out TransformerConfig>,
     val configFactory: () -> TransformerConfig,
     val transformerPrototype: Transformer<*>,
+    val descriptorRoot: String,
 ) {
     val isPluginProvided: Boolean
         get() = owner != "grunteon"
@@ -89,6 +92,7 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
         set(value) {
             if (_appConfig != value) {
                 _appConfig = value
+                I18n.setLanguage(value.language)
                 appConfigDirty = true
                 scheduleAppConfigSave()
             }
@@ -168,8 +172,13 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
         }.onSuccess {
             replaceAppConfigWithoutDirty(it)
         }.onFailure {
-            uiState.globalStatus = "Failed to load app config ${path.displayPath()}: ${it.message}"
-            println("Failed to load app config ${path.displayPath()}: ${it.message}")
+            val message = uiText(
+                UiText.Status.FailedToLoadAppConfig,
+                "path" to path.displayPath(),
+                "message" to (it.message ?: it::class.qualifiedName)
+            )
+            uiState.globalStatus = message
+            println(message)
         }
     }
 
@@ -183,7 +192,13 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
                 appConfigDirty = false
             }
         }.onFailure {
-            println("Failed to save app config ${path.displayPath()}: ${it.message}")
+            println(
+                uiText(
+                    UiText.Status.FailedToSaveAppConfig,
+                    "path" to path.displayPath(),
+                    "message" to (it.message ?: it::class.qualifiedName)
+                )
+            )
         }.isSuccess
     }
 
@@ -198,8 +213,13 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
         }.onSuccess {
             appState = it
         }.onFailure {
-            uiState.globalStatus = "Failed to load app state ${path.displayPath()}: ${it.message}"
-            println("Failed to load app state ${path.displayPath()}: ${it.message}")
+            val message = uiText(
+                UiText.Status.FailedToLoadAppState,
+                "path" to path.displayPath(),
+                "message" to (it.message ?: it::class.qualifiedName)
+            )
+            uiState.globalStatus = message
+            println(message)
         }
     }
 
@@ -208,7 +228,13 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
         return runCatching {
             AppState.write(appState, path)
         }.onFailure {
-            println("Failed to save app state ${path.displayPath()}: ${it.message}")
+            println(
+                uiText(
+                    UiText.Status.FailedToSaveAppState,
+                    "path" to path.displayPath(),
+                    "message" to (it.message ?: it::class.qualifiedName)
+                )
+            )
         }.isSuccess
     }
 
@@ -220,14 +246,14 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
             appState = appState.copy(configPath = path)
         } else {
             uiState.globalStatus = loaded.message
-            showCriticalError("Open Config Failed", loaded.message)
+            showCriticalError(uiText(UiText.Dialog.OpenConfigFailedTitle), loaded.message)
         }
         return loaded.success
     }
 
     fun newConfig() {
         replaceConfigWithoutDirty(ObfConfig())
-        uiState.globalStatus = "Created new empty config"
+        uiState.globalStatus = uiText(UiText.Status.CreatedNewConfig)
         appState = appState.copy(configPath = null)
     }
 
@@ -237,9 +263,9 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
         appState = appState.copy(configPath = null)
         val stateSaved = saveAppState()
         uiState.globalStatus = buildString {
-            append("Failed to load last config $failedPath. Opened a new empty config.")
+            append(uiText(UiText.Status.FailedToLoadLastConfig, "path" to failedPath))
             if (!stateSaved) {
-                println("Failed to update app state; $failedPath may be retried next launch.")
+                println(uiText(UiText.Status.FailedToUpdateAppState, "path" to failedPath))
             }
         }
     }
@@ -250,15 +276,22 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
             ObfConfig.write(configToSave, path)
         }.onSuccess {
             appState = appState.copy(configPath = path)
-            uiState.globalStatus =
-                "Saved config with ${configToSave.transformers.size} transformer nodes to ${path.toAbsolutePath().normalize()}"
+            uiState.globalStatus = uiText(
+                UiText.Status.SavedConfig,
+                "count" to configToSave.transformers.size,
+                "path" to path.toAbsolutePath().normalize()
+            )
             if (_obfConfig == configToSave) {
                 obfConfigDirty = false
             }
         }.onFailure {
-            val message = "Failed to save config ${path.toAbsolutePath().normalize()}: ${it.message}"
+            val message = uiText(
+                UiText.Status.FailedToSaveConfig,
+                "path" to path.toAbsolutePath().normalize(),
+                "message" to (it.message ?: it::class.qualifiedName)
+            )
             uiState.globalStatus = message
-            showCriticalError("Save Config Failed", message)
+            showCriticalError(uiText(UiText.Dialog.SaveConfigFailedTitle), message)
         }.isSuccess
     }
 
@@ -272,6 +305,7 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
 
     private fun replaceAppConfigWithoutDirty(config: AppConfig) {
         _appConfig = config
+        I18n.setLanguage(config.language)
         appConfigDirty = false
     }
 
@@ -316,22 +350,34 @@ data class AppErrorDialog(
 )
 
 class AppUIState {
-    var globalStatus by mutableStateOf("Ready")
+    var globalStatus by mutableStateOf(uiText(UiText.Status.Ready))
     var currentPage by mutableStateOf(AppPage.General)
     var errorDialog by mutableStateOf<AppErrorDialog?>(null)
 }
 
 @Serializable
 data class AppConfig(
+    @SettingDesc("Action performed when the UI starts")
+    @SettingName("Startup Action")
     val startupAction: StartupAction = StartupAction.LoadLastConfig,
 
     @SettingSection("UI")
+    @SettingDesc("Language used by the UI")
+    @SettingName("Language")
+    val language: Language = Language.English,
     @DecimalRangeVal(min = 0.5, max = 4.0, step = 0.1)
+    @SettingDesc("Scale factor applied to the whole UI layout")
     @SettingName("UI Scale")
     val uiScale: Decimal = Decimal.ONE,
     @DecimalRangeVal(min = 0.5, max = 4.0, step = 0.1)
+    @SettingDesc("Scale factor applied to UI text")
+    @SettingName("Font Scale")
     val fontScale: Decimal = Decimal.ONE,
+    @SettingDesc("Theme preference used by the UI")
+    @SettingName("Theme Mode")
     val themeMode: ThemeMode = ThemeMode.Auto,
+    @SettingDesc("Minimum log level shown in the obfuscation log panel")
+    @SettingName("Ui Log Level")
     val uiLogLevel: UiLogLevel = UiLogLevel.Info,
 ) {
     companion object {

@@ -248,7 +248,8 @@ class PipelineEditorState(
 
     var dialog: Dialog? by mutableStateOf(null)
 
-    val definitions = transformerDefinitions()
+    val definitions: List<TransformerDefinition>
+        get() = transformerDefinitions()
     var selectedIndexState by mutableStateOf(-1)
     var selectedIndex: Int
         get() {
@@ -273,7 +274,7 @@ class PipelineEditorState(
         val insertIndex = if (index == -1) currTransformers.size else index
         transformerList.add(insertIndex, newEntry)
         selectedIndex = insertIndex
-        appModel.uiState.globalStatus = "Added ${newEntry.name}"
+        appModel.uiState.globalStatus = uiText(UiText.Status.AddedTransformer, "name" to newEntry.name)
     }
 
     fun addTransformerEntryAfterSelection(newEntry: TransformerEntry) {
@@ -325,14 +326,14 @@ fun PipelineEditorPage(
         title = dialogData?.title ?: "",
         visible = dialogData != null,
         size = DialogSize.Standard,
-        primaryButtonText = "Confirm",
+        primaryButtonText = uiText(UiText.Dialog.Confirm),
         onButtonClick = {
             if (it == ContentDialogButton.Primary) {
                 dialogData?.onConfirm()
             }
             state.dialog = null
         },
-        secondaryButtonText = "Cancel",
+        secondaryButtonText = uiText(UiText.Dialog.Cancel),
         content = {
             Text(dialogData?.description ?: "")
         }

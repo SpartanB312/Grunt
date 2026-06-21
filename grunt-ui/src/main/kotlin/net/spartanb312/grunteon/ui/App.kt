@@ -48,7 +48,7 @@ fun main(args: Array<String>) {
         val appModel = remember { AppModel(this, coroutineScope) }
         Window(
             onCloseRequest = appModel::onExit,
-            title = "Grunteon",
+            title = uiText(UiText.App.WindowTitle),
             state = windowState,
             icon = painterResource("logo.svg")
         ) {
@@ -107,24 +107,34 @@ fun FrameWindowScope.App(
         val runConfig = appModel.obfConfig
         obfuscationLogs.clear()
         obfuscationRunning = true
-        appModel.uiState.globalStatus = "Obfuscation started"
+        appModel.uiState.globalStatus = uiText(UiText.Status.ObfuscationStarted)
         Thread(
             {
                 val previousLogger = Logger
                 Logger = UiLogger("Grunteon", appModel.appConfig.uiLogLevel, ::appendObfuscationLog)
                 try {
-                    Logger.info("Starting obfuscation with ${runConfig.transformers.count { it.enabled }} enabled transformer nodes")
+                    Logger.info(
+                        uiText(
+                            UiText.Obfuscation.StartingLog,
+                            "count" to runConfig.transformers.count { it.enabled }
+                        )
+                    )
                     val instance = Grunteon.create(runConfig)
                     instance.run()
-                    Logger.info("Obfuscation finished")
+                    Logger.info(uiText(UiText.Obfuscation.FinishedLog))
                     SwingUtilities.invokeLater {
-                        appModel.uiState.globalStatus = "Obfuscation finished"
+                        appModel.uiState.globalStatus = uiText(UiText.Status.ObfuscationFinished)
                     }
                 } catch (t: Throwable) {
-                    Logger.error("Obfuscation failed: ${t.message ?: t::class.qualifiedName}")
+                    Logger.error(
+                        uiText(
+                            UiText.Obfuscation.FailedLog,
+                            "message" to (t.message ?: t::class.qualifiedName)
+                        )
+                    )
                     t.stackTraceToString().lines().forEach { Logger.error(it) }
                     SwingUtilities.invokeLater {
-                        appModel.uiState.globalStatus = "Obfuscation failed"
+                        appModel.uiState.globalStatus = uiText(UiText.Status.ObfuscationFailed)
                     }
                 } finally {
                     Logger = previousLogger

@@ -138,8 +138,8 @@ fun TransformerLibrary(
     modifier: Modifier = Modifier,
 ) {
     PanelSurface(
-        title = "Transformer Library",
-        description = "Browse available transformers and add them to the pipeline stack.",
+        title = uiText(UiText.Page.TransformerLibraryTitle),
+        description = uiText(UiText.Page.TransformerLibraryDescription),
         modifier
     ) {
         var search by remember { mutableStateOf("") }
@@ -147,7 +147,7 @@ fun TransformerLibrary(
                 value = search,
                 onValueChange = { search = it },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 13.dp),
-                placeholder = { Text("Search") },
+                placeholder = { Text(uiText(UiText.Editor.Search)) },
                 singleLine = true,
             )
         val visibleDefinitions = state.definitions.filterNot { it.isHidden }
@@ -265,7 +265,7 @@ private fun LibraryItem(state: PipelineEditorState, definition: TransformerDefin
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Add transformer"
+                contentDescription = uiText(UiText.Editor.AddTransformer)
             )
         }
     }
@@ -279,8 +279,8 @@ fun PipelineStackPanel(
 ) {
     val dragState = remember { PipelineDragState() }
     PanelSurface(
-        title = "Pipeline Stack",
-        description = "Execution order is top to bottom. Duplicate transformers are allowed.",
+        title = uiText(UiText.Page.PipelineStackTitle),
+        description = uiText(UiText.Page.PipelineStackDescription),
         modifier = modifier
     ) {
         val listState = rememberLazyListState()
@@ -421,7 +421,7 @@ private fun TransformerCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.ReOrderDotsVertical,
-                    contentDescription = "Drag to reorder",
+                    contentDescription = uiText(UiText.Editor.DragToReorder),
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -477,13 +477,13 @@ private fun TransformerCard(
                         onClick = { state.addTransformerEntryAfterSelection(entry) },
                         iconOnly = true
                     ) {
-                        Icon(imageVector = Icons.Default.CopyAdd, contentDescription = "Duplicate")
+                        Icon(imageVector = Icons.Default.CopyAdd, contentDescription = uiText(UiText.Editor.Duplicate))
                     }
                     Button(
                         onClick = {
                             state.dialog = PipelineEditorState.Dialog(
-                                "Delete Transformer",
-                                "Are you sure you want to delete this transformer?",
+                                uiText(UiText.Editor.DeleteTransformerTitle),
+                                uiText(UiText.Editor.DeleteTransformerMessage),
                                 onConfirm = {
                                     if (index in state.transformerList.indices) {
                                         state.transformerList.removeAt(index)
@@ -493,7 +493,7 @@ private fun TransformerCard(
                         },
                         iconOnly = true
                     ) {
-                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = uiText(UiText.Editor.Delete))
                     }
                 }
             }
@@ -513,7 +513,7 @@ private fun VirtualMappingApplier() {
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                "Mapping applier inserted automatically after the last renamer.",
+                uiText(UiText.Editor.MappingApplierInserted),
                 color = FluentTheme.colors.text.text.secondary
             )
         }
@@ -531,16 +531,20 @@ fun Inspector(
     val transformerName = definition?.label ?: entry?.config?.let { it::class.simpleName }
     val transformerDesc = definition?.description ?: entry?.config?.let { it::class.qualifiedName }
     PanelSurface(
-        if (transformerName == null) "Inspector" else "Inspector - $transformerName",
-        transformerDesc ?: "Select a transformer node to edit its Config.",
+        if (transformerName == null) {
+            uiText(UiText.Page.InspectorTitle)
+        } else {
+            uiText(UiText.Page.InspectorTitleWithTransformer, "name" to transformerName)
+        },
+        transformerDesc ?: uiText(UiText.Page.InspectorDescription),
         modifier,
         trailing = {
             if (entry != null) {
                 Button(
                     {
                         state.dialog = PipelineEditorState.Dialog(
-                            "Reset Transformer Config",
-                            "Are you sure you want to reset the config of this transformer? This action cannot be undone.",
+                            uiText(UiText.Editor.ResetTransformerConfigTitle),
+                            uiText(UiText.Editor.ResetTransformerConfigMessage),
                             onConfirm = {
                                 state.transformerList[selected] = state.transformerList[selected].copy(
                                     config = definition?.configFactory() ?: entry.config
@@ -553,7 +557,7 @@ fun Inspector(
                         imageVector = Icons.Default.ArrowReset,
                         contentDescription = null
                     )
-                    Text("Reset")
+                    Text(uiText(UiText.Editor.Reset))
                 }
             }
         }
@@ -579,6 +583,7 @@ fun Inspector(
                     onChange = {
                         state.transformerList[selected] = state.transformerList[selected].copy(config = it)
                     },
+                    descriptorBasePath = definition?.descriptorRoot?.let { "$it.config" },
                 )
             }
         }

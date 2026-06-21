@@ -22,20 +22,21 @@ fun SettingsPage(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         PanelSurface(
-            title = "App Configuration",
-            description = "Configure Grunteon GUI behavior and appearance.",
+            title = uiText(UiText.Page.AppConfigTitle),
+            description = uiText(UiText.Page.AppConfigDescription),
             modifier = Modifier.weight(0.5f)
         ) {
             ScrollPanel {
                 ConfigEditor(
                     value = appConfig,
                     onChange = { appConfig = it },
+                    descriptorBasePath = UiDescriptorPaths.AppConfig,
                 )
             }
         }
         PanelSurface(
-            title = "Plugins",
-            description = "Loaded ${PluginManager.plugins.size} plugin(s).",
+            title = uiText(UiText.Page.PluginsTitle),
+            description = uiText(UiText.Page.PluginsDescription, "count" to PluginManager.plugins.size),
             modifier = Modifier.weight(0.5f)
         ) {
             ScrollPanel {
@@ -46,11 +47,11 @@ fun SettingsPage(
                         content = {
                             PluginEntry {
                                 Text(
-                                    "No plugins loaded",
+                                    uiText(UiText.Plugins.NoPluginsLoaded),
                                     style = FluentTheme.typography.bodyStrong
                                 )
                                 Text(
-                                    "Only built-in transformers are available.",
+                                    uiText(UiText.Plugins.OnlyBuiltInTransformers),
                                     style = FluentTheme.typography.caption,
                                 )
                             }
@@ -81,15 +82,15 @@ private fun PluginSection(plugin: LoadedPlugin) {
         PluginEntry {
             Text(metadata.name, fontWeight = FontWeight.SemiBold)
             Text(
-                "Plugin ID: ${metadata.id}",
+                uiText(UiText.Plugins.PluginId, "id" to metadata.id),
                 style = FluentTheme.typography.bodyStrong
             )
             Text(
-                "Version: ${metadata.version} ",
+                uiText(UiText.Plugins.Version, "version" to metadata.version),
                 style = FluentTheme.typography.caption,
             )
             Text(
-                "Entry: ${metadata.entryClass}",
+                uiText(UiText.Plugins.Entry, "entry" to metadata.entryClass),
                 fontFamily = FontFamily.Monospace,
             )
             val file = metadata.file.toString()

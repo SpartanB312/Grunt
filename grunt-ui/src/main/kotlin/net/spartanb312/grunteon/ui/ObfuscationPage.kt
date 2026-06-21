@@ -26,9 +26,9 @@ fun ObfuscationPage(
 ) {
     val scrollState = rememberScrollState()
     val enabledTransformersText = if (nativePipelineEnabled) {
-        "Enabled $enabledTransformerCount transformers with native obfuscation"
+        uiText(UiText.Obfuscation.EnabledTransformersWithNative, "count" to enabledTransformerCount)
     } else {
-        "Enabled $enabledTransformerCount transformers"
+        uiText(UiText.Obfuscation.EnabledTransformers, "count" to enabledTransformerCount)
     }
 
     LaunchedEffect(logs.size) {
@@ -56,7 +56,7 @@ fun ObfuscationPage(
                     ) {
                         if (logs.isEmpty()) {
                             Text(
-                                "No obfuscation run yet.",
+                                uiText(UiText.Obfuscation.NoRunYet),
                                 color = FluentTheme.colors.text.text.secondary, fontFamily = FontFamily.Monospace
                             )
                         } else {
@@ -83,9 +83,9 @@ fun ObfuscationPage(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (running) Text("Running...", color = FluentTheme.colors.text.text.secondary)
+                        if (running) Text(uiText(UiText.Obfuscation.Running), color = FluentTheme.colors.text.text.secondary)
                         UiButton(onClick = onObfuscate, enabled = !running) {
-                            Text("Obfuscate")
+                            Text(uiText(UiText.Obfuscation.Obfuscate))
                         }
                     }
                 }

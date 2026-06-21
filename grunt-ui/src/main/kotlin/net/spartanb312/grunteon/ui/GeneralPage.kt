@@ -11,14 +11,15 @@ fun GeneralPage(
 ) {
     var globalConfig by DataClassUpdater(appModel::obfConfig, ObfConfig::globalConfig)
     PanelSurface(
-        title = "General Configuration",
-        description = "Top-level config options.",
+        title = uiText(UiText.Page.GeneralTitle),
+        description = uiText(UiText.Page.GeneralDescription),
         modifier = Modifier.fillMaxSize()
     ) {
         ScrollPanel {
             ConfigEditor(
                 value = globalConfig,
                 onChange = { globalConfig = it },
+                descriptorBasePath = UiDescriptorPaths.GlobalConfig,
             )
         }
     }
@@ -30,14 +31,15 @@ fun NativePage(
 ) {
     var nativePipelineConfig by DataClassUpdater(appModel::obfConfig, ObfConfig::nativePipeline)
     PanelSurface(
-        title = "Native Configuration",
-        description = "Native pipeline config options.",
+        title = uiText(UiText.Page.NativeTitle),
+        description = uiText(UiText.Page.NativeDescription),
         modifier = Modifier.fillMaxSize()
     ) {
         ScrollPanel {
             ConfigEditor(
                 value = nativePipelineConfig,
                 onChange = { nativePipelineConfig = it },
+                descriptorBasePath = UiDescriptorPaths.NativePipelineConfig,
             )
         }
     }

@@ -24,6 +24,16 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(libs.compose.fluent)
     implementation(libs.compose.fluent.icons)
+
+    testImplementation(kotlin("test"))
+}
+
+tasks.register<JavaExec>("generateI18nCatalog") {
+    group = "i18n"
+    description = "Generate the English i18n descriptor catalog from annotations."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("net.spartanb312.grunteon.ui.I18nCatalogDumperKt")
+    args(layout.projectDirectory.file("src/main/resources/i18n/en.json").asFile.absolutePath, "en")
 }
 
 afterEvaluate {

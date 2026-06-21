@@ -14,14 +14,22 @@ fun loadConfig(path: NioPath): ConfigLoadResult {
         ConfigLoadResult(
             config = config,
             path = path,
-            message = "Loaded ${config.transformers.size} transformer nodes from ${path.toAbsolutePath().normalize()}",
+            message = uiText(
+                UiText.Status.LoadedConfig,
+                "count" to config.transformers.size,
+                "path" to path.toAbsolutePath().normalize()
+            ),
             success = true,
         )
     }.getOrElse { error ->
         ConfigLoadResult(
             config = ObfConfig(),
             path = path,
-            message = "Failed to load ${path.toAbsolutePath().normalize()}: ${error.message}",
+            message = uiText(
+                UiText.Status.FailedToLoadConfig,
+                "path" to path.toAbsolutePath().normalize(),
+                "message" to (error.message ?: error::class.qualifiedName)
+            ),
             success = false,
         )
     }
@@ -35,7 +43,7 @@ suspend fun chooseConfigPath(): NioPath? {
     return FileKit.openFilePicker(
         type = FileKitType.File("json"),
         directory = defaultConfigPath().parent.toPlatformFile(),
-        dialogSettings = fileDialogSettings("Open existed config"),
+        dialogSettings = fileDialogSettings(uiText(UiText.FileDialog.OpenExistingConfig)),
     )?.toNioPath()
 }
 
@@ -46,7 +54,7 @@ suspend fun chooseNewConfigPath(): NioPath? {
         defaultExtension = "json",
         allowedExtensions = setOf("json"),
         directory = defaultPath.parent.toPlatformFile(),
-        dialogSettings = fileDialogSettings("New config"),
+        dialogSettings = fileDialogSettings(uiText(UiText.FileDialog.NewConfig)),
     )?.toNioPath()?.ensureExtension("json")
 }
 
@@ -57,7 +65,7 @@ suspend fun chooseSaveConfigPath(currentPath: NioPath? = null): NioPath? {
         defaultExtension = "json",
         allowedExtensions = setOf("json"),
         directory = initialChooserDirectory(currentPath).toPlatformFile(),
-        dialogSettings = fileDialogSettings("Save config as"),
+        dialogSettings = fileDialogSettings(uiText(UiText.FileDialog.SaveConfigAs)),
     )?.toNioPath()?.ensureExtension("json")
 }
 
@@ -66,7 +74,7 @@ suspend fun chooseInputPath(currentValue: String): NioPath? {
     return FileKit.openFilePicker(
         type = FileKitType.File("jar", "zip"),
         directory = initialChooserDirectory(initialPath).toPlatformFile(),
-        dialogSettings = fileDialogSettings("Select input jar"),
+        dialogSettings = fileDialogSettings(uiText(UiText.FileDialog.SelectInputJar)),
     )?.toNioPath()
 }
 
@@ -74,7 +82,7 @@ suspend fun chooseInputDirectory(currentValue: String): NioPath? {
     val initialPath = resolveChooserPath(currentValue, Path("input.jar"))
     return FileKit.openDirectoryPicker(
         directory = initialChooserDirectory(initialPath).toPlatformFile(),
-        dialogSettings = fileDialogSettings("Select input directory"),
+        dialogSettings = fileDialogSettings(uiText(UiText.FileDialog.SelectInputDirectory)),
     )?.toNioPath()
 }
 
@@ -85,7 +93,7 @@ suspend fun chooseOutputPath(currentValue: String): NioPath? {
         defaultExtension = "jar",
         allowedExtensions = setOf("jar"),
         directory = initialChooserDirectory(initialPath).toPlatformFile(),
-        dialogSettings = fileDialogSettings("Select output jar"),
+        dialogSettings = fileDialogSettings(uiText(UiText.FileDialog.SelectOutputJar)),
     )?.toNioPath()?.ensureExtension("jar")
 }
 

@@ -1,5 +1,7 @@
 package net.spartanb312.grunteon.ui
 
+import net.spartanb312.grunteon.obfuscator.lang.I18n
+import net.spartanb312.grunteon.obfuscator.lang.I18nDescriptorRegistry
 import net.spartanb312.grunteon.obfuscator.process.*
 
 fun findDefinition(
@@ -31,16 +33,20 @@ fun validateOrder(
 fun transformerDefinitions(): List<TransformerDefinition> {
     return TransformerRegistry.entries.map { entry ->
         val transformer = entry.transformerPrototype
+        val descriptorRoot = uiDescriptorPath(I18nDescriptorRegistry.transformerRoot(transformer))
+        val labelFallback = transformer.engName
+        val descriptionFallback = transformer.descriptionText()
         TransformerDefinition(
-            label = transformer.engName,
+            label = I18n.text("$descriptorRoot.name", labelFallback),
             typeName = entry.configClass.qualifiedName.orEmpty(),
             category = transformer.category,
-            description = transformer.descriptionText(),
+            description = I18n.text("$descriptorRoot.desc", descriptionFallback),
             owner = entry.owner,
             isHidden = transformer.isHiddenTransformer(),
             configClass = entry.configClass,
             configFactory = entry.createConfig,
             transformerPrototype = transformer,
+            descriptorRoot = descriptorRoot,
         )
     }.sortedWith(compareBy<TransformerDefinition> { it.category.ordinal }.thenBy { it.label })
 }
