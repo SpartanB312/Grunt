@@ -108,6 +108,77 @@ class NativeCompilerTest {
     }
 
     @Test
+    fun stripDebugInfoAddsGnuLikeCompileAndLinkArgsWithoutLeakingLinkArgsIntoObjectCompile() {
+        val bundle = sourceBundle(NativePlatform("linux", "x86_64", "lib", ".so", "linux"))
+        val includeRoot = Path.of("build/test-jdk/include")
+        val includeOs = includeRoot.resolve("linux")
+        val source = bundle.sourcePath.parent.resolve("grunteon_native_chunk_0000.cpp")
+        val objectPath = bundle.sourcePath.parent.resolve("obj").resolve("grunteon_native_chunk_0000.o")
+        val config = NativePipelineConfig(
+            stripDebugInfo = true,
+            compilerArgs = listOf(
+                "-g",
+                "-gline-tables-only",
+                "-fdebug-prefix-map=a=b",
+                "-fdata-sections",
+                "-DGRUNTEON_TEST=1"
+            )
+        )
+
+        val singleCommand = NativeCompiler.buildCompileCommand(
+            bundle = bundle,
+            compiler = NativeCompiler.NativeCompilerExecutable("/usr/bin/clang++", NativeCompiler.NativeCompilerKind.GnuLike),
+            includeRoot = includeRoot,
+            includeOs = includeOs,
+            config = config
+        )
+        val objectCommand = NativeCompiler.buildGnuLikeObjectCommand(
+            sourcePath = source,
+            objectPath = objectPath,
+            compiler = "/usr/bin/clang++",
+            includeRoot = includeRoot,
+            includeOs = includeOs,
+            config = config,
+            platform = bundle.plan.platform
+        )
+        val linkCommand = NativeCompiler.buildGnuLikeLinkCommand(
+            bundle = bundle,
+            compiler = "/usr/bin/clang++",
+            objectPaths = listOf(objectPath),
+            config = config
+        )
+
+        assertTrue("-g0" in singleCommand)
+        assertTrue("-Wl,--strip-all" in singleCommand)
+        assertTrue("-DGRUNTEON_TEST=1" in singleCommand)
+        assertTrue("-fdata-sections" in singleCommand)
+        assertFalse("-g" in singleCommand)
+        assertFalse("-gline-tables-only" in singleCommand)
+        assertFalse("-fdebug-prefix-map=a=b" in singleCommand)
+
+        assertTrue("-g0" in objectCommand)
+        assertFalse("-Wl,--strip-all" in objectCommand)
+        assertTrue("-Wl,--strip-all" in linkCommand)
+    }
+
+    @Test
+    fun stripDebugInfoUsesMacosGnuLikeLinkerStripArgs() {
+        val bundle = sourceBundle(NativePlatform("macos", "aarch64", "lib", ".dylib", "darwin"))
+        val objectPath = bundle.sourcePath.parent.resolve("obj").resolve("chunk.o")
+
+        val command = NativeCompiler.buildGnuLikeLinkCommand(
+            bundle = bundle,
+            compiler = "/usr/bin/clang++",
+            objectPaths = listOf(objectPath),
+            config = NativePipelineConfig(stripDebugInfo = true)
+        )
+
+        assertTrue("-Wl,-S" in command)
+        assertTrue("-Wl,-x" in command)
+        assertFalse("-Wl,--strip-all" in command)
+    }
+
+    @Test
     fun buildsGnuLikeLinkCommandWithObjectResponseFile() {
         val bundle = sourceBundle(NativePlatform("windows", "x86_64", "", ".dll", "win32"))
         val objectPaths = listOf(
@@ -128,6 +199,34 @@ class NativeCompilerTest {
         assertTrue("chunk one.o" in responseText)
         assertTrue("chunk_two.o" in responseText)
         assertTrue("\"" in responseText)
+    }
+
+    @Test
+    fun stripDebugInfoFiltersMsvcDebugArgsAndAddsLinkReleaseArgs() {
+        val bundle = sourceBundle(NativePlatform("windows", "x86_64", "", ".dll", "win32"))
+        val includeRoot = Path.of("build/test-jdk/include")
+        val includeOs = includeRoot.resolve("win32")
+
+        val command = NativeCompiler.buildCompileCommand(
+            bundle = bundle,
+            compiler = NativeCompiler.NativeCompilerExecutable("cl.exe", NativeCompiler.NativeCompilerKind.Msvc),
+            includeRoot = includeRoot,
+            includeOs = includeOs,
+            config = NativePipelineConfig(
+                stripDebugInfo = true,
+                compilerArgs = listOf("/MT", "/Zi", "/Fdgrunteon.pdb", "-Fdalt.pdb", "/DEBUG:FULL")
+            )
+        )
+
+        assertTrue("/MT" in command)
+        assertFalse("/Zi" in command)
+        assertFalse("/Fdgrunteon.pdb" in command)
+        assertFalse("-Fdalt.pdb" in command)
+        assertFalse("/DEBUG:FULL" in command)
+        assertTrue("/link" in command)
+        assertTrue("/INCREMENTAL:NO" in command)
+        assertTrue("/OPT:REF" in command)
+        assertTrue("/OPT:ICF" in command)
     }
 
     @Test
@@ -201,6 +300,38 @@ class NativeCompilerTest {
         val responseText = Path.of(command.last().removePrefix("@")).readText()
         assertTrue("chunk one.cpp" in responseText)
         assertTrue("chunk_two.cpp" in responseText)
+    }
+
+    @Test
+    fun stripDebugInfoFiltersZigTargetDebugArgsAndUsesTargetPlatformLinkArgs() {
+        val platform = NativePlatform.zigBuiltInTargets.single { it.resourceDirectory == "macos-aarch64" }
+        val bundle = sourceBundle(platform)
+        val target = bundle.resolvedLibraryTargets.single()
+        val includeRoot = Path.of("build/test-jdk/include")
+        val includeOs = includeRoot.resolve("darwin")
+
+        val command = NativeCompiler.buildZigCommand(
+            bundle = bundle,
+            target = target,
+            compiler = "zig",
+            includeRoot = includeRoot,
+            includeOs = includeOs,
+            config = NativePipelineConfig(
+                compilerMode = NativeCompilerMode.Zig,
+                stripDebugInfo = true,
+                compilerArgs = listOf("-DALL=1", "-ggdb3"),
+                targetCompilerArgs = mapOf("macos-aarch64" to listOf("-DTARGET=1", "-gdwarf-5"))
+            )
+        )
+
+        assertTrue("-DALL=1" in command)
+        assertTrue("-DTARGET=1" in command)
+        assertTrue("-g0" in command)
+        assertTrue("-Wl,-S" in command)
+        assertTrue("-Wl,-x" in command)
+        assertFalse("-ggdb3" in command)
+        assertFalse("-gdwarf-5" in command)
+        assertFalse("-Wl,--strip-all" in command)
     }
 
     @Test

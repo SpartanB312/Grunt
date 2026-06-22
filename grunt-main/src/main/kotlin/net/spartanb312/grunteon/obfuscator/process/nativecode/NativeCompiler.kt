@@ -208,7 +208,9 @@ internal object NativeCompiler {
             addAll(positionIndependentCodeArgs(bundle.plan.platform))
             add(sharedFlag)
             addAll(defaultGnuLikeCompilerArgs(bundle.plan.platform))
-            addAll(config.compilerArgs)
+            addAll(commonUserCompilerArgs(config, NativeCompilerKind.GnuLike))
+            addAll(gnuLikeStripDebugCompileArgs(config))
+            addAll(gnuLikeStripDebugLinkArgs(config, bundle.plan.platform))
             add("-I")
             add(includeRoot.absolutePathString())
             add("-I")
@@ -233,7 +235,8 @@ internal object NativeCompiler {
             add("-std=c++17")
             add(gnuOptimizationFlag(config))
             addAll(positionIndependentCodeArgs(platform))
-            addAll(config.compilerArgs)
+            addAll(commonUserCompilerArgs(config, NativeCompilerKind.GnuLike))
+            addAll(gnuLikeStripDebugCompileArgs(config))
             add("-I")
             add(includeRoot.absolutePathString())
             add("-I")
@@ -256,7 +259,8 @@ internal object NativeCompiler {
             add(compiler)
             add(sharedFlag)
             addAll(defaultGnuLikeCompilerArgs(bundle.plan.platform))
-            addAll(config.compilerArgs)
+            addAll(commonUserCompilerArgs(config, NativeCompilerKind.GnuLike))
+            addAll(gnuLikeStripDebugLinkArgs(config, bundle.plan.platform))
             add("-o")
             add(bundle.libraryPath.absolutePathString())
             addAll(objectPaths.map { it.absolutePathString() })
@@ -275,6 +279,95 @@ internal object NativeCompiler {
         return if (platform.os == "windows") emptyList() else listOf("-fPIC")
     }
 
+    private fun commonUserCompilerArgs(
+        config: NativePipelineConfig,
+        compilerKind: NativeCompilerKind
+    ): List<String> {
+        return debugInfoFilteredArgs(config.compilerArgs, config, compilerKind)
+    }
+
+    private fun targetUserCompilerArgs(
+        config: NativePipelineConfig,
+        platform: NativePlatform,
+        compilerKind: NativeCompilerKind
+    ): List<String> {
+        return debugInfoFilteredArgs(
+            config.targetCompilerArgs[platform.resourceDirectory].orEmpty(),
+            config,
+            compilerKind
+        )
+    }
+
+    private fun debugInfoFilteredArgs(
+        args: List<String>,
+        config: NativePipelineConfig,
+        compilerKind: NativeCompilerKind
+    ): List<String> {
+        if (!config.stripDebugInfo) return args
+        return args.filterNot { isDebugInfoArg(it, compilerKind) }
+    }
+
+    private fun gnuLikeStripDebugCompileArgs(config: NativePipelineConfig): List<String> {
+        return if (config.stripDebugInfo) listOf("-g0") else emptyList()
+    }
+
+    private fun gnuLikeStripDebugLinkArgs(config: NativePipelineConfig, platform: NativePlatform): List<String> {
+        if (!config.stripDebugInfo) return emptyList()
+        return if (platform.os == "macos") {
+            listOf("-Wl,-S", "-Wl,-x")
+        } else {
+            listOf("-Wl,--strip-all")
+        }
+    }
+
+    private fun msvcStripDebugLinkArgs(config: NativePipelineConfig): List<String> {
+        return if (config.stripDebugInfo) {
+            listOf("/link", "/INCREMENTAL:NO", "/OPT:REF", "/OPT:ICF")
+        } else {
+            emptyList()
+        }
+    }
+
+    private fun isDebugInfoArg(arg: String, compilerKind: NativeCompilerKind): Boolean {
+        return when (compilerKind) {
+            NativeCompilerKind.GnuLike,
+            NativeCompilerKind.Zig -> isGnuLikeDebugInfoArg(arg)
+            NativeCompilerKind.Msvc -> isGnuLikeDebugInfoArg(arg) || isMsvcDebugInfoArg(arg)
+        }
+    }
+
+    private fun isGnuLikeDebugInfoArg(arg: String): Boolean {
+        return arg == "-g" ||
+            arg == "-g0" ||
+            arg.matches(Regex("-g[1-9].*")) ||
+            arg.startsWith("-ggdb") ||
+            arg.startsWith("-gdwarf") ||
+            arg.startsWith("-gcodeview") ||
+            arg.startsWith("-gline-") ||
+            arg.startsWith("-gmlt") ||
+            arg.startsWith("-gmodules") ||
+            arg.startsWith("-gembed-source") ||
+            arg.startsWith("-grecord-gcc-switches") ||
+            arg.startsWith("-gsplit-dwarf") ||
+            arg.startsWith("-gz") ||
+            arg.startsWith("-fdebug-") ||
+            arg.startsWith("-fno-eliminate-unused-debug")
+    }
+
+    private fun isMsvcDebugInfoArg(arg: String): Boolean {
+        val lowerArg = arg.lowercase()
+        val normalized = lowerArg
+            .removePrefix("/")
+            .removePrefix("-")
+        return normalized == "zi" ||
+            normalized == "zi-" ||
+            normalized == "zi+" ||
+            normalized == "z7" ||
+            normalized == "zd" ||
+            normalized.startsWith("debug") ||
+            normalized.startsWith("fd")
+    }
+
     private fun buildMsvcCommand(
         bundle: NativeSourceBundle,
         compiler: String,
@@ -291,9 +384,10 @@ internal object NativeCompiler {
             add("/LD")
             add("/I${includeRoot.absolutePathString()}")
             add("/I${includeOs.absolutePathString()}")
-            addAll(config.compilerArgs)
+            addAll(commonUserCompilerArgs(config, NativeCompilerKind.Msvc))
             add("/Fe:${bundle.libraryPath.absolutePathString()}")
             addAll(bundle.compilableSourcePaths().map { it.absolutePathString() })
+            addAll(msvcStripDebugLinkArgs(config))
         }
     }
 
@@ -317,9 +411,10 @@ internal object NativeCompiler {
             add("/LD")
             add("/I${includeRoot.absolutePathString()}")
             add("/I${includeOs.absolutePathString()}")
-            addAll(config.compilerArgs)
+            addAll(commonUserCompilerArgs(config, NativeCompilerKind.Msvc))
             add("/Fe:${bundle.libraryPath.absolutePathString()}")
             add(responseFileArg(responseFile))
+            addAll(msvcStripDebugLinkArgs(config))
         }
     }
 
@@ -345,8 +440,10 @@ internal object NativeCompiler {
             add(gnuOptimizationFlag(config))
             addAll(positionIndependentCodeArgs(target.platform))
             add(sharedFlag)
-            addAll(config.compilerArgs)
-            addAll(config.targetCompilerArgs[target.platform.resourceDirectory].orEmpty())
+            addAll(commonUserCompilerArgs(config, NativeCompilerKind.Zig))
+            addAll(targetUserCompilerArgs(config, target.platform, NativeCompilerKind.Zig))
+            addAll(gnuLikeStripDebugCompileArgs(config))
+            addAll(gnuLikeStripDebugLinkArgs(config, target.platform))
             add("-I")
             add(includeRoot.absolutePathString())
             add("-I")
@@ -374,8 +471,9 @@ internal object NativeCompiler {
             add("-std=c++17")
             add(gnuOptimizationFlag(config))
             addAll(positionIndependentCodeArgs(target.platform))
-            addAll(config.compilerArgs)
-            addAll(config.targetCompilerArgs[target.platform.resourceDirectory].orEmpty())
+            addAll(commonUserCompilerArgs(config, NativeCompilerKind.Zig))
+            addAll(targetUserCompilerArgs(config, target.platform, NativeCompilerKind.Zig))
+            addAll(gnuLikeStripDebugCompileArgs(config))
             add("-I")
             add(includeRoot.absolutePathString())
             add("-I")
@@ -497,7 +595,8 @@ internal object NativeCompiler {
             add(compiler)
             add(sharedFlag)
             addAll(defaultGnuLikeCompilerArgs(bundle.plan.platform))
-            addAll(config.compilerArgs)
+            addAll(commonUserCompilerArgs(config, NativeCompilerKind.GnuLike))
+            addAll(gnuLikeStripDebugLinkArgs(config, bundle.plan.platform))
             add("-o")
             add(bundle.libraryPath.absolutePathString())
             add(responseFileArg(responseFile))
@@ -522,8 +621,9 @@ internal object NativeCompiler {
             add("-target")
             add(target.platform.zigTarget ?: error("Missing Zig target for ${target.platform.resourceDirectory}"))
             add(sharedFlag)
-            addAll(config.compilerArgs)
-            addAll(config.targetCompilerArgs[target.platform.resourceDirectory].orEmpty())
+            addAll(commonUserCompilerArgs(config, NativeCompilerKind.Zig))
+            addAll(targetUserCompilerArgs(config, target.platform, NativeCompilerKind.Zig))
+            addAll(gnuLikeStripDebugLinkArgs(config, target.platform))
             add("-o")
             add(target.libraryPath.absolutePathString())
             add(responseFileArg(responseFile))
