@@ -9,6 +9,7 @@ include(":grunt-ir")
 include(":grunt-index")
 include(":grunt-testcase")
 include(":grunt-yapyap")
+include(":grunt-glsl")
 include(":grunt-ui")
 include(":grunt-backend")
 
