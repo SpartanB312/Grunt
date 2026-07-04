@@ -16,7 +16,7 @@ import kotlin.time.measureTime
  * 3rd generation of Grunt
  */
 const val VERSION = "3.0.0"
-const val SUBTITLE = "build 260621"
+const val SUBTITLE = "build 260705"
 const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
 // Local run

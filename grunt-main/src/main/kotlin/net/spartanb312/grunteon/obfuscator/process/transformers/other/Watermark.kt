@@ -9,6 +9,9 @@ import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.MergeableCounter
+import net.spartanb312.grunteon.obfuscator.util.collection.random
+import net.spartanb312.grunteon.obfuscator.util.cryptography.Xoshiro256PPRandom
+import net.spartanb312.grunteon.obfuscator.util.cryptography.getSeed
 import net.spartanb312.grunteon.obfuscator.util.extensions.isInterface
 
 @Transformer.CreditMultiplier(0.5)
@@ -49,6 +52,7 @@ class Watermark : Transformer<Watermark.Config>(
             //Logger.info(" > Watermark: Adding watermarks...")
         }
         val counter = reducibleScopeValue { MergeableCounter() }
+        val randomNums = listOf(114514, 1919810, 69420, 911, 1186, 1453, 2026)
         parForEachClassesFiltered(
             instance.globalExclusion
                 .and(instance.mixinExclusion)
@@ -56,34 +60,33 @@ class Watermark : Transformer<Watermark.Config>(
         ) { classNode ->
             if (classNode.isInterface) return@parForEachClassesFiltered
             val counter = counter.local
+            val randomGen = Xoshiro256PPRandom(getSeed(classNode.name))
             if (config.fieldMark) {
                 classNode.fields = classNode.fields ?: arrayListOf()
-                val marker = config.messages.random()
-                when ((0..2).random()) {
+                val marker = config.messages.random(randomGen)
+                when (randomGen.nextInt(0, 3)) {
                     0 -> classNode.fields.add(
                         field(
                             PRIVATE + STATIC,
-                            config.names.random(),
+                            config.names.random(randomGen),
                             "Ljava/lang/String;",
                             null,
                             marker
                         )
                     )
-
                     1 -> classNode.fields.add(
                         field(
                             PRIVATE + STATIC,
                             "_$marker _",
                             "I",
                             null,
-                            listOf(114514, 1919810, 69420, 911, 8964).random()
+                            randomNums.random(randomGen)
                         )
                     )
-
-                    2 -> classNode.fields.add(
+                    3 -> classNode.fields.add(
                         field(
                             PRIVATE + STATIC,
-                            config.names.random(),
+                            config.names.random(randomGen),
                             "Ljava/lang/String;",
                             null,
                             marker
@@ -94,12 +97,12 @@ class Watermark : Transformer<Watermark.Config>(
             }
             if (config.methodMark) {
                 classNode.methods = classNode.methods ?: arrayListOf()
-                val marker = config.messages.random()
-                when ((0..2).random()) {
+                val marker = config.messages.random(randomGen)
+                when (randomGen.nextInt(0, 3)) {
                     0 -> classNode.methods.add(
                         method(
                             PRIVATE + STATIC,
-                            config.names.random(),
+                            config.names.random(randomGen),
                             "()Ljava/lang/String;"
                         ) {
                             INSTRUCTIONS {
@@ -108,11 +111,10 @@ class Watermark : Transformer<Watermark.Config>(
                             }
                         }
                     )
-
                     1 -> classNode.methods.add(
                         method(
                             PRIVATE + STATIC,
-                            config.names.random(),
+                            config.names.random(randomGen),
                             "()Ljava/lang/String;"
                         ) {
                             INSTRUCTIONS {
@@ -121,11 +123,10 @@ class Watermark : Transformer<Watermark.Config>(
                             }
                         }
                     )
-
                     2 -> classNode.methods.add(
                         method(
                             PRIVATE + STATIC,
-                            config.names.random(),
+                            config.names.random(randomGen),
                             "()Ljava/lang/String;"
                         ) {
                             INSTRUCTIONS {

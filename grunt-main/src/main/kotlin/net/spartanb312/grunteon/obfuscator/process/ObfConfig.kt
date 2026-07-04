@@ -74,8 +74,8 @@ data class GlobalConfig(
     @SettingName("Controllable random")
     val controllableRandom: Boolean = true,
     @SettingDesc("Base seed for controllable random")
-    @SettingName("Input seed")
-    val inputSeed: String = "I love XJP",
+    @SettingName("Base seed")
+    val baseSeed: String = "114514",
     @SettingDesc("Custom dictionary file. Each line is a name")
     @SettingName("Custom dictionary")
     @SettingSection("Custom dictionary")
@@ -83,7 +83,9 @@ data class GlobalConfig(
     @SettingDesc("Custom incremental elements for dictionary")
     @SettingName("Custom incremental dictionary")
     val customIncrementalDictionary: List<String> = listOf(
-        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n"
+        "a", "b", "c", "d", "e", "f", "g", "h",
+        "i", "j", "k", "l", "m", "n", "o", "p",
+        "q", "r", "s", "u", "w", "x", "y", "z"
     ),
 
     @SettingSection("Class file verification")
@@ -126,7 +128,7 @@ data class GlobalConfig(
     // TODO: Move to command line or some where else
     val profiler: Boolean = false,
 ) {
-    fun baseSeed(): String = if (controllableRandom) inputSeed else Random.nextInt().toString()
+    fun baseSeed(): String = if (controllableRandom) baseSeed else Random.nextInt().toString()
 }
 
 @Serializable
