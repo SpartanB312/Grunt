@@ -130,15 +130,18 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
                             }
                             if (!checkPass) continue
 
-                            // Avoid shadow names
+                            val affected = IntLinkedOpenHashSet()
+                            affected.add(classEntry.index)
+                            if (!fieldEntry.node.isPrivate) {
+                                classEntry.descendants.forEach { descendant ->
+                                    affected.add(descendant.index)
+                                }
+                            }
+
                             val checkSet = IntLinkedOpenHashSet()
                             checkSet.add(classEntry.index)
-                            // Disable up check for static and private fields TODO: check this
-                            if ((!fieldEntry.node.isStatic && !fieldEntry.node.isPrivate) || !config.aggressiveShadowNames) {
-                                //println("Disable up check for ${classEntry.name}.${fieldEntry.name}${fieldEntry.desc}")
-                                classEntry.descendants.forEach {
-                                    checkSet.add(it.index)
-                                }
+                            if (!fieldEntry.node.isPrivate || !config.aggressiveShadowNames) {
+                                classEntry.descendants.forEach { checkSet.add(it.index) }
                             }
                             val checkList = ClassHierarchy.EntryArray(checkSet.toIntArray())
                             var newName: String
@@ -165,26 +168,10 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
                                 val nameSet = existedNameMap.getOrPut(check.index) { mutableSetOf() }
                                 nameSet.add(newName + fieldEntry.desc)
                             }
-                            // Disable up apply for private and static
-                            val upApply = (!fieldEntry.node.isPrivate && !fieldEntry.node.isStatic)
-                                || fieldEntry.node.isProtected
-                            // Apply to children
-                            if (upApply) {
-                                val affected = mutableSetOf(classEntry.index)
-                                affected.addAll(classEntry.descendants.array.toList()) // fixme: optimize this
-                                affected.forEach { apply ->
-                                    instance.nameMapping.putFieldMapping(
-                                        ClassHierarchy.Entry(apply).name,
-                                        fieldEntry.node.name,
-                                        fieldEntry.desc,
-                                        newName
-                                    )
-                                    counter++
-                                }
-                            } else {
+                            affected.forEach { apply ->
                                 instance.nameMapping.putFieldMapping(
-                                    fieldEntry.owner.name,
-                                    fieldEntry.name,
+                                    ClassHierarchy.Entry(apply).name,
+                                    fieldEntry.node.name,
                                     fieldEntry.desc,
                                     newName
                                 )
