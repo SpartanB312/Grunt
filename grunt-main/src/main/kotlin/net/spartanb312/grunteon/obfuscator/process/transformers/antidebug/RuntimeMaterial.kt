@@ -155,7 +155,10 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
         val detectTokens: DetectTokens = DetectTokens(),
         @SettingDesc("Emit draft metadata for ReferenceObfuscate integration")
         @SettingName("Draft material metadata")
-        val draftMaterialMetadata: Boolean = true
+        val draftMaterialMetadata: Boolean = true,
+        @SettingDesc("Native candidate for generated method")
+        @SettingName("Native candidate")
+        val nativeCandidate: Boolean = false
     ) : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
@@ -182,6 +185,7 @@ class RuntimeMaterial : Transformer<RuntimeMaterial.Config>(
             installMaterialFields(classNode, plan, config)
             val guardMethod = createGuardMethod(plan.guardMethodName, plan.badMask, config)
                 .appendAnnotation(GENERATED_METHOD)
+            if (config.nativeCandidate) guardMethod.appendAnnotation(NATIVE_INCLUDED)
             if (config.draftMaterialMetadata) {
                 appendInvisibleAnnotation(
                     guardMethod,

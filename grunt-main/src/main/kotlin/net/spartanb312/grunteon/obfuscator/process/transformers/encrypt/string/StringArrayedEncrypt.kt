@@ -44,6 +44,9 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
         @SettingDesc("Replace invokedynamic string concat")
         @SettingName("Invoke dynamics")
         val invokeDynamics: Boolean = true,
+        @SettingDesc("Native candidate for generated method")
+        @SettingName("Native candidate")
+        val nativeCandidate: Boolean = false,
         @SettingDesc("Specify method exclusions.")
         @SettingName("Exclusion")
         val exclusion: List<String> = listOf(
@@ -74,7 +77,7 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
             // First, replace all INVOKEDYNAMIC instructions with LDC instructions.
             val randomGen = Xoshiro256PPRandom(getSeed(classNode.name))
             if (config.invokeDynamics) context(randomGen, counter) {
-                replaceInvokeDynamics(classNode)
+                replaceInvokeDynamics(config, classNode)
             }
             val methodExPredicate = methodExPredicate.global
             // Then, go over all LDC instructions and collect them.
@@ -104,6 +107,7 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
                 ).appendAnnotation(GENERATED_FIELD)
                 val decryptMethod = createDecryptMethod(classNode, randomGen.getRandomString(16), classKey)
                     .appendAnnotation(GENERATED_METHOD)
+                if (config.nativeCandidate) decryptMethod.appendAnnotation(NATIVE_INCLUDED)
                 val encryptedStrings = stringsToEncrypt.keys.map { it }.toTypedArray()
                 val arrayInitMethod = method(
                     (if (classNode.isInterface) PUBLIC else PRIVATE) + STATIC,
@@ -142,6 +146,7 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
                         RETURN
                     }
                 }.appendAnnotation(GENERATED_METHOD)
+                if (config.nativeCandidate) arrayInitMethod.appendAnnotation(NATIVE_INCLUDED)
                 (classNode.methods.find { it.name == "<clinit>" } ?: clinit().also {
                     it.instructions.insert(InsnNode(Opcodes.RETURN))
                     classNode.methods.add(it)
@@ -183,7 +188,7 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
 
     // https://github.com/yaskylan/GotoObfuscator/blob/master/src/main/java/org/g0to/transformer/features/stringencryption/
     context(randomGen: UniformRandomProvider, counter: MergeableCounter)
-    fun replaceInvokeDynamics(classNode: ClassNode) {
+    fun replaceInvokeDynamics(config:Config, classNode: ClassNode) {
         val invokeDynamicConcatMethods = ArrayList<MethodNode>()
         classNode.methods.forEach { methodNode ->
             methodNode.instructions.asSequence()
@@ -193,6 +198,7 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
                     val indy = instruction as InvokeDynamicInsnNode
                     invokeDynamicConcatMethods.add(
                         processStringConcatenation(
+                            config,
                             classNode,
                             methodNode,
                             indy,
@@ -211,8 +217,8 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
         return instruction.name.equals("makeConcatWithConstants")
             && instruction.bsmArgs[0].toString().find { it != '\u0001' } != null
     }
-
     fun processStringConcatenation(
+        config: Config,
         classNode: ClassNode,
         methodNode: MethodNode,
         instruction: InvokeDynamicInsnNode,
@@ -260,6 +266,7 @@ class StringArrayedEncrypt : Transformer<StringArrayedEncrypt.Config>(
 
         val bootstrap = createConcatBootstrap(classNode, bootstrapName, constants)
         bootstrap.appendAnnotation(GENERATED_METHOD)
+        if (config.nativeCandidate) bootstrap.appendAnnotation(NATIVE_INCLUDED)
         methodNode.instructions.insert(instruction, instructions {
             INVOKEDYNAMIC(
                 instruction.name,
