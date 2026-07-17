@@ -2,33 +2,40 @@ package net.spartanb312.grunteon.obfuscator.process.nativecode
 
 import org.objectweb.asm.Opcodes
 import java.nio.file.Path
+import java.util.Locale
 
 internal object NativeCppBackend {
-    private const val LoaderBaseInternalName = "net/spartanb312/grunteon/runtime/NativeLoader"
-    private const val LibraryBaseName = "grunteon_native"
     private const val RuntimeHeaderName = "grunteon_native_runtime.hpp"
     private const val RuntimeSourceName = "grunteon_native_runtime.cpp"
+    private val WindowsReservedFileNames = buildSet {
+        addAll(listOf("CON", "PRN", "AUX", "NUL"))
+        (1..9).forEach { index ->
+            add("COM$index")
+            add("LPT$index")
+        }
+    }
 
     fun generate(
         methods: List<NativeValidatedMethod>,
         config: NativePipelineConfig,
         classExists: (String) -> Boolean
     ): NativeSourceBundle {
+        validateOutputNames(config)
         val targetPlatforms = NativePlatform.targetsFor(config)
         val platform = targetPlatforms.firstOrNull {
             it.resourceDirectory == NativePlatform.current().resourceDirectory
         } ?: targetPlatforms.first()
-        val loaderInternalName = uniqueLoaderName(classExists)
-        val libraryFileName = platform.libraryPrefix + LibraryBaseName + platform.librarySuffix
-        val resourceName = "grunteon/native/${platform.resourceDirectory}/$libraryFileName"
+        val loaderInternalName = uniqueLoaderName(config.loaderBaseInternalName, classExists)
+        val libraryFileName = libraryFileName(platform, config)
+        val resourceName = libraryResourceName(platform, libraryFileName, config)
         val workDir = Path.of(config.workDir)
         val sourcePath = workDir.resolve("src").resolve("grunteon_native.cpp")
         val libraryPath = workDir.resolve("lib").resolve(platform.resourceDirectory).resolve(libraryFileName)
         val libraryTargets = targetPlatforms.map { target ->
-            val targetLibraryFileName = target.libraryPrefix + LibraryBaseName + target.librarySuffix
+            val targetLibraryFileName = libraryFileName(target, config)
             NativeLibraryTarget(
                 platform = target,
-                resourceName = "grunteon/native/${target.resourceDirectory}/$targetLibraryFileName",
+                resourceName = libraryResourceName(target, targetLibraryFileName, config),
                 libraryFileName = targetLibraryFileName,
                 libraryPath = workDir.resolve("lib").resolve(target.resourceDirectory).resolve(targetLibraryFileName)
             )
@@ -100,14 +107,82 @@ internal object NativeCppBackend {
         )
     }
 
-    private fun uniqueLoaderName(classExists: (String) -> Boolean): String {
-        var name = LoaderBaseInternalName
+    private fun uniqueLoaderName(
+        loaderBaseInternalName: String,
+        classExists: (String) -> Boolean
+    ): String {
+        var name = loaderBaseInternalName
         var index = 0
         while (classExists(name)) {
             index++
-            name = "$LoaderBaseInternalName\$$index"
+            name = "$loaderBaseInternalName\$$index"
         }
         return name
+    }
+
+    private fun libraryFileName(platform: NativePlatform, config: NativePipelineConfig): String {
+        return if (platform.os == "windows") {
+            config.dllName?.takeIf { it.isNotBlank() }
+                ?: config.libraryBaseName + platform.librarySuffix
+        } else {
+            platform.libraryPrefix + config.libraryBaseName + platform.librarySuffix
+        }
+    }
+
+    private fun libraryResourceName(
+        platform: NativePlatform,
+        libraryFileName: String,
+        config: NativePipelineConfig
+    ): String {
+        return "${config.libraryResourceDirectory}/${platform.resourceDirectory}/$libraryFileName"
+    }
+
+    private fun validateOutputNames(config: NativePipelineConfig) {
+        require(config.loaderBaseInternalName.isValidInternalName()) {
+            "nativePipeline.loaderBaseInternalName must be a valid JVM internal class name"
+        }
+        require(config.libraryBaseName.isValidFileName()) {
+            "nativePipeline.libraryBaseName must be a non-empty file name without path components"
+        }
+        require(config.libraryResourceDirectory.isValidResourceDirectory()) {
+            "nativePipeline.libraryResourceDirectory must be a relative resource directory without empty, dot, or parent segments"
+        }
+        config.dllName?.takeIf { it.isNotBlank() }?.let { dllName ->
+            require(dllName.isValidFileName()) {
+                "nativePipeline.dllName must be a file name without path components"
+            }
+        }
+    }
+
+    private fun String.isValidInternalName(): Boolean {
+        return isNotBlank() &&
+            !startsWith('/') &&
+            !endsWith('/') &&
+            none { it == '.' || it == ';' || it == '[' } &&
+            split('/').all { it.isValidFileName() }
+    }
+
+    private fun String.isValidResourceDirectory(): Boolean {
+        return isNotBlank() &&
+            !startsWith('/') &&
+            !endsWith('/') &&
+            '\\' !in this &&
+            split('/').all { it.isValidFileName() }
+    }
+
+    private fun String.isValidFileName(): Boolean {
+        if (
+            isBlank() || this == "." || this == ".." ||
+            last() == '.' || last() == ' ' ||
+            any { it.isISOControl() || it in "<>:\"/\\|?*" } ||
+            substringBefore('.').uppercase(Locale.ROOT) in WindowsReservedFileNames
+        ) {
+            return false
+        }
+        return runCatching {
+            val path = Path.of(this)
+            path.root == null && path.parent == null && path.fileName.toString() == this
+        }.getOrDefault(false)
     }
 
     private fun nativeFunctionName(classIndex: Int, methodIndex: Int, method: NativeValidatedMethod): String {

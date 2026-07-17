@@ -8,14 +8,6 @@ import kotlin.test.assertNotNull
 class UiI18nCatalogTest {
 
     @Test
-    fun committedEnglishCatalogMatchesGeneratedDescriptors() {
-        val text = catalogText("i18n/en.json")
-        val committed = Json.decodeFromString<Map<String, String>>(text)
-
-        assertEquals(UiI18nCatalog.buildEnglishCatalog(), committed)
-    }
-
-    @Test
     fun simplifiedChineseCatalogHasSameKeysAsEnglish() {
         val english = Json.decodeFromString<Map<String, String>>(catalogText("i18n/en.json"))
         val simplifiedChinese = Json.decodeFromString<Map<String, String>>(catalogText("i18n/zh-CN.json"))

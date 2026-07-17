@@ -77,6 +77,18 @@ data class NativePipelineConfig(
     @SettingDesc("Native code generation backend")
     @SettingName("Backend")
     val backend: NativeBackend = NativeBackend.Cpp,
+    @SettingDesc("Base JVM internal name for the generated native loader class")
+    @SettingName("Loader base internal name")
+    val loaderBaseInternalName: String = "net/spartanb312/grunteon/runtime/NativeLoader",
+    @SettingDesc("Base file name used for generated native libraries before platform prefix and suffix are added")
+    @SettingName("Library base name")
+    val libraryBaseName: String = "grunteon_native",
+    @SettingDesc("Resource root directory inside the output JAR for generated native libraries")
+    @SettingName("Library resource directory")
+    val libraryResourceDirectory: String = "grunteon/native",
+    @SettingDesc("Optional exact file name for Windows DLL targets. Empty derives the name from the library base name.")
+    @SettingName("DLL name")
+    val dllName: String? = null,
     @SettingDesc("Working directory for generated native sources and compiled libraries")
     @SettingName("Work directory")
     val workDir: String = "build/grunteon/native",

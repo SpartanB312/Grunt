@@ -40,6 +40,7 @@ import kotlin.io.path.writeBytes
 import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -84,6 +85,34 @@ class NativePipelineRunnerIntegrationTest {
             it.key.startsWith("grunteon/native/")
         }
         assertTrue(String(resource.value).contains("native-test"))
+    }
+
+    @Test
+    fun runnerRejectsAnExistingNativeLibraryResource() {
+        val method = intHelper("nativeAdd").appendAnnotation(NATIVE_INCLUDED)
+        val instance = instanceWith(classNode("test/NativePipelineResourceCollision", method))
+        val platform = NativePlatform.current()
+        val resourceName =
+            "grunteon/native/${platform.resourceDirectory}/${platform.libraryPrefix}grunteon_native${platform.librarySuffix}"
+        val resourcePath = instance.workRes.inputResourceSet.root.resolve(resourceName)
+        resourcePath.parent.createDirectories()
+        resourcePath.writeBytes(byteArrayOf(1, 2, 3))
+
+        val exception = assertFailsWith<IllegalArgumentException> {
+            context(instance) {
+                NativePipelineRunner.run(
+                    NativePipelineConfig(
+                        enabled = true,
+                        workDir = createTempDirectory("grunteon-native-work").pathString,
+                        failOnValidationError = true
+                    )
+                )
+            }
+        }
+
+        assertTrue(exception.message.orEmpty().contains("Native library resource already exists"))
+        assertFalse(method.access and Opcodes.ACC_NATIVE != 0)
+        assertTrue(instance.workRes.generatedResources.isEmpty())
     }
 
     @Test

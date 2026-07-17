@@ -35,6 +35,20 @@ object NativePipelineRunner {
                     instance.workRes.libraryClassMap.containsKey(it)
             }
         )
+        val resourceNames = mutableSetOf<String>()
+        sourceBundle.resolvedLibraryTargets.forEach { target ->
+            require(resourceNames.add(target.resourceName)) {
+                "Native library resource is configured more than once: ${target.resourceName}"
+            }
+            require(
+                instance.workRes.getInputResource(target.resourceName) == null &&
+                    !instance.workRes.generatedResources.containsKey(target.resourceName)
+            ) {
+                "Native library resource already exists: ${target.resourceName}. " +
+                    "Configure nativePipeline.libraryResourceDirectory, nativePipeline.libraryBaseName, " +
+                    "or nativePipeline.dllName to use another location or name."
+            }
+        }
         val compileResult = NativeCompiler.compile(sourceBundle, config)
         if (!compileResult.success) {
             val message = "Native compilation failed; Java bytecode was left unchanged.\n${compileResult.output}"
