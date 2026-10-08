@@ -125,6 +125,28 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
             }
 
             context(classHierarchy, methodHierarchy) {
+                // Keep only the record component contract, not the whole record class. An accessor may
+                // implement an input/library interface; preserve its entire override group, including bridges.
+                fun isRecordAccessor(method: MethodHierarchy.Entry): Boolean =
+                    method.desc.startsWith("()") && method.owner.classNode.recordComponents?.any {
+                        it.name == method.name
+                    } == true
+
+                val recordAccessorSources = IntOpenHashSet()
+                methodHierarchy.sourceMethods.forEach { source ->
+                    if (isRecordAccessor(source) || source.overrideMethods.any { isRecordAccessor(it) }) {
+                        source.connectedComponent.forEach { recordAccessorSources.add(it.index) }
+                    }
+                }
+                val reservedRecordNames = Int2ObjectOpenHashMap<MutableSet<String>>()
+                recordAccessorSources.forEach { index ->
+                    val source = MethodHierarchy.Entry(index)
+                    reservedRecordNames.getOrPut(source.owner.index) { mutableSetOf() }.add(source.name)
+                    source.owner.descendants.forEach { owner ->
+                        reservedRecordNames.getOrPut(owner.index) { mutableSetOf() }.add(source.name)
+                    }
+                }
+
                 Logger.info("    Splitting method groups...")
                 val blackList = IntOpenHashSet()
                 // Pre-size: at most one group per source method avoids frequent ArrayList resizes.
@@ -141,6 +163,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                             val methodEntry = MethodHierarchy.Entry(methodIndex)
                             // Source check
                             if (!methodEntry.isSourceMethod) continue
+                            if (recordAccessorSources.contains(methodEntry.index)) continue
                             // Info check
                             val methodNode = methodEntry.node
                             if (methodNode.isNative) continue
@@ -357,6 +380,11 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                         var keepThisName = true
                         run check@{
                             checkList.forEach { owner ->
+                                // Name-only reflection must not select an unrelated return-type overload.
+                                if (reservedRecordNames[owner.index]?.contains(newName) == true) {
+                                    keepThisName = false
+                                    return@check
+                                }
                                 // One name-level probe; only scan descs when the name is already taken.
                                 // This eliminates all string concatenation from the hot check loop.
                                 val takenDescs = existedNameMap[owner.index][newName]
