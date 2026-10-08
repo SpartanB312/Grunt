@@ -14,8 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
-import kotlin.io.path.inputStream
-import kotlin.io.path.name
+import java.nio.file.NoSuchFileException
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -39,28 +38,37 @@ class JobController(
 
     @GetMapping("/{jobId}/result")
     fun result(@PathVariable jobId: String): ResponseEntity<InputStreamResource> {
-        val result = jobService.resultPath(jobId)
+        val result = jobService.openResult(jobId)
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_OCTET_STREAM)
             .header(
                 HttpHeaders.CONTENT_DISPOSITION,
-                ContentDisposition.attachment().filename(result.name).build().toString(),
+                ContentDisposition.attachment().filename("result.zip").build().toString(),
             )
-            .body(InputStreamResource(result.inputStream()))
+            .body(InputStreamResource(result))
     }
+
+    @ExceptionHandler(JobAdmissionException::class)
+    fun overloaded(error: JobAdmissionException): ResponseEntity<ErrorResponse> = ResponseEntity.status(429)
+        .header(HttpHeaders.RETRY_AFTER, "30").body(ErrorResponse(error.message ?: "Job quota is full"))
+
+    @ExceptionHandler(ConfigTooLargeException::class)
+    fun configTooLarge(error: ConfigTooLargeException): ResponseEntity<ErrorResponse> = ResponseEntity.status(413)
+        .body(ErrorResponse(error.message ?: "Config is too large"))
 
     @ExceptionHandler(IllegalArgumentException::class, IllegalStateException::class)
     fun badRequest(error: RuntimeException): ResponseEntity<ErrorResponse> {
         return ResponseEntity.badRequest().body(ErrorResponse(error.message ?: "Bad request"))
     }
 
-    @ExceptionHandler(NoSuchElementException::class)
-    fun notFound(error: NoSuchElementException): ResponseEntity<ErrorResponse> {
+    @ExceptionHandler(NoSuchElementException::class, NoSuchFileException::class)
+    fun notFound(error: Exception): ResponseEntity<ErrorResponse> {
         return ResponseEntity.status(404).body(ErrorResponse(error.message ?: "Not found"))
     }
 
     @ExceptionHandler(RedisConnectionFailureException::class)
     fun redisUnavailable(error: RedisConnectionFailureException): ResponseEntity<ErrorResponse> {
-        return ResponseEntity.status(503).body(ErrorResponse(error.message ?: "Redis is unavailable"))
+        return ResponseEntity.status(503).header(HttpHeaders.RETRY_AFTER, "5")
+            .body(ErrorResponse(error.message ?: "Redis is unavailable"))
     }
 }

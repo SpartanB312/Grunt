@@ -30,6 +30,9 @@ data class JobMetadata(
     val createdAt: Instant,
     val updatedAt: Instant,
     val error: String? = null,
+    val resultAvailable: Boolean = false,
+    val resultFile: String = "result.zip",
+    val deleting: Boolean = false,
 ) {
     fun toResponse(resultAvailable: Boolean): JobStatusResponse {
         return JobStatusResponse(

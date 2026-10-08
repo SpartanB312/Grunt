@@ -1,11 +1,11 @@
 server:
   port: 8080
+
+spring:
   servlet:
     multipart:
       max-file-size: 512MB
       max-request-size: 2048MB
-
-spring:
   data:
     redis:
       host: localhost
@@ -17,6 +17,25 @@ grunteon:
     queue-key: "grunteon:jobs:queue"
     job-key-prefix: "grunteon:jobs:"
     worker-concurrency: 2
-    worker-java-options:
-      - "-Xmx4G"
+    # Heap is enforced by Xmx. Overhead/native reservations are admission estimates, not RSS limits.
+    # Use OS/container quotas for hard CPU/RAM/disk isolation of external compilers.
+    # Retains the old -Xmx4G per-worker capacity; size aggregate budgets for the deployment.
+    worker-heap-mi-b: 4096
+    worker-overhead-mi-b: 256
+    native-compile-memory-mi-b: 256
+    native-compile-jobs: 1
+    worker-cpu-count: 0 # Auto: share the configured/available CPUs between admitted workers.
+    total-worker-memory-mi-b: 9216
+    # Legacy worker-java-options heap/CPU flags are honored and included in admission accounting.
+    # On small hosts explicitly reduce concurrency/heap/total budgets before starting the service.
     worker-timeout-seconds: 0
+    claim-lease-seconds: 60
+    heartbeat-seconds: 10
+    max-admitted-jobs: 64
+    # Includes retained uploads; generated artifacts/native intermediates need additional disk headroom.
+    max-stored-upload-bytes: 8589934592
+    min-free-disk-bytes: 1073741824
+    max-config-bytes: 1048576
+    # Opt-in; only indexed terminal jobs are eligible, never active/download jobs.
+    retention-seconds: 0
+    abandoned-upload-seconds: 3600

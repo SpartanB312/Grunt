@@ -13,8 +13,15 @@ const refreshButton = document.querySelector("#refreshButton");
 const apiStatus = document.querySelector("#apiStatus");
 
 const storageKey = "grunteon.jobs";
+const maxTrackedJobs = 100;
+const pollConcurrency = 4;
 const jobs = new Map(loadJobs().map((job) => [job.jobId, job]));
 let pollTimer = 0;
+let pollStopped = false;
+let pollInFlight = null;
+let pollController = null;
+let pollFailures = 0;
+let manualRefreshPending = false;
 
 bindFileName(configFile, configName, "No file selected");
 bindFileName(inputFile, inputName, "No file selected");
@@ -26,12 +33,18 @@ form.addEventListener("submit", (event) => {
 });
 
 refreshButton.addEventListener("click", () => {
-    refreshJobs();
+    refreshJobs(true);
+});
+
+document.addEventListener("visibilitychange", () => {
+    window.clearTimeout(pollTimer);
+    if (document.hidden) pollController?.abort();
+    else refreshJobs();
 });
 
 renderJobs();
 refreshJobs();
-pollTimer = window.setInterval(refreshJobs, 2000);
+
 
 function bindFileName(input, target, fallback) {
     input.addEventListener("change", () => {
@@ -107,32 +120,69 @@ function submitJob() {
     request.send(formData);
 }
 
-async function refreshJobs() {
-    if (jobs.size === 0) {
-        setApiStatus("Ready", "ok");
-        return;
-    }
+function isTerminal(job) {
+    return job.status === "SUCCESS" || job.status === "FAILED";
+}
 
-    const entries = Array.from(jobs.values());
-    let ok = true;
-    for (const job of entries) {
-        try {
-            const response = await fetch(`/api/jobs/${encodeURIComponent(job.jobId)}`, {
-                cache: "no-store",
-            });
-            if (!response.ok) {
-                ok = false;
-                continue;
+function refreshJobs(manual = false) {
+    manualRefreshPending ||= manual;
+    window.clearTimeout(pollTimer);
+    if (pollInFlight || document.hidden || pollStopped) return pollInFlight || Promise.resolve();
+    const entries = Array.from(jobs.values()).filter((job) => manualRefreshPending || !isTerminal(job));
+    manualRefreshPending = false;
+    const controller = new AbortController();
+    pollController = controller;
+    pollInFlight = (async () => {
+        let next = 0;
+        let ok = true;
+        let changed = false;
+        const worker = async () => {
+            while (next < entries.length && !controller.signal.aborted) {
+                const job = entries[next++];
+                const request = new AbortController();
+                const abort = () => request.abort();
+                controller.signal.addEventListener("abort", abort, { once: true });
+                const timeout = window.setTimeout(abort, 10000);
+                try {
+                    const response = await fetch(`/api/jobs/${encodeURIComponent(job.jobId)}`, {
+                        cache: "no-store", signal: request.signal,
+                    });
+                    if (response.status === 404) {
+                        changed = jobs.delete(job.jobId) || changed;
+                    } else if (!response.ok) {
+                        ok = false;
+                    } else {
+                        const data = await response.json();
+                        if (data.jobId !== job.jobId || !data.status) { ok = false; continue; }
+                        // A trimmed job must not be reinserted by a late response.
+                        if (jobs.has(job.jobId) && JSON.stringify(jobs.get(job.jobId)) !== JSON.stringify(data)) {
+                            jobs.set(job.jobId, data);
+                            changed = true;
+                        }
+                    }
+                } catch (error) {
+                    if (!controller.signal.aborted) ok = false;
+                } finally {
+                    window.clearTimeout(timeout);
+                    controller.signal.removeEventListener("abort", abort);
+                }
             }
-            const data = await response.json();
-            jobs.set(data.jobId, data);
-        } catch (error) {
-            ok = false;
+        };
+        await Promise.all(Array.from({ length: Math.min(pollConcurrency, entries.length) }, worker));
+        if (changed) { persistJobs(); renderJobs(); }
+        if (!controller.signal.aborted) {
+            pollFailures = ok ? 0 : Math.min(pollFailures + 1, 4);
+            setApiStatus(ok ? "Ready" : "Offline", ok ? "ok" : "danger");
         }
-    }
-    persistJobs();
-    renderJobs();
-    setApiStatus(ok ? "Ready" : "Offline", ok ? "ok" : "danger");
+    })().finally(() => {
+        pollInFlight = null;
+        pollController = null;
+        if (!pollStopped && !document.hidden && (manualRefreshPending || Array.from(jobs.values()).some((job) => !isTerminal(job)))) {
+            const delay = manualRefreshPending ? 0 : Math.min(30000, 2000 * 2 ** pollFailures) * (0.8 + Math.random() * 0.2);
+            pollTimer = window.setTimeout(() => refreshJobs(), delay);
+        }
+    });
+    return pollInFlight;
 }
 
 function renderJobs() {
@@ -176,15 +226,21 @@ function resultMarkup(job) {
 function loadJobs() {
     try {
         const parsed = JSON.parse(window.localStorage.getItem(storageKey) || "[]");
-        return Array.isArray(parsed) ? parsed : [];
+        return Array.isArray(parsed) ? parsed.filter((job) => job && typeof job.jobId === "string").slice(-maxTrackedJobs) : [];
     } catch (error) {
         return [];
     }
 }
 
 function persistJobs() {
-    const entries = Array.from(jobs.values()).slice(-30);
-    window.localStorage.setItem(storageKey, JSON.stringify(entries));
+    // Bound the live Map as well as localStorage, evicting terminal history first.
+    for (const [id, job] of jobs) {
+        if (jobs.size <= maxTrackedJobs) break;
+        if (isTerminal(job)) jobs.delete(id);
+    }
+    while (jobs.size > maxTrackedJobs) jobs.delete(jobs.keys().next().value);
+    try { window.localStorage.setItem(storageKey, JSON.stringify(Array.from(jobs.values()))); }
+    catch (error) { /* Private mode/storage quota must not stop polling. */ }
 }
 
 function readError(body, status) {
@@ -235,5 +291,7 @@ function escapeHtml(value) {
 }
 
 window.addEventListener("beforeunload", () => {
-    window.clearInterval(pollTimer);
+    pollStopped = true;
+    window.clearTimeout(pollTimer);
+    pollController?.abort();
 });
