@@ -1,17 +1,11 @@
 package net.spartanb312.grunteon.index.io
 
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import com.google.gson.stream.JsonWriter
 import net.spartanb312.grunteon.index.FILE_VERSION
 import net.spartanb312.grunteon.index.info.ClassInfo
-import net.spartanb312.grunteon.index.io.toJsonObj
 import java.io.File
-import java.io.FileWriter
-import java.io.PrintWriter
-
-private val gsonPretty: Gson = GsonBuilder().setPrettyPrinting().create()
 
 fun ClassInfo.toJsonObj(): JsonObject {
     return JsonObject().apply {
@@ -45,19 +39,54 @@ fun ClassInfo.toJsonObj(): JsonObject {
     }
 }
 
-private fun JsonObject.saveToFile(file: File) {
-    if (!file.exists()) {
-        file.parentFile?.mkdirs()
-        file.createNewFile()
+fun Collection<ClassInfo>.saveToFile(file: File) {
+    if (!file.exists()) file.parentFile?.mkdirs()
+    file.bufferedWriter(Charsets.UTF_8).use { output ->
+        val writer = JsonWriter(output).apply {
+            setIndent("  ")
+            isHtmlSafe = true // Match Gson's existing pretty-printing and escaping.
+        }
+        writer.beginObject()
+        writer.name("version").value(FILE_VERSION)
+        writer.name("classes").beginArray()
+        for (clazz in this) writer.writeClass(clazz)
+        writer.endArray()
+        writer.endObject()
+        writer.flush()
+        output.append(System.lineSeparator())
     }
-    val saveJSon = PrintWriter(FileWriter(file))
-    saveJSon.println(gsonPretty.toJson(this))
-    saveJSon.close()
 }
 
-fun Collection<ClassInfo>.saveToFile(file: File) {
-    val obj = JsonObject()
-    obj.addProperty("version", FILE_VERSION)
-    obj.add("classes", JsonArray().apply { this@saveToFile.forEach { add(it.toJsonObj()) } })
-    obj.saveToFile(file)
+private fun JsonWriter.writeClass(clazz: ClassInfo) {
+    beginObject()
+    name("access").value(clazz.access)
+    name("name").value(clazz.name)
+    // Class signatures were not emitted by toJsonObj(); retain that on-disk format contract.
+    if (clazz.superName != null) name("superName").value(clazz.superName)
+    if (!clazz.interfaces.isNullOrEmpty()) {
+        name("interfaces").beginArray()
+        clazz.interfaces.forEach { value(it) }
+        endArray()
+    }
+    name("methods").beginArray()
+    for (method in clazz.methods) {
+        beginObject()
+        name("access").value(method.access)
+        name("name").value(method.name)
+        name("desc").value(method.desc)
+        if (method.signature != null) name("signature").value(method.signature)
+        endObject()
+    }
+    endArray()
+    name("fields").beginArray()
+    for (field in clazz.fields) {
+        beginObject()
+        name("access").value(field.access)
+        name("name").value(field.name)
+        name("desc").value(field.desc)
+        if (field.signature != null) name("signature").value(field.signature)
+        endObject()
+    }
+    endArray()
+    endObject()
 }

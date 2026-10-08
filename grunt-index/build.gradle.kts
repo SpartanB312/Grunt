@@ -16,6 +16,7 @@ dependencies {
     library("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutineVersion")
     library(libs.bundles.asm)
     library(libs.gson)
+    testImplementation(kotlin("test"))
 }
 
 kotlin {

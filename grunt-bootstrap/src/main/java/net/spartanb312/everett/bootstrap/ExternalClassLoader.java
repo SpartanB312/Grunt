@@ -6,10 +6,11 @@ import java.lang.reflect.Modifier;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.jar.JarFile;
 
 import static java.lang.Math.max;
 
@@ -104,7 +105,12 @@ public class ExternalClassLoader extends URLClassLoader {
         if (url != null) {
             byte[] bytes = null;
             try {
-                bytes = readBytes(url.openStream());
+                URLConnection connection = url.openConnection();
+                // Closing a cached JarURLConnection stream alone leaves its JarFile globally retained.
+                connection.setUseCaches(false);
+                try (InputStream input = connection.getInputStream()) {
+                    bytes = readBytes(input);
+                }
             } catch (IOException ignored) {
                 System.out.println("Failed to load class from URL. Class: " + name);
             }
@@ -187,27 +193,25 @@ public class ExternalClassLoader extends URLClassLoader {
 
     @SuppressWarnings("deprecation")
     public void loadJar(File file) throws IOException {
-        ZipInputStream zip = new ZipInputStream(new FileInputStream(file));
-        while (true) {
-            ZipEntry entry = zip.getNextEntry();
-            if (entry == null) break;
-            URL url = new URL(
-                    "jar:file:"
-                            + (Platform.getPlatform().getOS() == Platform.OS.Linux ? "" : "/")
-                            + file.getAbsolutePath().replace("\\", "/")
-                            + "!/" + entry.getName()
-            );
-            if (entry.getName().toLowerCase().endsWith(".class")) {
-                classesCache.put(removeSuffix(entry.getName().replace("/", "."), ".class"), url);
-            }
-            // Cache everything except directory
-            if (!entry.isDirectory()) {
-                resources.computeIfAbsent(entry.getName(), k -> {
-                    var list = new ArrayList<URL>();
-                    list.add(url);
-                    return list;
-                });
-                resourceCache.put(entry.getName(), url);
+        // Enumerate the central directory without reading or inflating entry payloads.
+        try (JarFile jar = new JarFile(file)) {
+            Enumeration<? extends ZipEntry> entries = jar.entries();
+            String jarUrl = "jar:" + file.toURI().toURL() + "!/";
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                URL url = new URL(jarUrl + entry.getName());
+                if (entry.getName().toLowerCase().endsWith(".class")) {
+                    classesCache.put(removeSuffix(entry.getName().replace("/", "."), ".class"), url);
+                }
+                // Cache everything except directory
+                if (!entry.isDirectory()) {
+                    resources.computeIfAbsent(entry.getName(), k -> {
+                        var list = new ArrayList<URL>();
+                        list.add(url);
+                        return list;
+                    });
+                    resourceCache.put(entry.getName(), url);
+                }
             }
         }
     }
