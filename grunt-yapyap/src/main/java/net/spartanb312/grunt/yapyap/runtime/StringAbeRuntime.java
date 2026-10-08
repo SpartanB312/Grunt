@@ -3,9 +3,7 @@ package net.spartanb312.grunt.yapyap.runtime;
 import it.unisa.dia.gas.jpbc.Element;
 import it.unisa.dia.gas.jpbc.Pairing;
 import it.unisa.dia.gas.jpbc.PairingParameters;
-import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory;
 import it.unisa.dia.gas.plaf.jpbc.pairing.a.TypeACurveGenerator;
-import it.unisa.dia.gas.plaf.jpbc.pairing.parameters.PropertiesParameters;
 import net.spartanb312.grunt.yapyap.annotation.DisableNumberABE;
 import net.spartanb312.grunt.yapyap.annotation.DisableStringABE;
 
@@ -52,7 +50,7 @@ public final class StringAbeRuntime {
      * every class pool.
      */
     public static PairingParameters buildParams(int rBits, int qBits) {
-        return new TypeACurveGenerator(rBits, qBits).generate();
+        return AbeRuntimeSupport.freezeParameters(new TypeACurveGenerator(rBits, qBits).generate());
     }
 
     /**
@@ -69,11 +67,7 @@ public final class StringAbeRuntime {
         try {
             byte[] plainBlob = writeStringBlob(strings);
 
-            PairingFactory.getInstance().setUsePBCWhenPossible(useNative);
-            // Each call gets its own Pairing instance (JPBC is not thread-safe).
-            // But PairingParameters is safe to share – getPairing() is just the expensive
-            // group initialisation, not Miller-Rabin prime generation.
-            Pairing pairing = PairingFactory.getPairing(sharedParams);
+            Pairing pairing = AbeRuntimeSupport.freshPairing(sharedParams, useNative);
 
             Element g = pairing.getG1().newRandomElement().getImmutable();
             Element alpha = pairing.getZr().newRandomElement().getImmutable();
@@ -181,11 +175,7 @@ public final class StringAbeRuntime {
     }
 
     public static Pairing readPairing(String encodedParameters, boolean useNative) throws Exception {
-        PairingFactory.getInstance().setUsePBCWhenPossible(useNative);
-        String text = new String(decodeBase64(encodedParameters), StandardCharsets.UTF_8);
-        PropertiesParameters parameters = new PropertiesParameters();
-        parameters.load(new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)));
-        return PairingFactory.getPairing(parameters);
+        return AbeRuntimeSupport.freshPairing(AbeRuntimeSupport.parameters(encodedParameters), useNative);
     }
 
     private static SecretKey keyGen(
@@ -251,7 +241,7 @@ public final class StringAbeRuntime {
             Element numerator = pairing.pairing(component[0], leaf.cy);
             Element denominator = pairing.pairing(component[1], leaf.cyp);
             Element share = numerator.div(denominator);
-            Element lambda = lagrangeCoefficient(pairing, index + 1, n);
+            Element lambda = AbeRuntimeSupport.lagrangeCoefficient(pairing, index + 1, n);
             accumulated = accumulated.duplicate().mul(share.powZn(lambda)).getImmutable();
         }
         Element ecd = pairing.pairing(cipherText.c, secretKey.d);
@@ -266,17 +256,6 @@ public final class StringAbeRuntime {
             result.mul(x).add(coefficients[i]);
         }
         return result.getImmutable();
-    }
-
-    private static Element lagrangeCoefficient(Pairing pairing, int i, int n) {
-        Element numerator = pairing.getZr().newOneElement();
-        Element denominator = pairing.getZr().newOneElement();
-        for (int j = 1; j <= n; j++) {
-            if (j == i) continue;
-            numerator.mul(pairing.getZr().newElement(-j));
-            denominator.mul(pairing.getZr().newElement(i - j));
-        }
-        return numerator.div(denominator).getImmutable();
     }
 
     private static Element hashToG1(Pairing pairing, String value) {

@@ -27,11 +27,14 @@ dependencies {
     implementation(libs.bundles.utils)
     implementation(libs.bundles.apache.common)
     implementation(libs.bundles.jpbc)
+    testImplementation(kotlin("test-junit"))
 }
 
 tasks {
     test {
-        enabled = false
+        useJUnit()
+        maxHeapSize = "512m"
+        maxParallelForks = 1
     }
 
     jar {

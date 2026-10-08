@@ -6,6 +6,7 @@ import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory
 import it.unisa.dia.gas.plaf.jpbc.pairing.a.TypeACurveGenerator
 import it.unisa.dia.gas.plaf.jpbc.pbc.PBCPairingFactory
 import kotlinx.serialization.Serializable
+import net.spartanb312.grunt.yapyap.transformers.encrypt.OncePerPass
 import net.spartanb312.genesis.kotlin.extensions.*
 import net.spartanb312.genesis.kotlin.extensions.insn.*
 import net.spartanb312.genesis.kotlin.field
@@ -114,12 +115,9 @@ class StringAttributeBasedEncrypt : Transformer<StringAttributeBasedEncrypt.Conf
         }
         val runtimeNeeded = reducibleScopeValue { MergeableCounter() }
 
-        // Generate curve parameters ONCE for the whole transformer run.
-        // TypeACurveGenerator.generate() runs Miller-Rabin primality tests which accounts
-        // for a significant fraction of per-pool CPU time. Sharing read-only parameters
-        // across all parallel buildPool calls eliminates this repeated cost.
-        // Each parallel task still creates its own Pairing instance (JPBC is not thread-safe).
-        val sharedParams = StringAbeRuntime.buildParams(config.rBits, config.qBits)
+        // No curve generation on an empty/filtered pass. Cache success OR failure once,
+        // after the first accepted pool; never share a mutable Pairing between workers.
+        val sharedParams = OncePerPass { StringAbeRuntime.buildParams(config.rBits, config.qBits) }
 
         parForEachClassesFiltered(
             instance.globalExclusion
@@ -137,7 +135,7 @@ class StringAttributeBasedEncrypt : Transformer<StringAttributeBasedEncrypt.Conf
 
             Logger.debug("   StringABE: Processing ${classNode.name}")
 
-            val companion = createPoolClass(config, classNode, randomGen, pool, generatedResources.local, sharedParams)
+            val companion = createPoolClass(config, classNode, randomGen, pool, generatedResources.local, sharedParams.get())
             replaceStringLoads(pool, companion)
             generatedPools.local.add(companion)
             counter.local.add(pool.size)

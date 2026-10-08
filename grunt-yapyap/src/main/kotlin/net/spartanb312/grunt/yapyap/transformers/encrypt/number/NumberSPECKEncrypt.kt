@@ -67,7 +67,10 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
             "net/dummy/Class",
             "net/dummy/Class.method",
             "net/dummy/Class.method()V"
-        )
+        ),
+        @SettingDesc("Reuse helpers for identical types and raw literal bits. Reduces per-occurrence protection diversity.")
+        @SettingName("Reuse helpers")
+        val reuseHelpers: Boolean = false
     ) : TransformerConfig()
 
     context(instance: Grunteon, _: PipelineBuilder)
@@ -91,64 +94,18 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
             if (classNode.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@parForEachClassesFiltered
             if (classNode.version < Opcodes.V1_5) return@parForEachClassesFiltered
 
-            val classRandom = Xoshiro256PPRandom(getSeed(classNode.name, "number-speck"))
-            val companionName = "${classNode.name}\$NumberSPECK_${classRandom.getRandomString(8)}"
-            var companion: ClassNode? = null
-            var generatedMethodId = 0
-
-            fun companion(): ClassNode {
-                val current = companion
-                if (current != null) return current
-                return ClassNode().apply {
-                    visit(classNode.version, Opcodes.ACC_PUBLIC, companionName, null, "java/lang/Object", null)
-                    appendAnnotation(GENERATED_CLASS)
-                    appendAnnotation(DISABLE_NUMBER_ENCRYPT)
-                    companion = this
-                }
-            }
-
-            classNode.methods.asSequence()
-                .filter { !it.isAbstract && !it.isNative }
-                .forEach { method ->
-                    if (method.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@forEach
-                    if (methodExPredicate.global.matchedAnyBy(methodFullDesc(classNode, method))) return@forEach
-                    if ((method.instructions?.size() ?: 0) >= config.maxInstructions) return@forEach
-
-                    val chanceModifier =
-                        (if (config.dynamicStrength) {
-                            (config.maxInstructions - method.instructions.size()).toFloat() / config.maxInstructions
-                        } else 1f).coerceIn(0f, 1f)
-                    val randomGen = Xoshiro256PPRandom(getSeed(classNode.name, method.name, method.desc, "speck"))
-                    val shuffledList = shuffledListCache.local
-                    shuffledList.clearFast()
-
-                    method.instructions.filterTo(shuffledList) { it.opcode != Opcodes.NEWARRAY }
-                    shuffledList.shuffle(randomGen)
-                    shuffledList.forEach { instruction ->
-                        if (randomGen.nextFloat() >= chanceModifier * config.chance.toFloat()) return@forEach
-                        val generatedMethod = createDecryptMethod(config, randomGen, instruction) {
-                            "m${generatedMethodId++}"
-                        } ?: return@forEach
-
-                        companion().methods.add(generatedMethod)
-                        method.instructions.insertBefore(
-                            instruction,
-                            instructions {
-                                INVOKESTATIC(companionName, generatedMethod.name, generatedMethod.desc)
-                            }
-                        )
-                        method.instructions.remove(instruction)
-                        counter.add()
-                    }
-                }
-
-            companion?.takeIf { it.methods.isNotEmpty() }?.let {
-                generatedCompanions.local.add(it)
-            }
+            val (companions, count) = transformClass(
+                config, classNode, methodExPredicate.global, shuffledListCache.local
+            ) { getSeed(*it) }
+            companions.forEach { generatedCompanions.local.add(it) }
+            counter.add(count)
         }
 
         seq {
             generatedCompanions.global.forEach {
+                check(!instance.workRes.inputClassMap.containsKey(it.name)) {
+                    "SPECK helper class name collision: ${it.name}"
+                }
                 instance.workRes.addGeneratedClass(it)
             }
         }
@@ -158,6 +115,66 @@ class NumberSPECKEncrypt : Transformer<NumberSPECKEncrypt.Config>(
             Logger.info("    Encrypted ${counter.global.get()} numbers")
             Logger.info("    Generated ${generatedCompanions.global.size} SPECK helper classes")
         }
+    }
+
+    // The seed supplier is derived from the existing transformer seed in production.
+    internal fun transformClass(
+        config: Config,
+        classNode: ClassNode,
+        methodPredicate: NamePredicates,
+        shuffledList: FastObjectArrayList<AbstractInsnNode>,
+        seed: (Array<out String>) -> ByteArray
+    ): Pair<List<ClassNode>, Int> {
+        val classRandom = Xoshiro256PPRandom(seed(arrayOf(classNode.name, "number-speck")))
+        val companionName = "${classNode.name}\$NumberSPECK_${classRandom.getRandomString(8)}"
+        val helpers = SpeckHelperClasses(classNode.version, companionName)
+        val reused = if (config.reuseHelpers) HashMap<LiteralKey, HelperReference>() else null
+        var generatedMethodId = 0
+        var count = 0
+        classNode.methods.forEach methodLoop@ { method ->
+            if (method.isAbstract || method.isNative || method.isExcluded(DISABLE_NUMBER_ENCRYPT)) return@methodLoop
+            if (methodPredicate.matchedAnyBy(methodFullDesc(classNode, method))) return@methodLoop
+            if ((method.instructions?.size() ?: 0) >= config.maxInstructions) return@methodLoop
+            val chanceModifier = (if (config.dynamicStrength) {
+                (config.maxInstructions - method.instructions.size()).toFloat() / config.maxInstructions
+            } else 1f).coerceIn(0f, 1f)
+            val random = Xoshiro256PPRandom(seed(arrayOf(classNode.name, method.name, method.desc, "speck")))
+            shuffledList.clearFast()
+            method.instructions.filterTo(shuffledList) { it.opcode != Opcodes.NEWARRAY }
+            shuffledList.shuffle(random)
+            shuffledList.forEach instructionLoop@ { instruction ->
+                if (random.nextFloat() >= chanceModifier * config.chance.toFloat()) return@instructionLoop
+                val key = if (reused != null) literalKey(config, instruction) else null
+                val reference = key?.let { reused?.get(it) } ?: run {
+                    val generated = createDecryptMethod(config, random, instruction) {
+                        "m${generatedMethodId++}"
+                    } ?: return@instructionLoop
+                    HelperReference(helpers.add(generated), generated.name, generated.desc).also {
+                        if (key != null) reused?.put(key, it)
+                    }
+                }
+                method.instructions.insertBefore(instruction, instructions {
+                    INVOKESTATIC(reference.owner, reference.name, reference.desc)
+                })
+                method.instructions.remove(instruction)
+                count++
+            }
+        }
+        // Never silently leave selected literals in clear text when a JVM limit is reached.
+        // Fail here, before dump's fallback can turn an oversized class into an empty entry.
+        if (count > 0) SpeckHelperClasses.validateClass(classNode)
+        return helpers.finish() to count
+    }
+
+    internal data class LiteralKey(val type: Char, val bits: Long)
+    private data class HelperReference(val owner: String, val name: String, val desc: String)
+
+    internal fun literalKey(config: Config, instruction: AbstractInsnNode): LiteralKey? {
+        if (config.integer) instruction.getIntValue()?.let { return LiteralKey('I', it.toLong()) }
+        if (config.long) instruction.getLongValue()?.let { return LiteralKey('J', it) }
+        if (config.float) instruction.getFloatValue()?.let { return LiteralKey('F', it.asInt().toLong()) }
+        if (config.double) instruction.getDoubleValue()?.let { return LiteralKey('D', it.asLong()) }
+        return null
     }
 
     private fun createDecryptMethod(
