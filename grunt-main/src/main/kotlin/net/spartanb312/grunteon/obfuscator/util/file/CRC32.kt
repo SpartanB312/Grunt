@@ -9,18 +9,15 @@ import java.util.zip.ZipOutputStream
 
 
 fun ZipOutputStream.corruptCRC32(randomGen: UniformRandomProvider) {
-    //val field = ZipOutputStream::class.java.getDeclaredField("crc")
-    //field.isAccessible = true
-    //field[this] = object : CRC32() {
-    //    override fun update(bytes: ByteArray, i: Int, length: Int) {}
-    //    override fun getValue(): Long {
-    //        return randomGen.nextInt(Int.MAX_VALUE - 1).toLong()
-    //    }
-    //}
     ZipCrcFinalSetter.setCrc(this, object : CRC32() {
-        override fun update(bytes: ByteArray, i: Int, length: Int) {}
-        override fun getValue(): Long {
-            return randomGen.nextInt(Int.MAX_VALUE - 1).toLong()
+        // A nonzero mask guarantees a different CRC, stable across reads for the same entry.
+        private var mask = randomGen.nextLong(1L, 0x1_0000_0000L)
+
+        override fun getValue(): Long = super.getValue() xor mask
+
+        override fun reset() {
+            super.reset()
+            mask = randomGen.nextLong(1L, 0x1_0000_0000L)
         }
     })
 }
