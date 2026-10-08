@@ -45,12 +45,12 @@ fun main(args: Array<String>) {
     PluginManager.loadPlugins()
 
     val config = ObfConfig.read(Path(configPath(args)))
-    val instance = Grunteon.create(config)
-
-    measureTime {
-        instance.run()
-    }.toDouble(DurationUnit.MILLISECONDS).also { time ->
-        println("Execution time: ${"%.2f".format(time)} ms")
+    Grunteon.create(config).use { instance ->
+        measureTime {
+            instance.run()
+        }.toDouble(DurationUnit.MILLISECONDS).also { time ->
+            println("Execution time: ${"%.2f".format(time)} ms")
+        }
     }
 }
 

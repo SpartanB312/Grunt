@@ -11,6 +11,7 @@ import net.spartanb312.grunteon.obfuscator.process.transformers.rename.mapping.N
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.filters.ClassPredicate
 import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
+import java.io.Closeable
 
 // Grunteon process instance
 class Grunteon(
@@ -19,7 +20,9 @@ class Grunteon(
     val workRes: WorkResources,
     val transformers: List<Pair<Transformer<*>, TransformerConfig>>,
     val nativePipelineConfig: NativePipelineConfig = NativePipelineConfig(),
-) {
+) : Closeable {
+    override fun close() = workRes.close()
+
     /**
      * Resources
      */
@@ -57,7 +60,14 @@ class Grunteon(
             Logger.info("Executing obfuscating job...")
 
             val workRes = WorkResources.read(io.input, io.libraries)
+            return try {
+                create(config, io, workRes)
+            } catch (failure: Throwable) {
+                workRes.use { throw failure }
+            }
+        }
 
+        private fun create(config: ObfConfig, io: ObfuscationIO, workRes: WorkResources): Grunteon {
             val transformerAndConfig = config.transformers
                 .asSequence()
                 .filter { it.enabled }

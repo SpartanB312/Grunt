@@ -15,14 +15,16 @@ import org.objectweb.asm.ClassReader
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 import org.objectweb.asm.tree.MethodNode
+import java.io.Closeable
 import java.net.URI
-import java.nio.file.FileSystemNotFoundException
+import java.nio.file.FileSystem
 import java.nio.file.FileSystems
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipFile
 import kotlin.io.path.*
 
+/** Owns archives opened by [read]. Close after use; caller-provided file systems are not owned. */
 class WorkResources private constructor(
     val inputResourceSet: ResourceSet.Single,
     val libraryResourceSets: Map<String, ResourceSet.Single>,
@@ -38,8 +40,11 @@ class WorkResources private constructor(
      * Also included in allClasses.
      */
     val inputClassMap: MutableMap<String, ClassNode>,
+    private val archives: ArchiveFileSystems,
     private val stringPools: ConcurrentHashMap<String, List<String>> = ConcurrentHashMap()
-) {
+) : Closeable {
+    override fun close() = archives.close()
+
     val inputClassCollection: Collection<ClassNode> get() = inputClassMap.values
     val librariesClassCollection: Collection<ClassNode> get() = libraryClassMap.values
 
@@ -109,26 +114,37 @@ class WorkResources private constructor(
         libraryClassMap[classInfo.name] = node
     }
 
+    private class ArchiveFileSystems : AutoCloseable {
+        private val owned = mutableListOf<FileSystem>()
+
+        fun open(path: Path): Path {
+            // The Path overload creates an independent view, not a cached URI-registered file system.
+            val fileSystem = FileSystems.newFileSystem(path, emptyMap<String, String>())
+            owned.add(fileSystem)
+            return fileSystem.getPath("/")
+        }
+
+        override fun close() {
+            var failure: Throwable? = null
+            for (fileSystem in owned.asReversed()) {
+                try {
+                    fileSystem.close()
+                } catch (closeFailure: Throwable) {
+                    if (failure == null) failure = closeFailure else failure.addSuppressed(closeFailure)
+                }
+            }
+            failure?.let { throw it }
+        }
+    }
+
     companion object {
         const val ANTI_LLM_STRING_POOL = "anti-llm"
 
-        private fun toZipRootPath(zipPath: Path): Path {
-            val jarURI = URI.create("jar:" + zipPath.toUri())
-            // TODO: lifecycle of zipFileSystem
-            val zipFileSystem = try {
-                FileSystems.getFileSystem(jarURI)
-            } catch (_: FileSystemNotFoundException) {
-                FileSystems.newFileSystem(jarURI, mapOf<String, String>())
-            }
-
-            return zipFileSystem.getPath("/")
-        }
-
-        private fun resolvePath(path: Path): Path {
+        private fun resolvePath(path: Path, archives: ArchiveFileSystems): Path {
             if (path.isRegularFile()) {
                 val ext = path.extension.lowercase()
                 if (ext == "jar" || ext == "zip") {
-                    return toZipRootPath(path)
+                    return archives.open(path)
                 }
             }
             return path
@@ -144,8 +160,17 @@ class WorkResources private constructor(
             )
         }
 
-        @OptIn(ExperimentalCoroutinesApi::class)
         fun read(input: ResourceInput, libs: List<ResourceInput> = emptyList()): WorkResources {
+            val archives = ArchiveFileSystems()
+            return try {
+                read(input, libs, archives)
+            } catch (failure: Throwable) {
+                archives.use { throw failure }
+            }
+        }
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        private fun read(input: ResourceInput, libs: List<ResourceInput>, archives: ArchiveFileSystems): WorkResources {
             val inputPath = input.resolvePath()
             val libraryPaths = libs.map { it to it.resolvePath() }
             Logger.info("Reading...")
@@ -155,9 +180,9 @@ class WorkResources private constructor(
             libraryPaths.forEach { (library, _) ->
                 Logger.debug(" - ${library.description}")
             }
-            val inputResourceSet = ResourceSet.Single(resolvePath(inputPath))
+            val inputResourceSet = ResourceSet.Single(resolvePath(inputPath, archives))
             val libraryResourceSets = libraryPaths.associate { (library, path) ->
-                library.description to ResourceSet.Single(resolvePath(path))
+                library.description to ResourceSet.Single(resolvePath(path, archives))
             }
             val allResourceSetList = listOf(inputResourceSet) + libraryResourceSets.values
             val allResourceSets = ResourceSet.Composite(allResourceSetList)
@@ -198,7 +223,8 @@ class WorkResources private constructor(
                 allResourceSets = allResourceSets,
                 generatedResources = Object2ObjectOpenHashMap(),
                 libraryClassMap = libraryClassMap,
-                inputClassMap = inputClassMap
+                inputClassMap = inputClassMap,
+                archives = archives
             )
         }
 

@@ -119,8 +119,7 @@ fun FrameWindowScope.App(
                             "count" to runConfig.transformers.count { it.enabled }
                         )
                     )
-                    val instance = Grunteon.create(runConfig)
-                    instance.run()
+                    Grunteon.create(runConfig).use { it.run() }
                     Logger.info(uiText(UiText.Obfuscation.FinishedLog))
                     SwingUtilities.invokeLater {
                         appModel.uiState.globalStatus = uiText(UiText.Status.ObfuscationFinished)
