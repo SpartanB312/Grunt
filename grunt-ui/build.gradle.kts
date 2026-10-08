@@ -81,6 +81,8 @@ tasks.register<Jar>("packageUniversalUberJar") {
         "module-info.class",
     )
 
+    // Resolving configurations into plain zipTree files loses their producer task dependencies.
+    dependsOn(configurations.runtimeClasspath, universalComposeDesktopRuntime)
     from(sourceSets.main.get().output)
     from({
         (configurations.runtimeClasspath.get() + universalComposeDesktopRuntime)

@@ -248,8 +248,12 @@ class PipelineEditorState(
 
     var dialog: Dialog? by mutableStateOf(null)
 
+    private val catalog = TransformerCatalog(net.spartanb312.grunteon.obfuscator.process.TransformerRegistry.entries)
     val definitions: List<TransformerDefinition>
-        get() = transformerDefinitions()
+        get() {
+            appModel.languageRevision // Observe language changes in callers that read this getter.
+            return catalog.definitions()
+        }
     var selectedIndexState by mutableStateOf(-1)
     var selectedIndex: Int
         get() {

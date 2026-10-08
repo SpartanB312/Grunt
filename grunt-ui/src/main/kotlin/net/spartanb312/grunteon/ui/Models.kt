@@ -16,8 +16,6 @@ import net.spartanb312.grunteon.obfuscator.process.*
 import net.spartanb312.grunteon.obfuscator.util.Decimal
 import java.nio.file.Path
 import kotlin.io.path.Path
-import kotlin.io.path.createDirectories
-import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.reflect.KClass
@@ -40,14 +38,6 @@ private fun appRuntimeConfigDir(): Path {
             ?: Path(userHome, ".config")
     }
     return baseDir.resolve(AppRuntimeDirectoryName)
-}
-
-private fun appConfigPath(): Path = appRuntimeConfigDir().resolve("app_config.json")
-
-private fun appStatePath(): Path = appRuntimeConfigDir().resolve("app_state.json")
-
-private fun Path.ensureParentDirectory() {
-    parent?.createDirectories()
 }
 
 private fun Path.displayPath(): String = toAbsolutePath().normalize().toString()
@@ -83,16 +73,55 @@ enum class AppPage {
     Settings,
 }
 
-class AppModel(private val appScope: ApplicationScope, val coroutineScope: CoroutineScope) {
+/** All public state access and operation entry points belong to the caller's UI dispatcher. */
+class AppModel internal constructor(
+    private val exitApplication: () -> Unit,
+    val coroutineScope: CoroutineScope,
+    private val configDirectory: Path,
+    private val storage: UiConfigStorage = UiConfigStorage(),
+    private val io: ConfigIoQueue = ConfigIoQueue(),
+) {
+    constructor(appScope: ApplicationScope, coroutineScope: CoroutineScope) :
+        this(appScope::exitApplication, coroutineScope, appRuntimeConfigDir())
+
+    // Initialize every revision before a setter or asynchronous startup operation can use it.
+    private var appConfigRevision = 0L
+    private var appStateRevision = 0L
+    private var configRevision = 0L
+    private var documentRevision = 0L
+    private var loadRequest = 0L
+    private var saveRequest = 0L
+    private var initialized = false
+    private val startupFinished = kotlinx.coroutines.CompletableDeferred<Unit>()
+    var isInitializing by mutableStateOf(true)
+        private set
+    private var appConfigSaveJob: Job? = null
+    private var appConfigDirty by mutableStateOf(false)
+    private var obfConfigDirty by mutableStateOf(false)
+    var languageRevision by mutableStateOf(0L)
+        private set
+    var isClosing by mutableStateOf(false)
+        private set
+    internal var beforeExitIo: () -> Unit = {}
+
     val uiState = AppUIState()
-    var appState by mutableStateOf(AppState())
+    private var _appState by mutableStateOf(AppState())
+    var appState: AppState
+        get() = _appState
+        set(value) {
+            if (_appState != value) {
+                _appState = value
+                appStateRevision++
+            }
+        }
     private var _appConfig by mutableStateOf(AppConfig())
     var appConfig: AppConfig
         get() = _appConfig
         set(value) {
             if (_appConfig != value) {
                 _appConfig = value
-                I18n.setLanguage(value.language)
+                appConfigRevision++
+                updateLanguage(value.language)
                 appConfigDirty = true
                 scheduleAppConfigSave()
             }
@@ -103,215 +132,337 @@ class AppModel(private val appScope: ApplicationScope, val coroutineScope: Corou
         set(value) {
             if (_obfConfig != value) {
                 _obfConfig = value
+                configRevision++
                 obfConfigDirty = true
             }
         }
+    val hasUnsavedChanges: Boolean get() = obfConfigDirty
+    val configCommandsEnabled: Boolean get() = !isInitializing && !isClosing
 
-    private var appConfigDirty by mutableStateOf(false)
-    private var appConfigSaveJob: Job? = null
-    private var obfConfigDirty by mutableStateOf(false)
-    val hasUnsavedChanges: Boolean
-        get() = obfConfigDirty
+    internal class ConfigSaveIntent(
+        val owner: AppModel,
+        val request: Long,
+        val loadRequest: Long,
+        val revision: Long,
+        val document: Long,
+        val pathRevision: Long,
+        val sourcePath: NioPath?,
+        val sourceConfig: ObfConfig,
+        val snapshot: ObfConfig,
+    ) {
+        var consumed = false
+    }
 
     class DiscardConfirmState(
         val onSave: () -> Unit,
         val onDiscard: () -> Unit,
-        val onCancel: () -> Unit
+        val onCancel: () -> Unit,
     )
-
     var discardConfirmState by mutableStateOf<DiscardConfirmState?>(null)
 
-    init {
-        loadAppConfig()
-        loadAppState()
-        when (appConfig.startupAction) {
-            StartupAction.LoadLastConfig -> {
-                appState.configPath?.let { path ->
-                    if (!openConfig(path)) {
-                        recoverFromLastConfigLoadFailure(path)
+    /** Called from LaunchedEffect, not init: first composition must not perform disk IO. */
+    suspend fun initialize() {
+        if (initialized) {
+            startupFinished.await()
+            return
+        }
+        initialized = true
+        try {
+            val initialRevision = configRevision
+            val initialConfig = obfConfig
+            val initialSnapshot = configSnapshot(initialConfig)
+            val initialDocument = documentRevision
+            val initialPathRevision = appStateRevision
+            val initialLoadRequest = loadRequest
+            val untouchedDocument = initialRevision == 0L && initialDocument == 0L &&
+                initialPathRevision == 0L && initialLoadRequest == 0L
+            if (appConfigRevision == 0L) loadAppConfig()
+            if (!untouchedDocument || isClosing || initialRevision != configRevision || initialDocument != documentRevision ||
+                initialPathRevision != appStateRevision || initialLoadRequest != loadRequest
+            ) return
+            if (!isUnchangedConfig(initialRevision, initialConfig, initialSnapshot)) return
+            loadAppState()
+            if (isClosing || initialRevision != configRevision || initialDocument != documentRevision ||
+                initialLoadRequest != loadRequest
+            ) return
+            if (!isUnchangedConfig(initialRevision, initialConfig, initialSnapshot)) return
+            when (appConfig.startupAction) {
+                StartupAction.LoadLastConfig -> {
+                    val path = appState.configPath
+                    if (path == null) newConfig()
+                    else {
+                        val revision = configRevision
+                        val document = documentRevision
+                        val pathRevision = appStateRevision
+                        val request = loadRequest + 1
+                        if (!openConfig(path) && revision == configRevision && document == documentRevision &&
+                            pathRevision == appStateRevision && request == loadRequest && !isClosing
+                        ) recoverFromLastConfigLoadFailure(path)
                     }
-                } ?: run {
-                    newConfig()
                 }
+                StartupAction.NewConfig -> newConfig()
             }
-            StartupAction.NewConfig -> {
-                newConfig()
-            }
+        } finally {
+            isInitializing = false
+            startupFinished.complete(Unit)
         }
     }
 
     fun onExit() {
+        if (isClosing) return
+        if (isInitializing) {
+            coroutineScope.launch {
+                initialize()
+                onExit()
+            }
+            return
+        }
         checkUnsavedChanges {
+            val exitingRevision = configRevision
+            isClosing = true
             appConfigSaveJob?.cancel()
-            saveAppConfig()
-            saveAppState()
-            appScope.exitApplication()
+            coroutineScope.launch {
+                // Check revisions after the final suspension too, including a slow full-log flush.
+                while (true) {
+                    val settingsRevision = appConfigRevision
+                    val stateRevision = appStateRevision
+                    val saved = saveAppConfig() && saveAppState()
+                    io.flush()
+                    val flushLog = beforeExitIo // Capture on UI; never read Compose state in the IO task.
+                    val flushed = performIo { flushLog() }.onFailure {
+                        showCriticalError(uiText(UiText.Dialog.SaveConfigFailedTitle), it.message.orEmpty())
+                    }.isSuccess
+                    if (!saved || !flushed) {
+                        isClosing = false
+                        return@launch
+                    }
+                    if (exitingRevision != configRevision) {
+                        isClosing = false
+                        onExit() // Ask again if the document changed during the flush.
+                        return@launch
+                    }
+                    if (settingsRevision == appConfigRevision && stateRevision == appStateRevision &&
+                        flushLog === beforeExitIo
+                    ) {
+                        io.stop()
+                        exitApplication() // No suspension between the revision check and exit.
+                        return@launch
+                    }
+                }
+            }
         }
     }
 
     fun checkUnsavedChanges(proceed: () -> Unit) {
+        if (isClosing) return
         if (hasUnsavedChanges) {
-            discardConfirmState = DiscardConfirmState(
-                onSave = proceed,
-                onDiscard = proceed,
-                onCancel = {}
-            )
-        } else {
-            proceed()
+            discardConfirmState = DiscardConfirmState(proceed, proceed, {})
+        } else proceed()
+    }
+
+    suspend fun loadAppConfig() {
+        val revision = appConfigRevision
+        val path = configDirectory.resolve("app_config.json")
+        val result = performIo { storage.readAppConfig(path) }
+        if (revision != appConfigRevision || isClosing) return
+        result.onSuccess { replaceAppConfigWithoutDirty(it) }.onFailure {
+            reportError(UiText.Status.FailedToLoadAppConfig, path, it)
         }
     }
 
-    fun loadAppConfig() {
-        val path = appConfigPath()
-        if (!path.exists()) {
-            replaceAppConfigWithoutDirty(AppConfig())
-            return
-        }
-        runCatching {
-            AppConfig.read(path)
-        }.onSuccess {
-            replaceAppConfigWithoutDirty(it)
+    suspend fun saveAppConfig(): Boolean {
+        val revision = appConfigRevision
+        val snapshot = configSnapshot(appConfig)
+        val path = configDirectory.resolve("app_config.json")
+        return performIo { storage.writeAppConfig(snapshot, path) }.onSuccess {
+            if (revision == appConfigRevision) appConfigDirty = false
         }.onFailure {
-            val message = uiText(
-                UiText.Status.FailedToLoadAppConfig,
-                "path" to path.displayPath(),
-                "message" to (it.message ?: it::class.qualifiedName)
-            )
-            uiState.globalStatus = message
-            println(message)
-        }
-    }
-
-    fun saveAppConfig(): Boolean {
-        val path = appConfigPath()
-        val configToSave = appConfig
-        return runCatching {
-            AppConfig.write(configToSave, path)
-        }.onSuccess {
-            if (_appConfig == configToSave) {
-                appConfigDirty = false
-            }
-        }.onFailure {
-            println(
-                uiText(
-                    UiText.Status.FailedToSaveAppConfig,
-                    "path" to path.displayPath(),
-                    "message" to (it.message ?: it::class.qualifiedName)
-                )
-            )
+            reportError(UiText.Status.FailedToSaveAppConfig, path, it)
         }.isSuccess
     }
 
-    fun loadAppState() {
-        val path = appStatePath()
-        if (!path.exists()) {
-            appState = AppState()
-            return
-        }
-        runCatching {
-            AppState.read(path)
-        }.onSuccess {
-            appState = it
-        }.onFailure {
-            val message = uiText(
-                UiText.Status.FailedToLoadAppState,
-                "path" to path.displayPath(),
-                "message" to (it.message ?: it::class.qualifiedName)
-            )
-            uiState.globalStatus = message
-            println(message)
+    suspend fun loadAppState() {
+        val revision = appStateRevision
+        val document = documentRevision
+        val path = configDirectory.resolve("app_state.json")
+        val result = performIo { storage.readAppState(path) }
+        if (revision != appStateRevision || document != documentRevision || isClosing) return
+        result.onSuccess { appState = it }.onFailure {
+            reportError(UiText.Status.FailedToLoadAppState, path, it)
         }
     }
 
-    fun saveAppState(): Boolean {
-        val path = appStatePath()
-        return runCatching {
-            AppState.write(appState, path)
-        }.onFailure {
-            println(
-                uiText(
-                    UiText.Status.FailedToSaveAppState,
-                    "path" to path.displayPath(),
-                    "message" to (it.message ?: it::class.qualifiedName)
-                )
-            )
+    suspend fun saveAppState(): Boolean {
+        val snapshot = appState.copy()
+        val path = configDirectory.resolve("app_state.json")
+        return performIo { storage.writeAppState(snapshot, path) }.onFailure {
+            reportError(UiText.Status.FailedToSaveAppState, path, it)
         }.isSuccess
     }
 
-    fun openConfig(path: NioPath): Boolean {
-        val loaded = loadConfig(path)
-        if (loaded.success) {
-            replaceConfigWithoutDirty(loaded.config)
-            uiState.globalStatus = loaded.message
+    suspend fun openConfig(path: NioPath): Boolean {
+        if (isClosing) return false
+        val request = ++loadRequest
+        saveRequest++ // A late save may not reselect the document being replaced.
+        val revision = configRevision
+        val pathRevision = appStateRevision
+        val document = documentRevision
+        val source = obfConfig
+        val snapshot = configSnapshot(source)
+        val result = performIo { storage.readConfig(path) }
+        if (request != loadRequest || revision != configRevision || document != documentRevision ||
+            pathRevision != appStateRevision || isClosing
+        ) return false
+        if (!isUnchangedConfig(revision, source, snapshot)) return false
+        return result.onSuccess { config ->
+            documentRevision++
+            replaceConfigWithoutDirty(config)
             appState = appState.copy(configPath = path)
-        } else {
-            uiState.globalStatus = loaded.message
-            showCriticalError(uiText(UiText.Dialog.OpenConfigFailedTitle), loaded.message)
-        }
-        return loaded.success
+            uiState.globalStatus = uiText(UiText.Status.LoadedConfig,
+                "count" to config.transformers.size, "path" to path.displayPath())
+        }.onFailure {
+            reportError(UiText.Status.FailedToLoadConfig, path, it, UiText.Dialog.OpenConfigFailedTitle)
+        }.isSuccess
     }
 
     fun newConfig() {
+        if (isClosing) return
+        documentRevision++
+        loadRequest++
         replaceConfigWithoutDirty(ObfConfig())
         uiState.globalStatus = uiText(UiText.Status.CreatedNewConfig)
         appState = appState.copy(configPath = null)
     }
 
-    private fun recoverFromLastConfigLoadFailure(path: NioPath) {
-        val failedPath = path.toAbsolutePath().normalize()
+    private suspend fun recoverFromLastConfigLoadFailure(path: NioPath) {
+        documentRevision++
         replaceConfigWithoutDirty(ObfConfig())
         appState = appState.copy(configPath = null)
-        val stateSaved = saveAppState()
-        uiState.globalStatus = buildString {
-            append(uiText(UiText.Status.FailedToLoadLastConfig, "path" to failedPath))
-            if (!stateSaved) {
-                println(uiText(UiText.Status.FailedToUpdateAppState, "path" to failedPath))
-            }
+        uiState.globalStatus = uiText(UiText.Status.FailedToLoadLastConfig, "path" to path.displayPath())
+        if (!saveAppState()) println(uiText(UiText.Status.FailedToUpdateAppState, "path" to path.displayPath()))
+    }
+
+    /** Capture on UI before scheduling a coroutine or showing a suspendable file chooser. */
+    internal fun beginConfigSave(): ConfigSaveIntent? {
+        if (!configCommandsEnabled) return null
+        val source = obfConfig
+        return ConfigSaveIntent(this, ++saveRequest, loadRequest, configRevision, documentRevision,
+            appStateRevision, appState.configPath, source, configSnapshot(source))
+    }
+
+    internal suspend fun saveConfig(
+        intent: ConfigSaveIntent,
+        onSaved: () -> Unit = {},
+        choosePath: suspend (NioPath?) -> NioPath?,
+    ): Boolean {
+        if (intent.owner !== this) return false
+        try {
+            if (intent.consumed || !isCurrentSave(intent, intent.loadRequest) || !isUnchangedSaveContent(intent)) return false
+            val path = choosePath(intent.sourcePath) ?: return false
+            val saved = saveConfig(intent, path)
+            // No suspension between the post-write guard and save-and-continue, before any Deferred completes.
+            if (saved) onSaved()
+            return saved
+        } finally {
+            intent.consumed = true
         }
     }
 
-    fun saveConfig(path: NioPath): Boolean {
-        val configToSave = obfConfig
-        return runCatching {
-            ObfConfig.write(configToSave, path)
-        }.onSuccess {
+    suspend fun saveConfig(path: NioPath): Boolean {
+        val intent = beginConfigSave() ?: return false
+        return saveConfig(intent, path)
+    }
+
+    private suspend fun saveConfig(intent: ConfigSaveIntent, path: NioPath): Boolean {
+        if (intent.consumed) return false
+        intent.consumed = true
+        // A load may have completed, or edits/new commands may have arrived, while the picker was open.
+        // Reject before enqueueing IO: even a stale write to the chosen destination would lose user data.
+        if (!isCurrentSave(intent, intent.loadRequest) || !isUnchangedSaveContent(intent)) return false
+        val acceptedLoadRequest = ++loadRequest
+        val snapshot = intent.snapshot
+        val result = performIo { storage.writeConfig(snapshot, path) }
+        if (!isCurrentSave(intent, acceptedLoadRequest)) return false
+        val unchanged = isUnchangedSaveContent(intent)
+        result.onSuccess {
             appState = appState.copy(configPath = path)
-            uiState.globalStatus = uiText(
-                UiText.Status.SavedConfig,
-                "count" to configToSave.transformers.size,
-                "path" to path.toAbsolutePath().normalize()
-            )
-            if (_obfConfig == configToSave) {
-                obfConfigDirty = false
-            }
+            uiState.globalStatus = uiText(UiText.Status.SavedConfig,
+                "count" to snapshot.transformers.size, "path" to path.displayPath())
+            if (unchanged) obfConfigDirty = false
         }.onFailure {
-            val message = uiText(
-                UiText.Status.FailedToSaveConfig,
-                "path" to path.toAbsolutePath().normalize(),
-                "message" to (it.message ?: it::class.qualifiedName)
-            )
-            uiState.globalStatus = message
-            showCriticalError(uiText(UiText.Dialog.SaveConfigFailedTitle), message)
-        }.isSuccess
+            reportError(UiText.Status.FailedToSaveConfig, path, it, UiText.Dialog.SaveConfigFailedTitle)
+        }
+        // Check both revision and content: public nested lists/arrays can change without using the setter.
+        return result.isSuccess && unchanged
+    }
+
+    private fun isCurrentSave(intent: ConfigSaveIntent, expectedLoadRequest: Long): Boolean =
+        intent.owner === this && configCommandsEnabled && intent.request == saveRequest &&
+            expectedLoadRequest == loadRequest && intent.document == documentRevision &&
+            intent.pathRevision == appStateRevision
+
+    private fun isUnchangedSaveContent(intent: ConfigSaveIntent): Boolean =
+        isUnchangedConfig(intent.revision, intent.sourceConfig, intent.snapshot)
+
+    private fun isUnchangedConfig(revision: Long, source: ObfConfig, snapshot: ObfConfig): Boolean {
+        val sameIdentity = revision == configRevision && source === obfConfig
+        val unchanged = sameIdentity && configContentEquals(obfConfig, snapshot)
+        if (!unchanged) {
+            // Recognized in-place edits must also invalidate other pending revision-based operations.
+            if (sameIdentity) configRevision++
+            obfConfigDirty = true
+        }
+        return unchanged
     }
 
     private fun scheduleAppConfigSave() {
         appConfigSaveJob?.cancel()
+        if (isClosing) return // onExit owns the final revision/flush loop.
         appConfigSaveJob = coroutineScope.launch {
             delay(AppConfigSaveDebounceMillis)
             saveAppConfig()
         }
     }
 
+    private fun updateLanguage(language: Language) {
+        if (I18n.currentLanguage != language) {
+            I18n.setLanguage(language)
+            languageRevision++
+        }
+    }
+
     private fun replaceAppConfigWithoutDirty(config: AppConfig) {
         _appConfig = config
-        I18n.setLanguage(config.language)
+        appConfigRevision++
+        updateLanguage(config.language)
         appConfigDirty = false
     }
 
     private fun replaceConfigWithoutDirty(config: ObfConfig) {
         _obfConfig = config
+        configRevision++
         obfConfigDirty = false
+    }
+
+    private suspend fun <T> performIo(operation: () -> T): Result<T> = try {
+        Result.success(io.submit(operation).await())
+    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Result.failure(error)
+    }
+
+    private fun reportError(
+        descriptor: net.spartanb312.grunteon.obfuscator.lang.I18nDescriptor,
+        path: Path,
+        error: Throwable,
+        title: net.spartanb312.grunteon.obfuscator.lang.I18nDescriptor? = null,
+    ) {
+        val message = uiText(descriptor, "path" to path.displayPath(),
+            "message" to (error.message ?: error::class.qualifiedName))
+        uiState.globalStatus = message
+        println(message)
+        if (title != null || isClosing) showCriticalError(uiText(title ?: UiText.Dialog.SaveConfigFailedTitle), message)
     }
 
     private fun showCriticalError(title: String, message: String) {
@@ -338,8 +489,7 @@ data class AppState(
 
         fun write(state: AppState, path: Path) {
             val jsonString = json().encodeToString(state)
-            path.ensureParentDirectory()
-            path.writeText(jsonString)
+            atomicConfigWrite(path) { it.writeText(jsonString) }
         }
     }
 }
@@ -395,8 +545,7 @@ data class AppConfig(
 
         fun write(config: AppConfig, path: Path) {
             val jsonString = json().encodeToString(config)
-            path.ensureParentDirectory()
-            path.writeText(jsonString)
+            atomicConfigWrite(path) { it.writeText(jsonString) }
         }
     }
 }

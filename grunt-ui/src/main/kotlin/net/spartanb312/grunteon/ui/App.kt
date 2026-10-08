@@ -19,6 +19,7 @@ import io.github.composefluent.*
 import io.github.composefluent.component.Text
 import io.github.composefluent.surface.Card
 import io.github.vinceglb.filekit.FileKit
+import kotlinx.coroutines.isActive
 import net.spartanb312.grunteon.obfuscator.Grunteon
 import net.spartanb312.grunteon.obfuscator.SUBTITLE
 import net.spartanb312.grunteon.obfuscator.VERSION
@@ -46,6 +47,7 @@ fun main(args: Array<String>) {
         val windowState = rememberWindowState(width = 1600.dp, height = 900.dp)
         val coroutineScope = rememberCoroutineScope()
         val appModel = remember { AppModel(this, coroutineScope) }
+        LaunchedEffect(appModel) { appModel.initialize() }
         Window(
             onCloseRequest = appModel::onExit,
             title = uiText(UiText.App.WindowTitle),
@@ -94,52 +96,68 @@ fun FrameWindowScope.App(
         Dark -> true
     }
 
-    val obfuscationLogs = remember { mutableStateListOf<String>() }
+    var obfuscationLogs by remember { mutableStateOf<List<UiLogEntry>>(emptyList()) }
+    var obfuscationLog by remember { mutableStateOf<UiRunLog?>(null) }
 
-    fun appendObfuscationLog(line: String) {
-        SwingUtilities.invokeLater {
-            obfuscationLogs.add(line)
+    // There is no per-line EDT callback or pending-line queue. Drain at most once per 75 ms.
+    LaunchedEffect(obfuscationLog, obfuscationRunning) {
+        val log = obfuscationLog ?: return@LaunchedEffect
+        while (kotlinx.coroutines.currentCoroutineContext().isActive) {
+            log.snapshotIfChanged()?.let { obfuscationLogs = it.entries }
+            if (!obfuscationRunning) break
+            kotlinx.coroutines.delay(75)
         }
     }
 
     fun runObfuscation() {
-        if (obfuscationRunning) return
-        val runConfig = appModel.obfConfig
-        obfuscationLogs.clear()
+        if (obfuscationRunning || appModel.isClosing || appModel.isInitializing) return
+        val runConfig = configSnapshot(appModel.obfConfig)
+        val minimumLogLevel = appModel.appConfig.uiLogLevel
+        obfuscationLogs = emptyList()
+        obfuscationLog = null
         obfuscationRunning = true
         appModel.uiState.globalStatus = uiText(UiText.Status.ObfuscationStarted)
         Thread(
             {
                 val previousLogger = Logger
-                Logger = UiLogger("Grunteon", appModel.appConfig.uiLogLevel, ::appendObfuscationLog)
+                var log: UiRunLog? = null
+                var failure: Throwable? = null
                 try {
-                    Logger.info(
-                        uiText(
-                            UiText.Obfuscation.StartingLog,
-                            "count" to runConfig.transformers.count { it.enabled }
-                        )
-                    )
-                    val instance = Grunteon.create(runConfig)
-                    instance.run()
-                    Logger.info(uiText(UiText.Obfuscation.FinishedLog))
+                    val sink = UiRunLog.open(java.nio.file.Path.of("logs"))
+                    log = sink
                     SwingUtilities.invokeLater {
-                        appModel.uiState.globalStatus = uiText(UiText.Status.ObfuscationFinished)
+                        obfuscationLog = sink
+                        appModel.beforeExitIo = sink::flush
                     }
-                } catch (t: Throwable) {
-                    Logger.error(
-                        uiText(
-                            UiText.Obfuscation.FailedLog,
-                            "message" to (t.message ?: t::class.qualifiedName)
-                        )
-                    )
-                    t.stackTraceToString().lines().forEach { Logger.error(it) }
-                    SwingUtilities.invokeLater {
-                        appModel.uiState.globalStatus = uiText(UiText.Status.ObfuscationFailed)
+                    Logger = UiLogger("Grunteon", minimumLogLevel, sink::append)
+                    Logger.info(uiText(UiText.Obfuscation.StartingLog,
+                        "count" to runConfig.transformers.count { it.enabled }))
+                    Grunteon.create(runConfig).use { it.run() }
+                    Logger.info(uiText(UiText.Obfuscation.FinishedLog))
+                } catch (error: Throwable) {
+                    failure = error
+                    // A failed disk sink must not hide the original error or recurse through the logger.
+                    runCatching {
+                        Logger.error(uiText(UiText.Obfuscation.FailedLog,
+                            "message" to (error.message ?: error::class.qualifiedName)))
+                        error.stackTraceToString().lines().forEach { Logger.error(it) }
                     }
                 } finally {
+                    runCatching { log?.close() }.onFailure { if (failure == null) failure = it }
                     Logger = previousLogger
+                    val finishedLog = log
+                    val finishedFailure = failure
                     SwingUtilities.invokeLater {
+                        finishedLog?.snapshotIfChanged()?.let { obfuscationLogs = it.entries }
                         obfuscationRunning = false
+                        appModel.uiState.globalStatus = uiText(if (finishedFailure == null)
+                            UiText.Status.ObfuscationFinished else UiText.Status.ObfuscationFailed)
+                        if (finishedFailure != null) {
+                            appModel.uiState.errorDialog = AppErrorDialog(
+                                uiText(UiText.Status.ObfuscationFailed),
+                                uiText(UiText.Obfuscation.FailedLog,
+                                    "message" to (finishedFailure.message ?: finishedFailure::class.qualifiedName)))
+                        }
                     }
                 }
             },
@@ -153,6 +171,7 @@ fun FrameWindowScope.App(
     val pipelineEditorState = remember { PipelineEditorState(appModel) }
 
     CompositionLocalProvider(
+        LocalUiLanguageRevision provides appModel.languageRevision,
         LocalDensity provides Density(
             LocalDensity.current.density * appModel.appConfig.uiScale.toFloat(),
             appModel.appConfig.fontScale.toFloat()
@@ -235,7 +254,9 @@ fun FrameWindowScope.App(
                                 AppPage.Native -> NativePage(appModel)
                                 AppPage.Obfuscation -> ObfuscationPage(
                                     logs = obfuscationLogs,
+                                    fullLogPath = obfuscationLog?.path?.toString(),
                                     running = obfuscationRunning,
+                                    ready = !appModel.isInitializing && !appModel.isClosing,
                                     enabledTransformerCount = appModel.obfConfig.transformers.count { it.enabled },
                                     nativePipelineEnabled = appModel.obfConfig.nativePipeline.enabled,
                                     onObfuscate = ::runObfuscation,

@@ -110,6 +110,15 @@ class UiI18nCatalogTest {
         assertEquals("调用替换概率", catalog["ui.transformer.referenceObfuscate.config.chance.name"])
     }
 
+    @Test
+    fun fullLogLocationIsAvailableInBothCatalogs() {
+        val key = UiText.Obfuscation.LogTail.key
+        val english = Json.decodeFromString<Map<String, String>>(catalogText("i18n/en.json"))
+        val chinese = Json.decodeFromString<Map<String, String>>(catalogText("i18n/zh-CN.json"))
+        assertEquals(UiText.Obfuscation.LogTail.fallback, english[key])
+        assertEquals(true, assertNotNull(chinese[key]).contains("{path}"))
+    }
+
     private fun catalogText(resourceName: String): String {
         val stream = javaClass.classLoader.getResourceAsStream(resourceName)
         assertNotNull(stream)

@@ -52,31 +52,36 @@ fun TopToolbar(
     onMinimize: () -> Unit,
     onToggleMaximize: () -> Unit,
 ) {
+    val configCommandsEnabled = appModel.configCommandsEnabled
+
     fun requestNewConfig() {
+        if (!appModel.configCommandsEnabled) return
         appModel.checkUnsavedChanges {
-            appModel.newConfig()
+            if (appModel.configCommandsEnabled) appModel.newConfig()
         }
     }
 
     fun requestOpenConfig() {
-        return appModel.checkUnsavedChanges {
+        if (!appModel.configCommandsEnabled) return
+        appModel.checkUnsavedChanges {
             appModel.coroutineScope.launch {
-                chooseConfigPath()?.let(appModel::openConfig)
+                if (!appModel.configCommandsEnabled) return@launch
+                chooseConfigPath()?.let { if (appModel.configCommandsEnabled) appModel.openConfig(it) }
             }
         }
     }
 
-    fun requestSaveConfig(): Deferred<Boolean> {
+    fun requestSaveConfig(saveAs: Boolean = false, onSaved: () -> Unit = {}): Deferred<Boolean> {
+        val intent = appModel.beginConfigSave() // Capture the document before async scheduling or a picker suspension.
         return appModel.coroutineScope.async {
-            (appModel.appState.configPath ?: chooseSaveConfigPath())?.let(appModel::saveConfig) == true
+            if (intent == null) return@async false
+            appModel.saveConfig(intent, onSaved) { sourcePath ->
+                if (saveAs) chooseSaveConfigPath(sourcePath) else sourcePath ?: chooseSaveConfigPath()
+            }
         }
     }
 
-    fun requestSaveConfigAs(): Deferred<Boolean> {
-        return appModel.coroutineScope.async {
-            chooseSaveConfigPath(appModel.appState.configPath)?.let(appModel::saveConfig) == true
-        }
-    }
+    fun requestSaveConfigAs(): Deferred<Boolean> = requestSaveConfig(saveAs = true)
 
     val errorDialog = appModel.uiState.errorDialog
     ContentDialog(
@@ -102,12 +107,9 @@ fun TopToolbar(
             discardConfirmState?.let { state ->
                 when (it) {
                     ContentDialogButton.Primary -> {
+                        val saving = requestSaveConfig(onSaved = state.onSave)
                         appModel.coroutineScope.launch {
-                            if (requestSaveConfig().await()) {
-                                state.onSave()
-                            } else {
-                                state.onCancel()
-                            }
+                            if (!saving.await()) state.onCancel()
                         }
                     }
                     ContentDialogButton.Secondary -> {
@@ -128,7 +130,9 @@ fun TopToolbar(
     Column(
         modifier = Modifier
             .onPreviewKeyEvent {
-                if (it.type != KeyEventType.KeyDown || !it.isCtrlPressed) return@onPreviewKeyEvent false
+                if (!appModel.configCommandsEnabled || it.type != KeyEventType.KeyDown || !it.isCtrlPressed) {
+                    return@onPreviewKeyEvent false
+                }
                 when (it.key) {
                     Key.N -> {
                         requestNewConfig()
@@ -169,6 +173,7 @@ fun TopToolbar(
                             icon = Icons.Default.Document,
                             text = uiText(UiText.Toolbar.NewConfig),
                             trailingText = "Ctrl+N",
+                            enabled = configCommandsEnabled,
                         )
                         MenuFlyoutButton(
                             onClick = {
@@ -178,6 +183,7 @@ fun TopToolbar(
                             icon = Icons.Default.FolderOpen,
                             text = uiText(UiText.Toolbar.OpenConfig),
                             trailingText = "Ctrl+O",
+                            enabled = configCommandsEnabled,
                         )
                         MenuFlyoutSeparator()
                         MenuFlyoutButton(
@@ -188,6 +194,7 @@ fun TopToolbar(
                             icon = Icons.Default.Save,
                             text = uiText(UiText.Toolbar.SaveConfig),
                             trailingText = "Ctrl+S",
+                            enabled = configCommandsEnabled,
                         )
                         MenuFlyoutButton(
                             onClick = {
@@ -197,6 +204,7 @@ fun TopToolbar(
                             icon = Icons.Default.SaveEdit,
                             text = uiText(UiText.Toolbar.SaveConfigAs),
                             trailingText = "Ctrl+Shift+S",
+                            enabled = configCommandsEnabled,
                         )
                         MenuFlyoutSeparator()
                         MenuFlyoutButton(
@@ -221,6 +229,7 @@ fun TopToolbar(
                             },
                             icon = Icons.Default.Play,
                             text = uiText(UiText.Toolbar.RunObfuscation),
+                            enabled = configCommandsEnabled,
                         )
                     }
                 ) {

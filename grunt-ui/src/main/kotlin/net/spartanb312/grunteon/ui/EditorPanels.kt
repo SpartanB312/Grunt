@@ -150,8 +150,9 @@ fun TransformerLibrary(
                 placeholder = { Text(uiText(UiText.Editor.Search)) },
                 singleLine = true,
             )
-        val visibleDefinitions = state.definitions.filterNot { it.isHidden }
-        val filtered = remember(search) {
+        val definitions = state.definitions
+        val visibleDefinitions = remember(definitions) { definitions.filterNot { it.isHidden } }
+        val filtered = remember(search, visibleDefinitions) {
             visibleDefinitions.filter {
                 search.isBlank() ||
                     it.label.contains(search, ignoreCase = true) ||
@@ -284,14 +285,18 @@ fun PipelineStackPanel(
         modifier = modifier
     ) {
         val listState = rememberLazyListState()
-        val mappingApplierPosition = remember(state.transformerProperty) {
-            state.transformerList.indexOfLast {
-                findDefinition(it.config, state.definitions)?.transformerPrototype?.category == Category.Renaming
+        val definitions = state.definitions
+        val entries = state.transformerProperty
+        val mappingApplierPosition = remember(entries, definitions) {
+            entries.indexOfLast {
+                findDefinition(it.config, definitions)?.transformerPrototype?.category == Category.Renaming
             }
         }
 
-        val orderWarnings = remember(state.transformerProperty) {
-            validateOrder(state.transformerList, state.definitions)
+        // Rules are public mutable lists. Observe their contents, not just schema identity.
+        val rules = definitions.map { it.transformerPrototype.orderRules.toList() }
+        val orderWarnings = remember(entries, definitions, rules) {
+            validateOrder(entries, definitions)
         }
         ScrollbarContainer(
             modifier = Modifier

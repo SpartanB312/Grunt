@@ -24,7 +24,6 @@ import io.github.composefluent.icons.regular.Delete
 import io.github.composefluent.icons.regular.Dismiss
 import io.github.composefluent.scheme.collectVisualState
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Transient
 import net.spartanb312.grunteon.obfuscator.lang.I18n
 import net.spartanb312.grunteon.obfuscator.lang.I18nDescriptorRegistry
 import net.spartanb312.grunteon.obfuscator.process.*
@@ -36,11 +35,9 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
-import kotlin.reflect.jvm.javaField
 
 private data class PathBrowseSpec(
     val browseLabel: String,
@@ -70,13 +67,9 @@ fun <T : Any> ConfigEditor(
     onChange: (T) -> Unit,
     descriptorBasePath: String? = null,
 ) {
-    val copyFunc = clazz.memberFunctions.find { member -> member.name == "copy" }
-    checkNotNull(copyFunc) { "$clazz is not a data class" }
-    val copyFunParameterOrder = copyFunc.parameters.drop(1).withIndex().associate { it.value.name!! to it.index }
-    val properties = clazz.memberProperties
-        .filter { it.javaField != null }
-        .filter { it.annotations.none { ann -> ann is HiddenFromAutoParameter || ann is Transient } }
-        .sortedBy { copyFunParameterOrder[it.name] ?: Int.MAX_VALUE }
+    val schema = ConfigSchemas.editor(clazz)
+    val copyFunc = schema.copy
+    val properties = schema.properties
 
     properties.forEachIndexed { index, property ->
         val propValue = property.get(value)
@@ -84,7 +77,7 @@ fun <T : Any> ConfigEditor(
             val newParameters = copyFunc.callBy(
                 mapOf(
                     copyFunc.parameters[0] to value,
-                    copyFunc.parameters[1 + copyFunParameterOrder[property.name]!!] to newValue
+                    schema.parameters.getValue(property.name) to newValue
                 )
             ) as T
             onChange(newParameters)
@@ -136,7 +129,10 @@ private fun ConfigField(
     descriptorBasePath: String?,
 ) {
     val propValueClass = propValue?.let { it::class }
-    val fieldInfo = prop.localizedInfo(propValueClass, descriptorBasePath)
+    val languageRevision = LocalUiLanguageRevision.current
+    val fieldInfo = remember(prop, propValueClass, descriptorBasePath, languageRevision) {
+        prop.localizedInfo(propValueClass, descriptorBasePath)
+    }
     val label = fieldInfo.label
     val description = fieldInfo.description
 

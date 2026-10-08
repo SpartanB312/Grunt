@@ -189,6 +189,7 @@ object UiText {
             "Enabled {count} transformers with native obfuscation"
         )
         val NoRunYet = desc("obfuscation.noRunYet", "No obfuscation run yet.")
+        val LogTail = desc("obfuscation.log.tail", "Showing recent log entries (long entries are abbreviated). Full log: {path}")
         val Running = desc("obfuscation.running", "Running...")
         val Obfuscate = desc("obfuscation.obfuscate", "Obfuscate")
         val StartingLog = desc(

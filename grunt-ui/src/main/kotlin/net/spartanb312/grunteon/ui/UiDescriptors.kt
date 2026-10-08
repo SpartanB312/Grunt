@@ -1,5 +1,9 @@
 package net.spartanb312.grunteon.ui
 
+import androidx.compose.runtime.staticCompositionLocalOf
+
+internal val LocalUiLanguageRevision = staticCompositionLocalOf { 0L }
+
 internal object UiDescriptorPaths {
     const val AppConfig = "ui.app.config.config"
     const val GlobalConfig = "ui.config.global.config"
