@@ -1,8 +1,6 @@
 package net.spartanb312.grunteon.obfuscator.process.hierarchy
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
-import it.unimi.dsi.fastutil.ints.IntArraySet
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
@@ -154,8 +152,8 @@ class FieldHierarchy(
             val fieldCode = IntArray(fieldCount)
             val fieldAccess = IntArray(fieldCount)
             val fieldToFieldTree = Array(classHierarchy.realClassCount) {
-                Int2ObjectOpenHashMap<IntArraySet>()
-            } // Tells a class's field code belongs to which field tree(s)
+                IntOpenHashSet()
+            } // Membership of inherited non-private field codes.
 
             val descCodeLookup = Object2IntOpenHashMap<String>(fieldCount).apply {
                 defaultReturnValue(-1)
@@ -180,12 +178,12 @@ class FieldHierarchy(
                     // Fill inherent field bits
                     if (fieldNode.access.isPrivate) continue
                     val fieldOwnerIdx = fieldOwner.getInt(fieldIdx)
-                    fieldToFieldTree[fieldOwnerIdx].put(myFieldCode, IntArraySet())
+                    fieldToFieldTree[fieldOwnerIdx].add(myFieldCode)
                     val descendents = classHierarchy.descendants[fieldOwnerIdx]
                     for (i in 0..<descendents.size) {
                         val descendentIdx = descendents[i]
                         if (descendentIdx < classHierarchy.realClassCount) {
-                            fieldToFieldTree[descendentIdx].put(myFieldCode, IntArraySet())
+                            fieldToFieldTree[descendentIdx].add(myFieldCode)
                         }
                     }
                 }
@@ -216,7 +214,7 @@ class FieldHierarchy(
                         val parentIdx = parentIndices[i]
                         if (parentIdx >= classHierarchy.realClassCount) continue
                         val parentCodeBits = fieldToFieldTree[parentIdx]
-                        allParentFieldCodeBits.addAll(parentCodeBits.keys)
+                        allParentFieldCodeBits.addAll(parentCodeBits)
                     }
 
                     for (j in myFields.indices) {

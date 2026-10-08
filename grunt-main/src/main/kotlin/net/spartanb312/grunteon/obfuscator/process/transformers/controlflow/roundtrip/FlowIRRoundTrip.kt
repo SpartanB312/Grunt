@@ -47,7 +47,7 @@ class FlowIRRoundTrip : Transformer<FlowIRRoundTrip.Config>(
         val failureCounter = reducibleScopeValue { MergeableCounter() }
         val hierarchyKey = globalScopeValue {
             if (config.flowAnalyzer == JvmFlowAnalyzerMode.Hierarchy) {
-                ClassHierarchy.build(instance.workRes.allClassCollection, instance.workRes::getClassNode)
+                instance.workRes.classHierarchy()
             } else {
                 null
             }

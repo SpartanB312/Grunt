@@ -1,5 +1,7 @@
 package net.spartanb312.grunteon.obfuscator.process.hierarchy
 
+import it.unimi.dsi.fastutil.HashCommon
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap
@@ -125,46 +127,32 @@ class ClassHierarchy(
     }
 
     // reference search
-    context(instance: Grunteon)
-    fun checkMissing(classNode: ClassNode): Set<String> {
-        val missingReference = mutableSetOf<String>()
-        for (method in classNode.methods) {
-            missingReference.addAll(checkMissing(method))
-        }
-        return missingReference
-    }
+    context(_: Grunteon)
+    fun checkMissing(classNode: ClassNode): Set<String> = checkMissingReferences(classNode.methods)
+
+    context(_: Grunteon)
+    fun checkMissing(methodNode: MethodNode): Set<String> = checkMissingReferences(listOf(methodNode))
 
     context(instance: Grunteon)
-    fun checkMissing(methodNode: MethodNode): Set<String> {
-        val missingReference = mutableSetOf<String>()
-        methodNode.instructions.forEach { insn ->
-            if (insn is FieldInsnNode) {
-                val name = if (!insn.owner.startsWith("[")) insn.owner
-                else insn.owner.substringAfterLast("[").removePrefix("L").removeSuffix(";")
-                if (name in primitiveTypes) return@forEach
-                val info = findClass(name)
-                val node = instance.workRes.getClassNode(name)
-                if (info == -1) {
-                    //println("Missing $name")
-                    if (node == null) missingReference.add(name)
-                } else if (broken[info]) {
-                    //println("Broken $name")
-                    missingReference.add(name)
+    private fun checkMissingReferences(methods: Iterable<MethodNode>): Set<String> {
+        val owners = LinkedHashSet<String>()
+        for (method in methods) {
+            for (insn in method.instructions) {
+                val owner = when (insn) {
+                    is FieldInsnNode -> insn.owner
+                    is MethodInsnNode -> insn.owner
+                    else -> continue
                 }
+                val name = if (!owner.startsWith("[")) owner
+                else owner.substringAfterLast("[").removePrefix("L").removeSuffix(";")
+                if (name !in primitiveTypes) owners.add(name)
             }
-            if (insn is MethodInsnNode) {
-                val name = if (!insn.owner.startsWith("[")) insn.owner
-                else insn.owner.substringAfterLast("[").removePrefix("L").removeSuffix(";")
-                if (name in primitiveTypes) return@forEach
-                val info = findClass(name)
-                val node = instance.workRes.getClassNode(name)
-                if (info == -1) {
-                    //println("Missing $name")
-                    if (node == null) missingReference.add(name)
-                } else if (broken[info]) {
-                    //println("Broken $name")
-                    missingReference.add(name)
-                }
+        }
+        val missingReference = LinkedHashSet<String>()
+        for (name in owners) {
+            val info = findClass(name)
+            if (if (info == -1) instance.workRes.getClassMetadata(name) == null else broken[info]) {
+                missingReference.add(name)
             }
         }
         return missingReference
@@ -278,13 +266,40 @@ class ClassHierarchy(
             return set.size
         }
 
-        private fun IntArrayList.distinctIntArray(): IntArray {
-            val set = IntOpenHashSet(this)
-            for (i in 0..<size) {
-                set.add(getInt(i))
+        // The previous path-expanded lists sized fastutil's table BEFORE deduplication.
+        // Its iteration order is observable by renamers. Simulate that table sparsely when
+        // diamonds make it huge, retaining the first-insertion/probing order without paths.
+        private fun IntArrayList.legacyDistinctOrder(pathCount: Long): IntArray {
+            val expected = minOf(pathCount, 805306368L).toInt() // Largest .75-load table.
+            if (expected.toLong() <= maxOf(16L, size.toLong() * 2)) {
+                val set = IntOpenHashSet(expected)
+                set.addAll(this)
+                return set.toIntArray()
             }
-            return set.toIntArray()
+            val mask = HashCommon.arraySize(expected, 0.75f) - 1
+            val occupied = Int2IntOpenHashMap(size)
+            val slots = LongArray(size)
+            var count = 0
+            var hasZero = false
+            for (i in 0..<size) {
+                val value = getInt(i)
+                if (value == 0) {
+                    hasZero = true
+                    continue
+                }
+                var slot = HashCommon.mix(value) and mask
+                while (occupied.containsKey(slot)) slot = (slot + 1) and mask
+                occupied.put(slot, value)
+                slots[count++] = (slot.toLong() shl 32) or value.toLong()
+            }
+            Arrays.sort(slots, 0, count)
+            val result = IntArray(size)
+            var out = if (hasZero) 1 else 0
+            for (i in count - 1 downTo 0) result[out++] = slots[i].toInt()
+            return result
         }
+
+        private fun addPathCounts(a: Long, b: Long): Long = minOf(805306368L, a + b)
 
         @OptIn(ExperimentalStdlibApi::class)
         @Suppress("UNCHECKED_CAST")
@@ -376,6 +391,8 @@ class ClassHierarchy(
 
             val children = Array(classCount) { IntArrayList() }
             val ancestors = Array(classCount) { IntArrayList(parents[it]) }
+            val ancestorPathCounts = LongArray(classCount) { parents[it].size.toLong() }
+            val topologicalOrder = IntArrayList(classCount)
             val visited = BooleanArray(classCount)
 
             fun dfs(myIdx: Int) {
@@ -383,27 +400,40 @@ class ClassHierarchy(
                 visited[myIdx] = true
                 val myParents = parents[myIdx]
                 val myAncestors = ancestors[myIdx]
+                val seenAncestors = IntOpenHashSet(myAncestors)
                 for (myParentIdx in 0..<myParents.size) {
                     val parentIdx = myParents[myParentIdx]
                     dfs(parentIdx)
                     children[parentIdx].add(myIdx)
-                    myAncestors.addAll(ancestors[parentIdx])
+                    ancestorPathCounts[myIdx] = addPathCounts(ancestorPathCounts[myIdx], ancestorPathCounts[parentIdx])
+                    for (ancestor in ancestors[parentIdx]) {
+                        if (seenAncestors.add(ancestor)) myAncestors.add(ancestor)
+                    }
                 }
+                topologicalOrder.add(myIdx)
             }
             for (i in 0..<classCount) {
                 dfs(i)
             }
             val descendants = Array(classCount) { IntArrayList(children[it]) }
+            val descendantSets = Array(classCount) { IntOpenHashSet(children[it]) }
+            val descendantPathCounts = LongArray(classCount)
+            for (t in topologicalOrder.size - 1 downTo 0) {
+                val child = topologicalOrder.getInt(t)
+                for (parent in parents[child]) {
+                    descendantPathCounts[parent] = addPathCounts(descendantPathCounts[parent], 1 + descendantPathCounts[child])
+                }
+            }
 
             for (i in 0..<classCount) {
                 val myAncestors = ancestors[i]
                 for (j in 0..<myAncestors.size) {
                     val ancestorIdx = myAncestors.getInt(j)
-                    descendants[ancestorIdx].add(i)
+                    if (descendantSets[ancestorIdx].add(i)) descendants[ancestorIdx].add(i)
                 }
             }
 
-            val broken = BooleanArray(classCount)
+            val broken = BooleanArray(classCount) { classNodes[it] === MISSING_CLASSNODE }
             val missingDependencies = BooleanArray(classCount)
 
             val finalChildren = arrayOfNulls<IntArray>(classCount) as Array<IntArray>
@@ -413,9 +443,10 @@ class ClassHierarchy(
             for (i in 0..<classCount) {
                 finalChildren[i] = children[i].toIntArray()
                 assert(finalChildren[i].size == finalChildren[i].distinctCount())
-                finalAncestors[i] = ancestors[i].distinctIntArray()
-                finalDescendants[i] = descendants[i].distinctIntArray()
-                broken[i] = classNodes[i] === MISSING_CLASSNODE
+                finalAncestors[i] = ancestors[i].legacyDistinctOrder(ancestorPathCounts[i])
+                finalDescendants[i] = descendants[i].legacyDistinctOrder(
+                    addPathCounts(children[i].size.toLong(), descendantPathCounts[i])
+                )
                 missingDependencies[i] = broken[i] || ancestors[i].any { broken[it] }
             }
 

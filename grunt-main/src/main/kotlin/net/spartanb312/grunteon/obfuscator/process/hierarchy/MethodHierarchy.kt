@@ -57,7 +57,8 @@ class MethodHierarchy(
     val sourceMethods: EntryArray,
     /**
      * Method tree indices for each connected component, indexed by source method index,
-     * returns indices of method trees in the connected component
+     * returns indices of method trees in the connected component. Backing arrays are shared
+     * read-only snapshot data; consumers must not modify them.
      */
     val sourceMethodConnectedComponents: Array<EntryArray>,
     /**
@@ -373,10 +374,12 @@ class MethodHierarchy(
                 }
             }
 
+            // Build once per component; these arrays are read-only hierarchy snapshots.
+            val connectedComponents = Array(ccMethodIndices.size) { EntryArray(ccMethodIndices[it].toIntArray()) }
             val sourceMethodConnectedComponents = Array(sourceCount) { sourceIdx ->
                 val methodIdx = sourceMethodList.getInt(sourceIdx)
                 val root = find(methodIdx)
-                EntryArray(ccMethodIndices[rootToCC.get(root)].toIntArray())
+                connectedComponents[rootToCC.get(root)]
             }
 
             // Phase 5: Build sourceMethodOverrides and methodToSource by iterating each source

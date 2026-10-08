@@ -82,10 +82,7 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
     private fun buildFull(config: Config) {
         val fieldHierarchy = globalScopeValue {
             Logger.info("    Building field hierarchies...")
-            val classHierarchy = ClassHierarchy.build(
-                instance.workRes.inputClassCollection, // Only include input classes
-                instance.workRes::getClassNode
-            )
+            val classHierarchy = instance.workRes.classHierarchy(includeLibraries = false)
             FieldHierarchy.build(classHierarchy)
         }
         seq {

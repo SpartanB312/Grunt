@@ -20,8 +20,8 @@ class ClassDumper(
             hierarchy.isSubType(type2, type1) -> type1
 
             else -> context(hierarchy) {
-                val clazz1 = instance.workRes.getClassNode(type1)
-                val clazz2 = instance.workRes.getClassNode(type2)
+                val clazz1 = instance.workRes.getClassMetadata(type1)
+                val clazz2 = instance.workRes.getClassMetadata(type2)
                 if (clazz1?.isInterface == true || clazz2?.isInterface == true) return "java/lang/Object"
                 else {
                     // search lca

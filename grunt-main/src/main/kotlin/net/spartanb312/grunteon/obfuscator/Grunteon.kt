@@ -19,7 +19,9 @@ class Grunteon(
     val workRes: WorkResources,
     val transformers: List<Pair<Transformer<*>, TransformerConfig>>,
     val nativePipelineConfig: NativePipelineConfig = NativePipelineConfig(),
-) {
+) : java.io.Closeable {
+    override fun close() = workRes.close()
+
     /**
      * Resources
      */
@@ -56,8 +58,6 @@ class Grunteon(
         fun create(config: ObfConfig, io: ObfuscationIO): Grunteon {
             Logger.info("Executing obfuscating job...")
 
-            val workRes = WorkResources.read(io.input, io.libraries)
-
             val transformerAndConfig = config.transformers
                 .asSequence()
                 .filter { it.enabled }
@@ -85,6 +85,8 @@ class Grunteon(
                 transformerAndConfig.add(lastRenamerIndex + 1, MappingApplier() to MappingApplier.Config())
             }
 
+            // Validate the pipeline before acquiring archive resources.
+            val workRes = WorkResources.read(io.input, io.libraries)
             return Grunteon(
                 globalConfig = config.globalConfig,
                 io = io,

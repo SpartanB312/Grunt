@@ -3,6 +3,8 @@ package net.spartanb312.grunteon.obfuscator.util;
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Properties;
 
@@ -21,7 +23,7 @@ public class ImplLookupGetter {
 
     public static MethodHandles.Lookup getLookup() {
         try (Arena arena = Arena.ofConfined()) {
-            final SymbolLookup lookup = SymbolLookup.libraryLookup("jvm", arena);
+            final SymbolLookup lookup = jvmLookup(arena);
             final MemorySegment vm = getJavaVm(arena, lookup);
             final MemorySegment env = getJniEnv(arena, vm);
             final MemorySegment lookupClass = getJniClass(arena, env, MethodHandles.Lookup.class);
@@ -43,6 +45,17 @@ public class ImplLookupGetter {
                 default -> throw new RuntimeException(t);
             }
         }
+    }
+
+    private static SymbolLookup jvmLookup(Arena arena) {
+        // FFM libraryLookup(String) does not map "jvm" to libjvm.so on Unix.
+        final String library = System.mapLibraryName("jvm");
+        final Path home = Path.of(System.getProperty("java.home"));
+        for (Path candidate : new Path[]{home.resolve("lib/server").resolve(library),
+                home.resolve("bin/server").resolve(library)}) {
+            if (Files.isRegularFile(candidate)) return SymbolLookup.libraryLookup(candidate, arena);
+        }
+        return SymbolLookup.libraryLookup(library, arena);
     }
 
     private static MemorySegment getJavaVm(Arena arena, SymbolLookup lookup) throws Throwable {

@@ -311,6 +311,8 @@ class LWWSP(val workerCount: Int, val threadConfigure: (Thread) -> Unit = {}) : 
         private val scopes = List(workerCount) { newScope(it) }
 
         init {
+            require(size >= 0) { "Size must not be negative" }
+            require(batchSize > 0) { "Batch size must be positive" }
             threadRanges.set(workerCount, size.toLong())
             var start = 0
             val step = maxOf(size / workerCount, batchSize)
@@ -338,26 +340,27 @@ class LWWSP(val workerCount: Int, val threadConfigure: (Thread) -> Unit = {}) : 
             return (encoded ushr 32).toInt()
         }
 
-        private fun steal(worker: Worker) {
-            if (workerCountMinus1 <= 0) return
-            Thread.yield()
+        private fun steal(worker: Worker): Boolean {
+            if (workerCountMinus1 <= 0) return false
             val victimIDBaseOffset = worker.random.nextInt(workerCountMinus1)
 
             for (i in 0..<workerCountMinus1) {
                 val victimIDOffset = (victimIDBaseOffset + i) % (workerCountMinus1)
                 val victimID = (worker.id + 1 + victimIDOffset) % workerCount
-                val encoded = threadRanges.get(victimID)
-                val start = decodeRangeStart(encoded)
-                val end = decodeRangeEnd(encoded)
-                val remaining = end - start
-                if (remaining < batchSize * 2) continue
-                val half = remaining / 2
-                val newStart = start + half
-                if (!threadRanges.compareAndSet(victimID, encoded, encodeRange(newStart, end))) continue
-
-                threadRanges.set(worker.id, encodeRange(start, newStart))
-                return
+                while (true) {
+                    val encoded = threadRanges.get(victimID)
+                    val start = decodeRangeStart(encoded)
+                    val end = decodeRangeEnd(encoded)
+                    val remaining = end - start
+                    if (remaining == 0) break
+                    val newStart = start + maxOf(1, remaining / 2)
+                    if (!threadRanges.compareAndSet(victimID, encoded, encodeRange(newStart, end))) continue
+                    threadRanges.set(worker.id, encodeRange(start, newStart))
+                    return true
+                }
             }
+            // Only in-flight batches remain. Their owners finish/account them; no spinning.
+            return false
         }
 
         private fun runBatch(worker: Worker, start: Int, end: Int) {
@@ -376,23 +379,17 @@ class LWWSP(val workerCount: Int, val threadConfigure: (Thread) -> Unit = {}) : 
                     assert(start <= end)
 
                     if (start == end) {
-                        val v = if (completeCount == 0) {
-                            threadRanges.get(workerCount)
-                        } else {
+                        if (completeCount != 0) {
                             threadRanges.addAndGet(workerCount, -completeCount.toLong())
+                            completeCount = 0
                         }
-                        completeCount = 0
-                        if (v < batchSize * 2 * workerCount) {
-                            break
-                        }
-                        steal(worker)
+                        if (!steal(worker)) break
                         continue
                     }
 
-                    var newStart = minOf(start + batchSize, end)
-                    if (end - newStart < batchSize) {
-                        newStart = end
-                    }
+                    // Keep unclaimed tail work stealable, down to a single item.
+                    val claimSize = minOf(batchSize, maxOf(1, (end - start) / 2))
+                    val newStart = start + claimSize
                     if (!threadRanges.compareAndSet(worker.id, encoded, encodeRange(newStart, end))) continue
 
                     runBatch(worker, start, newStart)

@@ -1,5 +1,6 @@
 package net.spartanb312.grunteon.obfuscator.process.transformers.rename
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet
@@ -23,6 +24,26 @@ import net.spartanb312.grunteon.obfuscator.util.IndyChecker
 import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.extensions.*
 import org.objectweb.asm.Type
+
+// Every shared descendant defines a clique. Its earliest source's star suffices:
+// all omitted edges are already connected when the old i/j traversal reaches them.
+// Retaining source order also retains union roots and fastutil component iteration order.
+internal fun syntheticOverlapEdges(hierarchy: ClassHierarchy, owners: IntArray): Array<IntArrayList?> {
+    val representative = Int2IntOpenHashMap().apply { defaultReturnValue(-1) }
+    val edges = arrayOfNulls<IntArrayList>(owners.size)
+    for (i in owners.indices) {
+        fun visit(classIndex: Int) {
+            val first = representative.putIfAbsent(classIndex, i)
+            if (first != -1 && first != i) {
+                val neighbors = edges[first] ?: IntArrayList().also { edges[first] = it }
+                neighbors.add(i)
+            }
+        }
+        visit(owners[i])
+        for (descendant in hierarchy.descendants[owners[i]]) visit(descendant)
+    }
+    return edges
+}
 
 /**
  * Last update on 2026/03/31 by FluixCarvin
@@ -89,10 +110,7 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
     private fun buildFull(config: Config) {
         val methodHierarchy = globalScopeValue {
             Logger.info("    Building method hierarchies...")
-            val classHierarchy = ClassHierarchy.build(
-                instance.workRes.inputClassCollection, // Only include input classes
-                instance.workRes::getClassNode
-            )
+            val classHierarchy = instance.workRes.classHierarchy(includeLibraries = false)
             MethodHierarchy.build(classHierarchy)
         }
         val sourceAndOverridesMapping = globalScopeValue { Int2ObjectOpenHashMap<String>() }
@@ -274,25 +292,16 @@ class MethodRenamer : Transformer<MethodRenamer.Config>(
                             return r
                         }
                         if (n > 1) {
+                            val owners = IntArray(n) {
+                                MethodHierarchy.Entry(sameSignatureIndices.getInt(it)).owner.index
+                            }
+                            val edges = syntheticOverlapEdges(classHierarchy, owners)
                             for (i in 0 until n) {
-                                val ownerI = MethodHierarchy.Entry(sameSignatureIndices.getInt(i)).owner.index
-                                val descsI = classHierarchy.descendants[ownerI]
-                                for (j in i + 1 until n) {
-                                    val ownerJ = MethodHierarchy.Entry(sameSignatureIndices.getInt(j)).owner.index
-                                    // Merge if one owner is ancestor/descendant of the other,
-                                    // OR if they share a common descendant (diamond inheritance:
-                                    // two sibling parents whose descendant overrides both cancel()s).
-                                    val shouldMerge = classHierarchy.descendantsSet[ownerI].contains(ownerJ) ||
-                                        classHierarchy.descendantsSet[ownerJ].contains(ownerI) ||
-                                        run {
-                                            val descsJSet = classHierarchy.descendantsSet[ownerJ]
-                                            descsI.any { descsJSet.contains(it) }
-                                        }
-                                    if (shouldMerge) {
-                                        val ri = findLocal(i)
-                                        val rj = findLocal(j)
-                                        if (ri != rj) ufLocal[rj] = ri
-                                    }
+                                val neighbors = edges[i] ?: continue
+                                for (j in neighbors) {
+                                    val ri = findLocal(i)
+                                    val rj = findLocal(j)
+                                    if (ri != rj) ufLocal[rj] = ri
                                 }
                             }
                         }

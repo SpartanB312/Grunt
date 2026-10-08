@@ -1,11 +1,13 @@
 package net.spartanb312.grunteon.obfuscator.process.resource
 
+import java.io.InputStream
 import java.nio.file.Path
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.absolute
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
+import kotlin.io.path.inputStream
 import kotlin.io.path.pathString
 import kotlin.io.path.readBytes
 import kotlin.io.path.walk
@@ -27,16 +29,20 @@ sealed class ResourceSet {
         }
 
         fun directories(): Sequence<Path> {
-            return root.walk().filter { it.isDirectory() }
+            return root.walk(kotlin.io.path.PathWalkOption.INCLUDE_DIRECTORIES).filter { it != root && it.isDirectory() }
         }
 
         fun entryName(path: Path): String {
-            return path.pathString.removePrefix("/")
+            return root.absolute().normalize().relativize(path.absolute().normalize()).toString().replace('\\', '/')
         }
 
-        fun readFile(path: Path): ByteArray {
-            return get(path).firstOrNull()?.content ?: path.readBytes()
+        /** Streams untouched resources without retaining a second copy; cached edits always take precedence. */
+        fun openFile(path: Path): InputStream {
+            require(path.fileSystem == root.fileSystem) { "Path must be on the same file system as the root" }
+            return cache[path.absolute().pathString]?.getOrNull()?.content?.inputStream() ?: path.inputStream()
         }
+
+        fun readFile(path: Path): ByteArray = openFile(path).use { it.readBytes() }
 
         override fun get(path: Path): List<ResourceEntry> {
             require(path.fileSystem == root.fileSystem) { "Path must be on the same file system as the root" }

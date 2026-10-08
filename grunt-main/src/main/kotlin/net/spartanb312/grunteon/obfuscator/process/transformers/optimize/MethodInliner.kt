@@ -167,6 +167,13 @@ class MethodInliner : Transformer<MethodInliner.Config>(
         val realInstructions: List<AbstractInsnNode>,
         val returnInstruction: AbstractInsnNode,
     ) {
+        // Targets capture the original body before any caller (including a target) is rewritten.
+        // Only caller-specific slot mappings and cloned instructions belong at each call site.
+        private val argumentTypes = Type.getArgumentTypes(method.desc)
+        private val localSlotSizes = computeLocalSlotSizes()
+        private val bodyPeak = method.maxStack
+        private val prologueStack = (if (method.isStatic) 0 else 1) + argumentTypes.sumOf { it.size }
+
         fun acceptsInvoke(invoke: MethodInsnNode, owner: ClassNode): Boolean {
             return when (invoke.opcode) {
                 Opcodes.INVOKESTATIC -> method.isStatic
@@ -180,7 +187,6 @@ class MethodInliner : Transformer<MethodInliner.Config>(
         fun buildReplacement(caller: MethodNode, preserveNullCheck: Boolean): InlineReplacement {
             val replacement = InsnList()
             val localMapping = mutableMapOf<Int, Int>()
-            val localSlotSizes = computeLocalSlotSizes(method)
             var nextLocal = caller.maxLocals
 
             fun mapLocal(index: Int): Int {
@@ -191,7 +197,6 @@ class MethodInliner : Transformer<MethodInliner.Config>(
                 }
             }
 
-            val argumentTypes = Type.getArgumentTypes(method.desc)
             var parameterLocal = 0
             val ownerLocal = if (method.isStatic) -1 else mapLocal(parameterLocal++)
             val argumentLocals = IntArray(argumentTypes.size)
@@ -199,9 +204,6 @@ class MethodInliner : Transformer<MethodInliner.Config>(
                 argumentLocals[index] = mapLocal(parameterLocal)
                 parameterLocal += type.size
             }
-            var prologueStack = 0
-            if (ownerLocal != -1) prologueStack += 1
-            for (type in argumentTypes) prologueStack += type.size
             val nullCheckPeak = if (ownerLocal != -1 && preserveNullCheck) 2 else 0
             val prologuePeak = maxOf(prologueStack, nullCheckPeak)
 
@@ -230,25 +232,23 @@ class MethodInliner : Transformer<MethodInliner.Config>(
                 val cloned = instruction.cloneInline { mapLocal(it) } ?: continue
                 replacement.add(cloned)
             }
-            val bodyPeak = method.maxStack
             return InlineReplacement(replacement, nextLocal, maxOf(prologuePeak, bodyPeak))
         }
 
-        private fun computeLocalSlotSizes(method: MethodNode): Map<Int, Int> {
+        private fun computeLocalSlotSizes(): Map<Int, Int> {
             val sizes = mutableMapOf<Int, Int>()
             fun bump(index: Int, size: Int) {
                 val current = sizes[index] ?: 0
                 if (size > current) sizes[index] = size
             }
 
-            val argumentTypes = Type.getArgumentTypes(method.desc)
             var local = 0
             if (!method.isStatic) bump(local++, 1)
             for (type in argumentTypes) {
                 bump(local, type.size)
                 local += type.size
             }
-            for (instruction in method.instructions) {
+            for (instruction in realInstructions) {
                 when (instruction) {
                     is VarInsnNode -> bump(instruction.`var`, instruction.opcode.localSlotSize())
                     is IincInsnNode -> bump(instruction.`var`, 1)

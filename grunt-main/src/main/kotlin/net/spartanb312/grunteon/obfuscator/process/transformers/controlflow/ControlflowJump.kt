@@ -188,7 +188,7 @@ class ControlflowJump : Transformer<ControlflowJump.Config>(
         }
 
         val hierarchyKey = globalScopeValue {
-            ClassHierarchy.build(instance.workRes.allClassCollection, instance.workRes::getClassNode)
+            instance.workRes.classHierarchy()
         }
         val junkCallPoolKey = globalScopeValue {
             val classes = if (config.expandedJunkCalls) {

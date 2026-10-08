@@ -16,6 +16,8 @@ interface ResourceOutput {
     fun exists(): Boolean
     fun sizeBytes(): Long? = null
     fun openOutputStream(): OutputStream
+    /** File-backed outputs should expose their identity so directory inputs cannot read the growing output. */
+    fun targetPath(): Path? = null
 }
 
 data class PathResourceInput(
@@ -30,6 +32,7 @@ data class PathResourceOutput(
 ) : ResourceOutput {
     override val description: String get() = path.absolutePathString()
     override val fileName: String get() = path.name
+    override fun targetPath(): Path = path
     override fun exists(): Boolean = path.exists()
     override fun sizeBytes(): Long? = if (path.exists()) path.fileSize() else null
 

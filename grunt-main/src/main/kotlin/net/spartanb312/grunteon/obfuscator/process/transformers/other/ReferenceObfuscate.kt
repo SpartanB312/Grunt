@@ -28,6 +28,7 @@ import org.objectweb.asm.tree.analysis.Frame
 import java.lang.invoke.CallSite
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
+import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -322,22 +323,32 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
             Analyzer(BasicInterpreter()).analyze(owner, this)
         }.getOrNull() ?: return 0
         val instructionArray = instructions.toArray()
-        val candidates = instructionArray
-            .withIndex()
-            .filter { (index, instruction) ->
-                instruction is JumpInsnNode &&
-                    instruction.opcode == Opcodes.GOTO &&
-                    instruction.isEligibleExceptionBridge(index, instructionArray, frames)
-            }
-            .map { it.value as JumpInsnNode }
-            .toMutableList()
+        val indices = IdentityHashMap<AbstractInsnNode, Int>(instructionArray.size)
+        instructionArray.forEachIndexed { index, instruction -> indices[instruction] = index }
+        val nextFrame = arrayOfNulls<Frame<BasicValue>>(instructionArray.size)
+        var followingFrame: Frame<BasicValue>? = null
+        for (index in instructionArray.indices.reversed()) {
+            frames.getOrNull(index)?.let { followingFrame = it }
+            nextFrame[index] = followingFrame
+        }
+        val candidates = instructionArray.withIndex().mapNotNull { (index, instruction) ->
+            if (instruction is JumpInsnNode && instruction.opcode == Opcodes.GOTO &&
+                instruction.isEligibleExceptionBridge(index, indices, frames, nextFrame)
+            ) IndexedValue(index, instruction) else null
+        }.toMutableList()
         candidates.shuffle(random)
-        val candidateSet = candidates.toSet()
-        val bridgePlans = candidates.mapNotNull { goto ->
-            val gotoIndex = instructionArray.indexOf(goto)
-            val anchor = instructionArray.findDistantHandlerAnchor(gotoIndex, candidateSet, frames, random)
-                ?: return@mapNotNull null
-            goto to anchor
+        val candidateSet = candidates.mapTo(HashSet()) { it.value }
+        val anchors = instructionArray.indices.filter { index ->
+            frames.getOrNull(index) != null && instructionArray[index] !in candidateSet &&
+                    instructionArray[index].isHandlerAnchor()
+        }.toIntArray()
+        val bridgePlans = ArrayList<Pair<JumpInsnNode, AbstractInsnNode>>(REOBF_MAX_EXCEPTION_BRIDGES_PER_METHOD)
+        for ((gotoIndex, goto) in candidates) {
+            // Draw even after the budget is exhausted: following transformations see the same RNG state.
+            val anchorIndex = distantAnchorIndex(anchors, gotoIndex, REOBF_MIN_EXCEPTION_BRIDGE_DISTANCE, random)
+            if (anchorIndex >= 0 && bridgePlans.size < REOBF_MAX_EXCEPTION_BRIDGES_PER_METHOD) {
+                bridgePlans.add(goto to instructionArray[anchorIndex])
+            }
         }
 
         var inserted = 0
@@ -383,35 +394,33 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
         return inserted
     }
 
-    private fun Array<AbstractInsnNode>.findDistantHandlerAnchor(
+    internal fun distantAnchorIndex(
+        anchors: IntArray,
         gotoIndex: Int,
-        candidateSet: Set<AbstractInsnNode>,
-        frames: Array<Frame<BasicValue>?>,
+        distance: Int,
         random: UniformRandomProvider
-    ): AbstractInsnNode? {
-        if (gotoIndex < 0) return null
-        val anchors = withIndex()
-            .filter { (index, instruction) ->
-                frames.getOrNull(index) != null &&
-                instruction !in candidateSet &&
-                    instruction.isHandlerAnchor() &&
-                    index.distanceTo(gotoIndex) >= REOBF_MIN_EXCEPTION_BRIDGE_DISTANCE
+    ): Int {
+        fun lowerBound(value: Int): Int {
+            var low = 0
+            var high = anchors.size
+            while (low < high) {
+                val mid = (low + high) ushr 1
+                if (anchors[mid] < value) low = mid + 1 else high = mid
             }
-            .map { it.value }
-            .toMutableList()
-        if (anchors.isEmpty()) return null
-        return anchors[random.nextInt(anchors.size)]
+            return low
+        }
+        val leftCount = lowerBound(gotoIndex - distance + 1)
+        val rightStart = lowerBound(gotoIndex + distance)
+        val count = leftCount + anchors.size - rightStart
+        if (count == 0) return -1
+        val choice = random.nextInt(count)
+        return anchors[if (choice < leftCount) choice else rightStart + choice - leftCount]
     }
 
     private fun AbstractInsnNode.isHandlerAnchor(): Boolean {
         return opcode == Opcodes.GOTO ||
             opcode == Opcodes.ATHROW ||
             opcode in Opcodes.IRETURN..Opcodes.RETURN
-    }
-
-    private fun Int.distanceTo(other: Int): Int {
-        val distance = this - other
-        return if (distance < 0) -distance else distance
     }
 
     private fun UniformRandomProvider.reobfuscateString(value: String): InsnList = instructions {
@@ -448,27 +457,15 @@ class ReferenceObfuscate : Transformer<ReferenceObfuscate.Config>(
 
     private fun JumpInsnNode.isEligibleExceptionBridge(
         index: Int,
-        instructions: Array<AbstractInsnNode>,
-        frames: Array<Frame<BasicValue>?>
+        indices: IdentityHashMap<AbstractInsnNode, Int>,
+        frames: Array<Frame<BasicValue>?>,
+        nextFrame: Array<Frame<BasicValue>?>
     ): Boolean {
         val sourceFrame = frames.getOrNull(index) ?: return false
         if (sourceFrame.stackSize != 0) return false
-        val targetIndex = instructions.indexOf(label)
-        if (targetIndex < 0) return false
-        val targetFrame = frames.frameAtOrAfter(targetIndex, instructions) ?: return false
+        val targetIndex = indices[label] ?: return false
+        val targetFrame = nextFrame[targetIndex] ?: return false
         return targetFrame.stackSize == 0
-    }
-
-    private fun Array<Frame<BasicValue>?>.frameAtOrAfter(
-        index: Int,
-        instructions: Array<AbstractInsnNode>
-    ): Frame<BasicValue>? {
-        var cursor = index
-        while (cursor < size && cursor < instructions.size) {
-            this[cursor]?.let { return it }
-            cursor++
-        }
-        return null
     }
 
     private fun InsnList.endsWithTerminalInstruction(): Boolean {

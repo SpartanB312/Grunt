@@ -191,7 +191,7 @@ class ControlflowFlattening : Transformer<ControlflowFlattening.Config>(
         val failureCounter = reducibleScopeValue { MergeableCounter() }
         val hierarchyKey = globalScopeValue {
             if (config.junkCases || config.flowAnalyzer == JvmFlowAnalyzerMode.Hierarchy) {
-                ClassHierarchy.build(instance.workRes.allClassCollection, instance.workRes::getClassNode)
+                instance.workRes.classHierarchy()
             } else {
                 null
             }

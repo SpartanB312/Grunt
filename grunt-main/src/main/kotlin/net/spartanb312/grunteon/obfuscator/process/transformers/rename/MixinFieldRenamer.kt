@@ -85,10 +85,7 @@ class MixinFieldRenamer : Transformer<MixinFieldRenamer.Config>(
     private fun buildFull(config: Config) {
         val classHierarchy = globalScopeValue {
             Logger.info("    Building mixin class hierarchies...")
-            ClassHierarchy.build(
-                instance.workRes.inputClassCollection,
-                instance.workRes::getClassNode
-            )
+            instance.workRes.classHierarchy(includeLibraries = false)
         }
 
         seq {

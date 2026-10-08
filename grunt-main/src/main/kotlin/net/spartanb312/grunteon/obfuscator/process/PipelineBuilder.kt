@@ -1,5 +1,6 @@
 package net.spartanb312.grunteon.obfuscator.process
 
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap
 import kotlinx.coroutines.CoroutineScope
@@ -215,6 +216,32 @@ private val lwwsp = LWWSP(Runtime.getRuntime().availableProcessors()) {
     it.isDaemon = true
 }
 
+// Snapshot-local estimates: expensive classes get individual, stealable tasks, while
+// cheap classes retain batching. No sorting, RNG, pass barriers or scope migration.
+internal fun classBatchBoundaries(classes: Array<ClassNode>, maxBatchSize: Int, workers: Int): IntArray {
+    require(maxBatchSize > 0)
+    require(workers > 0)
+    val costs = LongArray(classes.size) { index ->
+        val methods = classes[index].methods
+        1L + methods.sumOf { 1L + it.instructions.size() }
+    }
+    val targetCost = (costs.sum() / (workers.toLong() * 4)).coerceIn(256L, 4096L)
+    val boundaries = IntArrayList()
+    boundaries.add(0)
+    var start = 0
+    var cost = 0L
+    for (i in classes.indices) {
+        if (i > start && (i - start >= maxBatchSize || cost + costs[i] > targetCost)) {
+            boundaries.add(i)
+            start = i
+            cost = 0
+        }
+        cost += costs[i]
+    }
+    if (classes.isNotEmpty()) boundaries.add(classes.size)
+    return boundaries.toIntArray()
+}
+
 internal class WorkerContext {
     val globalKeys = Reference2ObjectOpenHashMap<GlobalScopeValueKeyImpl<*>, Any>()
     val reducibleKeys = Reference2ObjectOpenHashMap<ReducibleScopeValueKeyImpl<*>, Mergeable<*>>()
@@ -235,12 +262,13 @@ internal class WorkerContext {
                     val tasks = pendingParallelTasks.toTypedArray()
                     pendingParallelTasks.clear()
                     val classArray = instance.workRes.inputClassCollection.toTypedArray()
+                    val batches = classBatchBoundaries(classArray, minBatchSize, lwwsp.workerCount)
                     val access = LWWSP.iterativeTask(
-                        size = classArray.size,
-                        batchSize = minBatchSize,
+                        size = batches.size - 1,
+                        batchSize = 1,
                         newScope = { ScopeValueAccess(scopeValueGlobal) },
                         action = { start, end ->
-                            for (i in start..<end) {
+                            for (i in batches[start]..<batches[end]) {
                                 val node = classArray[i]
                                 @Suppress("ReplaceManualRangeWithIndicesCalls")
                                 for (j in 0..<tasks.size) {

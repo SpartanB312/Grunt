@@ -21,36 +21,43 @@ const val GITHUB = "https://github.com/SpartanB312/Grunt"
 
 // Local run
 fun main(args: Array<String>) {
-    if ("--silent" !in args) {
-        Logger = SimpleLogger(
+    val previousLogger = Logger
+    val fileLogger = if ("--silent" !in args) {
+        SimpleLogger(
             "Grunteon",
             "logs/${SimpleDateFormat("yyyy-MM-dd HH-mm-ss").format(Date())}.txt"
         )
-    }
-    println(
-        """
-             ________  __________   ____ ___   _______    ___________
-            /  _____/  \______   \ |    |   \  \      \   \__    ___/
-           /   \  ___   |       _/ |    |   /  /   |   \    |    |   
-           \    \_\  \  |    |   \ |    |  /  /    |    \   |    |   
-            \______  /  |____|_  / |______/   \____|__  /   |____|   
-        """.trimIndent()
-    )
-    println("==========================================================")
-    println(" Grunteon $VERSION [${SUBTITLE}]")
-    println(" GitHub: $GITHUB")
-    println("==========================================================")
+    } else null
+    if (fileLogger != null) Logger = fileLogger
+    try {
+        println(
+            """
+                 ________  __________   ____ ___   _______    ___________
+                /  _____/  \______   \ |    |   \  \      \   \__    ___/
+               /   \  ___   |       _/ |    |   /  /   |   \    |    |
+               \    \_\  \  |    |   \ |    |  /  /    |    \   |    |
+                \______  /  |____|_  / |______/   \____|__  /   |____|
+            """.trimIndent()
+        )
+        println("==========================================================")
+        println(" Grunteon $VERSION [${SUBTITLE}]")
+        println(" GitHub: $GITHUB")
+        println("==========================================================")
 
-    Logger.info("Initializing obfuscator...")
-    PluginManager.loadPlugins()
-
-    val config = ObfConfig.read(Path(configPath(args)))
-    val instance = Grunteon.create(config)
-
-    measureTime {
-        instance.run()
-    }.toDouble(DurationUnit.MILLISECONDS).also { time ->
-        println("Execution time: ${"%.2f".format(time)} ms")
+        measureTime {
+            Logger.info("Initializing obfuscator...")
+            PluginManager.loadPlugins()
+            val config = ObfConfig.read(Path(configPath(args)))
+            Grunteon.create(config).use { it.run() }
+        }.toDouble(DurationUnit.MILLISECONDS).also { time ->
+            println("Total execution time: ${"%.2f".format(time)} ms")
+        }
+    } finally {
+        try {
+            fileLogger?.close()
+        } finally {
+            Logger = previousLogger
+        }
     }
 }
 
