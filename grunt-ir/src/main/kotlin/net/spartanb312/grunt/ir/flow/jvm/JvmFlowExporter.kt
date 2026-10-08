@@ -4,6 +4,7 @@ import net.spartanb312.grunt.ir.flow.core.FlowBlock
 import net.spartanb312.grunt.ir.flow.core.FlowBytecodeSlice
 import net.spartanb312.grunt.ir.flow.core.FlowExceptionRegion
 import net.spartanb312.grunt.ir.flow.core.FlowFrameValue
+import net.spartanb312.grunt.ir.flow.core.FlowGraphIndex
 import net.spartanb312.grunt.ir.flow.core.FlowGotoJump
 import net.spartanb312.grunt.ir.flow.core.FlowGotoMode
 import net.spartanb312.grunt.ir.flow.core.FlowIfJump
@@ -98,7 +99,7 @@ class JvmFlowExporter(
         jump: FlowGotoJump,
         state: ExportState
     ) {
-        val target = target(flow, block, FlowPort.Next)
+        val target = target(state, block, FlowPort.Next)
         if (jump.mode == FlowGotoMode.Fallthrough && state.nextBlock(block) == target) return
         out.add(JumpInsnNode(Opcodes.GOTO, state.label(target)))
     }
@@ -110,8 +111,8 @@ class JvmFlowExporter(
         jump: FlowIfJump,
         state: ExportState
     ) {
-        val branch = target(flow, block, jump.branchPort)
-        val fallthrough = target(flow, block, jump.fallthroughPort)
+        val branch = target(state, block, jump.branchPort)
+        val fallthrough = target(state, block, jump.fallthroughPort)
         emitInput(out, jump.input)
         out.add(JumpInsnNode(jump.opcode, state.label(branch)))
         if (state.nextBlock(block) != fallthrough) {
@@ -128,10 +129,10 @@ class JvmFlowExporter(
     ) {
         emitInput(out, jump.input)
 
-        val defaultTarget = target(flow, block, jump.defaultPort)
+        val defaultTarget = target(state, block, jump.defaultPort)
         val keys = jump.keyPorts.keys.sorted()
         val labels = keys.map { key ->
-            state.label(target(flow, block, jump.keyPorts.getValue(key)))
+            state.label(target(state, block, jump.keyPorts.getValue(key)))
         }
 
         if (keys.isNotEmpty() && keys.last() - keys.first() + 1 == keys.size) {
@@ -225,8 +226,8 @@ class JvmFlowExporter(
         return runs
     }
 
-    private fun target(flow: FlowMethod, block: FlowBlock, port: FlowPort): FlowBlock {
-        return flow.edgeFrom(block, port)?.to
+    private fun target(state: ExportState, block: FlowBlock, port: FlowPort): FlowBlock {
+        return state.graph.edgeFrom(block, port)?.to
             ?: error("Block ${block.id} has no edge for port ${port.displayName}")
     }
 
@@ -357,6 +358,7 @@ class JvmFlowExporter(
     }
 
     private inner class ExportState(flow: FlowMethod) {
+        val graph = FlowGraphIndex(flow.edges)
         val orderedBlocks = (if (flow.layout.order.isEmpty()) flow.blocks else flow.layout.order).toList()
         private val allBlocks = (orderedBlocks + flow.blocks).distinct()
         private val labels = allBlocks.associateWith { LabelNode() }

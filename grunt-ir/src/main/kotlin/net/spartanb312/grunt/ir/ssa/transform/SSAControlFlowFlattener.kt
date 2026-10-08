@@ -96,6 +96,8 @@ class SSAControlFlowFlattener(
             }
         }
 
+        val carrierByTargetArg = linkedMapOf<SSABlockArg, Carrier>()
+        carriers.forEach { carrierByTargetArg.putIfAbsent(it.targetArg, it) }
         val caseIds = originalBlocks.mapIndexed { index, block -> block to index.toLong() }.toMap()
 
         fun initialCarrierValue(carrier: Carrier): SSAValue {
@@ -158,7 +160,7 @@ class SSAControlFlowFlattener(
                 SSASwitchCase(
                     caseIds.getValue(block),
                     SSASuccessor(block, block.args.map { arg ->
-                        carriers.first { it.targetArg == arg }.dispatchArg
+                        carrierByTargetArg.getValue(arg).dispatchArg
                     })
                 )
             },

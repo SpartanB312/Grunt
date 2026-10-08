@@ -43,13 +43,26 @@ class SSARegionControlFlowFlattener(
         }
 
         val ids = FreshIds(function)
+        val analysis = SSARegionAnalysis(function)
+        val insertions = mutableMapOf<SSABlock, List<SSABlock>>()
         var flattened = 0
         var skipped = 0
         for (region in regions) {
-            val result = flattenRegion(function, region, ids)
+            val result = flattenRegion(function, region, ids, analysis, insertions)
             if (result) flattened++ else skipped++
         }
 
+        if (flattened != 0) {
+            // Commit layout once; repeated ArrayList insertions otherwise shift the whole suffix.
+            val layout = buildList {
+                for (block in function.blocks) {
+                    addAll(insertions[block].orEmpty())
+                    add(block)
+                }
+            }
+            function.blocks.clear()
+            function.blocks.addAll(layout)
+        }
         return SSARegionControlFlowFlattenResult(
             changed = flattened != 0,
             flattenedRegions = flattened,
@@ -58,33 +71,36 @@ class SSARegionControlFlowFlattener(
         )
     }
 
-    private fun flattenRegion(function: SSAFunction, region: SSARegion, ids: FreshIds): Boolean {
+    private fun flattenRegion(
+        function: SSAFunction,
+        region: SSARegion,
+        ids: FreshIds,
+        analysis: SSARegionAnalysis,
+        insertions: MutableMap<SSABlock, List<SSABlock>>
+    ): Boolean {
         val regionBlocks = region.blocks
-        val originalBlocks = function.blocks.filter { it in regionBlocks }
+        val originalBlocks = regionBlocks.sortedBy(analysis::orderOf)
         val originalEntry = function.entry
         if (originalBlocks.size < options.minRegionBlocks) return false
-        if (!canFlattenRegion(function, region)) return false
+        if (!canFlattenRegion(function, region, analysis)) return false
         if (originalEntry in regionBlocks && originalEntry.args.any { initialEntryArg(function, it) == null }) {
             return false
         }
 
-        val parameterIds = function.parameters.mapTo(mutableSetOf()) { it.id }
+        val parameterIds = analysis.parameterIds
         val originalArgCounts = originalBlocks.associateWith { it.args.size }
-        val localDefs = originalBlocks.associateWith(::collectLocalDefIds)
-        val allLocalDefs = function.blocks.associateWith(::collectLocalDefIds)
+        // Live-ins can only increase the dispatcher width. Reject this lower bound before analysis.
+        if (options.maxDispatcherArgs > 0 &&
+            1L + originalBlocks.sumOf { it.args.size.toLong() } > options.maxDispatcherArgs
+        ) return false
+        val localDefs = originalBlocks.associateWith(analysis::localDefinitions)
         val regionDefinitions = collectDefinitions(originalBlocks)
-        val functionLiveIns = collectLiveIns(function.blocks, parameterIds, allLocalDefs)
-        val liveOutValuesByBlock = function.blocks
-            .filter { it !in regionBlocks }
-            .associateWith { block ->
-                functionLiveIns.getValue(block).filter { value -> value.id in regionDefinitions }
-            }
-            .filterValues { it.isNotEmpty() }
+        val liveOutValuesByBlock = analysis.liveOutValues(regionBlocks, regionDefinitions)
 
         if (function.entry in liveOutValuesByBlock.keys) {
             return false
         }
-        if (liveOutValuesByBlock.keys.any { it in exceptionHandlers(function) }) {
+        if (liveOutValuesByBlock.keys.any { it in analysis.exceptionHandlers }) {
             return false
         }
 
@@ -94,6 +110,8 @@ class SSARegionControlFlowFlattener(
         }
         if (options.maxDispatcherArgs > 0 && projectedDispatcherArgs > options.maxDispatcherArgs) return false
 
+        val changedBlocks = originalBlocks.toCollection(linkedSetOf())
+        changedBlocks += liveOutValuesByBlock.keys
         val liveInSourceByArgId = mutableMapOf<SSAValueId, SSAStructure>()
         val liveInArgsByBlock = mutableMapOf<SSABlock, Map<SSAValueId, SSABlockArg>>()
         val liveOutArgsByBlock = mutableMapOf<SSABlock, Map<SSAValueId, SSABlockArg>>()
@@ -158,8 +176,12 @@ class SSARegionControlFlowFlattener(
             }
         }
 
-        for (block in function.blocks) {
+        val outsideUsers = linkedSetOf<SSABlock>()
+        outsideUsers += liveOutArgsByBlock.keys
+        for (block in liveOutArgsByBlock.keys) outsideUsers += analysis.predecessors(block)
+        for (block in outsideUsers.sortedBy(analysis::orderOf)) {
             if (block in regionBlocks) continue
+            changedBlocks += block
             val replacements = liveOutArgsByBlock[block].orEmpty()
             if (replacements.isNotEmpty()) {
                 for (index in block.instructions.indices) {
@@ -265,7 +287,7 @@ class SSARegionControlFlowFlattener(
             )
         }
 
-        redirectExternalEntryEdges(function, region, ::dispatchTo)
+        redirectExternalEntryEdges(region, analysis, changedBlocks, ::dispatchTo)
         if (originalEntry in regionBlocks) {
             val newEntry = SSABlock(ids.blockId())
             newEntry.terminator = SSAJumpTerminator(
@@ -274,77 +296,45 @@ class SSARegionControlFlowFlattener(
                     listOf(SSAIntLiteral(caseIds.getValue(originalEntry), SSAI32Type)) + carriers.map(::initialCarrierValue)
                 )
             )
-            insertEntryRegionBlocks(function, region, newEntry, dispatcher, invalidState)
+            insertions[region.entry] = listOf(newEntry, dispatcher, invalidState)
+            analysis.insertedBefore(region.entry, listOf(newEntry, dispatcher, invalidState))
+            changedBlocks += newEntry
             function.entry = newEntry
         } else {
-            insertRegionBlocks(function, region, dispatcher, invalidState)
+            insertions[region.entry] = listOf(dispatcher, invalidState)
+            analysis.insertedBefore(region.entry, listOf(dispatcher, invalidState))
         }
+        changedBlocks += dispatcher
+        changedBlocks += invalidState
+        changedBlocks.forEach(analysis::refresh)
         return true
     }
 
-    private fun canFlattenRegion(function: SSAFunction, region: SSARegion): Boolean {
+    private fun canFlattenRegion(
+        function: SSAFunction,
+        region: SSARegion,
+        analysis: SSARegionAnalysis
+    ): Boolean {
         if (region.entry !in region.blocks) return false
         if (function.entry in region.blocks && region.entry != function.entry) return false
-        if (options.skipExceptionRegions && region.blocks.any { it in exceptionTouchedBlocks(function) }) return false
-        if (region.blocks.any { it in exceptionHandlers(function) }) return false
-
-        return function.normalEdges().none { edge ->
-            edge.from !in region.blocks && edge.to in region.blocks && edge.to != region.entry
-        }
-    }
-
-    private fun exceptionHandlers(function: SSAFunction): Set<SSABlock> {
-        return function.exceptionRegions.mapTo(mutableSetOf()) { it.handler }
-    }
-
-    private fun exceptionTouchedBlocks(function: SSAFunction): Set<SSABlock> {
-        return function.exceptionRegions.flatMapTo(mutableSetOf()) { region ->
-            region.protectedBlocks + region.handler
+        if (options.skipExceptionRegions && region.blocks.any { it in analysis.exceptionTouched }) return false
+        if (region.blocks.any { it in analysis.exceptionHandlers }) return false
+        return region.blocks.all { block ->
+            block == region.entry || analysis.predecessors(block).all { it in region.blocks }
         }
     }
 
     private fun redirectExternalEntryEdges(
-        function: SSAFunction,
         region: SSARegion,
+        analysis: SSARegionAnalysis,
+        changedBlocks: MutableSet<SSABlock>,
         dispatchTo: (SSABlock, SSASuccessor) -> SSASuccessor
     ) {
-        for (block in function.blocks) {
+        for (block in analysis.predecessors(region.entry).sortedBy(analysis::orderOf)) {
             if (block in region.blocks) continue
+            changedBlocks += block
             block.terminator = rewriteTerminatorSuccessors(block.terminator) { successor ->
                 if (successor.block == region.entry) dispatchTo(block, successor) else successor
-            }
-        }
-    }
-
-    private fun insertRegionBlocks(
-        function: SSAFunction,
-        region: SSARegion,
-        dispatcher: SSABlock,
-        invalidState: SSABlock
-    ) {
-        val entryIndex = function.blocks.indexOf(region.entry).takeIf { it >= 0 } ?: function.blocks.size
-        function.blocks.add(entryIndex, dispatcher)
-        function.blocks.add(entryIndex + 1, invalidState)
-    }
-
-    private fun insertEntryRegionBlocks(
-        function: SSAFunction,
-        region: SSARegion,
-        newEntry: SSABlock,
-        dispatcher: SSABlock,
-        invalidState: SSABlock
-    ) {
-        val entryIndex = function.blocks.indexOf(region.entry).takeIf { it >= 0 } ?: 0
-        function.blocks.add(entryIndex, newEntry)
-        function.blocks.add(entryIndex + 1, dispatcher)
-        function.blocks.add(entryIndex + 2, invalidState)
-    }
-
-    private fun collectLocalDefIds(block: SSABlock): Set<SSAValueId> {
-        return buildSet {
-            block.args.forEach { add(it.id) }
-            block.instructions.forEach { instruction ->
-                instruction.result?.let { add(it.id) }
             }
         }
     }

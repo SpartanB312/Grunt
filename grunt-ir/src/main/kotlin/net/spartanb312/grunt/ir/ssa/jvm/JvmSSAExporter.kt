@@ -291,7 +291,7 @@ class JvmSSAExporter(
     private fun passArgs(out: InsnList, successor: SSASuccessor, state: ExportState) {
         if (successor.args.isEmpty()) return
 
-        val tempSlots = successor.args.map { state.allocateTemp(it.type) }
+        val tempSlots = state.allocateTemps(successor.args)
         for ((arg, slot) in successor.args.zip(tempSlots)) {
             load(out, arg, state)
             out.add(VarInsnNode(storeOpcode(arg.type), slot))
@@ -491,10 +491,25 @@ class JvmSSAExporter(
     }
 
     private fun emitExceptionRegions(method: MethodNode, function: SSAFunction, state: ExportState) {
+        val orderIndex = mutableMapOf<SSABlock, Int>()
+        function.blocks.forEachIndexed { index, block -> orderIndex.putIfAbsent(block, index) }
         for (region in function.exceptionRegions) {
-            val protected = region.protectedBlocks.sortedBy { function.blocks.indexOf(it) }
-            val first = protected.firstOrNull() ?: continue
-            val last = protected.last()
+            var first: SSABlock? = null
+            var last: SSABlock? = null
+            var firstIndex = Int.MAX_VALUE
+            var lastIndex = Int.MIN_VALUE
+            for (block in region.protectedBlocks) {
+                val index = orderIndex[block] ?: -1
+                if (index < firstIndex) {
+                    first = block
+                    firstIndex = index
+                }
+                if (index >= lastIndex) {
+                    last = block
+                    lastIndex = index
+                }
+            }
+            if (first == null || last == null) continue
             method.tryCatchBlocks.add(
                 TryCatchBlockNode(
                     state.label(first),
@@ -839,6 +854,7 @@ class JvmSSAExporter(
         private val endLabels = function.blocks.associateWith { LabelNode() }
         private val exceptionHandlers = function.exceptionRegions.mapTo(mutableSetOf()) { it.handler }
         private val slots = linkedMapOf<SSAStructure, Int>()
+        private val scratchBase: Int
         var nextLocal = 0
             private set
 
@@ -865,6 +881,7 @@ class JvmSSAExporter(
                     instruction.result?.let { slots[it] = allocate(it.type) }
                 }
             }
+            scratchBase = nextLocal
         }
 
         fun label(block: SSABlock): LabelNode = labels.getValue(block)
@@ -875,7 +892,18 @@ class JvmSSAExporter(
 
         fun slot(value: SSAStructure): Int = slots[value] ?: error("No local slot for ${value.id}")
 
-        fun allocateTemp(type: SSAType): Int = allocate(type)
+        // Transfers do not overlap. Reserve permanent values first, then reuse one scratch range.
+        // passArgs still performs a parallel copy: all sources are saved before any destination write.
+        fun allocateTemps(values: List<SSAValue>): List<Int> {
+            var cursor = scratchBase
+            val slots = values.map { value ->
+                val slot = cursor
+                cursor += stackSize(value.type).coerceAtLeast(1)
+                slot
+            }
+            nextLocal = maxOf(nextLocal, cursor)
+            return slots
+        }
 
         private fun reserve(slot: Int, type: SSAType) {
             nextLocal = maxOf(nextLocal, slot + stackSize(type).coerceAtLeast(1))

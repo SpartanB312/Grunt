@@ -1,5 +1,8 @@
 package net.spartanb312.grunt.ir.flow.jvm
 
+import net.spartanb312.grunt.ir.jvm.JvmBlockIndex
+import net.spartanb312.grunt.ir.jvm.JvmInstructionIndex
+import net.spartanb312.grunt.ir.jvm.analyzeJvmFrames
 import net.spartanb312.grunt.ir.flow.core.FlowBlock
 import net.spartanb312.grunt.ir.flow.core.FlowBlockKind
 import net.spartanb312.grunt.ir.flow.core.FlowBytecodeSlice
@@ -40,7 +43,6 @@ import org.objectweb.asm.tree.TableSwitchInsnNode
 import org.objectweb.asm.tree.TryCatchBlockNode
 import org.objectweb.asm.tree.TypeInsnNode
 import org.objectweb.asm.tree.VarInsnNode
-import org.objectweb.asm.tree.analysis.Analyzer
 import org.objectweb.asm.tree.analysis.BasicInterpreter
 import org.objectweb.asm.tree.analysis.BasicValue
 import org.objectweb.asm.tree.analysis.Frame
@@ -54,7 +56,7 @@ class JvmFlowImporter(
         context.metadata.capture(method)
         val localSlots = analysisMaxLocals(method)
         context.metadata.maxLocals = maxOf(context.metadata.maxLocals, localSlots)
-        context.metadata.maxStack = maxOf(context.metadata.maxStack, analysisMaxStack(method))
+        context.metadata.maxStack = 0
 
         if (method.instructions == null || method.instructions.size() == 0) {
             val block = FlowBlock(context.ids.blockId(), jump = FlowUnreachableJump)
@@ -69,7 +71,7 @@ class JvmFlowImporter(
             return JvmFlowImportResult(flow, context.metadata)
         }
 
-        val instructions = method.instructions.toArray().toList()
+        val instructions = JvmInstructionIndex(method.instructions)
         val executableIndices = instructions.indices.filter { instructions[it].opcode >= 0 }
         if (executableIndices.isEmpty()) {
             val block = FlowBlock(context.ids.blockId(), jump = FlowUnreachableJump)
@@ -109,31 +111,25 @@ class JvmFlowImporter(
     }
 
     private fun analyze(ownerInternalName: String, method: MethodNode): Array<Frame<BasicValue>?> {
-        val oldMaxLocals = method.maxLocals
-        val oldMaxStack = method.maxStack
         return try {
-            method.maxLocals = analysisMaxLocals(method)
-            method.maxStack = analysisMaxStack(method)
             val interpreter = when (analyzerMode) {
                 JvmFlowAnalyzerMode.Basic -> BasicFlowInterpreter()
                 JvmFlowAnalyzerMode.Hierarchy -> HierarchyFlowInterpreter(typeHierarchy)
             }
-            @Suppress("UNCHECKED_CAST")
-            Analyzer<BasicValue>(interpreter).analyze(ownerInternalName, method) as Array<Frame<BasicValue>?>
+            val analyzed = analyzeJvmFrames(ownerInternalName, method, interpreter)
+            context.metadata.maxStack = analyzed.maxStack
+            analyzed.frames
         } catch (t: Throwable) {
             throw IllegalStateException("Failed to analyze ${ownerInternalName}.${method.name}${method.desc}", t)
-        } finally {
-            method.maxLocals = oldMaxLocals
-            method.maxStack = oldMaxStack
         }
     }
 
     private fun buildBlocks(
         method: MethodNode,
-        instructions: List<AbstractInsnNode>,
+        instructions: JvmInstructionIndex,
         executableIndices: List<Int>,
         frames: Array<Frame<BasicValue>?>
-    ): List<BlockInfo> {
+    ): JvmBlockIndex<BlockInfo> {
         val starts = sortedSetOf<Int>()
         starts += executableIndices.first()
 
@@ -174,7 +170,7 @@ class JvmFlowImporter(
         }
 
         val orderedStarts = starts.toList()
-        return orderedStarts.mapIndexed { index, start ->
+        val blocks = orderedStarts.mapIndexed { index, start ->
             val end = orderedStarts.getOrNull(index + 1) ?: instructions.size
             val block = FlowBlock(
                 id = context.ids.blockId(),
@@ -184,12 +180,13 @@ class JvmFlowImporter(
             )
             BlockInfo(start, end, block)
         }
+        return JvmBlockIndex(blocks) { it.start }
     }
 
     private fun importBlock(
         info: BlockInfo,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>,
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex,
         frames: Array<Frame<BasicValue>?>,
         flow: FlowMethod
     ) {
@@ -222,8 +219,8 @@ class JvmFlowImporter(
     private fun importTerminator(
         insn: AbstractInsnNode,
         info: BlockInfo,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>,
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex,
         flow: FlowMethod
     ) {
         when (insn) {
@@ -238,8 +235,8 @@ class JvmFlowImporter(
     private fun importJumpInsn(
         insn: JumpInsnNode,
         info: BlockInfo,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>,
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex,
         flow: FlowMethod
     ) {
         when (insn.opcode) {
@@ -264,8 +261,8 @@ class JvmFlowImporter(
     private fun importTableSwitchInsn(
         insn: TableSwitchInsnNode,
         info: BlockInfo,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>,
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex,
         flow: FlowMethod
     ) {
         val keys = (insn.min..insn.max).toList()
@@ -282,8 +279,8 @@ class JvmFlowImporter(
     private fun importLookupSwitchInsn(
         insn: LookupSwitchInsnNode,
         info: BlockInfo,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>,
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex,
         flow: FlowMethod
     ) {
         val keys = insn.keys.map { it as Int }
@@ -316,8 +313,8 @@ class JvmFlowImporter(
     private fun addExceptionRegions(
         flow: FlowMethod,
         method: MethodNode,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex
     ) {
         method.tryCatchBlocks?.forEachIndexed { index, tryCatch ->
             addExceptionRegion(flow, tryCatch, index, blockInfos, instructions)
@@ -328,15 +325,14 @@ class JvmFlowImporter(
         flow: FlowMethod,
         tryCatch: TryCatchBlockNode,
         priority: Int,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex
     ) {
         val start = nextExecutableIndex(instructions, instructions.indexOf(tryCatch.start)) ?: return
         val end = nextExecutableIndex(instructions, instructions.indexOf(tryCatch.end)) ?: instructions.size
         val handlerStart = nextExecutableIndex(instructions, instructions.indexOf(tryCatch.handler)) ?: return
-        val handler = blockInfos.firstOrNull { it.start == handlerStart }?.block ?: return
-        val protectedBlocks = blockInfos
-            .filter { it.start >= start && it.start < end }
+        val handler = blockInfos.atStart(handlerStart)?.block ?: return
+        val protectedBlocks = blockInfos.between(start, end)
             .mapTo(mutableSetOf()) { it.block }
         val catchType = tryCatch.type?.let { FlowFrameValue.Object(it) }
         flow.exceptionRegions += FlowExceptionRegion(protectedBlocks, handler, catchType, priority)
@@ -361,7 +357,7 @@ class JvmFlowImporter(
         )
     }
 
-    private fun firstTerminatorIndex(info: BlockInfo, instructions: List<AbstractInsnNode>): Int? {
+    private fun firstTerminatorIndex(info: BlockInfo, instructions: JvmInstructionIndex): Int? {
         for (index in info.start until info.end) {
             val insn = instructions[index]
             if (isFlowTerminator(insn)) return index
@@ -371,7 +367,7 @@ class JvmFlowImporter(
 
     private fun frameBeforeLastExecutable(
         info: BlockInfo,
-        instructions: List<AbstractInsnNode>,
+        instructions: JvmInstructionIndex,
         frames: Array<Frame<BasicValue>?>
     ): FlowFrame? {
         for (index in (info.end - 1) downTo info.start) {
@@ -384,17 +380,17 @@ class JvmFlowImporter(
 
     private fun targetBlock(
         label: LabelNode,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex
     ): BlockInfo {
         val target = nextExecutableIndex(instructions, instructions.indexOf(label))
             ?: throw IllegalStateException("Label target has no executable instruction")
-        return blockInfos.firstOrNull { it.start == target }
+        return blockInfos.atStart(target)
             ?: throw IllegalStateException("No Flow block starts at instruction $target")
     }
 
-    private fun fallthroughBlock(info: BlockInfo, blockInfos: List<BlockInfo>): BlockInfo? {
-        return blockInfos.firstOrNull { it.start >= info.end }
+    private fun fallthroughBlock(info: BlockInfo, blockInfos: JvmBlockIndex<BlockInfo>): BlockInfo? {
+        return blockInfos.atStart(info.end)
     }
 
     private fun jumpInputTypes(opcode: Int): List<FlowFrameValue> {
@@ -431,12 +427,8 @@ class JvmFlowImporter(
             isBlockTerminator(insn.opcode)
     }
 
-    private fun nextExecutableIndex(instructions: List<AbstractInsnNode>, start: Int): Int? {
-        if (start < 0) return null
-        for (index in start until instructions.size) {
-            if (instructions[index].opcode >= 0) return index
-        }
-        return null
+    private fun nextExecutableIndex(instructions: JvmInstructionIndex, start: Int): Int? {
+        return instructions.nextExecutableIndex(start)
     }
 
     private fun cloneInstruction(insn: AbstractInsnNode): AbstractInsnNode {
@@ -452,11 +444,6 @@ class JvmFlowImporter(
             }
         }
         return maxOf(method.maxLocals, max)
-    }
-
-    private fun analysisMaxStack(method: MethodNode): Int {
-        val instructionCount = method.instructions?.size() ?: 0
-        return maxOf(method.maxStack, instructionCount + 16, 64)
     }
 
     private fun argumentLocalSlots(access: Int, desc: String): Int {

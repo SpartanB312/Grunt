@@ -43,7 +43,7 @@ object FlowVerifier {
         val blockSet = method.blocks.toSet()
 
         verifyMethodShape(method, blockSet, issues)
-        verifyBlocks(method, blockSet, issues, isAssignable)
+        verifyBlocks(method, FlowGraphIndex(method.edges), blockSet, issues, isAssignable)
         verifyEdges(method, blockSet, issues, isAssignable)
         verifyExceptions(method, blockSet, issues)
 
@@ -93,6 +93,7 @@ object FlowVerifier {
 
     private fun verifyBlocks(
         method: FlowMethod,
+        graph: FlowGraphIndex,
         blockSet: Set<FlowBlock>,
         issues: MutableList<FlowVerificationIssue>,
         isAssignable: (FlowFrameValue, FlowFrameValue) -> Boolean
@@ -100,17 +101,19 @@ object FlowVerifier {
         for (block in method.blocks) {
             verifyJumpInput(block, issues, isAssignable)
 
-            val outgoing = method.outgoingEdges(block)
+            val outgoing = graph.outgoing(block)
             val ports = block.jump.ports
+            val portSet = ports.toSet()
+            val portCounts = outgoing.groupingBy { it.port }.eachCount()
             for (port in ports) {
-                val count = outgoing.count { it.port == port }
+                val count = portCounts[port] ?: 0
                 when {
                     count == 0 -> issues += FlowVerificationIssue("Jump port ${port.displayName} has no edge", block)
                     count > 1 -> issues += FlowVerificationIssue("Jump port ${port.displayName} has $count edges", block)
                 }
             }
             for (edge in outgoing) {
-                if (edge.port !in ports) {
+                if (edge.port !in portSet) {
                     issues += FlowVerificationIssue(
                         "Edge uses port ${edge.port.displayName}, but block jump does not expose it",
                         block,

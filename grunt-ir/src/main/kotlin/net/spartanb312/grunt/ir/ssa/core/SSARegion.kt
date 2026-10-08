@@ -55,6 +55,7 @@ internal object SSARegionPlanner {
     fun plan(function: SSAFunction, options: SSARegionPlanOptions): List<SSARegion> {
         val edges = function.normalEdges()
         val preds = edges.groupBy { it.to }
+        val outgoing = edges.withIndex().groupBy { it.value.from }
         val excluded = if (options.allowExceptionBlocks) {
             emptySet()
         } else {
@@ -72,7 +73,7 @@ internal object SSARegionPlanner {
             val blocks = growRegion(seed, options, excluded, assigned, preds)
             if (blocks.size < options.minBlocks) continue
 
-            val region = createRegion(regions.size, function, seed, blocks, edges, preds)
+            val region = createRegion(regions.size, function, seed, blocks, outgoing, preds)
             regions += region
             assigned += blocks
         }
@@ -122,11 +123,12 @@ internal object SSARegionPlanner {
         function: SSAFunction,
         entry: SSABlock,
         blocks: Set<SSABlock>,
-        edges: List<SSAEdge>,
+        outgoing: Map<SSABlock, List<IndexedValue<SSAEdge>>>,
         preds: Map<SSABlock, List<SSAEdge>>
     ): SSARegion {
-        val internalEdges = edges.filter { it.from in blocks && it.to in blocks }
-        val exitEdges = edges.filter { it.from in blocks && it.to !in blocks }
+        val edges = blocks.flatMap { outgoing[it].orEmpty() }.sortedBy { it.index }.map { it.value }
+        val internalEdges = edges.filter { it.to in blocks }
+        val exitEdges = edges.filter { it.to !in blocks }
         val entryEdges = preds[entry].orEmpty().filter { it.from !in blocks }
 
         return SSARegion(

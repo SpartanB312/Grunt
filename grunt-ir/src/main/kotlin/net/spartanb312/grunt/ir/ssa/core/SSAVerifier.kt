@@ -1,5 +1,7 @@
 package net.spartanb312.grunt.ir.ssa.core
 
+import java.util.BitSet
+
 /** One structural or typing issue found in an IR function. */
 data class SSAVerificationIssue(
     val message: String,
@@ -130,7 +132,7 @@ object SSAVerifier {
         function: SSAFunction,
         block: SSABlock,
         definitions: Map<SSAValueId, ValueDef>,
-        dominators: Map<SSABlock, Set<SSABlock>>,
+        dominators: Dominators,
         blockSet: Set<SSABlock>,
         issues: MutableList<SSAVerificationIssue>
     ) {
@@ -313,7 +315,7 @@ object SSAVerifier {
         useBlock: SSABlock,
         useIndex: Int,
         definitions: Map<SSAValueId, ValueDef>,
-        dominators: Map<SSABlock, Set<SSABlock>>,
+        dominators: Dominators,
         issues: MutableList<SSAVerificationIssue>
     ) {
         if (value !is SSAStructure) return
@@ -413,57 +415,123 @@ object SSAVerifier {
         }
     }
 
-    private fun computeDominators(function: SSAFunction): Map<SSABlock, Set<SSABlock>> {
-        val blocks = function.blocks.toSet()
-        if (blocks.isEmpty()) return emptyMap()
+    private fun computeDominators(function: SSAFunction): Dominators {
+        val blocks = function.blocks.distinct()
+        val blockCount = blocks.size
+        val indices = blocks.withIndex().associate { (index, block) -> block to index }
+        if (blockCount == 0) return Dominators(indices, emptyArray())
 
+        // Index once, including exceptional edges and ignoring foreign protected blocks as before.
         val predecessors = function.predecessors(includeExceptionEdges = true)
-        val dominators = mutableMapOf<SSABlock, MutableSet<SSABlock>>()
-
-        for (block in blocks) {
-            dominators[block] = if (block == function.entry) {
-                mutableSetOf(block)
-            } else {
-                blocks.toMutableSet()
+        val predecessorIndices = Array(blockCount) { index ->
+            predecessors[blocks[index]].orEmpty().mapNotNull { indices[it] }.toIntArray()
+        }
+        val successorCounts = IntArray(blockCount)
+        for (preds in predecessorIndices) {
+            for (pred in preds) successorCounts[pred]++
+        }
+        val successors = Array(blockCount) { IntArray(successorCounts[it]) }
+        successorCounts.fill(0)
+        for (index in predecessorIndices.indices) {
+            for (pred in predecessorIndices[index]) {
+                successors[pred][successorCounts[pred]++] = index
             }
         }
 
-        var changed: Boolean
-        do {
-            changed = false
-            for (block in blocks) {
-                if (block == function.entry) continue
+        val entry = indices[function.entry] ?: -1
+        // Preserve the old greatest fixed point: predecessor-free blocks become singletons,
+        // but closed unreachable SCCs (and their otherwise unrooted descendants) stay universal.
+        val sets = Array(blockCount) { index ->
+            BitSet(blockCount).apply {
+                if (index == entry) set(index) else set(0, blockCount)
+            }
+        }
+        val worklist = ArrayDeque<Int>(blockCount)
+        val queued = BooleanArray(blockCount)
+        for (index in reversePostOrder(successors, entry)) {
+            if (index != entry) {
+                worklist.addLast(index)
+                queued[index] = true
+            }
+        }
 
-                val preds = predecessors[block].orEmpty().filter { it in blocks }
-                val newDominators = if (preds.isEmpty()) {
-                    mutableSetOf(block)
-                } else {
-                    preds
-                        .map { dominators.getValue(it) }
-                        .reduce { acc, set -> acc.intersect(set).toMutableSet() }
-                        .toMutableSet()
-                        .also { it += block }
-                }
+        var scratch = BitSet(blockCount)
+        while (worklist.isNotEmpty()) {
+            val index = worklist.removeFirst()
+            queued[index] = false
+            scratch.clear()
+            val preds = predecessorIndices[index]
+            if (preds.isNotEmpty()) {
+                scratch.or(sets[preds[0]])
+                for (i in 1 until preds.size) scratch.and(sets[preds[i]])
+            }
+            scratch.set(index)
 
-                val current = dominators.getValue(block)
-                if (current != newDominators) {
-                    current.clear()
-                    current += newDominators
-                    changed = true
+            if (scratch != sets[index]) {
+                // Swap buffers rather than allocating/copying a new set for each intersection.
+                val previous = sets[index]
+                sets[index] = scratch
+                scratch = previous
+                for (successor in successors[index]) {
+                    if (successor != entry && !queued[successor]) {
+                        worklist.addLast(successor)
+                        queued[successor] = true
+                    }
                 }
             }
-        } while (changed)
+        }
 
-        return dominators
+        return Dominators(indices, sets)
+    }
+
+    private fun reversePostOrder(successors: Array<IntArray>, entry: Int): IntArray {
+        val visited = BooleanArray(successors.size)
+        val nextSuccessor = IntArray(successors.size)
+        val stack = IntArray(successors.size)
+        val order = IntArray(successors.size)
+        var size = 0
+
+        fun visit(root: Int) {
+            if (visited[root]) return
+            var depth = 0
+            stack[depth] = root
+            visited[root] = true
+            while (depth >= 0) {
+                val block = stack[depth]
+                if (nextSuccessor[block] < successors[block].size) {
+                    val successor = successors[block][nextSuccessor[block]++]
+                    if (!visited[successor]) {
+                        visited[successor] = true
+                        stack[++depth] = successor
+                    }
+                } else {
+                    order[size++] = block
+                    depth--
+                }
+            }
+        }
+
+        // An iterative DFS also covers disconnected blocks without overflowing on long chains.
+        if (entry >= 0) visit(entry)
+        for (block in successors.indices) visit(block)
+        order.reverse()
+        return order
     }
 
     private fun dominates(
         definitionBlock: SSABlock,
         useBlock: SSABlock,
-        dominators: Map<SSABlock, Set<SSABlock>>
+        dominators: Dominators
     ): Boolean {
-        return definitionBlock in dominators.getOrDefault(useBlock, emptySet())
+        val definitionIndex = dominators.indices[definitionBlock] ?: return false
+        val useIndex = dominators.indices[useBlock] ?: return false
+        return dominators.sets[useIndex][definitionIndex]
     }
+
+    private class Dominators(
+        val indices: Map<SSABlock, Int>,
+        val sets: Array<BitSet>
+    )
 
     private sealed interface ValueDef {
         data class Parameter(val value: SSAParameter) : ValueDef

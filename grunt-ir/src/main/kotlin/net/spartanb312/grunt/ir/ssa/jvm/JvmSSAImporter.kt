@@ -1,5 +1,7 @@
 package net.spartanb312.grunt.ir.ssa.jvm
 
+import net.spartanb312.grunt.ir.jvm.JvmBlockIndex
+import net.spartanb312.grunt.ir.jvm.JvmInstructionIndex
 import net.spartanb312.grunt.ir.ssa.core.*
 import org.objectweb.asm.ConstantDynamic
 import org.objectweb.asm.Handle
@@ -39,7 +41,7 @@ class JvmSSAImporter(
             )
         }
 
-        val instructions = method.instructions.toArray().toList()
+        val instructions = JvmInstructionIndex(method.instructions)
         val executableIndices = instructions.indices.filter { instructions[it].opcode >= 0 }
         if (executableIndices.isEmpty()) {
             syntheticEntry.terminator = if (returnType == SSAVoidType) SSAReturnTerminator() else SSAUnreachableTerminator
@@ -87,10 +89,10 @@ class JvmSSAImporter(
 
     private fun buildBlocks(
         method: MethodNode,
-        instructions: List<AbstractInsnNode>,
+        instructions: JvmInstructionIndex,
         executableIndices: List<Int>,
         frames: Array<Frame<BasicValue>?>
-    ): List<BlockInfo> {
+    ): JvmBlockIndex<BlockInfo> {
         val starts = sortedSetOf<Int>()
         starts += executableIndices.first()
 
@@ -131,12 +133,13 @@ class JvmSSAImporter(
         }
 
         val orderedStarts = starts.toList()
-        return orderedStarts.mapIndexed { index, start ->
+        val blocks = orderedStarts.mapIndexed { index, start ->
             val end = orderedStarts.getOrNull(index + 1) ?: instructions.size
             val block = SSABlock(context.ids.blockId())
             val shape = frameShape(frames.getOrNull(start), block)
             BlockInfo(start, end, block, shape)
         }
+        return JvmBlockIndex(blocks) { it.start }
     }
 
     private fun frameShape(frame: Frame<BasicValue>?, block: SSABlock): BlockFrameShape {
@@ -179,16 +182,15 @@ class JvmSSAImporter(
     private fun addExceptionRegions(
         function: SSAFunction,
         method: MethodNode,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex
     ) {
         method.tryCatchBlocks?.forEach { tryCatch ->
             val start = nextExecutableIndex(instructions, instructions.indexOf(tryCatch.start)) ?: return@forEach
             val end = nextExecutableIndex(instructions, instructions.indexOf(tryCatch.end)) ?: instructions.size
             val handlerStart = nextExecutableIndex(instructions, instructions.indexOf(tryCatch.handler)) ?: return@forEach
-            val handler = blockInfos.firstOrNull { it.start == handlerStart }?.block ?: return@forEach
-            val protectedBlocks = blockInfos
-                .filter { it.start >= start && it.start < end }
+            val handler = blockInfos.atStart(handlerStart)?.block ?: return@forEach
+            val protectedBlocks = blockInfos.between(start, end)
                 .mapTo(mutableSetOf()) { it.block }
             val caughtType = tryCatch.type?.let { context.types.objectType(it) }
             function.exceptionRegions += SSAExceptionRegion(protectedBlocks, handler, caughtType)
@@ -225,8 +227,8 @@ class JvmSSAImporter(
 
     private fun importBlock(
         info: BlockInfo,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex
     ) {
         val state = frameState(info)
         var terminated = false
@@ -242,7 +244,7 @@ class JvmSSAImporter(
         }
 
         if (!terminated) {
-            val next = blockInfos.firstOrNull { it.start >= info.end }
+            val next = blockInfos.atStart(info.end)
             info.block.terminator = if (next != null) {
                 SSAJumpTerminator(SSASuccessor(next.block, successorArgs(next, state)))
             } else {
@@ -271,8 +273,8 @@ class JvmSSAImporter(
     private fun importInstruction(
         insn: AbstractInsnNode,
         info: BlockInfo,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>,
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex,
         state: FrameState
     ) {
         when (insn) {
@@ -295,7 +297,7 @@ class JvmSSAImporter(
     private fun importSimpleInsn(
         insn: InsnNode,
         info: BlockInfo,
-        blockInfos: List<BlockInfo>,
+        blockInfos: JvmBlockIndex<BlockInfo>,
         state: FrameState
     ) {
         val block = info.block
@@ -536,8 +538,8 @@ class JvmSSAImporter(
     private fun importJumpInsn(
         insn: JumpInsnNode,
         info: BlockInfo,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>,
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex,
         state: FrameState
     ) {
         val block = info.block
@@ -621,8 +623,8 @@ class JvmSSAImporter(
     private fun importTableSwitchInsn(
         insn: TableSwitchInsnNode,
         info: BlockInfo,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>,
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex,
         state: FrameState
     ) {
         val value = state.pop()
@@ -641,8 +643,8 @@ class JvmSSAImporter(
     private fun importLookupSwitchInsn(
         insn: LookupSwitchInsnNode,
         info: BlockInfo,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>,
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex,
         state: FrameState
     ) {
         val value = state.pop()
@@ -785,17 +787,17 @@ class JvmSSAImporter(
 
     private fun targetBlock(
         label: LabelNode,
-        blockInfos: List<BlockInfo>,
-        instructions: List<AbstractInsnNode>
+        blockInfos: JvmBlockIndex<BlockInfo>,
+        instructions: JvmInstructionIndex
     ): BlockInfo {
         val target = nextExecutableIndex(instructions, instructions.indexOf(label))
             ?: throw IllegalStateException("Label target has no executable instruction")
-        return blockInfos.firstOrNull { it.start == target }
+        return blockInfos.atStart(target)
             ?: throw IllegalStateException("No IR block starts at instruction $target")
     }
 
-    private fun fallthroughBlock(info: BlockInfo, blockInfos: List<BlockInfo>): BlockInfo? {
-        return blockInfos.firstOrNull { it.start >= info.end }
+    private fun fallthroughBlock(info: BlockInfo, blockInfos: JvmBlockIndex<BlockInfo>): BlockInfo? {
+        return blockInfos.atStart(info.end)
     }
 
     private fun result(type: SSAType, debugName: String? = null): SSAInstructionResult {
@@ -895,12 +897,8 @@ class JvmSSAImporter(
             opcode == Opcodes.ATHROW
     }
 
-    private fun nextExecutableIndex(instructions: List<AbstractInsnNode>, start: Int): Int? {
-        if (start < 0) return null
-        for (index in start until instructions.size) {
-            if (instructions[index].opcode >= 0) return index
-        }
-        return null
+    private fun nextExecutableIndex(instructions: JvmInstructionIndex, start: Int): Int? {
+        return instructions.nextExecutableIndex(start)
     }
 
     private fun String.quote() = "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
