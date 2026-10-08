@@ -57,6 +57,12 @@ object JarDumper {
                 val zipEntry = ZipEntry(entryName)
                 if (globalConfig.removeTimeStamps) zipEntry.time = 0
                 SingleEntryZipOutputStream(out).use { zip ->
+                    if (globalConfig.corruptCRC32) {
+                        val random = Xoshiro256PPRandom(
+                            getSeed(globalConfig.input, output.fileName, "corruptCRC32", entryName)
+                        )
+                        zip.corruptCRC32(random)
+                    }
                     // Compression level
                     zip.setLevel(globalConfig.compressionLevel)
                     zip.putNextEntry(zipEntry)
