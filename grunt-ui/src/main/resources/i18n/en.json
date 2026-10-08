@@ -502,7 +502,7 @@
     "ui.transformer.deadCodeRemove.name": "DeadCodeRemove",
     "ui.transformer.declaredFieldsExtract.config.classFilter.desc": "Specify class include/exclude rules",
     "ui.transformer.declaredFieldsExtract.config.classFilter.name": "Class filter",
-    "ui.transformer.declaredFieldsExtract.desc": "Extract field initialization to <init> or <clinit>",
+    "ui.transformer.declaredFieldsExtract.desc": "Extract static field initialization to <clinit>",
     "ui.transformer.declaredFieldsExtract.name": "DeclaredFieldsExtract",
     "ui.transformer.decompilerCrasher.config.blankString.name": "Blank string",
     "ui.transformer.decompilerCrasher.config.classFilter.desc": "Specify class include/exclude rules",
