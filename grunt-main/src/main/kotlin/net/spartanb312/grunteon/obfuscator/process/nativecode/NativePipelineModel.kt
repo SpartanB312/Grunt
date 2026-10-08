@@ -25,7 +25,8 @@ internal data class NativeValidatedMethod(
     val candidate: NativeCandidate,
     val jvmIr: NativeJvmMethodIr,
     val fullJvmSupport: NativeJvmSupportReport,
-    val lowering: NativeLoweringKind
+    val lowering: NativeLoweringKind,
+    val prepared: NativePreparedMethod? = null
 ) {
     val classNode: ClassNode
         get() = candidate.classNode
@@ -145,7 +146,7 @@ internal data class NativeStringRef(
     val value: String
 )
 
-internal class NativeReferenceSlots {
+internal class NativeReferenceSlots(private val symbolic: Boolean = false) {
     private val classSlots = linkedMapOf<NativeClassRef, Int>()
     private val methodSlots = linkedMapOf<NativeMethodRef, Int>()
     private val fieldSlots = linkedMapOf<NativeFieldRef, Int>()
@@ -178,18 +179,63 @@ internal class NativeReferenceSlots {
     fun stringSlot(value: String): Int {
         return stringSlots.getOrPut(NativeStringRef(value)) { stringSlots.size }
     }
+
+    fun classExpression(name: String): String = expression("class", classSlot(name))
+    fun methodExpression(owner: String, name: String, desc: String, isStatic: Boolean): String =
+        expression("method", methodSlot(owner, name, desc, isStatic))
+    fun fieldExpression(owner: String, name: String, desc: String, isStatic: Boolean): String =
+        expression("field", fieldSlot(owner, name, desc, isStatic))
+    fun stringExpression(value: String): String = expression("string", stringSlot(value))
+
+    private fun expression(kind: String, slot: Int): String =
+        if (symbolic) "grt_ref_${kind}_$slot" else slot.toString()
+
+    // Local symbolic constants avoid textual replacement inside Java strings/descriptors.
+    fun declarationsInto(target: NativeReferenceSlots): String = buildString {
+        classSlots.forEach { (ref, slot) ->
+            appendLine("    constexpr jint grt_ref_class_$slot = ${target.classSlot(ref.internalName)};")
+        }
+        methodSlots.forEach { (ref, slot) ->
+            appendLine("    constexpr jint grt_ref_method_$slot = ${target.methodSlot(ref.owner, ref.name, ref.desc, ref.isStatic)};")
+        }
+        fieldSlots.forEach { (ref, slot) ->
+            appendLine("    constexpr jint grt_ref_field_$slot = ${target.fieldSlot(ref.owner, ref.name, ref.desc, ref.isStatic)};")
+        }
+        stringSlots.forEach { (ref, slot) ->
+            appendLine("    constexpr jint grt_ref_string_$slot = ${target.stringSlot(ref.value)};")
+        }
+    }
 }
 
-internal data class NativeSourceBundle(
+internal class NativeSourceBundle(
     val plan: NativeBuildPlan,
-    val sourceText: String,
+    sourceText: String,
     val sourcePath: Path,
     val libraryPath: Path,
     val sourceFiles: List<NativeSourceFile> = listOf(NativeSourceFile(sourcePath, sourceText)),
     val libraryTargets: List<NativeLibraryTarget> = emptyList(),
     val intrinsicStats: NativeJvmIntrinsicStats = NativeJvmIntrinsicStats(),
-    val ssaIntrinsicStats: NativeJvmIntrinsicStats = NativeJvmIntrinsicStats()
+    val ssaIntrinsicStats: NativeJvmIntrinsicStats = NativeJvmIntrinsicStats(),
+    sourceTextFactory: (() -> String)? = null
 ) {
+    // Split compilation never needs to materialize the diagnostic monolithic translation unit.
+    private val initialSourceText = sourceText
+    val sourceText: String by lazy { sourceTextFactory?.invoke() ?: initialSourceText }
+
+    fun copy(
+        plan: NativeBuildPlan = this.plan,
+        sourceText: String? = null,
+        sourcePath: Path = this.sourcePath,
+        libraryPath: Path = this.libraryPath,
+        sourceFiles: List<NativeSourceFile> = this.sourceFiles,
+        libraryTargets: List<NativeLibraryTarget> = this.libraryTargets,
+        intrinsicStats: NativeJvmIntrinsicStats = this.intrinsicStats,
+        ssaIntrinsicStats: NativeJvmIntrinsicStats = this.ssaIntrinsicStats
+    ): NativeSourceBundle = NativeSourceBundle(
+        plan, sourceText.orEmpty(), sourcePath, libraryPath, sourceFiles, libraryTargets, intrinsicStats, ssaIntrinsicStats,
+        if (sourceText == null) ({ this.sourceText }) else null
+    )
+
     val resolvedLibraryTargets: List<NativeLibraryTarget>
         get() = libraryTargets.ifEmpty {
             listOf(

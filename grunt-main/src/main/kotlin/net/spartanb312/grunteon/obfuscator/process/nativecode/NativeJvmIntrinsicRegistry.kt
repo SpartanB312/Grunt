@@ -38,6 +38,10 @@ internal class NativeJvmIntrinsicStats {
     fun record(key: NativeJvmIntrinsicKey) {
         counts[key] = (counts[key] ?: 0) + 1
     }
+
+    fun addAll(other: NativeJvmIntrinsicStats) {
+        other.counts.forEach { (key, count) -> counts[key] = (counts[key] ?: 0) + count }
+    }
 }
 
 private typealias NativeJvmIntrinsicEmitter = StringBuilder.(NativeJvmIntrinsicKey) -> Unit

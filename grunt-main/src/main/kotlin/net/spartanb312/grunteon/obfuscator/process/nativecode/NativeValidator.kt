@@ -15,7 +15,8 @@ internal object NativeValidator {
 
     fun validate(
         candidates: List<NativeCandidate>,
-        backend: NativeBackend
+        backend: NativeBackend,
+        enablePrimitiveIntrinsics: Boolean = true
     ): Pair<List<NativeValidatedMethod>, List<NativeSkip>> {
         if (backend != NativeBackend.Cpp) {
             return emptyList<NativeValidatedMethod>() to candidates.map {
@@ -26,13 +27,14 @@ internal object NativeValidator {
         val accepted = mutableListOf<NativeValidatedMethod>()
         val skipped = mutableListOf<NativeSkip>()
         candidates.forEach { candidate ->
-            val result = validateOne(candidate)
+            val result = validateOne(candidate, enablePrimitiveIntrinsics)
             if (result.skip == null) {
                 accepted += NativeValidatedMethod(
                     candidate = candidate,
                     jvmIr = result.jvmIr,
                     fullJvmSupport = result.fullJvmSupport,
-                    lowering = result.lowering ?: NativeLoweringKind.PrimitiveInt
+                    lowering = result.lowering ?: NativeLoweringKind.PrimitiveInt,
+                    prepared = result.prepared
                 )
             } else {
                 skipped += result.skip
@@ -41,7 +43,7 @@ internal object NativeValidator {
         return accepted to skipped
     }
 
-    private fun validateOne(candidate: NativeCandidate): ValidationResult {
+    private fun validateOne(candidate: NativeCandidate, enablePrimitiveIntrinsics: Boolean): ValidationResult {
         val classNode = candidate.classNode
         val methodNode = candidate.methodNode
         val jvmIr = NativeJvmIrImporter.import(classNode.name, methodNode)
@@ -61,8 +63,8 @@ internal object NativeValidator {
             return ValidationResult(jvmIr, fullJvmSupport, null, skip(reason, detail))
         }
 
-        fun accepted(lowering: NativeLoweringKind): ValidationResult {
-            return ValidationResult(jvmIr, fullJvmSupport, lowering, null)
+        fun accepted(lowering: NativeLoweringKind, prepared: NativePreparedMethod): ValidationResult {
+            return ValidationResult(jvmIr, fullJvmSupport, lowering, null, prepared)
         }
 
         if (methodNode.isAbstract) return skipped(NativeSkipReason.AbstractMethod, withFullJvmSummary("method is abstract", fullJvmSupport))
@@ -84,6 +86,7 @@ internal object NativeValidator {
                 candidate,
                 jvmIr,
                 fullJvmSupport,
+                enablePrimitiveIntrinsics,
                 ::accepted,
                 ::skipped,
                 if (classNode.isInterface) {
@@ -98,32 +101,32 @@ internal object NativeValidator {
                 candidate,
                 jvmIr,
                 fullJvmSupport,
+                enablePrimitiveIntrinsics,
                 ::accepted,
                 ::skipped,
                 NativeMethodCommitKind.InterfaceProxy
             )
         }
         if (!methodNode.isStatic) {
-            return tryFullJvm(candidate, jvmIr, fullJvmSupport, ::accepted, ::skipped)
+            return tryFullJvm(candidate, jvmIr, fullJvmSupport, enablePrimitiveIntrinsics, ::accepted, ::skipped)
         }
         if (NativeJvmFeature.TryCatch in fullJvmSupport.features) {
-            return tryFullJvm(candidate, jvmIr, fullJvmSupport, ::accepted, ::skipped)
+            return tryFullJvm(candidate, jvmIr, fullJvmSupport, enablePrimitiveIntrinsics, ::accepted, ::skipped)
         }
         if (NativeJvmFeature.Monitor in fullJvmSupport.features) {
-            return tryFullJvm(candidate, jvmIr, fullJvmSupport, ::accepted, ::skipped)
+            return tryFullJvm(candidate, jvmIr, fullJvmSupport, enablePrimitiveIntrinsics, ::accepted, ::skipped)
         }
 
         return try {
-            NativeIntMethodTranslator.validate(methodNode)
-            accepted(NativeLoweringKind.PrimitiveInt)
+            accepted(NativeLoweringKind.PrimitiveInt, NativeIntMethodTranslator.validate(methodNode))
         } catch (_: UnsupportedNativeInstruction) {
             try {
-                NativeSsaDirectTranslator.validate(methodNode, jvmIr)
-                accepted(NativeLoweringKind.SsaDirect)
+                accepted(NativeLoweringKind.SsaDirect, NativeSsaDirectTranslator.validate(methodNode, jvmIr))
             } catch (exception: UnsupportedNativeInstruction) {
                 try {
-                    NativeJvmCppMethodTranslator.validate(methodNode, jvmIr, fullJvmSupport)
-                    accepted(NativeLoweringKind.FullJvm)
+                    accepted(NativeLoweringKind.FullJvm, NativeJvmCppMethodTranslator.validate(
+                        methodNode, jvmIr, fullJvmSupport, enablePrimitiveIntrinsics = enablePrimitiveIntrinsics
+                    ))
                 } catch (_: UnsupportedNativeInstruction) {
                     skipped(exception.reason, withFullJvmSummary(exception.message, fullJvmSupport))
                 }
@@ -135,13 +138,15 @@ internal object NativeValidator {
         candidate: NativeCandidate,
         jvmIr: NativeJvmMethodIr,
         fullJvmSupport: NativeJvmSupportReport,
-        accepted: (NativeLoweringKind) -> ValidationResult,
+        enablePrimitiveIntrinsics: Boolean,
+        accepted: (NativeLoweringKind, NativePreparedMethod) -> ValidationResult,
         skipped: (NativeSkipReason, String?) -> ValidationResult,
         commitKind: NativeMethodCommitKind = NativeMethodCommitKind.Direct
     ): ValidationResult {
         return try {
-            NativeJvmCppMethodTranslator.validate(candidate.methodNode, jvmIr, fullJvmSupport, commitKind)
-            accepted(NativeLoweringKind.FullJvm)
+            accepted(NativeLoweringKind.FullJvm, NativeJvmCppMethodTranslator.validate(
+                candidate.methodNode, jvmIr, fullJvmSupport, commitKind, enablePrimitiveIntrinsics
+            ))
         } catch (exception: UnsupportedNativeInstruction) {
             skipped(exception.reason, withFullJvmSummary(exception.message, fullJvmSupport))
         }
@@ -194,6 +199,7 @@ internal object NativeValidator {
         val jvmIr: NativeJvmMethodIr,
         val fullJvmSupport: NativeJvmSupportReport,
         val lowering: NativeLoweringKind?,
-        val skip: NativeSkip?
+        val skip: NativeSkip?,
+        val prepared: NativePreparedMethod? = null
     )
 }

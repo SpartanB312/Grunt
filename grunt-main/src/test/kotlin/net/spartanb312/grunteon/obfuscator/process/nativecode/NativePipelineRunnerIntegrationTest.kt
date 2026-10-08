@@ -203,6 +203,85 @@ class NativePipelineRunnerIntegrationTest {
     }
 
     @Test
+    fun boundedArrayFillAndReferenceAliasesExecuteForSingleAndSplitSources() {
+        val compiler = findHostCompiler()
+        if (compiler == null) {
+            println("Skipping native performance E2E: no C++ compiler found on PATH")
+            return
+        }
+        val includeRoot = resolveJniIncludeRoot(Path.of(System.getProperty("java.home")))
+        if (!includeRoot.resolve("jni.h").exists() || !includeRoot.resolve(NativePlatform.current().jniIncludeOs).exists()) {
+            println("Skipping native performance E2E: JNI headers not found")
+            return
+        }
+        listOf(false, true).forEach { split ->
+            val owner = "test/NativePerformance$split"
+            val alias = MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "alias", "([Ljava/lang/Object;)Ljava/lang/Object;", null, null).apply {
+                repeat(128) {
+                    instructions.add(VarInsnNode(Opcodes.ALOAD, 0))
+                    instructions.add(InsnNode(Opcodes.ICONST_0))
+                    instructions.add(InsnNode(Opcodes.AALOAD))
+                    instructions.add(VarInsnNode(Opcodes.ASTORE, 1))
+                }
+                instructions.add(VarInsnNode(Opcodes.ALOAD, 1))
+                instructions.add(InsnNode(Opcodes.DUP))
+                instructions.add(VarInsnNode(Opcodes.ASTORE, 2))
+                instructions.add(InsnNode(Opcodes.POP))
+                val target = LabelNode()
+                instructions.add(JumpInsnNode(Opcodes.GOTO, target))
+                instructions.add(target)
+                instructions.add(VarInsnNode(Opcodes.ALOAD, 2))
+                instructions.add(InsnNode(Opcodes.ARETURN))
+                maxStack = 2
+                maxLocals = 3
+            }.appendAnnotation(NATIVE_INCLUDED)
+            val instance = instanceWith(
+                classNode(owner, NativePerformanceFixtures.freshIntFill().appendAnnotation(NATIVE_INCLUDED), alias),
+                classNode(owner + "Extra", intHelper("add").appendAnnotation(NATIVE_INCLUDED))
+            )
+            context(instance) {
+                NativePipelineRunner.run(NativePipelineConfig(
+                    enabled = true,
+                    workDir = createTempDirectory("grunteon-native-performance").pathString,
+                    compilerExecutable = compiler.absolutePath,
+                    splitSourceFiles = split,
+                    maxMethodsPerSourceFile = 1,
+                    failOnCompileError = true,
+                    failOnValidationError = true
+                ))
+            }
+            val loader = NativeE2EClassLoader(
+                javaClass.classLoader,
+                instance.workRes.inputClassMap.values.associate { it.name.replace('/', '.') to it.toBytes() },
+                instance.workRes.generatedResources.toMap()
+            )
+            val loaded = Class.forName(owner.replace('/', '.'), true, loader)
+            val fill = loaded.getDeclaredMethod("fill", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+            for (size in listOf(0, 1, 255, 256, 257, 4097)) {
+                for (value in listOf(0, -1, Int.MIN_VALUE, Int.MAX_VALUE)) {
+                    val result = fill.invoke(null, size, value) as IntArray
+                    assertEquals(size, result.size)
+                    assertTrue(result.all { it == value })
+                    assertTrue(result !== fill.invoke(null, size, value))
+                }
+            }
+            val negative = assertFailsWith<java.lang.reflect.InvocationTargetException> { fill.invoke(null, -1, 1) }
+            assertTrue(negative.cause is NegativeArraySizeException)
+            val reference = Any()
+            val aliasMethod = loaded.getDeclaredMethod("alias", Array<Any>::class.java)
+            assertTrue(aliasMethod.invoke(null, arrayOf(reference) as Any) === reference)
+            val bounds = assertFailsWith<java.lang.reflect.InvocationTargetException> {
+                aliasMethod.invoke(null, emptyArray<Any>() as Any)
+            }
+            assertTrue(bounds.cause is ArrayIndexOutOfBoundsException)
+            val nullArray = assertFailsWith<java.lang.reflect.InvocationTargetException> {
+                aliasMethod.invoke(null, null as Any?)
+            }
+            assertTrue(nullArray.cause is NullPointerException)
+        }
+    }
+
+    @Test
     fun executeDumpsRunnableJarWithPackagedNativeLibraryWhenToolchainExists() {
         val compiler = findHostCompiler()
         if (compiler == null) {

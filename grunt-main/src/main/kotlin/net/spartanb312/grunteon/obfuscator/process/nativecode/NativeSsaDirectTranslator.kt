@@ -60,8 +60,9 @@ import java.util.Locale
  * TODO: Full SSA-IR direct translator
  */
 internal object NativeSsaDirectTranslator {
-    fun validate(methodNode: MethodNode, ir: NativeJvmMethodIr) {
-        translate(methodNode, ir, "grt_validate", intrinsicStats = null)
+    fun validate(methodNode: MethodNode, ir: NativeJvmMethodIr): NativePreparedMethod {
+        val stats = NativeJvmIntrinsicStats()
+        return NativePreparedMethod(translate(methodNode, ir, "grt_validate", stats), stats = stats)
     }
 
     fun translate(

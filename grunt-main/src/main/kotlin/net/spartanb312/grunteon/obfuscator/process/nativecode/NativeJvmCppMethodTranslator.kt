@@ -34,9 +34,13 @@ internal object NativeJvmCppMethodTranslator {
         methodNode: MethodNode,
         ir: NativeJvmMethodIr,
         support: NativeJvmSupportReport,
-        commitKind: NativeMethodCommitKind = NativeMethodCommitKind.Direct
-    ) {
-        translate(methodNode, ir, support, "grt_validate", commitKind)
+        commitKind: NativeMethodCommitKind = NativeMethodCommitKind.Direct,
+        enablePrimitiveIntrinsics: Boolean = true
+    ): NativePreparedMethod {
+        val slots = NativeReferenceSlots(symbolic = true)
+        val stats = NativeJvmIntrinsicStats()
+        val source = translate(methodNode, ir, support, "grt_validate", commitKind, slots, enablePrimitiveIntrinsics, stats)
+        return NativePreparedMethod(source, slots, stats, commitKind, enablePrimitiveIntrinsics)
     }
 
     fun translate(
@@ -78,6 +82,7 @@ internal object NativeJvmCppMethodTranslator {
         val arguments = Type.getArgumentTypes(methodNode.desc)
         val returnType = Type.getReturnType(methodNode.desc)
         validateDescriptor(arguments, returnType, methodNode.desc)
+        NativePrimitiveArrayLoop.translateOrNull(methodNode, functionName, commitKind)?.let { return it }
 
         val dispatchPlan = NativeJvmExceptionDispatchPlanner.plan(ir)
         val catchClassBindings = dispatchPlan.catchClassBindings()
@@ -88,8 +93,8 @@ internal object NativeJvmCppMethodTranslator {
         val labels = LabelTargetResolver(methodNode)
         val stackShape = StackShapeAnalyzer(ir.ownerInternalName, methodNode)
         val argumentLocalSlots = arguments.sumOf { it.size } + if (ir.isStatic) 0 else 1
-        val maxLocals = maxOf(ir.maxLocals, stackShape.maxLocals, argumentLocalSlots, 1)
-        val maxStack = maxOf(ir.maxStack, stackShape.maxStack, 1)
+        val maxLocals = maxOf(stackShape.maxLocals, argumentLocalSlots, 1)
+        val maxStack = maxOf(stackShape.maxStack, 1)
         val refCleanupEntries = referenceCleanupEntryIndices(methodNode, ir)
         val isLoaderProxy =
             commitKind == NativeMethodCommitKind.InterfaceProxy ||
@@ -562,7 +567,7 @@ internal object NativeJvmCppMethodTranslator {
                 is Float -> pushFloat(cst)
                 is Double -> pushDouble(cst)
                 is String -> {
-                    val slot = referenceSlots.stringSlot(cst)
+                    val slot = referenceSlots.stringExpression(cst)
                     append("    cstack[sp++].l = grt_ldc_string(env, ")
                         .append(slot)
                         .append(", \"")
@@ -602,7 +607,7 @@ internal object NativeJvmCppMethodTranslator {
         internalName: String,
         referenceSlots: NativeReferenceSlots
     ) {
-        val classSlot = referenceSlots.classSlot(internalName)
+        val classSlot = referenceSlots.classExpression(internalName)
         append(indent)
             .append("jclass ")
             .append(variableName)
@@ -623,7 +628,7 @@ internal object NativeJvmCppMethodTranslator {
         val ownerClassName = "fieldOwner_${instruction.instructionIndex}"
         val fieldIdName = "fieldId_${instruction.instructionIndex}"
         val isStatic = node.opcode == Opcodes.GETSTATIC || node.opcode == Opcodes.PUTSTATIC
-        val fieldSlot = referenceSlots.fieldSlot(node.owner, node.name, node.desc, isStatic)
+        val fieldSlot = referenceSlots.fieldExpression(node.owner, node.name, node.desc, isStatic)
 
         appendLine("    {")
         if (!isStatic) {
@@ -815,7 +820,7 @@ internal object NativeJvmCppMethodTranslator {
         emitFindClass(indent, "wrapperClass_${instruction.instructionIndex}", wrapper, referenceSlots)
         appendLine("${indent}grt_track_ref(env, refs, wrapperClass_${instruction.instructionIndex});")
         appendLine("${indent}if (wrapperClass_${instruction.instructionIndex} != nullptr) {")
-        val typeFieldSlot = referenceSlots.fieldSlot(wrapper, "TYPE", "Ljava/lang/Class;", true)
+        val typeFieldSlot = referenceSlots.fieldExpression(wrapper, "TYPE", "Ljava/lang/Class;", true)
         appendLine("${indent}    jfieldID typeField_${instruction.instructionIndex} = grt_get_field_id(env, wrapperClass_${instruction.instructionIndex}, $typeFieldSlot, \"TYPE\", \"Ljava/lang/Class;\", true);")
         appendLine("${indent}    if (typeField_${instruction.instructionIndex} != nullptr) {")
         appendLine("${indent}        $targetName = env->GetStaticObjectField(wrapperClass_${instruction.instructionIndex}, typeField_${instruction.instructionIndex});")
@@ -854,7 +859,7 @@ internal object NativeJvmCppMethodTranslator {
         emitFindClass(indent, "methodTypeClass_$suffix", "java/lang/invoke/MethodType", referenceSlots)
         appendLine("${indent}grt_track_ref(env, refs, methodTypeClass_$suffix);")
         appendLine("${indent}if (methodTypeClass_$suffix != nullptr) {")
-        val fromDescriptorSlot = referenceSlots.methodSlot(
+        val fromDescriptorSlot = referenceSlots.methodExpression(
             "java/lang/invoke/MethodType",
             "fromMethodDescriptorString",
             "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;",
@@ -935,7 +940,7 @@ internal object NativeJvmCppMethodTranslator {
             .appendLine("\");")
         emitClassObjectLookup(instruction, Type.getType(handle.desc), fieldTypeName, "                ", referenceSlots)
         appendLine("                if (memberName_$suffix != nullptr && $fieldTypeName != nullptr) {")
-        val findMethodSlot = referenceSlots.methodSlot(
+        val findMethodSlot = referenceSlots.methodExpression(
             "java/lang/invoke/MethodHandles\$Lookup",
             findName,
             "(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/invoke/MethodHandle;",
@@ -987,7 +992,7 @@ internal object NativeJvmCppMethodTranslator {
             referenceSlots = referenceSlots
         )
         appendLine("                if (memberName_$suffix != nullptr && $methodTypeName != nullptr) {")
-        val findMethodSlot = referenceSlots.methodSlot(
+        val findMethodSlot = referenceSlots.methodExpression(
             "java/lang/invoke/MethodHandles\$Lookup",
             findName,
             findDesc,
@@ -1025,7 +1030,7 @@ internal object NativeJvmCppMethodTranslator {
             referenceSlots = referenceSlots
         )
         appendLine("                if ($methodTypeName != nullptr) {")
-        val findConstructorSlot = referenceSlots.methodSlot(
+        val findConstructorSlot = referenceSlots.methodExpression(
             "java/lang/invoke/MethodHandles\$Lookup",
             "findConstructor",
             "(Ljava/lang/Class;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;",
@@ -1065,7 +1070,7 @@ internal object NativeJvmCppMethodTranslator {
         emitFindClass("                    ", "reflectArrayClass_${instruction.instructionIndex}", "java/lang/reflect/Array", referenceSlots)
         appendLine("                    grt_track_ref(env, refs, reflectArrayClass_${instruction.instructionIndex});")
         appendLine("                    if (reflectArrayClass_${instruction.instructionIndex} != nullptr) {")
-        val newInstanceSlot = referenceSlots.methodSlot(
+        val newInstanceSlot = referenceSlots.methodExpression(
             "java/lang/reflect/Array",
             "newInstance",
             "(Ljava/lang/Class;[I)Ljava/lang/Object;",
@@ -1133,7 +1138,7 @@ internal object NativeJvmCppMethodTranslator {
         val isStatic = node.opcode == Opcodes.INVOKESTATIC
         val ownerClassName = "ownerClass_${instruction.instructionIndex}"
         val methodIdName = "methodId_${instruction.instructionIndex}"
-        val methodSlot = referenceSlots.methodSlot(node.owner, node.name, node.desc, isStatic)
+        val methodSlot = referenceSlots.methodExpression(node.owner, node.name, node.desc, isStatic)
         if (!isStatic) {
             appendLine("        jobject receiver = cstack[--sp].l;")
             appendLine("        if (receiver == nullptr) {")
@@ -2188,14 +2193,17 @@ internal object NativeJvmCppMethodTranslator {
         init {
             var analyzedFrames: Array<Frame<BasicValue>?>? = null
             var analyzedFailure: Throwable? = null
+            var analyzedMaxStack: Int? = null
+            var analyzedMaxLocals: Int? = null
             val originalMaxStack = methodNode.maxStack
             val originalMaxLocals = methodNode.maxLocals
             val conservativeStack = conservativeStackCapacity(methodNode, instructions)
             val conservativeLocals = conservativeLocalCapacity(methodNode)
             try {
-                methodNode.maxStack = maxOf(originalMaxStack, conservativeStack)
-                methodNode.maxLocals = maxOf(originalMaxLocals, conservativeLocals)
-                analyzedFrames = Analyzer(BasicInterpreter()).analyze(ownerInternalName, methodNode)
+                // Dynamic ASM frames grow with the actual stack, not the instruction count.
+                analyzedFrames = Analyzer(BasicInterpreter()).analyzeAndComputeMaxs(ownerInternalName, methodNode)
+                analyzedMaxStack = methodNode.maxStack
+                analyzedMaxLocals = methodNode.maxLocals
             } catch (throwable: Throwable) {
                 analyzedFailure = throwable
             } finally {
@@ -2205,12 +2213,10 @@ internal object NativeJvmCppMethodTranslator {
             frames = analyzedFrames
             failure = analyzedFailure
             maxStack = maxOf(
-                originalMaxStack,
-                frames?.filterNotNull()?.maxOfOrNull { it.stackSize } ?: 0,
-                conservativeStack.takeIf { frames == null } ?: 0,
+                analyzedMaxStack ?: conservativeStack,
                 1
             )
-            maxLocals = maxOf(originalMaxLocals, conservativeLocals, 1)
+            maxLocals = maxOf(analyzedMaxLocals ?: conservativeLocals, 1)
         }
 
         fun stackValueSize(instruction: NativeJvmInstruction, depthFromTop: Int): Int {

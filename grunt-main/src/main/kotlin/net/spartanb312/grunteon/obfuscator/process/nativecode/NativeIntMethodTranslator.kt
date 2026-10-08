@@ -14,9 +14,8 @@ import java.util.Locale
 
 internal object NativeIntMethodTranslator {
 
-    fun validate(methodNode: MethodNode) {
-        translate(methodNode, "grt_validate")
-    }
+    fun validate(methodNode: MethodNode): NativePreparedMethod =
+        NativePreparedMethod(translate(methodNode, "grt_validate"))
 
     fun translate(methodNode: MethodNode, functionName: String): String {
         val argumentTypes = Type.getArgumentTypes(methodNode.desc)

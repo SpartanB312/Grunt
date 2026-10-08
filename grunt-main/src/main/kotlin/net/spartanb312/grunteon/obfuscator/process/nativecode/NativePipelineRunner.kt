@@ -17,7 +17,7 @@ object NativePipelineRunner {
             return
         }
 
-        val (accepted, skipped) = NativeValidator.validate(candidates, config.backend)
+        val (accepted, skipped) = NativeValidator.validate(candidates, config.backend, config.enablePrimitiveIntrinsics)
         logValidation(candidates.size, accepted.size, skipped, config)
         if (skipped.isNotEmpty() && config.failOnValidationError) {
             throw NativeValidationException(skipped)

@@ -89,18 +89,18 @@ internal object NativeCppBackend {
         val ssaIntrinsicStats = NativeJvmIntrinsicStats()
         val methodCount = classPlans.sumOf { it.methods.size }
         val shouldSplit = config.splitSourceFiles && methodCount > config.maxMethodsPerSourceFile
-        val singleSource = emitSource(
-            plan = plan,
-            config = config,
-            intrinsicStats = if (shouldSplit) NativeJvmIntrinsicStats() else intrinsicStats,
-            ssaIntrinsicStats = if (shouldSplit) NativeJvmIntrinsicStats() else ssaIntrinsicStats
-        )
+        val methodSources = classPlans.flatMap { it.methods }.associate { binding ->
+            binding.functionName to "// ${binding.method.displayName}\n${emitNativeMethod(binding, plan.referenceSlots, config, intrinsicStats, ssaIntrinsicStats)}"
+        }
+        val commonPrefix = emitRuntime(plan)
+        val singleSource by lazy { emitSource(plan, methodSources, commonPrefix) }
         return NativeSourceBundle(
             plan = plan,
-            sourceText = singleSource,
+            sourceText = if (shouldSplit) "" else singleSource,
+            sourceTextFactory = if (shouldSplit) ({ singleSource }) else null,
             sourcePath = sourcePath,
             libraryPath = libraryPath,
-            sourceFiles = emitSourceFiles(plan, sourcePath, singleSource, config, intrinsicStats, ssaIntrinsicStats),
+            sourceFiles = emitSourceFiles(plan, sourcePath, { singleSource }, commonPrefix, methodSources, config),
             libraryTargets = libraryTargets,
             intrinsicStats = intrinsicStats,
             ssaIntrinsicStats = ssaIntrinsicStats
@@ -195,18 +195,17 @@ internal object NativeCppBackend {
     private fun emitSourceFiles(
         plan: NativeBuildPlan,
         sourcePath: Path,
-        singleSource: String,
-        config: NativePipelineConfig,
-        intrinsicStats: NativeJvmIntrinsicStats,
-        ssaIntrinsicStats: NativeJvmIntrinsicStats
+        singleSource: () -> String,
+        commonPrefix: String,
+        methodSources: Map<String, String>,
+        config: NativePipelineConfig
     ): List<NativeSourceFile> {
         val methodCount = plan.classes.sumOf { it.methods.size }
         if (!config.splitSourceFiles || methodCount <= config.maxMethodsPerSourceFile) {
-            return listOf(NativeSourceFile(sourcePath, singleSource))
+            return listOf(NativeSourceFile(sourcePath, singleSource()))
         }
 
         val sourceRoot = sourcePath.parent
-        val commonPrefix = commonSourcePrefix(plan, singleSource)
         val chunks = splitClassPlans(plan.classes, config.maxMethodsPerSourceFile)
         return buildList {
             add(NativeSourceFile(sourceRoot.resolve(RuntimeHeaderName), emitSplitRuntimeHeader()))
@@ -221,17 +220,11 @@ internal object NativeCppBackend {
                 add(
                     NativeSourceFile(
                         sourceRoot.resolve("grunteon_native_chunk_${index.toString().padStart(4, '0')}.cpp"),
-                        emitSplitChunkSource(index, classPlans, plan.referenceSlots, config, intrinsicStats, ssaIntrinsicStats)
+                        emitSplitChunkSource(index, classPlans, methodSources)
                     )
                 )
             }
         }
-    }
-
-    private fun commonSourcePrefix(plan: NativeBuildPlan, singleSource: String): String {
-        val firstMethod = plan.classes.firstOrNull()?.methods?.firstOrNull() ?: return singleSource
-        val marker = "// ${firstMethod.method.displayName}"
-        return singleSource.substringBefore(marker)
     }
 
     private fun splitClassPlans(
@@ -259,17 +252,13 @@ internal object NativeCppBackend {
     private fun emitSplitChunkSource(
         chunkIndex: Int,
         classPlans: List<NativeClassPlan>,
-        referenceSlots: NativeReferenceSlots,
-        config: NativePipelineConfig,
-        intrinsicStats: NativeJvmIntrinsicStats,
-        ssaIntrinsicStats: NativeJvmIntrinsicStats
+        methodSources: Map<String, String>
     ): String {
         return buildString {
             appendRuntimeHeaderInclude()
             classPlans.forEach { classPlan ->
                 classPlan.methods.forEach { binding ->
-                    appendLine("// ${binding.method.displayName}")
-                    appendLine(emitNativeMethod(binding, referenceSlots, config, intrinsicStats, ssaIntrinsicStats))
+                    appendLine(methodSources.getValue(binding.functionName))
                 }
             }
             classPlans.forEach { classPlan ->
@@ -371,8 +360,10 @@ internal object NativeCppBackend {
         appendLine("#include <mutex>")
         appendLine("#include <string>")
         appendLine("#include <vector>")
+        appendLine("#include <unordered_set>")
+        appendLine("#include <algorithm>")
         appendLine()
-        appendLine("using GrtLocalRefs = std::vector<jobject>;")
+        appendLine("using GrtLocalRefs = std::unordered_set<jobject>;")
         appendLine()
         appendLine("extern jclass grt_methodhandles_lookup_class;")
         appendLine()
@@ -491,17 +482,7 @@ internal object NativeCppBackend {
             .replace("static constexpr ", "constexpr ")
             .replace("static ", "")
 
-    private fun emitSource(
-        plan: NativeBuildPlan,
-        config: NativePipelineConfig,
-        intrinsicStats: NativeJvmIntrinsicStats,
-        ssaIntrinsicStats: NativeJvmIntrinsicStats
-    ): String {
-        val methodSources = plan.classes.flatMap { classPlan ->
-            classPlan.methods.map { binding ->
-                "// ${binding.method.displayName}\n${emitNativeMethod(binding, plan.referenceSlots, config, intrinsicStats, ssaIntrinsicStats)}"
-            }
-        }
+    private fun emitRuntime(plan: NativeBuildPlan): String {
         return buildString {
             appendLine("#include <jni.h>")
             appendLine("#include <cmath>")
@@ -511,6 +492,8 @@ internal object NativeCppBackend {
             appendLine("#include <mutex>")
             appendLine("#include <string>")
             appendLine("#include <vector>")
+            appendLine("#include <unordered_set>")
+            appendLine("#include <algorithm>")
             appendLine()
             appendLine("static jclass grt_class_class = nullptr;")
             appendLine("static jmethodID grt_get_classloader_method = nullptr;")
@@ -700,24 +683,28 @@ internal object NativeCppBackend {
             appendLine("    }")
             appendLine("    return localClass;")
             appendLine("}")
-            appendLine("using GrtLocalRefs = std::vector<jobject>;")
+            appendLine("using GrtLocalRefs = std::unordered_set<jobject>;")
             appendLine("static inline void grt_forget_ref(GrtLocalRefs& refs, jobject ref) {")
             appendLine("    if (ref == nullptr) return;")
-            appendLine("    for (auto it = refs.begin(); it != refs.end();) {")
-            appendLine("        if (*it == ref) it = refs.erase(it);")
-            appendLine("        else ++it;")
-            appendLine("    }")
+            appendLine("    refs.erase(ref);")
             appendLine("}")
             appendLine("static inline void grt_track_ref(JNIEnv* env, GrtLocalRefs& refs, jobject ref) {")
             appendLine("    if (ref == nullptr || env->GetObjectRefType(ref) != JNILocalRefType) return;")
-            appendLine("    for (jobject existing : refs) if (existing == ref) return;")
-            appendLine("    refs.push_back(ref);")
+            appendLine("    refs.insert(ref);")
             appendLine("}")
             appendLine("static inline void grt_clear_refs(JNIEnv* env, GrtLocalRefs& refs) {")
             appendLine("    for (jobject ref : refs) {")
             appendLine("        if (ref != nullptr && env->GetObjectRefType(ref) == JNILocalRefType) env->DeleteLocalRef(ref);")
             appendLine("    }")
             appendLine("    refs.clear();")
+            appendLine("}")
+            appendLine("template<typename Entry>")
+            appendLine("static void grt_prune_member_entries(JNIEnv* env, std::vector<Entry>& entries) {")
+            appendLine("    entries.erase(std::remove_if(entries.begin(), entries.end(), [env](const Entry& entry) {")
+            appendLine("        if (entry.clazz != nullptr && !env->IsSameObject(entry.clazz, nullptr)) return false;")
+            appendLine("        if (entry.clazz != nullptr) env->DeleteWeakGlobalRef(entry.clazz);")
+            appendLine("        return true;")
+            appendLine("    }), entries.end());")
             appendLine("}")
             appendLine("static jmethodID grt_get_method_id(JNIEnv* env, jclass clazz, jint slot, const char* name, const char* desc, bool isStatic) {")
             appendLine("    if (clazz == nullptr || name == nullptr || desc == nullptr) return nullptr;")
@@ -727,6 +714,7 @@ internal object NativeCppBackend {
             appendLine("    GrtMethodSlot& methodSlot = grt_method_slots[slot];")
             appendLine("    {")
             appendLine("        std::lock_guard<std::mutex> lock(methodSlot.mutex);")
+            appendLine("        grt_prune_member_entries(env, methodSlot.entries);")
             appendLine("        for (const GrtMethodCacheEntry& entry : methodSlot.entries) {")
             appendLine("            if (entry.id != nullptr && entry.clazz != nullptr && !env->IsSameObject(entry.clazz, nullptr) && env->IsSameObject(entry.clazz, clazz)) return entry.id;")
             appendLine("        }")
@@ -737,6 +725,7 @@ internal object NativeCppBackend {
             appendLine("    if (classRef == nullptr) return nullptr;")
             appendLine("    {")
             appendLine("        std::lock_guard<std::mutex> lock(methodSlot.mutex);")
+            appendLine("        grt_prune_member_entries(env, methodSlot.entries);")
             appendLine("        for (const GrtMethodCacheEntry& entry : methodSlot.entries) {")
             appendLine("            if (entry.id != nullptr && entry.clazz != nullptr && !env->IsSameObject(entry.clazz, nullptr) && env->IsSameObject(entry.clazz, clazz)) {")
             appendLine("                env->DeleteWeakGlobalRef(classRef);")
@@ -755,6 +744,7 @@ internal object NativeCppBackend {
             appendLine("    GrtFieldSlot& fieldSlot = grt_field_slots[slot];")
             appendLine("    {")
             appendLine("        std::lock_guard<std::mutex> lock(fieldSlot.mutex);")
+            appendLine("        grt_prune_member_entries(env, fieldSlot.entries);")
             appendLine("        for (const GrtFieldCacheEntry& entry : fieldSlot.entries) {")
             appendLine("            if (entry.id != nullptr && entry.clazz != nullptr && !env->IsSameObject(entry.clazz, nullptr) && env->IsSameObject(entry.clazz, clazz)) return entry.id;")
             appendLine("        }")
@@ -765,6 +755,7 @@ internal object NativeCppBackend {
             appendLine("    if (classRef == nullptr) return nullptr;")
             appendLine("    {")
             appendLine("        std::lock_guard<std::mutex> lock(fieldSlot.mutex);")
+            appendLine("        grt_prune_member_entries(env, fieldSlot.entries);")
             appendLine("        for (const GrtFieldCacheEntry& entry : fieldSlot.entries) {")
             appendLine("            if (entry.id != nullptr && entry.clazz != nullptr && !env->IsSameObject(entry.clazz, nullptr) && env->IsSameObject(entry.clazz, clazz)) {")
             appendLine("                env->DeleteWeakGlobalRef(classRef);")
@@ -1325,7 +1316,17 @@ internal object NativeCppBackend {
             appendLine("}")
             appendLine()
 
-            methodSources.forEach { appendLine(it) }
+        }
+    }
+
+    private fun emitSource(
+        plan: NativeBuildPlan,
+        methodSources: Map<String, String>,
+        commonPrefix: String
+    ): String {
+        return buildString {
+            append(commonPrefix)
+            methodSources.values.forEach { appendLine(it) }
 
             plan.classes.forEach { classPlan ->
                 appendClassRegistrar(classPlan, externalLinkage = false, initializeRuntime = false)
@@ -1422,6 +1423,12 @@ internal object NativeCppBackend {
         intrinsicStats: NativeJvmIntrinsicStats,
         ssaIntrinsicStats: NativeJvmIntrinsicStats
     ): String {
+        binding.method.prepared?.takeIf {
+            it.matches(binding.commitKind, config.enablePrimitiveIntrinsics)
+        }?.let { prepared ->
+            val stats = if (binding.method.lowering == NativeLoweringKind.SsaDirect) ssaIntrinsicStats else intrinsicStats
+            return prepared.render(binding.functionName, referenceSlots, stats)
+        }
         return when (binding.method.lowering) {
             NativeLoweringKind.PrimitiveInt -> NativeIntMethodTranslator.translate(
                 binding.method.methodNode,

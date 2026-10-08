@@ -6,6 +6,8 @@ import java.io.IOException
 import java.lang.management.ManagementFactory
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import kotlin.io.path.absolutePathString
@@ -22,7 +24,23 @@ internal object NativeCompiler {
         bundle: NativeSourceBundle,
         config: NativePipelineConfig = NativePipelineConfig()
     ): NativeCompileResult {
-        bundle.resolvedLibraryTargets.forEach { it.libraryPath.parent.createDirectories() }
+        val targets = bundle.resolvedLibraryTargets
+        // A failed build must not leave a previous library looking like its output.
+        targets.forEach {
+            it.libraryPath.parent.createDirectories()
+            Files.deleteIfExists(it.libraryPath)
+        }
+        var succeeded = false
+        try {
+            val result = compileImpl(bundle, config)
+            succeeded = result.success
+            return result
+        } finally {
+            if (!succeeded) bundle.resolvedLibraryTargets.forEach { Files.deleteIfExists(it.libraryPath) }
+        }
+    }
+
+    private fun compileImpl(bundle: NativeSourceBundle, config: NativePipelineConfig): NativeCompileResult {
         writeSourceFiles(bundle)
 
         val compiler = findCompiler(config) ?: return NativeCompileResult(
@@ -98,15 +116,19 @@ internal object NativeCompiler {
                 compileGnuLikeSplit(bundle, compiler.command, includes.includeRoot, includes.platformInclude, config)
             }
             compiler.kind == NativeCompilerKind.Msvc && sourceCount > 1 -> {
-                runCommand(
+                runOutputCommand(
                     buildMsvcCommandWithSourceResponseFile(bundle, compiler.command, includes.includeRoot, includes.platformInclude, config),
-                    bundle.sourcePath.parent
+                    target.libraryPath,
+                    bundle.sourcePath.parent,
+                    atomic = canStageOutputs(config, compiler.kind, target.platform)
                 )
             }
             else -> {
-                runCommand(
+                runOutputCommand(
                     buildCompileCommand(bundle, compiler, includes.includeRoot, includes.platformInclude, config),
-                    bundle.sourcePath.parent
+                    target.libraryPath,
+                    bundle.sourcePath.parent,
+                    atomic = canStageOutputs(config, compiler.kind, target.platform)
                 )
             }
         }
@@ -148,9 +170,11 @@ internal object NativeCompiler {
             val result = if (sourceCount > 1) {
                 compileZigSplit(bundle, target, compiler, includes.includeRoot, includes.platformInclude, config)
             } else {
-                runCommand(
+                runOutputCommand(
                     buildZigCommand(bundle, target, compiler, includes.includeRoot, includes.platformInclude, config),
-                    bundle.sourcePath.parent
+                    target.libraryPath,
+                    bundle.sourcePath.parent,
+                    atomic = canStageOutputs(config, NativeCompilerKind.Zig, target.platform)
                 )
             }
             if (result.output.isNotBlank()) output.append(result.output).appendLine()
@@ -495,6 +519,9 @@ internal object NativeCompiler {
         val sourcePaths = bundle.compilableSourcePaths()
         val objectDir = bundle.sourcePath.parent.resolve("obj")
         objectDir.createDirectories()
+        val cache = NativeCompileCache.create(
+            NativeCompilerExecutable(compiler, NativeCompilerKind.GnuLike), Path.of(config.workDir), bundle.sourcePath.parent
+        )
         val objectPaths = sourcePaths.mapIndexed { index, source ->
             objectDir.resolve("${source.name.substringBeforeLast('.')}_${index.toString().padStart(4, '0')}.o")
         }
@@ -513,7 +540,7 @@ internal object NativeCompiler {
                         config,
                         bundle.plan.platform
                     )
-                    runCommand(command, bundle.sourcePath.parent)
+                    compileObject(command, source, objectPath, bundle.sourcePath.parent, bundle.plan.platform, cache)
                 }
             }
             val results = executor.invokeAll(tasks).map { it.get() }
@@ -531,7 +558,10 @@ internal object NativeCompiler {
         }
 
         val linkCommand = buildGnuLikeLinkCommandWithObjectResponseFile(bundle, compiler, objectPaths, config)
-        val linkResult = runCommand(linkCommand, bundle.sourcePath.parent)
+        val linkResult = runOutputCommand(
+            linkCommand, bundle.libraryPath, bundle.sourcePath.parent,
+            atomic = canStageOutputs(config, NativeCompilerKind.GnuLike, bundle.plan.platform)
+        )
         if (linkResult.output.isNotBlank()) output.append(linkResult.output)
         return CommandResult(linkResult.exitCode, output.toString(), linkCommand)
     }
@@ -547,6 +577,9 @@ internal object NativeCompiler {
         val sourcePaths = bundle.compilableSourcePaths()
         val objectDir = bundle.sourcePath.parent.resolve("obj").resolve(target.platform.resourceDirectory)
         objectDir.createDirectories()
+        val cache = NativeCompileCache.create(
+            NativeCompilerExecutable(compiler, NativeCompilerKind.Zig), Path.of(config.workDir), bundle.sourcePath.parent
+        )
         val objectPaths = sourcePaths.mapIndexed { index, source ->
             objectDir.resolve("${source.name.substringBeforeLast('.')}_${index.toString().padStart(4, '0')}.o")
         }
@@ -557,7 +590,7 @@ internal object NativeCompiler {
             val tasks = sourcePaths.zip(objectPaths).map { (source, objectPath) ->
                 Callable {
                     val command = buildZigObjectCommand(source, objectPath, target, compiler, includeRoot, includeOs, config)
-                    runCommand(command, bundle.sourcePath.parent)
+                    compileObject(command, source, objectPath, bundle.sourcePath.parent, target.platform, cache)
                 }
             }
             val results = executor.invokeAll(tasks).map { it.get() }
@@ -575,7 +608,10 @@ internal object NativeCompiler {
         }
 
         val linkCommand = buildZigLinkCommandWithObjectResponseFile(bundle, target, compiler, objectPaths, config)
-        val linkResult = runCommand(linkCommand, bundle.sourcePath.parent)
+        val linkResult = runOutputCommand(
+            linkCommand, target.libraryPath, bundle.sourcePath.parent,
+            atomic = canStageOutputs(config, NativeCompilerKind.Zig, target.platform)
+        )
         if (linkResult.output.isNotBlank()) output.append(linkResult.output)
         return CommandResult(linkResult.exitCode, output.toString(), linkCommand)
     }
@@ -646,7 +682,16 @@ internal object NativeCompiler {
         }
         bundle.sourceFiles.forEach { source ->
             source.path.parent.createDirectories()
-            source.path.writeText(source.text)
+            val bytes = source.text.toByteArray(Charsets.UTF_8)
+            if (!Files.isRegularFile(source.path) || !Files.readAllBytes(source.path).contentEquals(bytes)) {
+                val temporary = Files.createTempFile(source.path.parent, ".native-source-", ".tmp")
+                try {
+                    Files.write(temporary, bytes)
+                    Files.move(temporary, source.path, ATOMIC_MOVE, REPLACE_EXISTING)
+                } finally {
+                    Files.deleteIfExists(temporary)
+                }
+            }
         }
     }
 
@@ -659,9 +704,103 @@ internal object NativeCompiler {
         return fileName.endsWith(".cpp") || fileName.endsWith(".cc") || fileName.endsWith(".cxx")
     }
 
-    private fun runCommand(command: List<String>, directory: Path): CommandResult {
+    private fun canStageOutputs(
+        config: NativePipelineConfig,
+        kind: NativeCompilerKind,
+        platform: NativePlatform
+    ): Boolean {
+        if (kind == NativeCompilerKind.Msvc || !NativeCompileCache.supportsEnvironment(System.getenv())) return false
+        val args = commonUserCompilerArgs(config, kind) +
+            if (kind == NativeCompilerKind.Zig) targetUserCompilerArgs(config, platform, kind) else emptyList()
+        return NativeCompileCache.supportsOptions(args)
+    }
+
+    private fun compileObject(
+        command: List<String>,
+        source: Path,
+        objectPath: Path,
+        directory: Path,
+        platform: NativePlatform,
+        cache: NativeCompileCache?
+    ): CommandResult {
+        Files.deleteIfExists(objectPath)
+        val prefixSize = if (command.getOrNull(1) == "c++") 2 else 1
+        val options = command.drop(prefixSize).dropLast(4)
+        return cache?.compileObject(command, source, objectPath, directory, platform.toString())
+            ?: runOutputCommand(
+                command, objectPath, directory,
+                atomic = NativeCompileCache.supportsOptions(options) &&
+                    NativeCompileCache.supportsEnvironment(System.getenv())
+            )
+    }
+
+    /** Only a newly produced, successful output may replace the destination. */
+    internal fun runOutputCommand(
+        command: List<String>,
+        outputPath: Path,
+        directory: Path,
+        environment: Map<String, String> = System.getenv(),
+        atomic: Boolean = true
+    ): CommandResult {
+        // Preserve the original CLI/side-output locations for MSVC and unknown flags (-MMD, /Zi, ...).
+        if (!atomic) {
+            Files.deleteIfExists(outputPath)
+            var succeeded = false
+            try {
+                val result = runCommand(command, directory, environment)
+                succeeded = result.exitCode == 0 && Files.isRegularFile(outputPath) && Files.size(outputPath) > 0L
+                return if (result.exitCode == 0 && !succeeded) {
+                    result.copy(exitCode = -1, output = result.output + "\nNative compiler produced no output: $outputPath")
+                } else result
+            } finally {
+                if (!succeeded) Files.deleteIfExists(outputPath)
+            }
+        }
+        var temporaryDirectory: Path? = null
+        try {
+            Files.deleteIfExists(outputPath)
+            outputPath.parent.createDirectories()
+            temporaryDirectory = Files.createTempDirectory(outputPath.parent, ".native-build-")
+            val temporary = temporaryDirectory.resolve(outputPath.fileName).toAbsolutePath()
+            val outputName = outputPath.absolutePathString()
+            val stagedCommand = command.toMutableList()
+            val outputIndex = command.indexOfLast { it == "-o" }
+            when {
+                outputIndex >= 0 && command.getOrNull(outputIndex + 1) == outputName ->
+                    stagedCommand[outputIndex + 1] = temporary.toString()
+                command.contains("/Fe:$outputName") ->
+                    stagedCommand[command.indexOf("/Fe:$outputName")] = "/Fe:$temporary"
+                else -> return CommandResult(-1, "Native command has no recognized output path", command)
+            }
+            val result = runCommand(stagedCommand, directory, environment)
+            if (result.exitCode != 0) return result
+            if (!Files.isRegularFile(temporary) || Files.size(temporary) == 0L) {
+                return result.copy(exitCode = -1, output = result.output + "\nNative compiler produced no output: $outputPath")
+            }
+            Files.move(temporary, outputPath, ATOMIC_MOVE, REPLACE_EXISTING)
+            return result
+        } catch (exception: IOException) {
+            return CommandResult(-1, "Native output publication failed: " + exception.message, command)
+        } finally {
+            temporaryDirectory?.let { temporary ->
+                Files.walk(temporary).use { paths ->
+                    paths.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+                }
+            }
+        }
+    }
+
+    internal fun runCommand(
+        command: List<String>,
+        directory: Path,
+        environment: Map<String, String> = System.getenv()
+    ): CommandResult {
         val process = try {
             ProcessBuilder(command)
+                .apply {
+                    environment().clear()
+                    environment().putAll(environment)
+                }
                 .directory(directory.toFile())
                 .redirectErrorStream(true)
                 .start()
