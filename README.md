@@ -108,6 +108,43 @@ the near future
 * [X] Mixin renamer
 
 
+## Field renamer exclusions (Grunteon 3)
+
+Use JVM internal class names (`net/example/Example`), not dotted package names. For example:
+
+```json
+{
+    "globalConfig": {
+        "exclusions": ["net/example/api/**", "net/example/PublicFields"]
+    },
+    "transformers": [{
+        "enabled": true,
+        "config": {
+            "type": "net.spartanb312.grunteon.obfuscator.process.transformers.rename.FieldRenamer.Config",
+            "classFilter": {
+                "includeStrategy": ["**"],
+                "excludeStrategy": ["net/example/LocalFields"]
+            },
+            "fieldExclusions": ["net/example/Example.value", "net/example/Example.keep**"],
+            "excludedNames": ["INSTANCE", "Companion"]
+        }
+    }]
+}
+```
+
+- `globalConfig.exclusions` and `classFilter.excludeStrategy` preserve declared fields in matching classes.
+  An empty `includeStrategy` selects no classes. Exact rules match only that class; a trailing `**` matches a prefix.
+- `fieldExclusions` is optional and defaults to `[]`. Rules match `declaring/Owner.fieldName` exactly,
+  or by prefix with a trailing `**`, for every descriptor with that name. Use the declaring owner for inherited fields.
+  `Example.value` does not match `Example.valueExtra`; use `Example.value**` for both.
+- `excludedNames` keeps exact bare field names in all classes; its defaults remain `INSTANCE` and `Companion`.
+- These rules are not regex or general glob patterns. A package prefix needs the trailing `**`.
+  Old Grunt JSON layouts and a transformer-level `exclusion` key are not aliases for these settings:
+  unknown JSON keys are ignored, not migrated.
+- References to renamed inherited fields must still be remapped, even when the referencing class is excluded.
+  If a source field's mapping would also rename an excluded hiding declaration, the source field is conservatively
+  kept too. Retained names are reserved to prevent generated names from hiding those fields.
+
 ## License
 
 Grunteon is a free and open source obfuscator framework licensed under Apache License 2.0
