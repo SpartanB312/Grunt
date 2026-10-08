@@ -61,7 +61,9 @@ internal object GlslParser {
                                 parameters = parameters,
                                 bodyOpen = afterParen,
                                 bodyClose = tokens[closeBrace],
-                                conditionalDepth = token.conditionalDepth
+                                conditionalDepth = token.conditionalDepth,
+                                bodyTokenStart = closeParen + 2,
+                                bodyTokenEnd = closeBrace
                             )
                             index = closeBrace + 1
                             continue
@@ -204,9 +206,7 @@ internal fun splitTopLevel(tokens: List<GlslToken>, delimiter: String): List<Lis
 }
 
 internal fun collectFunctionStatements(document: GlslDocument, function: GlslFunction): List<GlslStatement> {
-    val open = function.bodyOpen ?: return emptyList()
-    val close = function.bodyClose ?: return emptyList()
-    val bodyTokens = document.significantTokens.filter { it.start > open.start && it.end < close.end }
+    val bodyTokens = bodyTokens(document, function)
     val statements = mutableListOf<GlslStatement>()
     var startIndex = 0
     var parenDepth = 0

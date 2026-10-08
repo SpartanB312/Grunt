@@ -4,14 +4,9 @@ internal class GlslInlinePass(
     private val options: GlslProcessOptions
 ) {
     fun run(documents: List<GlslDocument>, files: Map<ResourcePath, String>): InlinePassResult {
-        val analyzer = GlslAnalyzer(documents)
-        val analyses = documents.flatMap { document ->
-            document.functions.filter { it.hasBody }.map { function ->
-                analyzer.analyze(document, function)
-            }
-        }
+        val analyses = documents.flatMap { it.analysis.functions }
         val documentByPath = documents.associateBy { it.path }
-        val allCallTokens = documents.flatMap { analyzer.collectCallTokens(it) }
+        val callsByName = documents.flatMap { it.analysis.callSites }.groupBy { it.token.text }
         val functionsByName = documents.flatMap { it.functions }.groupBy { it.name }
         val directiveIdentifiers = collectDocumentDirectiveIdentifiers(documents)
         val rawCandidates = analyses.mapNotNull { analysis ->
@@ -25,56 +20,39 @@ internal class GlslInlinePass(
         val candidateNames = rawCandidates.mapTo(linkedSetOf()) { it.function.name }
         val candidates = rawCandidates.filter { it.isLeafCandidate(candidateNames) }
 
-        val patches = mutableListOf<TextPatch>()
-        var inlinedCalls = 0
+        val plan = GlslInlinePatchPlan(options.inlineMaxExpansionRatio)
         val tempNameGenerator = InlineTempNameGenerator()
         candidates.forEach { candidate ->
-            val callTokens = allCallTokens.filter { it.text == candidate.function.name }
-            if (callTokens.isEmpty()) return@forEach
+            val callSites = callsByName[candidate.function.name].orEmpty()
+            if (callSites.isEmpty()) return@forEach
             val supportedPatches = mutableListOf<TextPatch>()
+            val visitedStatements = mutableSetOf<Pair<ResourcePath, Int>>()
             val supportedStatements = mutableSetOf<Pair<ResourcePath, Int>>()
-            analyses.forEach { caller ->
-                caller.statements.forEach { statement ->
-                    val patch = buildInlinePatch(candidate, caller, statement, tempNameGenerator) ?: return@forEach
-                    supportedPatches += patch
-                    supportedStatements += statement.file to statement.start
-                }
+            // Source order matches the former caller/statement traversal, including temporary names.
+            callSites.forEach call@ { site ->
+                val statement = site.statement ?: return@call
+                val key = statement.file to statement.start
+                if (!visitedStatements.add(key)) return@call
+                val patch = buildInlinePatch(
+                    candidate, statement, files.getValue(statement.file),
+                    files.getValue(candidate.function.file), tempNameGenerator
+                ) ?: return@call
+                supportedPatches += patch
+                supportedStatements += key
             }
             if (supportedPatches.isEmpty()) return@forEach
             if (supportedPatches.size > options.inlineMaxCallSitesPerFunction) return@forEach
 
-            val allCallsSupported = callTokens.all { call ->
-                analyses.any { analysis ->
-                    analysis.statements.any { statement ->
-                        statement.file == call.file &&
-                            statement.start <= call.start &&
-                            statement.end >= call.end &&
-                            (statement.file to statement.start) in supportedStatements
-                    }
-                }
+            val allCallsSupported = callSites.all { site ->
+                site.statement?.let { (it.file to it.start) in supportedStatements } == true
             }
-            val candidatePatches = supportedPatches.toMutableList()
-            if (allCallsSupported && options.removeFullyInlinedPrivateFunctions) {
-                candidatePatches += TextPatch(
-                    file = candidate.function.file,
-                    start = candidate.function.start,
-                    end = candidate.function.end,
-                    replacement = ""
-                )
-            }
-
-            if (!passesExpansionBudget(files, candidatePatches)) return@forEach
-            candidatePatches.forEach { patch ->
-                if (patches.none { overlaps(it, patch) }) {
-                    patches += patch
-                    if (patch.start != candidate.function.start || patch.end != candidate.function.end) {
-                        inlinedCalls++
-                    }
-                }
-            }
+            val deletion = if (allCallsSupported && options.removeFullyInlinedPrivateFunctions) {
+                TextPatch(candidate.function.file, candidate.function.start, candidate.function.end, "")
+            } else null
+            plan.accept(supportedPatches, deletion)
         }
 
-        return InlinePassResult(applyPatches(files, patches), inlinedCalls)
+        return InlinePassResult(applyPatches(files, plan.patches), plan.inlinedCalls)
     }
 
     private fun GlslFunctionAnalysis.toInlineCandidate(document: GlslDocument): InlineCandidate? {
@@ -100,12 +78,11 @@ internal class GlslInlinePass(
 
     private fun buildInlinePatch(
         candidate: InlineCandidate,
-        caller: GlslFunctionAnalysis,
         statement: GlslStatement,
+        callerSource: String,
+        calleeSource: String,
         tempNameGenerator: InlineTempNameGenerator
     ): TextPatch? {
-        val callerSource = sourceFor(caller.function.file) ?: return null
-        val calleeSource = sourceFor(candidate.function.file) ?: return null
         val tokens = statement.tokens
         val callIndex = tokens.indexOfFirst { token -> token.text == candidate.function.name }
         if (callIndex == -1) return null
@@ -205,20 +182,6 @@ internal class GlslInlinePass(
         }
     }
 
-    private fun sourceFor(file: ResourcePath): String? = SourceRegistry.sources[file]
-
-    private fun passesExpansionBudget(@Suppress("UNUSED_PARAMETER") files: Map<ResourcePath, String>, patches: List<TextPatch>): Boolean {
-        val original = patches.sumOf { it.end - it.start }.coerceAtLeast(1)
-        val replacement = patches.sumOf { it.replacement.length }
-        if (patches.any { it.replacement.isEmpty() }) return true
-        val ratio = replacement.toDouble() / original.toDouble()
-        return ratio <= options.inlineMaxExpansionRatio
-    }
-
-    private fun overlaps(left: TextPatch, right: TextPatch): Boolean {
-        return left.file == right.file && left.start < right.end && right.start < left.end
-    }
-
     private data class InlineCandidate(
         val function: GlslFunction,
         val nonReturnStatements: List<GlslStatement>,
@@ -244,13 +207,40 @@ internal class GlslInlinePass(
     }
 }
 
+internal class GlslInlinePatchPlan(private val maxExpansionRatio: Double) {
+    val patches = mutableListOf<TextPatch>()
+    var inlinedCalls = 0
+        private set
+    private val accepted = GlslPatchIndex()
+
+    fun accept(callPatches: List<TextPatch>, deletion: TextPatch?) {
+        val staged = GlslPatchIndex()
+        val candidatePatches = callPatches.filterTo(mutableListOf()) { patch ->
+            !accepted.overlaps(patch) && staged.tryAdd(patch)
+        }
+        if (candidatePatches.isEmpty()) return
+        val acceptedCalls = candidatePatches.size
+        // A rejected call patch must never authorize deleting its still-referenced definition.
+        if (deletion != null && acceptedCalls == callPatches.size &&
+            !accepted.overlaps(deletion) && staged.tryAdd(deletion)
+        ) {
+            candidatePatches += deletion
+        }
+        // Preserve the patch-span ratio (not the whole file size). Only accepted deletions save space.
+        val original = candidatePatches.sumOf { it.end.toLong() - it.start }.coerceAtLeast(1L)
+        val replacement = candidatePatches.sumOf { it.replacement.length.toLong() }
+        if (!(replacement.toDouble() / original.toDouble() <= maxExpansionRatio)) return
+        candidatePatches.forEach { patch ->
+            check(accepted.tryAdd(patch))
+            patches += patch
+        }
+        inlinedCalls += acceptedCalls
+    }
+}
+
 internal fun isPrivateFunction(function: GlslFunction, options: GlslProcessOptions): Boolean {
     return function.hasBody &&
         function.name !in GLSL_BUILTIN_NAMES &&
         !function.name.startsWith("gl_") &&
         !isPreservedName(function.name, options.preserveNames)
-}
-
-internal object SourceRegistry {
-    var sources: Map<ResourcePath, String> = emptyMap()
 }

@@ -4,12 +4,7 @@ internal class GlslRenamePass(
     private val options: GlslProcessOptions
 ) {
     fun run(documents: List<GlslDocument>, files: Map<ResourcePath, String>): RenamePassResult {
-        val analyzer = GlslAnalyzer(documents)
-        val analyses = documents.flatMap { document ->
-            document.functions.filter { it.hasBody }.map { function ->
-                analyzer.analyze(document, function)
-            }
-        }
+        val analyses = documents.flatMap { it.analysis.functions }
         val patches = mutableListOf<TextPatch>()
         var localSymbolCount = 0
         var privateFunctionCount = 0
@@ -17,7 +12,7 @@ internal class GlslRenamePass(
         val directiveIdentifiers = collectDocumentDirectiveIdentifiers(documents)
 
         if (options.renamePrivateFunctions) {
-            val functionPatches = renamePrivateFunctions(documents, analyzer, reserved, directiveIdentifiers)
+            val functionPatches = renamePrivateFunctions(documents, reserved, directiveIdentifiers)
             patches += functionPatches.patches
             privateFunctionCount = functionPatches.count
         }
@@ -51,12 +46,11 @@ internal class GlslRenamePass(
 
     private fun renamePrivateFunctions(
         documents: List<GlslDocument>,
-        analyzer: GlslAnalyzer,
         reserved: MutableSet<String>,
         directiveIdentifiers: Set<String>
     ): FunctionRenameResult {
         val allFunctions = documents.flatMap { it.functions }
-        val calls = documents.flatMap { analyzer.collectCallTokens(it) }
+        val callsByName = documents.flatMap { it.analysis.callSites }.groupBy { it.token.text }
         val patches = mutableListOf<TextPatch>()
         var count = 0
         val generator = GlslNameGenerator(reserved)
@@ -67,7 +61,8 @@ internal class GlslRenamePass(
             if (name in directiveIdentifiers) return@forEach
             val newName = generator.next()
             patches += TextPatch(function.file, function.nameToken.start, function.nameToken.end, newName)
-            calls.filter { it.text == name }.forEach { call ->
+            callsByName[name].orEmpty().forEach { site ->
+                val call = site.token
                 patches += TextPatch(call.file, call.start, call.end, newName)
             }
             count++

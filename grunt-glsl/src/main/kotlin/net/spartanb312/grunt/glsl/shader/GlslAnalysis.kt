@@ -1,5 +1,32 @@
 package net.spartanb312.grunt.glsl.shader
 
+internal data class GlslCallSite(
+    val token: GlslToken,
+    val caller: GlslFunctionAnalysis?,
+    val statement: GlslStatement?
+)
+
+internal class GlslDocumentAnalysis(document: GlslDocument) {
+    private val analyzer = GlslAnalyzer(listOf(document))
+    val functions = document.functions.filter { it.hasBody }.map { analyzer.analyze(document, it) }
+    val callSites: List<GlslCallSite>
+
+    init {
+        // Both lists are in source order. Calls in control headers/global initializers have no statement.
+        val statements = functions.flatMap { analysis -> analysis.statements.map { analysis to it } }
+        var statementIndex = 0
+        callSites = analyzer.collectCallTokens(document).map { token ->
+            while (statementIndex < statements.size && statements[statementIndex].second.end <= token.start) {
+                statementIndex++
+            }
+            val owner = statements.getOrNull(statementIndex)?.takeIf { (_, statement) ->
+                statement.start <= token.start && token.end <= statement.end
+            }
+            GlslCallSite(token, owner?.first, owner?.second)
+        }
+    }
+}
+
 internal class GlslAnalyzer(
     private val documents: List<GlslDocument>
 ) {
@@ -148,9 +175,7 @@ private data class FunctionTokenKey(
 )
 
 internal fun bodyTokens(document: GlslDocument, function: GlslFunction): List<GlslToken> {
-    val open = function.bodyOpen ?: return emptyList()
-    val close = function.bodyClose ?: return emptyList()
-    return document.significantTokens.filter { it.start > open.start && it.end < close.end }
+    return document.significantTokens.subList(function.bodyTokenStart, function.bodyTokenEnd)
 }
 
 internal data class DeclarationInfo(

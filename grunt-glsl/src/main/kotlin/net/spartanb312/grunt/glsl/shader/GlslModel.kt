@@ -92,7 +92,9 @@ internal data class GlslFunction(
     val parameters: List<GlslParameter>,
     val bodyOpen: GlslToken?,
     val bodyClose: GlslToken?,
-    val conditionalDepth: Int
+    val conditionalDepth: Int,
+    val bodyTokenStart: Int = 0,
+    val bodyTokenEnd: Int = 0
 ) {
     val hasBody: Boolean
         get() = bodyOpen != null && bodyClose != null
@@ -114,7 +116,10 @@ internal data class GlslDocument(
     val directives: List<GlslDirective>,
     val globalDeclarations: List<GlslGlobalDeclaration>,
     val functions: List<GlslFunction>
-)
+) {
+    // Only source-local facts are cached. Cross-file eligibility is rebuilt by each pass.
+    val analysis: GlslDocumentAnalysis by lazy { GlslDocumentAnalysis(this) }
+}
 
 internal data class GlslStatement(
     val file: ResourcePath,

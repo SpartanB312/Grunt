@@ -1,5 +1,23 @@
 package net.spartanb312.grunt.glsl.shader
 
+// Inline patches replace non-empty source spans. Only adjacent intervals can overlap a new span.
+internal class GlslPatchIndex {
+    private val byFile = mutableMapOf<ResourcePath, java.util.TreeMap<Int, TextPatch>>()
+
+    fun overlaps(patch: TextPatch): Boolean {
+        val intervals = byFile[patch.file] ?: return false
+        if (intervals.floorEntry(patch.start)?.value?.end?.let { it > patch.start } == true) return true
+        return intervals.ceilingKey(patch.start)?.let { it < patch.end } == true
+    }
+
+    fun tryAdd(patch: TextPatch): Boolean {
+        require(patch.start < patch.end)
+        if (overlaps(patch)) return false
+        byFile.getOrPut(patch.file) { java.util.TreeMap() }[patch.start] = patch
+        return true
+    }
+}
+
 internal fun applyPatches(files: Map<ResourcePath, String>, patches: List<TextPatch>): Map<ResourcePath, String> {
     if (patches.isEmpty()) return files
     val grouped = patches.groupBy { it.file }
