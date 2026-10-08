@@ -90,6 +90,10 @@ class ClassRenamer : Transformer<ClassRenamer.Config>(
 
             val dictionary = NameGenerator.getDictionary(config.dictionary)
             val nameGenerator = NameGenerator(dictionary)
+            // Keep original names unambiguous for exclusions and reflection, including earlier rename passes.
+            val reservedNames = instance.workRes.inputClassMap.keys.toMutableSet()
+            reservedNames.addAll(instance.workRes.libraryClassMap.keys)
+            reservedNames.addAll(instance.nameMapping.revMappings.keys)
             val randomGen = Xoshiro256PPRandom(getSeed("Global"))
             val counter = instance.workRes.inputClassCollection.asSequence()
                 .filter(strategy)
@@ -97,10 +101,12 @@ class ClassRenamer : Transformer<ClassRenamer.Config>(
                     if (config.shuffled) this.shuffled(randomGen) else this
                 }
                 .onEach { clazz ->
-                    instance.nameMapping.putClassMapping(
-                        clazz.name,
-                        config.parent + config.malNamePrefix(clazz.name) + config.reversePrefix + config.prefix + nameGenerator.nextName()
-                    )
+                    val namePrefix = config.parent + config.malNamePrefix(clazz.name) + config.reversePrefix + config.prefix
+                    var newName: String
+                    do {
+                        newName = namePrefix + nameGenerator.nextName()
+                    } while (!reservedNames.add(newName))
+                    instance.nameMapping.putClassMapping(clazz.name, newName)
                 }
                 .count()
             credit.add(counter * 300L)
