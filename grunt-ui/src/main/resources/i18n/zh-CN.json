@@ -502,7 +502,7 @@
     "ui.transformer.deadCodeRemove.name": "DeadCodeRemove",
     "ui.transformer.declaredFieldsExtract.config.classFilter.desc": "指定类包含/排除规则",
     "ui.transformer.declaredFieldsExtract.config.classFilter.name": "类过滤器",
-    "ui.transformer.declaredFieldsExtract.desc": "将字段初始化提取到 <init> 或 <clinit>",
+    "ui.transformer.declaredFieldsExtract.desc": "将静态字段初始化提取到 <clinit>",
     "ui.transformer.declaredFieldsExtract.name": "DeclaredFieldsExtract",
     "ui.transformer.decompilerCrasher.config.blankString.name": "空白字符串签名",
     "ui.transformer.decompilerCrasher.config.classFilter.desc": "指定类包含/排除规则",

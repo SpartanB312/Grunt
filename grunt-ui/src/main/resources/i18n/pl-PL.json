@@ -502,7 +502,7 @@
     "ui.transformer.deadCodeRemove.name": "Dead Code Remove",
     "ui.transformer.declaredFieldsExtract.config.classFilter.desc": "Filtruje, które klasy mają być objęte",
     "ui.transformer.declaredFieldsExtract.config.classFilter.name": "Filtr klas",
-    "ui.transformer.declaredFieldsExtract.desc": "Przenosi inicjalizację pól do konstruktorów",
+    "ui.transformer.declaredFieldsExtract.desc": "Przenosi inicjalizację pól statycznych do <clinit>",
     "ui.transformer.declaredFieldsExtract.name": "Declared Fields Extract",
     "ui.transformer.decompilerCrasher.config.blankString.name": "Pusty łańcuch",
     "ui.transformer.decompilerCrasher.config.classFilter.desc": "Filtruje, które klasy mają być objęte",
