@@ -176,14 +176,8 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
                         }
                         for (fieldIndex in classEntry.fields.array) {
                             val fieldEntry = FieldHierarchy.Entry(fieldIndex)
-<<<<<<< HEAD
                             if (!renameSources[fieldIndex]) continue
-=======
-                            // Source check
-                            if (!fieldEntry.isSourceField) continue
-                            if (fieldEntry.name in config.excludedNames) continue
                             if (recordComponents.any { it.name == fieldEntry.name && it.descriptor == fieldEntry.desc }) continue
-                            // Check descendants
                             var checkPass = true
                             descendantsCheck@ for (descendant in classEntry.descendants.array) {
                                 if (ClassHierarchy.Entry(descendant).hasMissingDependency) {
@@ -192,7 +186,6 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
                                 }
                             }
                             if (!checkPass) continue
->>>>>>> origin/grunt3
 
                             val affected = IntLinkedOpenHashSet()
                             affected.add(classEntry.index)
