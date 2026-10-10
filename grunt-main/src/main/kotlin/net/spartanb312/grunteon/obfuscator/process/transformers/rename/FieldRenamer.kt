@@ -15,7 +15,9 @@ import net.spartanb312.grunteon.obfuscator.util.Logger
 import net.spartanb312.grunteon.obfuscator.util.extensions.isPrivate
 import net.spartanb312.grunteon.obfuscator.util.extensions.isProtected
 import net.spartanb312.grunteon.obfuscator.util.extensions.isStatic
+import net.spartanb312.grunteon.obfuscator.util.filters.buildClassNamePredicates
 import net.spartanb312.grunteon.obfuscator.util.filters.filter
+import net.spartanb312.grunteon.obfuscator.util.filters.matchedAnyBy
 
 /**
  * Last update on 2026/03/31 by FluixCarvin
@@ -61,7 +63,10 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
         @SettingName("Aggressive shadow names")
         val aggressiveShadowNames: Boolean = true,
         @SettingName("Excluded names")
-        val excludedNames: List<String> = listOf("INSTANCE", "Companion")
+        val excludedNames: List<String> = listOf("INSTANCE", "Companion"),
+        @SettingName("Field exclusions")
+        @SettingDesc("Keep declared fields matching owner.name exactly or a prefix ending in **; not regex")
+        val fieldExclusions: List<String> = emptyList()
     ) : TransformerConfig() {
 
         // getter
@@ -112,6 +117,52 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
             val dictionary = NameGenerator.getDictionary(config.dictionary)
             var counter = 0
             context(classHierarchy, fieldHierarchy) {
+                val fieldExclusions = buildClassNamePredicates(config.fieldExclusions)
+                val excluded = BooleanArray(fieldHierarchy.fieldNodes.size) { index ->
+                    val field = FieldHierarchy.Entry(index)
+                    field.owner.name !in instance.workRes.inputClassMap ||
+                            !strategy.testImpl(field.owner.name) || field.name in config.excludedNames ||
+                            fieldExclusions.matchedAnyBy("${field.owner.name}.${field.name}")
+                }
+                val renameSources = BooleanArray(fieldHierarchy.fieldNodes.size) { index ->
+                    val field = FieldHierarchy.Entry(index)
+                    field.isSourceField && !excluded[index] && !field.owner.hasMissingDependency &&
+                            field.owner.descendants.array.all { descendant ->
+                                val declared = fieldHierarchy.findField(descendant, field.name, field.desc)
+                                !ClassHierarchy.Entry(descendant).hasMissingDependency &&
+                                        (field.node.isPrivate || !declared.isValid || !excluded[declared.index])
+                            }
+                }
+
+                // A source mapping also renames same-signature declarations in descendants.
+                // Keep the whole group if it would touch an excluded declaration, but still
+                // remap inherited references through excluded classes with no such declaration.
+                val renamed = BooleanArray(fieldHierarchy.fieldNodes.size)
+                for (index in renameSources.indices) {
+                    if (!renameSources[index]) continue
+                    val field = FieldHierarchy.Entry(index)
+                    renamed[index] = true
+                    if (!field.node.isPrivate) {
+                        field.owner.descendants.forEach { descendant ->
+                            val declared = fieldHierarchy.findField(descendant.index, field.name, field.desc)
+                            if (declared.isValid) renamed[declared.index] = true
+                        }
+                    }
+                }
+                // Retained fields must not collide with generated declarations, including
+                // inherited fields resolved through a descendant's symbolic owner.
+                for (index in renamed.indices) {
+                    if (renamed[index]) continue
+                    val field = FieldHierarchy.Entry(index)
+                    val signature = field.name + field.desc
+                    existedNameMap.getOrPut(field.owner.index) { mutableSetOf() }.add(signature)
+                    if (!field.node.isPrivate || !config.aggressiveShadowNames) {
+                        field.owner.descendants.forEach { descendant ->
+                            existedNameMap.getOrPut(descendant.index) { mutableSetOf() }.add(signature)
+                        }
+                    }
+                }
+
                 Logger.info("    Generating field mappings...")
                 val nameGenerators = mutableMapOf<ClassHierarchy.Entry, NameGenerator>()
                 nonExcluded.forEach { classNode ->
@@ -125,11 +176,8 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
                         }
                         for (fieldIndex in classEntry.fields.array) {
                             val fieldEntry = FieldHierarchy.Entry(fieldIndex)
-                            // Source check
-                            if (!fieldEntry.isSourceField) continue
-                            if (fieldEntry.name in config.excludedNames) continue
+                            if (!renameSources[fieldIndex]) continue
                             if (recordComponents.any { it.name == fieldEntry.name && it.descriptor == fieldEntry.desc }) continue
-                            // Check descendants
                             var checkPass = true
                             descendantsCheck@ for (descendant in classEntry.descendants.array) {
                                 if (ClassHierarchy.Entry(descendant).hasMissingDependency) {

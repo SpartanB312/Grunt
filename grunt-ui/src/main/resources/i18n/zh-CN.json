@@ -540,6 +540,8 @@
     "ui.transformer.fieldRenamer.config.classFilter.name": "类过滤器",
     "ui.transformer.fieldRenamer.config.dictionary.name": "字段命名字典",
     "ui.transformer.fieldRenamer.config.excludedNames.name": "保留字段名",
+    "ui.transformer.fieldRenamer.config.fieldExclusions.desc": "保留匹配 owner.name 的声明字段：精确匹配或以 ** 结尾的前缀匹配，不支持正则表达式",
+    "ui.transformer.fieldRenamer.config.fieldExclusions.name": "字段排除规则",
     "ui.transformer.fieldRenamer.config.heavyOverloads.name": "字段名重载",
     "ui.transformer.fieldRenamer.config.malPrefix.name": "字段名前缀",
     "ui.transformer.fieldRenamer.config.prefix.name": "字段名前缀",

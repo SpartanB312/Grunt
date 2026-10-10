@@ -540,6 +540,8 @@
     "ui.transformer.fieldRenamer.config.classFilter.name": "Class filter",
     "ui.transformer.fieldRenamer.config.dictionary.name": "Dictionary",
     "ui.transformer.fieldRenamer.config.excludedNames.name": "Excluded names",
+    "ui.transformer.fieldRenamer.config.fieldExclusions.desc": "Keep declared fields matching owner.name exactly or a prefix ending in **; not regex",
+    "ui.transformer.fieldRenamer.config.fieldExclusions.name": "Field exclusions",
     "ui.transformer.fieldRenamer.config.heavyOverloads.name": "Heavy overloads",
     "ui.transformer.fieldRenamer.config.malPrefix.name": "Mal Prefix",
     "ui.transformer.fieldRenamer.config.prefix.name": "Prefix",
