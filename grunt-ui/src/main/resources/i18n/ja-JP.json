@@ -502,7 +502,7 @@
     "ui.transformer.deadCodeRemove.name": "DeadCodeRemove",
     "ui.transformer.declaredFieldsExtract.config.classFilter.desc": "クラスの包含/除外ルールを指定します",
     "ui.transformer.declaredFieldsExtract.config.classFilter.name": "クラスフィルター",
-    "ui.transformer.declaredFieldsExtract.desc": "フィールド初期化を <init> または <clinit> に抽出します",
+    "ui.transformer.declaredFieldsExtract.desc": "静的フィールドの初期化を <clinit> に抽出します",
     "ui.transformer.declaredFieldsExtract.name": "DeclaredFieldsExtract",
     "ui.transformer.decompilerCrasher.config.blankString.name": "空白文字列",
     "ui.transformer.decompilerCrasher.config.classFilter.desc": "クラスの包含/除外ルールを指定します",

@@ -106,6 +106,13 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
                 .toList()
 
             val existedNameMap = Int2ObjectOpenHashMap<MutableSet<String>>()
+            // Record components are a reflection contract shared by fields, accessors and the constructor.
+            // Reserve retained fields before renaming inherited fields as well as the record itself.
+            classHierarchy.classNodes.forEachIndexed { index, node ->
+                node.recordComponents?.forEach { component ->
+                    existedNameMap.getOrPut(index) { mutableSetOf() }.add(component.name + component.descriptor)
+                }
+            }
             //val nameGenerator = NameGenerator(NameGenerator.getDictionary(config.dictionary))
             val dictionary = NameGenerator.getDictionary(config.dictionary)
             var counter = 0
@@ -159,6 +166,7 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
                 Logger.info("    Generating field mappings...")
                 val nameGenerators = mutableMapOf<ClassHierarchy.Entry, NameGenerator>()
                 nonExcluded.forEach { classNode ->
+                    val recordComponents = classNode.recordComponents.orEmpty()
                     val classIndex = classHierarchy.findClass(classNode.name)
                     if (classIndex == -1) throw Exception("Class ${classNode.name} was not found in field hierarchy")
                     val classEntry = ClassHierarchy.Entry(classIndex)
@@ -168,7 +176,23 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
                         }
                         for (fieldIndex in classEntry.fields.array) {
                             val fieldEntry = FieldHierarchy.Entry(fieldIndex)
+<<<<<<< HEAD
                             if (!renameSources[fieldIndex]) continue
+=======
+                            // Source check
+                            if (!fieldEntry.isSourceField) continue
+                            if (fieldEntry.name in config.excludedNames) continue
+                            if (recordComponents.any { it.name == fieldEntry.name && it.descriptor == fieldEntry.desc }) continue
+                            // Check descendants
+                            var checkPass = true
+                            descendantsCheck@ for (descendant in classEntry.descendants.array) {
+                                if (ClassHierarchy.Entry(descendant).hasMissingDependency) {
+                                    checkPass = false
+                                    break@descendantsCheck
+                                }
+                            }
+                            if (!checkPass) continue
+>>>>>>> origin/grunt3
 
                             val affected = IntLinkedOpenHashSet()
                             affected.add(classEntry.index)
@@ -190,6 +214,8 @@ class FieldRenamer : Transformer<FieldRenamer.Config>(
                                     config.heavyOverloads,
                                     fieldEntry.descCode
                                 ) + config.suffix
+                                // Reflection looks fields up by name, not by descriptor.
+                                if (recordComponents.any { it.name == newName }) continue
                                 var keepThisName = true
                                 check@ for (check in checkList.array) {
                                     val nameSet = existedNameMap.getOrPut(check) { mutableSetOf() }
